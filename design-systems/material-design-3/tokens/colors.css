@@ -1,0 +1,33 @@
+/* Material Design 3 — color roles (baseline purple scheme)
+   Source: m3.material.io/styles/color/roles
+   Light = :root. Dark = [data-theme="dark"]. */
+:root {
+  --md-primary:#6750A4; --md-on-primary:#FFFFFF; --md-primary-container:#EADDFF; --md-on-primary-container:#21005D;
+  --md-secondary:#625B71; --md-on-secondary:#FFFFFF; --md-secondary-container:#E8DEF8; --md-on-secondary-container:#1D192B;
+  --md-tertiary:#7D5260; --md-on-tertiary:#FFFFFF; --md-tertiary-container:#FFD8E4; --md-on-tertiary-container:#31111D;
+  --md-error:#B3261E; --md-on-error:#FFFFFF; --md-error-container:#F9DEDC; --md-on-error-container:#410E0B;
+  --md-background:#FEF7FF; --md-on-background:#1D1B20;
+  --md-surface:#FEF7FF; --md-on-surface:#1D1B20;
+  --md-surface-variant:#E7E0EC; --md-on-surface-variant:#49454F;
+  --md-outline:#79747E; --md-outline-variant:#CAC4D0;
+  --md-surface-container-lowest:#FFFFFF; --md-surface-container-low:#F7F2FA; --md-surface-container:#F3EDF7;
+  --md-surface-container-high:#ECE6F0; --md-surface-container-highest:#E6E0E9;
+  --md-surface-dim:#DED8E1; --md-surface-bright:#FEF7FF;
+  --md-inverse-surface:#322F35; --md-inverse-on-surface:#F5EFF7; --md-inverse-primary:#D0BCFF;
+  --md-shadow:#000000; --md-scrim:#000000;
+}
+[data-theme="dark"] {
+  --md-primary:#D0BCFF; --md-on-primary:#381E72; --md-primary-container:#4F378B; --md-on-primary-container:#EADDFF;
+  --md-secondary:#CCC2DC; --md-on-secondary:#332D41; --md-secondary-container:#4A4458; --md-on-secondary-container:#E8DEF8;
+  --md-tertiary:#EFB8C8; --md-on-tertiary:#492532; --md-tertiary-container:#633B48; --md-on-tertiary-container:#FFD8E4;
+  --md-error:#F2B8B5; --md-on-error:#601410; --md-error-container:#8C1D18; --md-on-error-container:#F9DEDC;
+  --md-background:#141218; --md-on-background:#E6E0E9;
+  --md-surface:#141218; --md-on-surface:#E6E0E9;
+  --md-surface-variant:#49454F; --md-on-surface-variant:#CAC4D0;
+  --md-outline:#938F99; --md-outline-variant:#49454F;
+  --md-surface-container-lowest:#0F0D13; --md-surface-container-low:#1D1B20; --md-surface-container:#211F26;
+  --md-surface-container-high:#2B2930; --md-surface-container-highest:#36343B;
+  --md-surface-dim:#141218; --md-surface-bright:#3B383E;
+  --md-inverse-surface:#E6E0E9; --md-inverse-on-surface:#322F35; --md-inverse-primary:#6750A4;
+  --md-shadow:#000000; --md-scrim:#000000;
+}

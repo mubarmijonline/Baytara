@@ -1,0 +1,109 @@
+:root {
+  --accent: #e11b22;
+  --ink: #14142b;
+  --muted: #6b6b7b;
+  --line: #ececf2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Tajawal', system-ui, sans-serif;
+  background: #ffffff;
+  color: #14142b;
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d5d5e0;
+  border-radius: 8px;
+}
+
+@keyframes amFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.am-fade {
+  animation: amFade 0.4s ease;
+}
+
+/* Hover helpers (inline styles can't express :hover, so a few utility classes) */
+.hover-lift {
+  transition: all 0.18s;
+}
+.hover-lift:hover {
+  box-shadow: 0 18px 40px rgba(20, 20, 43, 0.12);
+  transform: translateY(-4px);
+}
+.hover-card {
+  transition: all 0.18s;
+}
+.hover-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 14px 32px rgba(20, 20, 43, 0.08);
+  transform: translateY(-3px);
+}
+.hover-bright {
+  transition: filter 0.15s;
+}
+.hover-bright:hover {
+  filter: brightness(1.08);
+}
+.link-muted {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.link-muted:hover {
+  color: #fff;
+}
+
+/* Responsive helpers used by pages */
+@media (max-width: 900px) {
+  .grid-collapse-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .hide-md {
+    display: none !important;
+  }
+}
+@media (max-width: 640px) {
+  .grid-collapse-sm {
+    grid-template-columns: 1fr !important;
+  }
+  .hide-sm {
+    display: none !important;
+  }
+}

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600;8..144,700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  ::selection{background:var(--md-primary);color:var(--md-on-primary)}
+  input[type=range]{accent-color:var(--md-primary)}
+  @keyframes md-spin{to{transform:rotate(360deg)}}
+  @keyframes md-indet{0%{left:-35%;width:35%}60%{left:100%;width:60%}100%{left:100%;width:35%}}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+
+  <header style="position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 40px;background:var(--md-surface-container);border-bottom:1px solid var(--md-outline-variant)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:38px;height:38px;border-radius:11px;background:var(--md-primary);display:flex;align-items:center;justify-content:center;color:var(--md-on-primary);font-family:'Material Symbols Outlined';font-size:22px;line-height:1">palette</div>
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span style="font-family:'Roboto Flex';font-weight:600;font-size:17px;color:var(--md-on-surface)">Material Design 3</span>
+        <span style="font-family:'Roboto';font-size:12px;color:var(--md-on-surface-variant)">Design system · Style guide</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 8px;border-radius:18px;background:var(--md-surface-container-highest)">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--md-primary);display:inline-block"></span>
+        <span style="font-family:ui-monospace,monospace;font-size:12px;color:var(--md-on-surface-variant)">{{ seedHex }}</span>
+      </div>
+      <button onClick="{{ toggleMode }}" style="display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 20px 0 16px;border-radius:20px;border:1px solid var(--md-outline);background:transparent;color:var(--md-on-surface);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer" style-hover="background:var(--md-surface-container-highest)">
+        <span style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">{{ modeIcon }}</span>{{ modeLabel }}
+      </button>
+    </div>
+  </header>
+
+  <main style="max-width:1180px;margin:0 auto;padding:56px 40px 112px;display:flex;flex-direction:column;gap:80px">
+
+    <section style="display:flex;flex-direction:column;gap:22px">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <span style="display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:8px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-family:'Roboto';font-weight:500;font-size:13px">Material 3</span>
+        <span style="display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--md-outline);color:var(--md-on-surface-variant);font-family:'Roboto';font-weight:500;font-size:13px">Baseline scheme</span>
+        <span style="display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--md-outline);color:var(--md-on-surface-variant);font-family:'Roboto';font-weight:500;font-size:13px">{{ currentModeCap }} theme</span>
+      </div>
+      <h1 style="font-family:'Roboto Flex';font-weight:600;font-size:64px;line-height:64px;letter-spacing:-1.5px;color:var(--md-on-surface);margin:0;max-width:15ch">The M3 style guide &amp; component gallery.</h1>
+      <p style="font-family:'Roboto';font-size:18px;line-height:27px;color:var(--md-on-surface-variant);margin:0;max-width:64ch">Every foundation and core component of Material Design 3 in one page — color roles, the type scale, elevation, shape, state layers, and the components. Switch light/dark up top, and change the seed color or hide token names from the Tweaks panel.</p>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">01 — Foundations</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Color roles</h2>
+        <p style="font-family:'Roboto';font-size:15px;line-height:22px;color:var(--md-on-surface-variant);margin:0;max-width:640px">Accent roles pair a base color with its <em>on-</em> color and a lower-emphasis container. Surfaces cover the tonal container hierarchy, outlines and inverse roles.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:22px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:28px">
+        <sc-for list="{{ accentFamilies }}" as="fam" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">{{ fam.name }}</span>
+            <div style="display:flex;gap:8px">
+              <sc-for list="{{ fam.tiles }}" as="tile" hint-placeholder-count="4">
+                <div style="{{ tile.style }}">
+                  <span style="font-family:'Roboto';font-weight:500;font-size:13px;line-height:16px">{{ tile.label }}</span>
+                  <sc-if value="{{ showValues }}" hint-placeholder-val="{{ true }}"><span style="font-family:ui-monospace,monospace;font-size:10px;opacity:.8">md.sys.color.{{ tile.code }}</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Surfaces &amp; outlines</span>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <sc-for list="{{ surfaceTiles }}" as="s" hint-placeholder-count="12">
+              <div style="{{ s.style }}">
+                <span style="font-family:'Roboto';font-weight:500;font-size:12px;line-height:15px">{{ s.label }}</span>
+                <sc-if value="{{ showValues }}" hint-placeholder-val="{{ true }}"><span style="font-family:ui-monospace,monospace;font-size:10px;opacity:.8">{{ s.code }}</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">02 — Foundations</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Type scale</h2>
+        <p style="font-family:'Roboto';font-size:15px;line-height:22px;color:var(--md-on-surface-variant);margin:0;max-width:640px">Fifteen roles across five groups — display, headline, title, body and label. Set in Roboto Flex &amp; Roboto.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:8px 28px">
+        <sc-for list="{{ typeScale }}" as="t" hint-placeholder-count="8">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:24px;padding:16px 0;border-bottom:1px solid var(--md-outline-variant)">
+            <p style="{{ t.style }}">{{ t.sample }}</p>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:0 0 auto">
+              <span style="font-family:'Roboto';font-weight:500;font-size:12px;color:var(--md-on-surface)">{{ t.name }}</span>
+              <sc-if value="{{ showValues }}" hint-placeholder-val="{{ true }}"><span style="font-family:ui-monospace,monospace;font-size:11px;color:var(--md-on-surface-variant);white-space:nowrap">{{ t.meta }}</span></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">03 — Foundations</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Elevation &amp; shape</h2>
+        <p style="font-family:'Roboto';font-size:15px;line-height:22px;color:var(--md-on-surface-variant);margin:0;max-width:640px">Six elevation levels expressed as shadow, and the seven-step corner radius shape scale.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:32px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:32px 28px">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:20px">
+          <sc-for list="{{ elevation }}" as="e" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+              <div style="{{ e.style }}"></div>
+              <span style="font-family:'Roboto';font-weight:500;font-size:13px;color:var(--md-on-surface)">{{ e.name }}</span>
+              <span style="font-family:ui-monospace,monospace;font-size:11px;color:var(--md-on-surface-variant)">{{ e.dp }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:16px">
+          <sc-for list="{{ shapes }}" as="sh" hint-placeholder-count="7">
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+              <div style="{{ sh.style }}"></div>
+              <span style="font-family:'Roboto';font-weight:500;font-size:12px;color:var(--md-on-surface);text-align:center">{{ sh.name }}</span>
+              <span style="font-family:ui-monospace,monospace;font-size:11px;color:var(--md-on-surface-variant)">{{ sh.val }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">04 — Foundations</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">State layers</h2>
+        <p style="font-family:'Roboto';font-size:15px;line-height:22px;color:var(--md-on-surface-variant);margin:0;max-width:640px">Interaction states are a semi-transparent overlay of the on-color at a fixed opacity.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:20px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:28px">
+        <sc-for list="{{ stateLayers }}" as="st" hint-placeholder-count="5">
+          <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+            <div style="position:relative;width:100%;height:80px;border-radius:12px;overflow:hidden;background:var(--md-primary);display:flex;align-items:center;justify-content:center">
+              <span style="font-family:'Roboto';font-weight:500;font-size:14px;color:var(--md-on-primary);position:relative;z-index:1">{{ st.name }}</span>
+              <div style="{{ st.overlay }}"></div>
+            </div>
+            <span style="font-family:ui-monospace,monospace;font-size:11px;color:var(--md-on-surface-variant)">{{ st.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">05 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Buttons</h2>
+        <p style="font-family:'Roboto';font-size:15px;line-height:22px;color:var(--md-on-surface-variant);margin:0;max-width:640px">The five common button types, in order of emphasis.</p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:32px 28px">
+        <button style="height:40px;padding:0 24px;border:none;border-radius:20px;background:var(--md-primary);color:var(--md-on-primary);font-family:'Roboto';font-weight:500;font-size:14px;letter-spacing:.1px;cursor:pointer;display:inline-flex;align-items:center;gap:8px" style-hover="box-shadow:0 1px 2px rgba(0,0,0,.3),0 1px 3px 1px rgba(0,0,0,.15)">Filled</button>
+        <button style="height:40px;padding:0 24px;border:none;border-radius:20px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-family:'Roboto';font-weight:500;font-size:14px;letter-spacing:.1px;cursor:pointer" style-hover="box-shadow:0 1px 2px rgba(0,0,0,.3),0 1px 3px 1px rgba(0,0,0,.15)">Tonal</button>
+        <button style="height:40px;padding:0 24px;border:none;border-radius:20px;background:var(--md-surface-container-low);color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;letter-spacing:.1px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.3),0 1px 3px 1px rgba(0,0,0,.15)" style-hover="box-shadow:0 1px 2px rgba(0,0,0,.3),0 2px 6px 2px rgba(0,0,0,.15)">Elevated</button>
+        <button style="height:40px;padding:0 24px;border:1px solid var(--md-outline);border-radius:20px;background:transparent;color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;letter-spacing:.1px;cursor:pointer" style-hover="background:var(--md-surface-container-highest)">Outlined</button>
+        <button style="height:40px;padding:0 12px;border:none;border-radius:20px;background:transparent;color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;letter-spacing:.1px;cursor:pointer" style-hover="background:var(--md-surface-container-highest)">Text</button>
+        <button style="height:40px;padding:0 24px 0 16px;border:none;border-radius:20px;background:var(--md-primary);color:var(--md-on-primary);font-family:'Roboto';font-weight:500;font-size:14px;letter-spacing:.1px;cursor:pointer;display:inline-flex;align-items:center;gap:8px" style-hover="box-shadow:0 1px 2px rgba(0,0,0,.3),0 1px 3px 1px rgba(0,0,0,.15)"><span style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">add</span>With icon</button>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">06 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Icon buttons &amp; FAB</h2>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:28px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:32px 28px">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+          <button style="width:40px;height:40px;border-radius:20px;border:none;background:transparent;color:var(--md-on-surface-variant);cursor:pointer;display:inline-flex;align-items:center;justify-content:center" style-hover="background:var(--md-surface-container-highest)"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">favorite</span></button>
+          <button style="width:40px;height:40px;border-radius:20px;border:none;background:var(--md-primary);color:var(--md-on-primary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">star</span></button>
+          <button style="width:40px;height:40px;border-radius:20px;border:none;background:var(--md-secondary-container);color:var(--md-on-secondary-container);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">bookmark</span></button>
+          <button style="width:40px;height:40px;border-radius:20px;border:1px solid var(--md-outline);background:transparent;color:var(--md-on-surface-variant);cursor:pointer;display:inline-flex;align-items:center;justify-content:center" style-hover="background:var(--md-surface-container-highest)"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">settings</span></button>
+          <span style="font-family:'Roboto';font-size:13px;color:var(--md-on-surface-variant);margin-left:4px">Standard · Filled · Tonal · Outlined</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:center">
+          <button style="width:40px;height:40px;border-radius:12px;border:none;background:var(--md-primary-container);color:var(--md-on-primary-container);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.15)"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">edit</span></button>
+          <button style="width:56px;height:56px;border-radius:16px;border:none;background:var(--md-primary-container);color:var(--md-on-primary-container);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.15)"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">add</span></button>
+          <button style="width:96px;height:96px;border-radius:28px;border:none;background:var(--md-primary-container);color:var(--md-on-primary-container);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.15)"><span style="font-family:'Material Symbols Outlined';font-size:36px;line-height:1">add</span></button>
+          <button style="height:56px;padding:0 20px;border-radius:16px;border:none;background:var(--md-primary-container);color:var(--md-on-primary-container);cursor:pointer;display:inline-flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.15);font-family:'Roboto';font-weight:500;font-size:14px"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">edit</span>Extended</button>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">07 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Text fields</h2>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:28px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:36px 28px">
+        <div style="display:flex;flex-direction:column;gap:6px;width:240px">
+          <div style="position:relative;height:56px;border-radius:4px 4px 0 0;background:var(--md-surface-container-highest);border-bottom:2px solid var(--md-primary);display:flex;align-items:flex-end;padding:8px 16px">
+            <label style="position:absolute;top:8px;left:16px;font-family:'Roboto';font-size:12px;color:var(--md-primary)">Label</label>
+            <span style="font-family:'Roboto';font-size:16px;color:var(--md-on-surface);padding-bottom:2px">Input text</span>
+          </div>
+          <span style="font-family:'Roboto';font-size:12px;color:var(--md-on-surface-variant);padding:0 16px">Filled · supporting text</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;width:240px">
+          <div style="position:relative;height:56px;border-radius:4px;border:2px solid var(--md-primary);display:flex;align-items:center;padding:0 44px 0 16px">
+            <label style="position:absolute;top:-9px;left:12px;padding:0 4px;background:var(--md-surface-container-low);font-family:'Roboto';font-size:12px;color:var(--md-primary)">Label</label>
+            <span style="font-family:'Roboto';font-size:16px;color:var(--md-on-surface)">Input text</span>
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:'Material Symbols Outlined';font-size:22px;color:var(--md-on-surface-variant)">visibility</span>
+          </div>
+          <span style="font-family:'Roboto';font-size:12px;color:var(--md-on-surface-variant);padding:0 16px">Outlined · supporting text</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;width:240px">
+          <div style="position:relative;height:56px;border-radius:4px;border:2px solid var(--md-error);display:flex;align-items:center;padding:0 44px 0 16px">
+            <label style="position:absolute;top:-9px;left:12px;padding:0 4px;background:var(--md-surface-container-low);font-family:'Roboto';font-size:12px;color:var(--md-error)">Label</label>
+            <span style="font-family:'Roboto';font-size:16px;color:var(--md-on-surface)">Input text</span>
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:'Material Symbols Outlined';font-size:22px;color:var(--md-error)">error</span>
+          </div>
+          <span style="font-family:'Roboto';font-size:12px;color:var(--md-error);padding:0 16px">Error · supporting text</span>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">08 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Cards</h2>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:20px">
+        <div style="width:280px;border-radius:12px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:0 1px 2px rgba(0,0,0,.3),0 1px 3px 1px rgba(0,0,0,.15)">
+          <div style="height:140px;background:repeating-linear-gradient(45deg,var(--md-surface-variant),var(--md-surface-variant) 11px,var(--md-surface-container-high) 11px,var(--md-surface-container-high) 22px);display:flex;align-items:center;justify-content:center"><span style="font-family:ui-monospace,monospace;font-size:12px;color:var(--md-on-surface-variant)">media 16:9</span></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'Roboto Flex';font-weight:500;font-size:22px;color:var(--md-on-surface)">Elevated card</span>
+            <p style="font-family:'Roboto';font-size:14px;line-height:20px;color:var(--md-on-surface-variant);margin:0">Supporting text with a shadow-based container tint.</p>
+            <div style="display:flex;gap:8px;margin-top:8px"><button style="height:36px;padding:0 16px;border:none;border-radius:18px;background:transparent;color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer">Action</button><button style="height:36px;padding:0 16px;border:none;border-radius:18px;background:transparent;color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer">Save</button></div>
+          </div>
+        </div>
+        <div style="width:280px;border-radius:12px;overflow:hidden;background:var(--md-surface-container-highest)">
+          <div style="height:140px;background:repeating-linear-gradient(45deg,var(--md-surface-variant),var(--md-surface-variant) 11px,var(--md-surface-container-high) 11px,var(--md-surface-container-high) 22px);display:flex;align-items:center;justify-content:center"><span style="font-family:ui-monospace,monospace;font-size:12px;color:var(--md-on-surface-variant)">media 16:9</span></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'Roboto Flex';font-weight:500;font-size:22px;color:var(--md-on-surface)">Filled card</span>
+            <p style="font-family:'Roboto';font-size:14px;line-height:20px;color:var(--md-on-surface-variant);margin:0">Highest-tint surface container, no shadow.</p>
+            <div style="display:flex;gap:8px;margin-top:8px"><button style="height:36px;padding:0 16px;border:none;border-radius:18px;background:transparent;color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer">Action</button></div>
+          </div>
+        </div>
+        <div style="width:280px;border-radius:12px;overflow:hidden;background:var(--md-surface);border:1px solid var(--md-outline-variant)">
+          <div style="height:140px;background:repeating-linear-gradient(45deg,var(--md-surface-variant),var(--md-surface-variant) 11px,var(--md-surface-container-high) 11px,var(--md-surface-container-high) 22px);display:flex;align-items:center;justify-content:center"><span style="font-family:ui-monospace,monospace;font-size:12px;color:var(--md-on-surface-variant)">media 16:9</span></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'Roboto Flex';font-weight:500;font-size:22px;color:var(--md-on-surface)">Outlined card</span>
+            <p style="font-family:'Roboto';font-size:14px;line-height:20px;color:var(--md-on-surface-variant);margin:0">A one-pixel outline instead of elevation.</p>
+            <div style="display:flex;gap:8px;margin-top:8px"><button style="height:36px;padding:0 16px;border:none;border-radius:18px;background:transparent;color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer">Action</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">09 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Chips</h2>
+        <p style="font-family:'Roboto';font-size:15px;line-height:22px;color:var(--md-on-surface-variant);margin:0;max-width:640px">Assist, input and suggestion chips, plus filter chips you can toggle.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:24px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:32px 28px">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+          <span style="display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 16px 0 8px;border-radius:8px;border:1px solid var(--md-outline);color:var(--md-on-surface-variant);font-family:'Roboto';font-weight:500;font-size:14px"><span style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">event</span>Assist</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 4px;border-radius:8px;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font-family:'Roboto';font-weight:500;font-size:14px"><span style="width:24px;height:24px;border-radius:50%;background:var(--md-primary);color:var(--md-on-primary);display:inline-flex;align-items:center;justify-content:center;font-family:'Roboto';font-size:12px">A</span>Input<span style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1;cursor:pointer">close</span></span>
+          <span style="display:inline-flex;align-items:center;height:32px;padding:0 16px;border-radius:8px;border:1px solid var(--md-outline);color:var(--md-on-surface-variant);font-family:'Roboto';font-weight:500;font-size:14px">Suggestion</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.onClick }}" style="{{ c.style }}">
+              <sc-if value="{{ c.on }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">check</span></sc-if>
+              {{ c.label }}
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">10 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Selection controls</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:32px 28px">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Switch</span>
+          <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onClick="{{ onSwA }}"><div style="{{ swA.track }}"><div style="{{ swA.knob }}"></div></div><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface)">Wi-Fi</span></div>
+          <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onClick="{{ onSwB }}"><div style="{{ swB.track }}"><div style="{{ swB.knob }}"></div></div><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface)">Bluetooth</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Checkbox</span>
+          <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onClick="{{ onChkA }}"><div style="{{ chkA.box }}"><sc-if value="{{ chkA.on }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Outlined';font-size:16px;line-height:1;color:var(--md-on-primary)">check</span></sc-if></div><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface)">Email</span></div>
+          <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onClick="{{ onChkB }}"><div style="{{ chkB.box }}"><sc-if value="{{ chkB.on }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Outlined';font-size:16px;line-height:1;color:var(--md-on-primary)">check</span></sc-if></div><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface)">SMS</span></div>
+          <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onClick="{{ onChkC }}"><div style="{{ chkC.box }}"><sc-if value="{{ chkC.on }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Outlined';font-size:16px;line-height:1;color:var(--md-on-primary)">check</span></sc-if></div><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface)">Push</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Radio</span>
+          <sc-for list="{{ radios }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onClick="{{ r.onClick }}"><div style="{{ r.outer }}"><div style="{{ r.inner }}"></div></div><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface)">{{ r.label }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">11 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Sliders &amp; progress</h2>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:center;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:36px 28px">
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:280px;flex:1">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Slider — {{ sliderVal }}</span>
+          <input type="range" min="0" max="100" value="{{ sliderVal }}" onInput="{{ onSlider }}" style="width:100%;height:4px" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px;min-width:240px;flex:1">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Progress</span>
+          <div style="height:4px;border-radius:2px;background:var(--md-surface-container-highest);overflow:hidden"><div style="width:62%;height:100%;background:var(--md-primary);border-radius:2px"></div></div>
+          <div style="position:relative;height:4px;border-radius:2px;background:var(--md-surface-container-highest);overflow:hidden"><div style="position:absolute;top:0;height:100%;background:var(--md-primary);border-radius:2px;animation:md-indet 1.6s infinite cubic-bezier(.4,0,.2,1)"></div></div>
+        </div>
+        <div style="display:flex;gap:24px;align-items:center">
+          <div style="width:48px;height:48px;border-radius:50%;background:conic-gradient(var(--md-primary) 0 65%,var(--md-surface-container-highest) 65% 100%);display:flex;align-items:center;justify-content:center"><div style="width:38px;height:38px;border-radius:50%;background:var(--md-surface-container-low)"></div></div>
+          <div style="width:48px;height:48px;border-radius:50%;border:4px solid var(--md-surface-container-highest);border-top-color:var(--md-primary);animation:md-spin 1s linear infinite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">12 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Navigation</h2>
+        <p style="font-family:'Roboto';font-size:15px;line-height:22px;color:var(--md-on-surface-variant);margin:0;max-width:640px">Navigation bar, rail and drawer. The selected destination is interactive.</p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:stretch">
+        <div style="flex:1;min-width:320px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Navigation bar</span>
+          <div style="display:flex;background:var(--md-surface-container);border-radius:16px;overflow:hidden">
+            <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+              <div onClick="{{ n.onClick }}" style="{{ n.wrap }}"><div style="{{ n.ind }}"><span style="{{ n.iconStyle }}">{{ n.icon }}</span></div><span style="{{ n.labelStyle }}">{{ n.label }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Rail</span>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:14px;background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:14px 12px">
+            <button style="width:56px;height:56px;border-radius:16px;border:none;background:var(--md-primary-container);color:var(--md-on-primary-container);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">add</span></button>
+            <sc-for list="{{ railItems }}" as="ri" hint-placeholder-count="4">
+              <div onClick="{{ ri.onClick }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:64px"><div style="{{ ri.ind }}"><span style="{{ ri.iconStyle }}">{{ ri.icon }}</span></div><span style="{{ ri.labelStyle }}">{{ ri.label }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--md-on-surface-variant)">Drawer</span>
+          <div style="width:260px;background:var(--md-surface-container-low);border-radius:16px;padding:12px">
+            <div style="padding:16px 16px 8px;font-family:'Roboto Flex';font-weight:600;font-size:14px;letter-spacing:.6px;color:var(--md-on-surface-variant)">MAIL</div>
+            <div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border-radius:28px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-family:'Roboto';font-weight:500;font-size:14px"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">inbox</span>Inbox<span style="margin-left:auto;font-family:'Roboto';font-size:14px">24</span></div>
+            <div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border-radius:28px;color:var(--md-on-surface-variant);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">send</span>Sent</div>
+            <div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border-radius:28px;color:var(--md-on-surface-variant);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer"><span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1">delete</span>Trash</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">13 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Lists &amp; menus</h2>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+        <div style="flex:1;min-width:320px;background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--md-outline-variant)"><div style="width:40px;height:40px;border-radius:50%;background:var(--md-primary-container);color:var(--md-on-primary-container);display:flex;align-items:center;justify-content:center;font-family:'Roboto';font-weight:500;font-size:16px">A</div><div style="display:flex;flex-direction:column"><span style="font-family:'Roboto';font-size:16px;color:var(--md-on-surface)">Headline</span><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface-variant)">Supporting text</span></div><span style="margin-left:auto;font-family:'Material Symbols Outlined';font-size:22px;color:var(--md-on-surface-variant)">chevron_right</span></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--md-outline-variant)"><div style="width:40px;height:40px;border-radius:50%;background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);display:flex;align-items:center;justify-content:center;font-family:'Roboto';font-weight:500;font-size:16px">B</div><div style="display:flex;flex-direction:column"><span style="font-family:'Roboto';font-size:16px;color:var(--md-on-surface)">Headline</span><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface-variant)">Supporting text</span></div><span style="margin-left:auto;font-family:'Material Symbols Outlined';font-size:22px;color:var(--md-on-surface-variant)">chevron_right</span></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:12px 16px"><div style="width:40px;height:40px;border-radius:50%;background:var(--md-secondary-container);color:var(--md-on-secondary-container);display:flex;align-items:center;justify-content:center;font-family:'Material Symbols Outlined';font-size:22px">folder</div><div style="display:flex;flex-direction:column"><span style="font-family:'Roboto';font-size:16px;color:var(--md-on-surface)">Headline</span><span style="font-family:'Roboto';font-size:14px;color:var(--md-on-surface-variant)">Supporting text</span></div><span style="margin-left:auto;font-family:'Material Symbols Outlined';font-size:22px;color:var(--md-on-surface-variant)">chevron_right</span></div>
+        </div>
+        <div style="width:220px;background:var(--md-surface-container);border-radius:4px;padding:8px 0;box-shadow:0 1px 2px rgba(0,0,0,.3),0 2px 6px 2px rgba(0,0,0,.15)">
+          <div style="display:flex;align-items:center;gap:12px;height:48px;padding:0 12px;color:var(--md-on-surface);font-family:'Roboto';font-size:14px;cursor:pointer" style-hover="background:var(--md-surface-container-highest)"><span style="font-family:'Material Symbols Outlined';font-size:22px;color:var(--md-on-surface-variant)">content_cut</span>Cut<span style="margin-left:auto;font-family:ui-monospace,monospace;font-size:12px;color:var(--md-on-surface-variant)">⌘X</span></div>
+          <div style="display:flex;align-items:center;gap:12px;height:48px;padding:0 12px;color:var(--md-on-surface);font-family:'Roboto';font-size:14px;cursor:pointer" style-hover="background:var(--md-surface-container-highest)"><span style="font-family:'Material Symbols Outlined';font-size:22px;color:var(--md-on-surface-variant)">content_copy</span>Copy<span style="margin-left:auto;font-family:ui-monospace,monospace;font-size:12px;color:var(--md-on-surface-variant)">⌘C</span></div>
+          <div style="height:1px;background:var(--md-outline-variant);margin:8px 0"></div>
+          <div style="display:flex;align-items:center;gap:12px;height:48px;padding:0 12px;color:var(--md-on-surface);font-family:'Roboto';font-size:14px;cursor:pointer" style-hover="background:var(--md-surface-container-highest)"><span style="font-family:'Material Symbols Outlined';font-size:22px;color:var(--md-on-surface-variant)">delete</span>Delete</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'Roboto';font-weight:600;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:var(--md-primary)">14 — Components</span>
+        <h2 style="font-family:'Roboto Flex';font-weight:600;font-size:30px;line-height:36px;color:var(--md-on-surface);margin:0">Dialog &amp; snackbar</h2>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:36px 28px">
+        <div style="width:320px;background:var(--md-surface-container-high);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 2px 3px rgba(0,0,0,.3),0 6px 10px 4px rgba(0,0,0,.15)">
+          <span style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1;color:var(--md-secondary);align-self:center">delete</span>
+          <span style="font-family:'Roboto Flex';font-weight:500;font-size:24px;line-height:32px;color:var(--md-on-surface);text-align:center">Delete this item?</span>
+          <p style="font-family:'Roboto';font-size:14px;line-height:20px;color:var(--md-on-surface-variant);margin:0;text-align:center">This action can't be undone. The item will be removed permanently.</p>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px"><button style="height:40px;padding:0 12px;border:none;border-radius:20px;background:transparent;color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer">Cancel</button><button style="height:40px;padding:0 12px;border:none;border-radius:20px;background:transparent;color:var(--md-primary);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer">Delete</button></div>
+        </div>
+        <div style="display:inline-flex;align-items:center;gap:16px;min-width:344px;background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);border-radius:4px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.15)"><span style="font-family:'Roboto';font-size:14px">Message archived</span><button style="margin-left:auto;height:36px;padding:0 8px;border:none;border-radius:18px;background:transparent;color:var(--md-inverse-primary);font-family:'Roboto';font-weight:500;font-size:14px;cursor:pointer">Undo</button></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;\&quot;light\&quot;|\&quot;dark\&quot;&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;seed&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#00639B&quot;,&quot;options&quot;:[&quot;#6750A4&quot;,&quot;#00639B&quot;,&quot;#006A6A&quot;,&quot;#146C2E&quot;,&quot;#8B5000&quot;,&quot;#B3261E&quot;,&quot;#984061&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;showValues&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.DEFAULT_SEED = '#6750a4';
+    this.state = {
+      mode: props.mode || 'light',
+      seed: props.seed || '#6750A4',
+      showValues: props.showValues !== false,
+      sw: { a: true, b: false },
+      chk: { a: true, b: true, c: false },
+      radio: 'b',
+      chips: { Elevated: true, Weekend: false, Cheap: true, Trips: false },
+      nav: 0,
+      rail: 1,
+      slider: 45
+    };
+    this.setRoot = (el) => { this.rootEl = el; };
+    this.LIGHT = {
+      'primary':'#6750A4','on-primary':'#FFFFFF','primary-container':'#EADDFF','on-primary-container':'#21005D',
+      'secondary':'#625B71','on-secondary':'#FFFFFF','secondary-container':'#E8DEF8','on-secondary-container':'#1D192B',
+      'tertiary':'#7D5260','on-tertiary':'#FFFFFF','tertiary-container':'#FFD8E4','on-tertiary-container':'#31111D',
+      'error':'#B3261E','on-error':'#FFFFFF','error-container':'#F9DEDC','on-error-container':'#410E0B',
+      'background':'#FEF7FF','on-background':'#1D1B20','surface':'#FEF7FF','on-surface':'#1D1B20',
+      'surface-variant':'#E7E0EC','on-surface-variant':'#49454F','outline':'#79747E','outline-variant':'#CAC4D0',
+      'surface-container-lowest':'#FFFFFF','surface-container-low':'#F7F2FA','surface-container':'#F3EDF7','surface-container-high':'#ECE6F0','surface-container-highest':'#E6E0E9',
+      'surface-dim':'#DED8E1','surface-bright':'#FEF7FF','inverse-surface':'#322F35','inverse-on-surface':'#F5EFF7','inverse-primary':'#D0BCFF'
+    };
+    this.DARK = {
+      'primary':'#D0BCFF','on-primary':'#381E72','primary-container':'#4F378B','on-primary-container':'#EADDFF',
+      'secondary':'#CCC2DC','on-secondary':'#332D41','secondary-container':'#4A4458','on-secondary-container':'#E8DEF8',
+      'tertiary':'#EFB8C8','on-tertiary':'#492532','tertiary-container':'#633B48','on-tertiary-container':'#FFD8E4',
+      'error':'#F2B8B5','on-error':'#601410','error-container':'#8C1D18','on-error-container':'#F9DEDC',
+      'background':'#141218','on-background':'#E6E0E9','surface':'#141218','on-surface':'#E6E0E9',
+      'surface-variant':'#49454F','on-surface-variant':'#CAC4D0','outline':'#938F99','outline-variant':'#49454F',
+      'surface-container-lowest':'#0F0D13','surface-container-low':'#1D1B20','surface-container':'#211F26','surface-container-high':'#2B2930','surface-container-highest':'#36343B',
+      'surface-dim':'#141218','surface-bright':'#3B383E','inverse-surface':'#E6E0E9','inverse-on-surface':'#322F35','inverse-primary':'#6750A4'
+    };
+  }
+
+  hexToHue(hex) {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    let r = parseInt(h.slice(0,2),16)/255, g = parseInt(h.slice(2,4),16)/255, b = parseInt(h.slice(4,6),16)/255;
+    const lin = c => c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+    r = lin(r); g = lin(g); b = lin(b);
+    const l = Math.cbrt(0.4122214708*r + 0.5363325363*g + 0.0514459929*b);
+    const m = Math.cbrt(0.2119034982*r + 0.6806995451*g + 0.1073969566*b);
+    const s = Math.cbrt(0.0883024619*r + 0.2817188376*g + 0.6299787005*b);
+    const A = 1.9779984951*l - 2.4285922050*m + 0.4505937099*s;
+    const B = 0.0259040371*l + 0.7827717662*m - 0.8086757660*s;
+    let H = Math.atan2(B, A) * 180 / Math.PI;
+    if (H < 0) H += 360;
+    return H;
+  }
+
+  gen(mode) {
+    const H = this.hexToHue(this.state.seed);
+    const fam = { P:{h:H,c:0.12}, S:{h:H,c:0.045}, T:{h:(H+60)%360,c:0.095}, N:{h:H,c:0.006}, NV:{h:H,c:0.015}, E:{h:27,c:0.16} };
+    const tone = (f, t) => {
+      const L = Math.max(0, Math.min(1, t/100));
+      const taper = Math.pow(Math.sin(L*Math.PI), 0.6);
+      const c = (fam[f].c * taper).toFixed(4);
+      return 'oklch(' + (L*100).toFixed(1) + '% ' + c + ' ' + fam[f].h.toFixed(1) + ')';
+    };
+    const T = {
+      'primary':['P',40,80],'on-primary':['P',100,20],'primary-container':['P',90,30],'on-primary-container':['P',10,90],
+      'secondary':['S',40,80],'on-secondary':['S',100,20],'secondary-container':['S',90,30],'on-secondary-container':['S',10,90],
+      'tertiary':['T',40,80],'on-tertiary':['T',100,20],'tertiary-container':['T',90,30],'on-tertiary-container':['T',10,90],
+      'error':['E',40,80],'on-error':['E',100,20],'error-container':['E',90,30],'on-error-container':['E',10,90],
+      'background':['N',98,6],'on-background':['N',10,90],'surface':['N',98,6],'on-surface':['N',10,90],
+      'surface-variant':['NV',90,30],'on-surface-variant':['NV',30,80],'outline':['NV',50,60],'outline-variant':['NV',80,30],
+      'surface-container-lowest':['N',100,4],'surface-container-low':['N',96,10],'surface-container':['N',94,12],'surface-container-high':['N',92,17],'surface-container-highest':['N',90,22],
+      'surface-dim':['N',87,6],'surface-bright':['N',98,24],'inverse-surface':['N',20,90],'inverse-on-surface':['N',95,20],'inverse-primary':['P',80,40]
+    };
+    const di = mode === 'dark' ? 2 : 1;
+    const v = {};
+    Object.keys(T).forEach(k => { const a = T[k]; v[k] = tone(a[0], a[di]); });
+    return v;
+  }
+
+  buildVars() {
+    if ((this.state.seed || '').toLowerCase() === this.DEFAULT_SEED) return this.state.mode === 'dark' ? this.DARK : this.LIGHT;
+    return this.gen(this.state.mode);
+  }
+
+  componentDidUpdate(pp) {
+    const p = this.props;
+    const sync = {};
+    if (pp.mode !== p.mode && p.mode) sync.mode = p.mode;
+    if (pp.seed !== p.seed && p.seed) sync.seed = p.seed;
+    if (pp.showValues !== p.showValues && p.showValues !== undefined) sync.showValues = p.showValues !== false;
+    if (Object.keys(sync).length) this.setState(sync);
+  }
+
+  renderVals() {
+    const S = this.state;
+    const cvar = c => 'var(--md-' + c + ')';
+    const tc = s => s.replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+
+    const famDefs = [['Primary','primary'],['Secondary','secondary'],['Tertiary','tertiary'],['Error','error']];
+    const accentFamilies = famDefs.map(([name, base]) => ({
+      name,
+      tiles: [
+        { label: name, code: base },
+        { label: 'On ' + name, code: 'on-' + base },
+        { label: name + ' Container', code: base + '-container' },
+        { label: 'On ' + name + ' Cont.', code: 'on-' + base + '-container' }
+      ].map(t => {
+        const fg = t.code.indexOf('on-') === 0 ? t.code.slice(3) : 'on-' + t.code;
+        return { label: t.label, code: t.code, style: { flex: '1', minWidth: '0', height: '112px', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: cvar(t.code), color: cvar(fg), border: '1px solid var(--md-outline-variant)' } };
+      })
+    }));
+
+    const surfaceDefs = [
+      ['surface-dim','on-surface'],['surface','on-surface'],['surface-bright','on-surface'],['surface-container-lowest','on-surface'],
+      ['surface-container-low','on-surface'],['surface-container','on-surface'],['surface-container-high','on-surface'],['surface-container-highest','on-surface'],
+      ['surface-variant','on-surface-variant'],['outline','surface'],['outline-variant','on-surface'],['inverse-surface','inverse-on-surface']
+    ];
+    const surfaceTiles = surfaceDefs.map(([c, fg]) => ({
+      label: tc(c.replace('surface-container', 'S-C').replace('surface', 'Surface')), code: c,
+      style: { height: '92px', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: cvar(c), color: cvar(fg), border: '1px solid var(--md-outline-variant)' }
+    }));
+
+    const typeDefs = [
+      ['Display Large','flex',57,64,400,'-0.25px'],['Display Medium','flex',45,52,400,'0'],['Display Small','flex',36,44,400,'0'],
+      ['Headline Large','flex',32,40,400,'0'],['Headline Medium','flex',28,36,400,'0'],['Headline Small','flex',24,32,400,'0'],
+      ['Title Large','flex',22,28,400,'0'],['Title Medium','roboto',16,24,500,'0.15px'],['Title Small','roboto',14,20,500,'0.1px'],
+      ['Body Large','roboto',16,24,400,'0.5px'],['Body Medium','roboto',14,20,400,'0.25px'],['Body Small','roboto',12,16,400,'0.4px'],
+      ['Label Large','roboto',14,20,500,'0.1px'],['Label Medium','roboto',12,16,500,'0.5px'],['Label Small','roboto',11,16,500,'0.5px']
+    ];
+    const typeScale = typeDefs.map(t => ({
+      name: t[0], sample: t[0], meta: t[2] + '/' + t[3] + ' · W' + t[4],
+      style: { fontFamily: t[1] === 'flex' ? "'Roboto Flex',sans-serif" : "'Roboto',sans-serif", fontSize: t[2] + 'px', lineHeight: t[3] + 'px', fontWeight: t[4], letterSpacing: t[5], color: 'var(--md-on-surface)', margin: '0' }
+    }));
+
+    const elevShadows = ['none','0 1px 2px rgba(0,0,0,.3),0 1px 3px 1px rgba(0,0,0,.15)','0 1px 2px rgba(0,0,0,.3),0 2px 6px 2px rgba(0,0,0,.15)','0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.15)','0 2px 3px rgba(0,0,0,.3),0 6px 10px 4px rgba(0,0,0,.15)','0 4px 4px rgba(0,0,0,.3),0 8px 12px 6px rgba(0,0,0,.15)'];
+    const dps = ['0','1','3','6','8','12'];
+    const elevation = elevShadows.map((sh, i) => ({
+      name: 'Level ' + i, dp: dps[i] + ' dp',
+      style: { width: '100%', height: '92px', borderRadius: '12px', background: 'var(--md-surface-container-low)', boxShadow: sh, border: i === 0 ? '1px solid var(--md-outline-variant)' : 'none' }
+    }));
+
+    const shapeDefs = [['None','0px','0'],['Extra small','4px','4'],['Small','8px','8'],['Medium','12px','12'],['Large','16px','16'],['Extra large','28px','28'],['Full','999px','Full']];
+    const shapes = shapeDefs.map(s => ({ name: s[0], val: s[2], style: { width: '84px', height: '84px', background: 'var(--md-primary-container)', borderRadius: s[1] } }));
+
+    const stateDefs = [['Enabled','0%'],['Hover','8%'],['Focus','10%'],['Pressed','10%'],['Dragged','16%']];
+    const stateLayers = stateDefs.map(s => ({
+      name: s[0], pct: s[1] + ' opacity',
+      overlay: { position: 'absolute', inset: '0', background: 'var(--md-on-primary)', opacity: parseInt(s[1]) / 100, borderRadius: 'inherit' }
+    }));
+
+    const swMake = on => ({
+      track: { width: '52px', height: '32px', borderRadius: '16px', background: on ? 'var(--md-primary)' : 'var(--md-surface-container-highest)', border: on ? '2px solid var(--md-primary)' : '2px solid var(--md-outline)', position: 'relative', cursor: 'pointer', transition: 'all .2s', boxSizing: 'border-box', flex: '0 0 auto' },
+      knob: { position: 'absolute', top: '50%', left: on ? '24px' : '6px', width: on ? '24px' : '16px', height: on ? '24px' : '16px', borderRadius: '50%', background: on ? 'var(--md-on-primary)' : 'var(--md-outline)', transform: 'translateY(-50%)', transition: 'all .2s' }
+    });
+    const cbMake = on => ({ on, box: { width: '18px', height: '18px', borderRadius: '2px', border: on ? '2px solid var(--md-primary)' : '2px solid var(--md-on-surface-variant)', background: on ? 'var(--md-primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .15s', flex: '0 0 auto' } });
+    const rbMake = on => ({ outer: { width: '20px', height: '20px', borderRadius: '50%', border: '2px solid ' + (on ? 'var(--md-primary)' : 'var(--md-on-surface-variant)'), display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: '0 0 auto' }, inner: { width: '10px', height: '10px', borderRadius: '50%', background: 'var(--md-primary)', transform: on ? 'scale(1)' : 'scale(0)', transition: 'transform .15s' } });
+
+    const radioDefs = [['Option A','a'],['Option B','b'],['Option C','c']];
+    const radios = radioDefs.map(([label, key]) => {
+      const rb = rbMake(S.radio === key);
+      return { label, outer: rb.outer, inner: rb.inner, onClick: () => this.setState({ radio: key }) };
+    });
+
+    const chipDefs = [['Elevated','bolt'],['Weekend','weekend'],['Cheap','sell'],['Trips','luggage']];
+    const chips = chipDefs.map(([label, icon]) => {
+      const on = !!S.chips[label];
+      return {
+        label, on,
+        style: { display: 'inline-flex', alignItems: 'center', gap: '8px', height: '32px', padding: on ? '0 16px 0 8px' : '0 16px', borderRadius: '8px', border: on ? '2px solid transparent' : '1px solid var(--md-outline)', background: on ? 'var(--md-secondary-container)' : 'transparent', color: on ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)', fontFamily: "'Roboto',sans-serif", fontWeight: 500, fontSize: '14px', cursor: 'pointer', transition: 'all .15s' },
+        onClick: () => this.setState(st => ({ chips: Object.assign({}, st.chips, { [label]: !st.chips[label] }) }))
+      };
+    });
+
+    const navDefs = [['Home','home'],['Search','search'],['Saved','bookmark'],['Profile','person']];
+    const navItems = navDefs.map(([label, icon], i) => {
+      const active = S.nav === i;
+      return {
+        label, icon, onClick: () => this.setState({ nav: i }),
+        wrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', flex: '1', padding: '12px 0 16px' },
+        ind: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '32px', borderRadius: '16px', background: active ? 'var(--md-secondary-container)' : 'transparent', transition: 'background .15s' },
+        iconStyle: { fontFamily: "'Material Symbols Outlined'", fontSize: '24px', lineHeight: '1', color: active ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)' },
+        labelStyle: { fontFamily: "'Roboto',sans-serif", fontWeight: active ? 600 : 500, fontSize: '12px', color: active ? 'var(--md-on-surface)' : 'var(--md-on-surface-variant)' }
+      };
+    });
+
+    const railDefs = [['Home','home'],['Explore','explore'],['Saved','bookmark'],['Settings','settings']];
+    const railItems = railDefs.map(([label, icon], i) => {
+      const active = S.rail === i;
+      return {
+        label, icon, onClick: () => this.setState({ rail: i }),
+        ind: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '32px', borderRadius: '16px', background: active ? 'var(--md-secondary-container)' : 'transparent', transition: 'background .15s' },
+        iconStyle: { fontFamily: "'Material Symbols Outlined'", fontSize: '24px', lineHeight: '1', color: active ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)' },
+        labelStyle: { fontFamily: "'Roboto',sans-serif", fontWeight: 500, fontSize: '12px', color: active ? 'var(--md-on-surface)' : 'var(--md-on-surface-variant)' }
+      };
+    });
+
+    const swA = swMake(S.sw.a), swB = swMake(S.sw.b);
+    const chkA = cbMake(S.chk.a), chkB = cbMake(S.chk.b), chkC = cbMake(S.chk.c);
+
+    const vars = this.buildVars();
+    const rootStyle = { minHeight: '100vh', background: 'var(--md-background)', color: 'var(--md-on-surface)', fontFamily: "'Roboto Flex',sans-serif", colorScheme: S.mode };
+    Object.keys(vars).forEach(k => { rootStyle['--md-' + k] = vars[k]; });
+
+    return {
+      rootStyle,
+      seedHex: S.seed,
+      showValues: S.showValues,
+      currentModeCap: S.mode === 'dark' ? 'Dark' : 'Light',
+      modeIcon: S.mode === 'dark' ? 'light_mode' : 'dark_mode',
+      modeLabel: S.mode === 'dark' ? 'Light' : 'Dark',
+      toggleMode: () => this.setState(st => ({ mode: st.mode === 'light' ? 'dark' : 'light' })),
+      accentFamilies, surfaceTiles, typeScale, elevation, shapes, stateLayers,
+      swA, swB, onSwA: () => this.setState(st => ({ sw: Object.assign({}, st.sw, { a: !st.sw.a }) })), onSwB: () => this.setState(st => ({ sw: Object.assign({}, st.sw, { b: !st.sw.b }) })),
+      chkA, chkB, chkC,
+      onChkA: () => this.setState(st => ({ chk: Object.assign({}, st.chk, { a: !st.chk.a }) })),
+      onChkB: () => this.setState(st => ({ chk: Object.assign({}, st.chk, { b: !st.chk.b }) })),
+      onChkC: () => this.setState(st => ({ chk: Object.assign({}, st.chk, { c: !st.chk.c }) })),
+      radios, chips, navItems, railItems,
+      sliderVal: S.slider, onSlider: e => this.setState({ slider: +e.target.value })
+    };
+  }
+}
+</script>
+</body>
+</html>
