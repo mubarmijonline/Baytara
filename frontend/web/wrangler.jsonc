@@ -1,0 +1,12 @@
+{
+  // Cloudflare Workers static-assets config for the Baytara Main Website (Phase 1).
+  // `npm run build` produces ./dist, which wrangler uploads as static assets.
+  "name": "baytara",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    // SPA fallback: unknown routes (e.g. /courses, /blog/:slug) serve index.html
+    // so React Router can handle them client-side.
+    "not_found_handling": "single-page-application"
+  }
+}
