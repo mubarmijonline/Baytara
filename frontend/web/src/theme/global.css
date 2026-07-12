@@ -91,12 +91,20 @@ textarea {
 }
 
 /* Responsive helpers used by pages */
+/* Mobile-only helper: hidden on desktop, shown at <=900px (inverse of hide-md) */
+.show-md {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .grid-collapse-2 {
     grid-template-columns: 1fr !important;
   }
   .hide-md {
     display: none !important;
+  }
+  .show-md {
+    display: flex !important;
   }
 }
 @media (max-width: 640px) {

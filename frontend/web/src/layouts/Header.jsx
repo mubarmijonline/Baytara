@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { colors, gradients, layout } from '../theme/tokens.js';
 
@@ -29,12 +30,24 @@ function SearchIcon() {
   );
 }
 
+const NAV = [
+  ['/courses', 'الدورات'],
+  ['/pricing', 'الاشتراكات'],
+  ['/business', 'للأعمال'],
+  ['/blog', 'المدوّنة'],
+];
+
 export default function Header() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const go = (to) => {
+    setMenuOpen(false);
+    navigate(to);
+  };
   const navItem = (to, label) => (
     <span
-      onClick={() => navigate(to)}
+      onClick={() => go(to)}
       style={{ cursor: 'pointer', color: pathname === to ? colors.accent : colors.ink }}
     >
       {label}
@@ -185,7 +198,7 @@ export default function Header() {
               تسجيل الدخول
             </button>
             <button
-              className="hover-bright"
+              className="hover-bright hide-sm"
               onClick={() => navigate('/pricing')}
               style={{
                 background: colors.accent,
@@ -219,8 +232,96 @@ export default function Header() {
             >
               م
             </div>
+            <button
+              className="show-md"
+              aria-label="القائمة"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{
+                flexDirection: 'column',
+                gap: 4,
+                background: colors.surfaceAlt,
+                border: 'none',
+                borderRadius: 10,
+                padding: 12,
+                cursor: 'pointer',
+                flex: 'none',
+              }}
+            >
+              {[0, 1, 2].map((i) => (
+                <span key={i} style={{ width: 18, height: 2, background: colors.ink, borderRadius: 2 }} />
+              ))}
+            </button>
           </div>
         </div>
+
+        {menuOpen && (
+          <div
+            className="show-md"
+            style={{
+              flexDirection: 'column',
+              padding: '8px 24px 16px',
+              borderTop: `1px solid ${colors.line}`,
+              background: '#fff',
+            }}
+          >
+            <span
+              onClick={() => go('/courses')}
+              style={{ padding: '12px 4px', cursor: 'pointer', fontWeight: 700, borderBottom: `1px solid ${colors.line2}` }}
+            >
+              الفئات والدورات
+            </span>
+            {NAV.map(([to, label]) => (
+              <span
+                key={to}
+                onClick={() => go(to)}
+                style={{
+                  padding: '12px 4px',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  color: pathname === to ? colors.accent : colors.ink,
+                  borderBottom: `1px solid ${colors.line2}`,
+                }}
+              >
+                {label}
+              </span>
+            ))}
+            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+              <button
+                onClick={() => go('/auth')}
+                style={{
+                  flex: 1,
+                  background: colors.surfaceAlt,
+                  border: `1px solid ${colors.line}`,
+                  borderRadius: 10,
+                  padding: 12,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: colors.ink,
+                  cursor: 'pointer',
+                }}
+              >
+                تسجيل الدخول
+              </button>
+              <button
+                onClick={() => go('/pricing')}
+                style={{
+                  flex: 1,
+                  background: colors.accent,
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: 12,
+                  fontSize: 15,
+                  fontWeight: 800,
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                اشترك الآن
+              </button>
+            </div>
+          </div>
+        )}
       </header>
     </>
   );
