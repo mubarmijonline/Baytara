@@ -46,13 +46,14 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [ ] Replace Main Website mock data with real APIs _(frontend wiring — backend-first, pending)_
 
 ## Phase 4 — Payments (InstaPay: receipt OCR + admin approval)
-- [ ] InstaPay account whitelist config (`instapay_account`) + admin CRUD
-- [ ] Receipt upload endpoint → save image → Google Vision OCR → parse fields (§8a)
-- [ ] Reference dedup (reject references already pending/approved) + receiver whitelist validation
-- [ ] `instapay_payments` pending record (image + parsed fields); NO direct acceptance
-- [ ] Admin Portal review queue → approve (atomic enroll + enrolled_count + notification) / reject
+- [x] InstaPay account whitelist config (`instapay_account`) + admin CRUD
+- [x] Receipt upload endpoint → save image → Google Vision OCR → parse fields (§8a)
+- [x] Reference dedup (reject references already pending/approved) + receiver whitelist validation
+- [x] `instapay_payments` pending record (image + parsed fields); NO direct acceptance
+- [x] Admin review queue (API) → approve (atomic enroll + enrolled_count) / reject
+- [x] OCR parser unit tests (fixtures) + approval-flow tests (mocked Vision)
 - [ ] Manual refunds; invoices + instructor revenue (Phase 4b)
-- [ ] OCR parser unit tests (fixtures) + approval-atomicity tests (mocked Vision)
+- [ ] Admin Portal UI for the review queue (Phase 7) + purchase-success notification (Phase 8)
 
 ## Phase 5 — VdoCipher video protection
 - [ ] Store `vdocipher_video_id`; no public URLs
