@@ -66,6 +66,7 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [ ] Strict `instructor_id` isolation (foreign access → 404)
 
 ## Phase 7 — Admin Portal (Material Design 3)
+- [x] InstaPay payment review queue (`frontend/admin`): login, list, view receipt, approve/reject
 - [ ] Manage users/instructors/courses/categories/lessons
 - [ ] Full video CRUD + course lifecycle
 - [ ] Payments, reports, instructor permissions, audit, settings
