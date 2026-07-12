@@ -67,9 +67,10 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 
 ## Phase 7 — Admin Portal (Material Design 3)
 - [x] InstaPay payment review queue (`frontend/admin`): login, list, view receipt, approve/reject
-- [ ] Manage users/instructors/courses/categories/lessons
-- [ ] Full video CRUD + course lifecycle
-- [ ] Payments, reports, instructor permissions, audit, settings
+- [x] Dashboard (stats) + manage users/instructors/courses/categories/lessons + InstaPay accounts
+- [x] Course lifecycle (draft/publish/unpublish/delete) + modules/lessons editor
+- [~] Video: lesson `vdocipher_video_id` field editable; no upload UI yet (VdoCipher = Phase 5)
+- [ ] Reports, instructor permissions, audit logs, settings (need new backend tables)
 
 ## Phase 8 — Notifications, content/blog, i18n scaffolding, hardening
 - [ ] Notifications (SQL index + Mongo logs)
