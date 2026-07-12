@@ -17,7 +17,9 @@ no DB servers are running yet. Remote: `github.com/mubarmijonline/Baytara` (bran
 **Locked decisions (from the user):**
 1. Front-end = **React SPA (Vite)** for the Main Website and both portals.
 2. SQL source of truth = **PostgreSQL**.
-3. Payment gateway = **Paymob first**, behind a gateway-agnostic abstraction.
+3. Payment method = **InstaPay** (manual bank transfer): student uploads the receipt image, the
+   backend OCR-validates it (Google Vision), and an **Admin approves** it in the Admin Portal before
+   any access — **no auto-gateway, no direct acceptance**. (Replaces the earlier Paymob plan.)
 4. **Phase 1 = Main Website front-end with mock/static data**, shipped standalone for **client approval** before any backend work.
 
 > This document is the master plan. On approval, its content is copied into the repo as
@@ -50,7 +52,8 @@ Hard rules driving the architecture:
 1. **Auth & Identity** — registration, login, sessions + JWT (for API/mobile), RBAC, password hashing.
 2. **Catalog** — categories, courses, lessons/classes, attachments, instructor linkage.
 3. **Learning** — enrollments, progress tracking, video playback (VdoCipher), completion %.
-4. **Payments & Finance** — checkout, Paymob integration, atomic transaction engine, invoices, wallet/revenue, refunds.
+4. **Payments & Finance** — InstaPay receipt upload + Google Vision OCR validation, reference dedup,
+   admin approval → atomic enrollment engine, invoices, revenue, manual refunds.
 5. **Instructor** — isolated dashboards, own-course management, add-video (permission-gated), own revenue/stats.
 6. **Admin** — user/course/video/content management, permissions, financial reports, audit.
 7. **Content/CMS** — free advisory content, blog/awareness articles.
@@ -81,7 +84,7 @@ RBAC = roles + granular permission flags (esp. instructor `can_add_video` / `can
 Home; About platform; Courses listing; Course categories; Course details; Instructor profile; Free
 advisory content; Blog/awareness articles; Student register/login/logout; Student profile edit;
 My Courses; Continue watching; Progress tracking; Protected video watch page; Course purchase/subscription
-flow; Paymob checkout; Payment history; Contact; Notifications; **fully responsive** (mobile/tablet/desktop);
+flow; InstaPay receipt upload (pending admin approval); Payment history; Contact; Notifications; **fully responsive** (mobile/tablet/desktop);
 **Arabic RTL** by default.
 
 **Course fields:** title, description, image, price, instructor, category, lessons, protected videos,
@@ -114,8 +117,8 @@ view instructor courses/revenue, toggle permission flags, enable/disable account
   Accessed via **SQLAlchemy** + **Alembic** migrations. Finance uses `SERIALIZABLE`/`REPEATABLE READ`
   transactions + row locks + idempotency keys.
 - **MongoDB** = high-volume, non-financial, append-mostly logs only.
-- **Redis** (recommended, add in backend phase) = sessions/JWT denylist, rate limiting, Paymob idempotency
-  locks, caching. (Not yet installed; provisioned via Docker Compose.)
+- **Redis** (recommended, add in backend phase) = sessions/JWT denylist, rate limiting (auth + receipt
+  upload), caching. (Not yet installed; provisioned via Docker Compose.)
 - **Never** place financial records in MongoDB.
 
 ```
@@ -125,7 +128,8 @@ view instructor courses/revenue, toggle permission flags, enable/disable account
                      ├── PostgreSQL  (identity, catalog, learning, FINANCE)
                      ├── MongoDB     (watch/activity/notification/audit logs)
                      ├── Redis       (sessions, rate-limit, idempotency, cache)
-                     └── VdoCipher   (DRM OTP/playback)   + Paymob (payments)
+                     ├── VdoCipher   (DRM OTP/playback)
+                     └── Google Vision OCR (InstaPay receipt validation)
 ```
 
 ---
@@ -146,22 +150,23 @@ FK, `category_id` FK, duration, status[draft/published/unpublished], enrolled_co
 UNIQUE(user_id,course_id)), `lesson_progress` (enrollment_id, lesson_id, watched_seconds, completed_at),
 `course_progress` (enrollment_id, percent) or computed.
 
-**Finance (SQL only):** `payments` (id, user_id, course_id, amount, currency, status[pending/paid/failed/
-refunded], gateway, gateway_ref, **idempotency_key** unique, created_at), `payment_transactions` (ledger:
-payment_id, type[charge/refund/payout], amount, balance_after, created_at), `invoices` (payment_id,
-number unique, pdf_url, issued_at), `course_purchases` (user_id, course_id, payment_id, price_paid),
-`subscriptions` + `subscription_plans` (optional), `instructor_revenues` (instructor_id, course_id,
-payment_id, gross, commission_rate, net), `wallets` + `wallet_transactions` (optional payout),
-`refunds` (payment_id, amount, reason, status), `payment_webhook_logs` (gateway, event_id unique,
-raw_payload, signature_valid, processed_at) — **also SQL** (webhook idempotency is financial-critical).
+**Finance (SQL only):** `instapay_account` (account_id, account_name, number, url, active — whitelist of
+the center's own InstaPay handles used for receiver validation), `instapay_payments` (id, user_id,
+course_id, image_path, status[pending/approved/rejected], **reference** [unique among pending/approved],
+transfer_amount, total_amount, fees, currency, tx_date_text, note, sender_name, sender_account,
+receiver_account, receiver_hash, transaction_approved, ogs_account_found, is_total_amount_correct,
+reviewed_by, reviewed_at, reject_reason, created_at), `invoices` (payment_id, number unique, pdf_url,
+issued_at), `course_purchases` (user_id, course_id, payment_id, price_paid), `instructor_revenues`
+(instructor_id, course_id, payment_id, gross, commission_rate, net), `refunds` (payment_id, amount,
+reason, status). No gateway/webhook tables — InstaPay is manual + admin-approved.
 
 **Content/Platform:** `articles`/`free_content` (title, slug, body, cover, status, author_id),
 `notifications` (user_id, type, title, body, is_read, created_at — SQL index for “my notifications”;
 bulk delivery logs go to Mongo), `audit_logs_critical` (actor_id, action, entity, entity_id, meta,
 created_at — mirror of high-value admin actions), `settings` (key/value), `contact_messages`.
 
-Indexes on all FKs, `courses.instructor_id`, `enrollments(user_id,course_id)`, `payments.status`,
-`payments.idempotency_key`, `payment_webhook_logs.event_id`.
+Indexes on all FKs, `courses.instructor_id`, `enrollments(user_id,course_id)`,
+`instapay_payments.status`, `instapay_payments.reference`.
 
 ---
 
@@ -175,35 +180,69 @@ Indexes on all FKs, `courses.instructor_id`, `enrollments(user_id,course_id)`, `
 
 ---
 
-## 8. Payment transaction algorithm (atomic, Paymob)
+## 8. Payment flow (InstaPay receipt + OCR + admin approval, atomic)
 
-**Design goals:** exactly-once, no access-before-payment, full rollback on any failure, idempotent webhooks.
+**Model:** InstaPay is a manual bank transfer — **no payment gateway, no webhook**. The student
+sends money to a center-owned InstaPay handle/number, then **uploads the receipt image**. The
+backend OCRs it (Google Vision), parses + validates it, stores a **pending** payment, and an
+**Admin approves or rejects** it from the Admin Portal. Enrollment/access is granted **only**
+inside the atomic SQL transaction that runs on **admin approval** — never on upload.
 
-**Checkout (client → backend):**
-1. Student selects course → `POST /api/payment/checkout {course_id}`.
-2. Backend validates course is published & not already enrolled.
-3. **SQL tx:** insert `payments` row `status=pending` with a generated **`idempotency_key`**; commit.
-4. Call Paymob (auth → order → payment key) using that key; return `payment_token`/iframe URL to client.
-5. Client completes payment on Paymob.
+**Design goals:** no access-before-approval, no direct/auto acceptance, no duplicate reference,
+full rollback on any failure, receiver must be a center-owned account.
 
-**Webhook/callback (Paymob → backend) — the atomic core:**
-1. `POST /api/payment/webhook` → **verify HMAC signature** (reject if invalid).
-2. Insert into `payment_webhook_logs` keyed by gateway `event_id`; if duplicate → **return 200, do nothing** (idempotent).
-3. Acquire lock on the `payments` row (`SELECT … FOR UPDATE`) / Redis idempotency lock.
-4. If payment already `paid` → return 200 (no double-processing).
-5. **Begin single SQL transaction** (REPEATABLE READ+):
-   a. Mark `payments.status = paid` (verify gateway amount == expected).
-   b. Insert `payment_transactions` ledger entry.
-   c. Insert `enrollments` (source=purchase) — UNIQUE guard prevents duplicates.
-   d. Insert `invoices` (+ number), `course_purchases`.
-   e. Insert/Update `instructor_revenues` (gross/commission/net) and increment `courses.enrolled_count`.
-   f. Insert `notifications` (purchase success).
-   **COMMIT.** Any exception → **ROLLBACK** (nothing persists; payment left pending/failed for retry).
-6. Post-commit (non-financial, best-effort): Mongo activity log, email/notification dispatch.
-7. **Access granted only after step 5 commit.** Course access checks require an active `enrollments` row.
+**Config (required, must be provided per project):**
+- `instapay_account` table (`account_id, account_name, number, url, active`) — whitelist of the
+  center's own InstaPay handles/numbers. Receiver validation returns "Not Valid" until seeded.
+- Google Vision service-account JSON; path in env **`GOOGLE_APPLICATION_CREDENTIALS`** (never
+  committed, load from secret storage, rotate if leaked). `google-cloud-vision` installed.
+- `INSTAPAY_IMAGE_DIR` for stored receipts.
 
-**Refunds:** admin action → Paymob refund → on confirmation, SQL tx writes `refunds` + reversing
-`payment_transactions` + revoke/flag `enrollments`.
+**Submit (student → backend):** `POST /api/v1/payment/instapay` (multipart: `course_id` + `image`).
+1. Validate course published & student not already enrolled.
+2. Save image under `INSTAPAY_IMAGE_DIR/{user_id}_{course_id}/{filename}` (content-type + size checked).
+3. OCR via Vision `text_detection` → `texts[0].description`; also `lines = text.split("\n")`.
+4. Parse fields (§8a) → transfer_amount, total_amount, fees, date, reference, note, sender_*,
+   receiver_account, transaction_approved, ogs_account_found, is_total_amount_correct.
+5. **Reference dedup:** reject (409) if `reference` already exists in a pending **or** approved payment.
+6. Insert `instapay_payments` row `status=pending` with parsed fields + image path. **No access yet.**
+
+**Approve (admin → backend) — the atomic core:** `POST /api/v1/admin/payments/:id/approve`
+1. Load `pending` payment; re-check reference not already approved elsewhere.
+2. **Begin single SQL transaction:**
+   a. Set `status=approved`, `reviewed_by`, `reviewed_at`.
+   b. Insert `enrollments` (source=purchase) — UNIQUE(user,course) guard prevents duplicates.
+   c. Increment `courses.enrolled_count`; (invoice + `instructor_revenues` — Phase 4b).
+   d. Insert `notifications` (purchase approved).
+   **COMMIT.** Any exception → **ROLLBACK** (payment stays pending).
+3. **Reject:** `POST /api/v1/admin/payments/:id/reject {reason}` → `status=rejected`, no enrollment.
+4. **Access granted only after approval commit.** Access checks require an active `enrollments` row.
+
+**§8a — receipt parsing/validation** (pure function, unit-tested without Vision):
+- Regex — approval text: `(Approved Transaction|Transaction Successful|Your transaction was successful|Transfer Amount|تم التحويل بنجاح|تمت العملية بنجاح|معاملة ناجحة)`;
+  checkmark icons `[✓✔√☑✅]`; amount `([\d,]+(?:\.\d{1,2})?)\s?EGP`; total `Total Amount\s*([\d,]+(?:\.\d{1,2})?)\s?EGP`;
+  fees `Fees\s*([\d,]+)\s?EGP`; date `(\d{2} \w{3} \d{4} \d{2}:\d{2} (AM|PM))`;
+  reference `(\d{12,})` (**only** when a `Reference | الرقم المرجعي | المرجع` label exists); note `(?i)Note\s*(.*)`.
+- **transaction_approved** = "Transaction Approved" if ANY of: approval text, a checkmark, or
+  structural (EGP amount **and** Reference label **and** a From/من section); else "Transaction Declined".
+- **amount**: strip commas + decimal (`v.replace(",","").split(".")[0]`); first non-zero cleaned =
+  transfer_amount; total_amount from Total pattern else = transfer_amount; fees from pattern else 0.
+- **reference**: only with a label; one match → use it, multiple → **last**; else "Not Found".
+- **sender**: line starting `From` → next line = sender_name, following line = sender_account if `@instapay`.
+- **receiver**: find `To | إلى | إلى انستاباي` line (excluding "Total"); scan next ≤10 lines — `**` →
+  receiver_hash; first `@instapay` or Egyptian mobile `01[0-9]{9,10}` → receiver_account. Fallback:
+  last `@instapay`/phone line in whole text. Strip spaces from receiver_account.
+- **ogs_account_found**: normalize receiver (lower, `@`→`/`), query `instapay_account` WHERE
+  `url IS NOT NULL AND number IS NOT NULL AND (LOWER(url) LIKE %receiver% OR number = receiver)` →
+  'Exist' else 'Not Valid'.
+- **integrity**: `is_total_amount_correct = (total_amount - fees) == transfer_amount`.
+- On any exception → all fields "Not Found" + error message (same output shape).
+
+**Output JSON:** `state, transaction_approved, All_total_amount(=total_amount), total_amount(=transfer_amount),
+fees, date, reference, note, sender_name, sender_account, receiver_hash, receiver_account, ogs_account_found`.
+
+**Refunds:** admin-initiated **manual** bank transfer back; SQL tx writes `refunds` + revokes
+`enrollments`. (No gateway auto-refund for InstaPay.)
 
 ---
 
@@ -259,7 +298,10 @@ Flags on `instructor_profiles`: `can_add_video=true`, `can_edit_video=false`, `c
 - **Learning:** `GET /enrollments`, `POST /progress`, `POST /video/playback`.
 - **Instructor:** `/instructor/dashboard|courses|courses/:id/lessons|videos(POST)|students|payments|revenue|stats` (all isolated).
 - **Admin:** `/admin/users|instructors|courses|categories|lessons|videos(CRUD)|content|payments|reports|settings|permissions|audit`.
-- **Payment:** `POST /payment/checkout`, `POST /payment/webhook`, `GET /payment/:id/status`, `POST /admin/payments/:id/refund`.
+- **Payment (InstaPay):** `POST /payment/instapay` (multipart receipt upload → OCR → pending),
+  `GET /payment/instapay/mine` (my submissions + status), `GET /admin/payments` (queue, filter by status),
+  `POST /admin/payments/:id/approve`, `POST /admin/payments/:id/reject`, `POST /admin/payments/:id/refund`;
+  `GET/POST/PATCH /admin/instapay-accounts` (whitelist config).
 - **Video:** `POST /video/playback`, admin video CRUD under `/admin/videos`.
 - **Notification:** `GET /notifications`, `POST /notifications/:id/read`, `POST /admin/notifications` (broadcast).
 - **Reporting:** `/admin/reports/sales|courses|instructors|failed-payments`.
@@ -318,7 +360,11 @@ Baytara/
 - **CSRF:** protection on cookie-based state-changing routes; JWT (bearer) endpoints exempt.
 - **Input/file validation:** schema validation (marshmallow/pydantic) on every endpoint; upload type/size
   checks, stored outside webroot, filename sanitization, content-type allowlist.
-- **Payments:** webhook **HMAC signature verification**, amount re-verification, idempotency keys,
+- **Payments (InstaPay):** **admin approval required** before any access (no direct/auto acceptance);
+  **reference dedup** (reject references already pending/approved); **receiver whitelist** (money must be
+  sent to a center-owned `instapay_account`); receipt **image upload validation** (content-type allowlist,
+  size cap, stored outside webroot); Google Vision key + any tokens in **secret storage only**, never
+  committed, rotate on leak; amount/integrity re-check (`total − fees == transfer`),
   server-side-only verification, never trust client for “paid”.
 - **Video:** access validated server-side before OTP issuance; no raw URLs; short-lived tokens; dynamic watermark.
 - **Rate limiting** (Redis) on auth, checkout, webhook; **audit logs** for admin/financial actions
@@ -350,7 +396,8 @@ Baytara/
   Docker Compose (pg/mongo/redis), health check, base models, auth (register/login/JWT/RBAC).
 - **Phase 3 — Catalog + Learning APIs & wiring.** Courses/categories/lessons; enrollments; progress;
   connect Main Website to real APIs (replace mock).
-- **Phase 4 — Payments (Paymob) + atomic transaction engine + invoices + revenue + refunds.**
+- **Phase 4 — Payments (InstaPay): receipt upload + Google Vision OCR validation + reference dedup +
+  admin approval → atomic enrollment; invoices + revenue + manual refunds.**
 - **Phase 5 — VdoCipher video protection** (OTP, access validation, watermark, watch logs → Mongo).
 - **Phase 6 — Instructor Portal** (M3) with strict isolation + video-add permissions.
 - **Phase 7 — Admin Portal** (M3): full management, permissions, reports, audit, video CRUD.
@@ -366,7 +413,8 @@ Each phase = a set of `MILESTONES.md` checkboxes, marked as completed.
 
 - **Backend unit:** models, services, RBAC, instructor-isolation scope, permission flags.
 - **Payment/finance (critical):** atomic commit/rollback, duplicate-webhook idempotency, no-access-before-paid,
-  amount tampering rejected, refund reversal — with a Paymob **sandbox** + mocked webhooks.
+  amount tampering rejected, refund reversal — via **OCR-parser fixtures** (sample receipt texts),
+  reference-dedup tests, and approval-atomicity tests (mocked Vision; no live OCR in CI).
 - **API/integration:** every endpoint (authz matrix: student/instructor/admin), cross-instructor access → 404.
 - **Video:** playback denied without enrollment; OTP issuance mocked; watermark params present.
 - **Frontend:** component tests + Playwright E2E on key flows (browse→buy→learn, login, dashboards);
@@ -379,7 +427,8 @@ Each phase = a set of `MILESTONES.md` checkboxes, marked as completed.
 ## 18. MVP scope
 
 **In:** Main Website (all core pages), student auth, browse/catalog/course detail/instructor profile,
-purchase via **Paymob** with the **atomic transaction** flow, enrollment + access control,
+purchase via **InstaPay** (receipt upload → OCR validation → **admin approval**) with the **atomic
+enrollment** transaction, enrollment + access control,
 **VdoCipher** protected playback, progress/completion, My Courses, payment history, notifications
 (basic), **Instructor Portal** (isolated: own courses/students/revenue + add-video), **Admin Portal**
 (users/courses/categories/lessons/**video CRUD**/payments/instructor permissions/basic reports/audit),
@@ -395,7 +444,8 @@ Fawry driver, blog CMS depth, refunds UI polish, mobile apps.
 - **API-first** `/api/v1` with **JWT access+refresh** (already the auth path for non-web clients).
 - Versioned, documented (OpenAPI) endpoints; stable JSON contracts; pagination/filtering conventions.
 - No web-only assumptions in business logic; sessions optional (cookie for web, bearer for mobile).
-- VdoCipher OTP flow works identically for native players; Paymob flow returns tokens usable by mobile SDKs.
+- VdoCipher OTP flow works identically for native players; InstaPay receipt upload is a plain multipart
+  POST that native apps make the same way (camera/gallery image + course_id).
 - Push-ready notification model (server stores + can dispatch to future FCM/APNs).
 - Same PostgreSQL/Mongo backend — mobile apps add only a client, **no backend rewrite**.
 
@@ -407,8 +457,10 @@ Fawry driver, blog CMS depth, refunds UI polish, mobile apps.
   webhook signature + amount re-verification; covered by dedicated tests.
 - **Instructor data leakage** → central ownership scope + 404-on-foreign + automated isolation tests.
 - **Video piracy** → server-validated OTP, no raw URLs, short-lived tokens, watermark; never expose keys.
-- **Webhook duplication/spoofing** → `payment_webhook_logs` idempotency + HMAC verification.
-- **Paymob/VdoCipher are external** → abstract behind interfaces; sandbox first; handle timeouts/retries; costs out of scope.
+- **Duplicate/forged receipt** → **reference dedup** (unique among pending/approved) + **receiver
+  whitelist** + **mandatory admin approval** (no auto-accept) + integrity check (`total − fees == transfer`).
+- **Google Vision/VdoCipher are external** → thin wrapper interfaces; pure OCR parser tested offline;
+  handle Vision timeouts/"no text"; keys in secret storage only; costs out of scope.
 - **RTL/Arabic correctness** → RTL-first CSS, logical properties, i18n structure even for Arabic-only launch.
 - **No DB servers/Redis running yet** → provisioned via Docker Compose in Phase 2 (pg_config already present).
 - **Design fidelity** → Main Website must follow saved Baytara design; portals must follow saved M3 tokens/gallery — no substitutions.
