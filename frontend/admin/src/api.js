@@ -74,6 +74,22 @@ export const api = {
   accounts: () => req('/admin/instapay-accounts'),
   accountCreate: (body) => req('/admin/instapay-accounts', { method: 'POST', body: JSON.stringify(body) }),
   accountUpdate: (id, body) => req(`/admin/instapay-accounts/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+
+  // site settings
+  settingsGet: () => req('/admin/settings'),
+  settingsPut: (body) => req('/admin/settings', { method: 'PUT', body: JSON.stringify(body) }),
+
+  // articles (blog + free content)
+  articlesAdmin: (params) => req('/admin/articles' + qs(params)),
+  articleGet: (id) => req(`/admin/articles/${id}`),
+  articleCreate: (body) => req('/admin/articles', { method: 'POST', body: JSON.stringify(body) }),
+  articleUpdate: (id, body) => req(`/admin/articles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  articleDelete: (id) => req(`/admin/articles/${id}`, { method: 'DELETE' }),
+
+  // contact messages
+  messages: (params) => req('/admin/messages' + qs(params)),
+  messageUpdate: (id, body) => req(`/admin/messages/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  messageDelete: (id) => req(`/admin/messages/${id}`, { method: 'DELETE' }),
 };
 
 // Receipt image needs the bearer token, so fetch as a blob and hand back an object URL.

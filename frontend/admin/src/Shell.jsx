@@ -6,16 +6,22 @@ import Courses from './pages/Courses.jsx';
 import Users from './pages/Users.jsx';
 import Categories from './pages/Categories.jsx';
 import Accounts from './pages/Accounts.jsx';
+import Articles from './pages/Articles.jsx';
+import Messages from './pages/Messages.jsx';
+import Settings from './pages/Settings.jsx';
 
 const NAV = [
   ['dashboard', 'لوحة القيادة'],
   ['payments', 'مدفوعات إنستاباي'],
   ['courses', 'الدورات'],
-  ['users', 'المستخدمون'],
   ['categories', 'الفئات'],
+  ['articles', 'المحتوى والمدوّنة'],
+  ['users', 'المستخدمون'],
+  ['messages', 'الرسائل'],
   ['accounts', 'حسابات إنستاباي'],
+  ['settings', 'إعدادات الموقع'],
 ];
-const PAGES = { dashboard: Dashboard, payments: Payments, courses: Courses, users: Users, categories: Categories, accounts: Accounts };
+const PAGES = { dashboard: Dashboard, payments: Payments, courses: Courses, categories: Categories, articles: Articles, users: Users, messages: Messages, accounts: Accounts, settings: Settings };
 
 export default function Shell({ onLogout }) {
   const [page, setPage] = useState('dashboard');
