@@ -6,6 +6,13 @@
 .env.*
 !.env.example
 
+# InstaPay: uploaded receipts + Google Vision service-account key (never commit)
+instapay_image/
+backend/instapay_image/
+graceful-castle-*.json
+*service-account*.json
+*-vision-key.json
+
 # Node
 node_modules/
 dist/

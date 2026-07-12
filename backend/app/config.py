@@ -14,6 +14,9 @@ class BaseConfig:
     CORS_ORIGINS = [
         o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()
     ]
+    # InstaPay receipt uploads
+    INSTAPAY_IMAGE_DIR = os.environ.get("INSTAPAY_IMAGE_DIR", "./instapay_image")
+    MAX_CONTENT_LENGTH = 8 * 1024 * 1024  # 8 MB cap on uploads
 
 
 class DevelopmentConfig(BaseConfig):
