@@ -31,7 +31,7 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] **1.19** Wire navigation (nav, course/mentor open, toggles, filters)
 - [x] **1.20** Responsive pass (375 / 768 / 1240) + RTL correctness
 - [x] **1.21** `npm run build` passes; deliver hostable static bundle
-- [ ] **1.22** ⏳ Client approval received — awaiting sign-off
+- [x] **1.22** ✅ Client approval received — Phase 1 signed off (2026-07-12)
 
 ## Phase 2 — Backend foundation
 - [ ] Flask app factory + config split (Dev/Prod) + `.env`
