@@ -78,9 +78,9 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [ ] Security hardening pass
 
 ## Phase 9 — Deployment
-- [ ] NginX + HTTPS + security headers
-- [ ] Gunicorn with 8 workers
-- [ ] Migrations on deploy; health checks; backups
+- [~] NginX + HTTPS (live: main site, `/admin` portal, `/api` proxy; HTTPS via Cloudflare + origin cert) — security headers TODO
+- [~] Gunicorn backend service (`baytara-backend.service`, 127.0.0.1:8090, 3 workers) — scale to 8 for launch
+- [ ] Migrations on deploy (automate); health checks; backups
 - [ ] E2E + UAT → go-live
 
 ## Phase 10 — Mobile-readiness verification
