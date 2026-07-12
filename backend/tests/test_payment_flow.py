@@ -87,6 +87,11 @@ def demo():
     assert body["ogs_account_found"] == "Exist" and body["is_total_amount_correct"] is True
     pid = body["id"]
 
+    # admin can fetch the receipt image; students cannot
+    assert c.get(f"/api/v1/admin/payments/{pid}/receipt", headers=sh).status_code == 403
+    rc = c.get(f"/api/v1/admin/payments/{pid}/receipt", headers=ah)
+    assert rc.status_code == 200 and rc.data == b"\x89PNG fake receipt bytes"
+
     # duplicate reference rejected
     dup = c.post("/api/v1/payment/instapay", data={"course_id": course_id, "image": _img()},
                  content_type="multipart/form-data", headers=sh)

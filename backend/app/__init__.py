@@ -17,6 +17,8 @@ def create_app(config=None):
     jwt.init_app(app)
 
     from . import models  # noqa: F401 — register models on db.metadata for Alembic
+    from .cli import register_cli
+    register_cli(app)
     CORS(app, origins=app.config["CORS_ORIGINS"], supports_credentials=True)
 
     from .api.v1.health import bp as health_bp

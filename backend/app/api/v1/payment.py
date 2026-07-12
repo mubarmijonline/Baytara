@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, current_app, send_file, send_file, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
@@ -106,6 +106,15 @@ def admin_list():
         q = q.filter_by(status=status)
     rows = q.order_by(InstapayPayment.created_at.desc()).all()
     return jsonify(payments=[p.to_dict(admin=True) for p in rows])
+
+
+@bp.get("/admin/payments/<int:pid>/receipt")
+@require_role("admin")
+def admin_receipt(pid):
+    p = db.session.get(InstapayPayment, pid)
+    if not p or not p.image_path or not os.path.exists(p.image_path):
+        return jsonify(error="not_found"), 404
+    return send_file(os.path.abspath(p.image_path))
 
 
 @bp.post("/admin/payments/<int:pid>/approve")
