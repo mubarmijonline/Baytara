@@ -41,9 +41,9 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
   - _note: bearer-JWT only; cookie sessions + Redis logout-denylist deferred to Phase 4_
 
 ## Phase 3 — Catalog + Learning APIs & wiring
-- [ ] Categories / courses / modules / lessons APIs
-- [ ] Enrollments + progress + completion %
-- [ ] Replace Main Website mock data with real APIs
+- [x] Categories / courses / modules / lessons APIs (public read, filters, pagination)
+- [x] Enrollments + progress + completion % (free enroll; paid deferred to Phase 4)
+- [ ] Replace Main Website mock data with real APIs _(frontend wiring — backend-first, pending)_
 
 ## Phase 4 — Payments (Paymob) + atomic transaction engine
 - [ ] Gateway-agnostic payment layer + Paymob driver
