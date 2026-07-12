@@ -34,10 +34,11 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] **1.22** ✅ Client approval received — Phase 1 signed off (2026-07-12)
 
 ## Phase 2 — Backend foundation
-- [ ] Flask app factory + config split (Dev/Prod) + `.env`
-- [ ] Docker Compose: PostgreSQL + MongoDB + Redis
-- [ ] SQLAlchemy + Alembic; base models; `/api/v1/health`
-- [ ] Auth: register/login/logout/refresh, JWT + sessions, RBAC, password hashing
+- [x] Flask app factory + config split (Dev/Prod) + `.env`
+- [x] Docker Compose: PostgreSQL + MongoDB + Redis (`deploy/docker-compose.yml`)
+- [x] SQLAlchemy + Alembic; base `User` model; `/api/v1/health`
+- [x] Auth: register/login/logout/refresh, JWT access+refresh, RBAC, argon2 hashing
+  - _note: bearer-JWT only; cookie sessions + Redis logout-denylist deferred to Phase 4_
 
 ## Phase 3 — Catalog + Learning APIs & wiring
 - [ ] Categories / courses / modules / lessons APIs
