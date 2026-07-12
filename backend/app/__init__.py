@@ -20,6 +20,8 @@ def create_app(config=None):
     CORS(app, origins=app.config["CORS_ORIGINS"], supports_credentials=True)
 
     from .api.v1.health import bp as health_bp
+    from .api.v1.auth import bp as auth_bp
     app.register_blueprint(health_bp, url_prefix="/api/v1")
+    app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
 
     return app
