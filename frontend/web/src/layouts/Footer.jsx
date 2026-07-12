@@ -18,21 +18,21 @@ export default function Footer() {
           }}
         >
           <div>
-            <div
+            <img
+              src="/baytara_logo.jpeg"
+              alt="بيطرة"
               onClick={() => navigate('/')}
               style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                gap: 1,
-                fontWeight: 800,
-                fontSize: 26,
+                height: 58,
+                width: 188,
+                objectFit: 'cover',
+                objectPosition: 'center',
+                borderRadius: 12,
                 marginBottom: 16,
                 cursor: 'pointer',
+                display: 'block',
               }}
-            >
-              <span style={{ color: '#fff' }}>بيطرة</span>
-              <span style={{ color: colors.accent, fontSize: 30, lineHeight: 0 }}>.</span>
-            </div>
+            />
             <p style={{ fontSize: 14, lineHeight: 1.7, margin: '0 0 20px', maxWidth: 300 }}>
               منصة التعلّم البيطري الأولى في العالم العربي — نُتيح المعرفة للأطباء والطلاب ومربّي الحيوان
               بمحتوى عربي أصيل من نخبة الخبراء.

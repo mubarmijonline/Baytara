@@ -90,21 +90,20 @@ export default function Header() {
             gap: 20,
           }}
         >
-          <div
+          <img
+            src="/baytara_logo.jpeg"
+            alt="بيطرة"
             onClick={() => navigate('/')}
             style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 1,
-              fontWeight: 800,
-              fontSize: 26,
-              letterSpacing: '-.5px',
+              height: 48,
+              width: 156,
+              objectFit: 'cover',
+              objectPosition: 'center',
+              borderRadius: 10,
               cursor: 'pointer',
+              flex: 'none',
             }}
-          >
-            <span style={{ color: colors.ink }}>بيطرة</span>
-            <span style={{ color: colors.accent, fontSize: 30, lineHeight: 0 }}>.</span>
-          </div>
+          />
 
           <button
             className="hide-md"

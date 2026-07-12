@@ -18,7 +18,7 @@ export default function Learn() {
   const activeLesson = flat.find((l) => l.key === active) || flat[0];
 
   return (
-    <div style={{ background: '#0e0e1e', minHeight: '100vh', color: '#fff' }}>
+    <div style={{ background: '#0a1730', minHeight: '100vh', color: '#fff' }}>
       <div
         style={{
           maxWidth: layout.maxWidth,

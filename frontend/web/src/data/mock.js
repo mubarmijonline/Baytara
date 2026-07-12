@@ -111,7 +111,7 @@ export const includes = [
 
 export const expertise = ['أمراض الماشية', 'صحة القطيع', 'التشخيص السريري', 'الطب الوقائي'];
 
-export const plansData = (annual, accent = '#e11b22') => [
+export const plansData = (annual, accent = '#12285a') => [
   { name: 'الأساسية', tagline: 'للمتعلّم الفردي', featured: false,
     price: annual ? '99' : '149', per: 'شهر', billed: annual ? 'تُدفع سنوياً' : 'تُدفع شهرياً',
     bg: '#fff', fg: '#14142b', border: '1px solid #ececf2', cta: 'ابدأ الآن',
@@ -119,7 +119,7 @@ export const plansData = (annual, accent = '#e11b22') => [
     features: ['وصول لكل الدورات', 'مشاهدة على جهازين', 'شهادات إتمام', 'دعم عبر البريد'] },
   { name: 'الاحترافية', tagline: 'الأكثر اختياراً', featured: true,
     price: annual ? '149' : '229', per: 'شهر', billed: annual ? 'تُدفع سنوياً · وفّر 40%' : 'تُدفع شهرياً',
-    bg: 'linear-gradient(150deg,#14142b,#2a1a3a)', fg: '#fff', border: '2px solid ' + accent, cta: 'اشترك الآن',
+    bg: 'linear-gradient(150deg,#0b1a3f,#12285a)', fg: '#fff', border: '2px solid ' + accent, cta: 'اشترك الآن',
     btnBg: accent, btnFg: '#fff', btnBorder: 'none',
     features: ['كل مزايا الأساسية', 'مشاهدة على 5 أجهزة', 'تحميل للمشاهدة دون اتصال', 'مسارات تعليمية مخصّصة', 'دعم ذو أولوية'] },
   { name: 'المؤسسية', tagline: 'للعيادات والمزارع', featured: false,
@@ -162,10 +162,10 @@ export const dashNav = [
 ];
 
 export const dashStats = [
-  { num: '12', label: 'دورة مسجّلة', color: '#5b3cc4' },
-  { num: '48', label: 'ساعة تعلّم', color: '#e11b22' },
-  { num: '5', label: 'شهادة', color: '#0f8b8d' },
-  { num: '7', label: 'أيام متتالية', color: '#e8890c' },
+  { num: '12', label: 'دورة مسجّلة', color: '#12285a' },
+  { num: '48', label: 'ساعة تعلّم', color: '#c9a227' },
+  { num: '5', label: 'شهادة', color: '#2a5aa0' },
+  { num: '7', label: 'أيام متتالية', color: '#8a6d1f' },
 ];
 
 export const inProgress = [
