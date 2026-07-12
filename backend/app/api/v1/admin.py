@@ -1,8 +1,11 @@
 from flask import Blueprint, jsonify, request
 
 from ...extensions import db
+from datetime import datetime, timezone
+
 from ...models import (
     User, Category, Course, CourseModule, Lesson, Enrollment, InstapayPayment,
+    Setting, Article, ContactMessage,
 )
 from ...security import require_role, hash_password
 from ...utils import slugify
@@ -44,7 +47,8 @@ def stats():
 
 def _user_json(u):
     return {"id": u.id, "name": u.name, "email": u.email, "role": u.role,
-            "is_active": u.is_active, "created_at": u.created_at.isoformat() if u.created_at else None}
+            "is_active": u.is_active, "created_at": u.created_at.isoformat() if u.created_at else None,
+            "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or []}
 
 
 @bp.get("/users")
@@ -103,6 +107,9 @@ def users_update(uid):
         u.is_active = bool(d["is_active"])
     if d.get("password"):
         u.password_hash = hash_password(d["password"])
+    for f in ("headline", "bio", "avatar_url", "expertise"):
+        if f in d:
+            setattr(u, f, d[f])
     db.session.commit()
     return jsonify(user=_user_json(u))
 
@@ -330,3 +337,143 @@ def lesson_delete(lid):
     db.session.delete(l)
     db.session.commit()
     return jsonify(deleted=lid)
+
+
+# ------------------------------ site settings ------------------------------
+
+@bp.get("/settings")
+@require_role("admin")
+def settings_get():
+    return jsonify(settings={s.key: s.value for s in Setting.query.all()})
+
+
+@bp.put("/settings")
+@require_role("admin")
+def settings_put():
+    """Bulk upsert: body is a flat {key: value} map."""
+    data = request.get_json() or {}
+    if not isinstance(data, dict):
+        return jsonify(error="object_required"), 422
+    for key, value in data.items():
+        s = db.session.get(Setting, key)
+        if s:
+            s.value = value
+        else:
+            db.session.add(Setting(key=key, value=value))
+    db.session.commit()
+    return jsonify(settings={s.key: s.value for s in Setting.query.all()})
+
+
+# ------------------------------ articles (blog + free content) ------------------------------
+
+@bp.get("/articles")
+@require_role("admin")
+def articles_list():
+    q = Article.query
+    if request.args.get("type") in ("blog", "content"):
+        q = q.filter_by(type=request.args["type"])
+    if request.args.get("status") in ("draft", "published"):
+        q = q.filter_by(status=request.args["status"])
+    page = max(request.args.get("page", 1, type=int), 1)
+    pg = db.paginate(q.order_by(Article.created_at.desc()), page=page, per_page=20, error_out=False)
+    return jsonify(articles=[a.to_dict() for a in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
+
+
+@bp.get("/articles/<int:aid>")
+@require_role("admin")
+def article_get(aid):
+    a = db.session.get(Article, aid)
+    if not a:
+        return jsonify(error="not_found"), 404
+    return jsonify(article=a.to_dict(full=True))
+
+
+@bp.post("/articles")
+@require_role("admin")
+def article_create():
+    d = request.get_json() or {}
+    if not d.get("title"):
+        return jsonify(error="title_required"), 422
+    atype = d.get("type", "blog")
+    if atype not in ("blog", "content"):
+        return jsonify(error="bad_type"), 422
+    status = d.get("status", "draft")
+    a = Article(
+        type=atype,
+        title=d["title"],
+        slug=slugify(d.get("slug") or d["title"], lambda s: Article.query.filter_by(slug=s).first() is not None),
+        excerpt=d.get("excerpt"),
+        body=d.get("body", ""),
+        cover=d.get("cover"),
+        status=status if status in ("draft", "published") else "draft",
+        author_id=_uid(),
+        published_at=datetime.now(timezone.utc) if status == "published" else None,
+    )
+    db.session.add(a)
+    db.session.commit()
+    return jsonify(article=a.to_dict(full=True)), 201
+
+
+@bp.patch("/articles/<int:aid>")
+@require_role("admin")
+def article_update(aid):
+    a = db.session.get(Article, aid)
+    if not a:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    if "status" in d:
+        if d["status"] not in ("draft", "published"):
+            return jsonify(error="bad_status"), 422
+        if d["status"] == "published" and not a.published_at:
+            a.published_at = datetime.now(timezone.utc)
+    for f in ("type", "title", "excerpt", "body", "cover", "status"):
+        if f in d:
+            setattr(a, f, d[f])
+    db.session.commit()
+    return jsonify(article=a.to_dict(full=True))
+
+
+@bp.delete("/articles/<int:aid>")
+@require_role("admin")
+def article_delete(aid):
+    a = db.session.get(Article, aid)
+    if not a:
+        return jsonify(error="not_found"), 404
+    db.session.delete(a)
+    db.session.commit()
+    return jsonify(deleted=aid)
+
+
+# ------------------------------ contact messages inbox ------------------------------
+
+@bp.get("/messages")
+@require_role("admin")
+def messages_list():
+    q = ContactMessage.query
+    if request.args.get("unread") == "1":
+        q = q.filter_by(is_read=False)
+    rows = q.order_by(ContactMessage.created_at.desc()).limit(200).all()
+    return jsonify(messages=[m.to_dict() for m in rows],
+                   unread=ContactMessage.query.filter_by(is_read=False).count())
+
+
+@bp.patch("/messages/<int:mid>")
+@require_role("admin")
+def message_update(mid):
+    m = db.session.get(ContactMessage, mid)
+    if not m:
+        return jsonify(error="not_found"), 404
+    m.is_read = bool((request.get_json() or {}).get("is_read", True))
+    db.session.commit()
+    return jsonify(message=m.to_dict())
+
+
+@bp.delete("/messages/<int:mid>")
+@require_role("admin")
+def message_delete(mid):
+    m = db.session.get(ContactMessage, mid)
+    if not m:
+        return jsonify(error="not_found"), 404
+    db.session.delete(m)
+    db.session.commit()
+    return jsonify(deleted=mid)

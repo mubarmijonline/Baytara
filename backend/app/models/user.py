@@ -20,5 +20,21 @@ class User(db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    # instructor public-profile fields (used when role == instructor)
+    headline = db.Column(db.String(200))
+    bio = db.Column(db.Text)
+    avatar_url = db.Column(db.String(500))
+    expertise = db.Column(db.JSON)  # list[str]
+
+    def public_profile(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "headline": self.headline,
+            "bio": self.bio,
+            "avatar_url": self.avatar_url,
+            "expertise": self.expertise or [],
+        }
+
     def __repr__(self):
         return f"<User {self.id} {self.email} {self.role}>"

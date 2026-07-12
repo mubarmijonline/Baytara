@@ -52,6 +52,6 @@ def instructor_profile(user_id):
         return jsonify(error="not_found"), 404
     courses = Course.query.filter_by(instructor_id=user.id, status="published").all()
     return jsonify(
-        instructor={"id": user.id, "name": user.name},
+        instructor=user.public_profile(),
         courses=[c.to_dict() for c in courses],
     )

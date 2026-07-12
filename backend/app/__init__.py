@@ -27,11 +27,13 @@ def create_app(config=None):
     from .api.v1.learning import bp as learning_bp
     from .api.v1.payment import bp as payment_bp
     from .api.v1.admin import bp as admin_bp
+    from .api.v1.content import bp as content_bp
     app.register_blueprint(health_bp, url_prefix="/api/v1")
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(courses_bp, url_prefix="/api/v1")
     app.register_blueprint(learning_bp, url_prefix="/api/v1")
     app.register_blueprint(payment_bp, url_prefix="/api/v1")
+    app.register_blueprint(content_bp, url_prefix="/api/v1")
     app.register_blueprint(admin_bp, url_prefix="/api/v1/admin")
 
     return app
