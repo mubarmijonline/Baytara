@@ -74,7 +74,8 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 
 ## Phase 8 — Notifications, content/blog, i18n scaffolding, hardening
 - [ ] Notifications (SQL index + Mongo logs)
-- [ ] Free content / blog CMS
+- [~] Free content / blog CMS — backend done (Article model, admin CRUD, public API); admin UI + site wiring pending
+- [~] Site settings (hero/about/contact/socials/plans/faqs) + contact-message inbox — backend done
 - [ ] i18n structure (Arabic default, multilingual-ready)
 - [ ] Security hardening pass
 
