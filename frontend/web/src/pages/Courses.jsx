@@ -3,18 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients, layout } from '../theme/tokens.js';
 import { rawCourses, categories, levels, ratingFilters } from '../data/mock.js';
+import { webapi, mapCourse, useFetch } from '../lib/api.js';
 
 export default function Courses() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all');
 
+  const { data: coursesData } = useFetch(() => webapi.courses({ per_page: 50 }), []);
+  const { data: catsData } = useFetch(() => webapi.categories(), []);
+
+  // Real API data when present; otherwise the approved mock catalog (keeps the design full).
+  const apiCourses = coursesData?.courses?.length ? coursesData.courses.map(mapCourse) : null;
+  const allCourses = apiCourses || rawCourses;
+  const catList = catsData?.categories?.length
+    ? catsData.categories.map((c) => ({ name: c.name, count: undefined }))
+    : categories;
+
   const filterCats = [{ key: 'all', name: 'كل التخصّصات', count: 2000 }].concat(
-    categories.map((c) => ({ key: c.name, name: c.name, count: c.count })),
+    catList.map((c) => ({ key: c.name, name: c.name, count: c.count })),
   );
 
-  const visible =
-    filter === 'all' ? rawCourses : rawCourses.filter((c) => c.cat === filter);
-  const catalog = visible.length ? visible : rawCourses;
+  const visible = filter === 'all' ? allCourses : allCourses.filter((c) => c.cat === filter);
+  const catalog = visible.length ? visible : allCourses;
 
   return (
     <div>

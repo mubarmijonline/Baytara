@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
+import { webapi } from '../lib/api.js';
 
 const channels = [
   { icon: '✉', title: 'البريد الإلكتروني', value: 'support@baytara.com' },
@@ -19,6 +21,23 @@ const inputStyle = {
 };
 
 export default function Contact() {
+  const [f, setF] = useState({ name: '', email: '', subject: '', body: '' });
+  const [state, setState] = useState('idle'); // idle | sending | sent | error
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  async function submit(e) {
+    e.preventDefault();
+    setState('sending');
+    try {
+      const r = await webapi.contact({ name: f.name, email: f.email, subject: f.subject, body: f.body });
+      if (!r.ok) throw new Error('failed');
+      setState('sent');
+      setF({ name: '', email: '', subject: '', body: '' });
+    } catch {
+      setState('error');
+    }
+  }
+
   return (
     <div>
       <PageHero
@@ -33,18 +52,19 @@ export default function Contact() {
         >
           {/* Form */}
           <form
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={submit}
             style={{ border: `1px solid ${colors.line}`, borderRadius: 20, padding: 32 }}
           >
             <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 20px' }}>أرسل رسالة</h2>
             <div className="grid-collapse-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <input placeholder="الاسم الكامل" style={inputStyle} />
-              <input placeholder="البريد الإلكتروني" style={inputStyle} />
+              <input placeholder="الاسم الكامل" style={inputStyle} value={f.name} onChange={set('name')} required />
+              <input placeholder="البريد الإلكتروني" type="email" style={inputStyle} value={f.email} onChange={set('email')} required />
             </div>
-            <input placeholder="الموضوع" style={inputStyle} />
-            <textarea placeholder="رسالتك…" rows={6} style={{ ...inputStyle, resize: 'vertical' }} />
+            <input placeholder="الموضوع" style={inputStyle} value={f.subject} onChange={set('subject')} />
+            <textarea placeholder="رسالتك…" rows={6} style={{ ...inputStyle, resize: 'vertical' }} value={f.body} onChange={set('body')} required />
             <button
               type="submit"
+              disabled={state === 'sending'}
               style={{
                 background: colors.accent,
                 border: 'none',
@@ -54,10 +74,13 @@ export default function Contact() {
                 fontWeight: 800,
                 padding: '14px 30px',
                 cursor: 'pointer',
+                opacity: state === 'sending' ? 0.6 : 1,
               }}
             >
-              إرسال الرسالة
+              {state === 'sending' ? 'جارٍ الإرسال…' : 'إرسال الرسالة'}
             </button>
+            {state === 'sent' && <p style={{ color: '#1a7f4b', fontWeight: 700, marginTop: 14 }}>تم استلام رسالتك، شكراً لك! سنعود إليك قريباً.</p>}
+            {state === 'error' && <p style={{ color: colors.accent, fontWeight: 700, marginTop: 14 }}>تعذّر الإرسال. تأكّد من البيانات وحاول مجدداً.</p>}
           </form>
 
           {/* Channels */}

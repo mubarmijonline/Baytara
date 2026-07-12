@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { colors } from '../theme/tokens.js';
+import { colors, thumbGradients } from '../theme/tokens.js';
 import { articles } from '../data/mock.js';
+import { webapi, useFetch } from '../lib/api.js';
 
 const body = [
   'يُعدّ هذا الموضوع من أهم الجوانب التي يجب على كل طبيب بيطري ومربّي حيوان الإلمام بها، لما له من أثر مباشر على صحة القطيع والإنتاجية.',
@@ -11,7 +12,19 @@ const body = [
 export default function BlogPost() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const article = articles.find((a) => a.slug === slug) || articles[0];
+  const { data } = useFetch(() => webapi.article(slug).catch(() => null), [slug]);
+  const apiArticle = data?.article;
+  const mockArticle = articles.find((a) => a.slug === slug) || articles[0];
+  const article = apiArticle
+    ? {
+        ...apiArticle,
+        grad: mockArticle.grad || thumbGradients[0],
+        cat: mockArticle.cat,
+        date: (apiArticle.published_at || apiArticle.created_at || '').slice(0, 10),
+        read: '',
+      }
+    : mockArticle;
+  const paras = apiArticle ? (apiArticle.body || '').split('\n').filter((p) => p.trim()) : body;
   const related = articles.filter((a) => a.slug !== article.slug).slice(0, 3);
 
   return (
@@ -43,7 +56,7 @@ export default function BlogPost() {
           <div style={{ fontSize: 13, color: colors.muted2, marginBottom: 26 }}>
             {article.date} · {article.read}
           </div>
-          {body.map((p, i) => (
+          {paras.map((p, i) => (
             <p key={i} style={{ fontSize: 17, lineHeight: 1.9, color: colors.ink2, margin: '0 0 20px' }}>
               {p}
             </p>

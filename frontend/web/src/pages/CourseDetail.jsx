@@ -1,17 +1,20 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
-import { colors, layout } from '../theme/tokens.js';
+import { colors, gradients, layout } from '../theme/tokens.js';
 import { rawCourses, learnPoints, curriculum, includes, reviews } from '../data/mock.js';
+import { webapi, mapCourse, useFetch } from '../lib/api.js';
 
 export default function CourseDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const course = rawCourses.find((c) => c.slug === slug) || rawCourses[0];
+  const { data } = useFetch(() => webapi.course(slug).catch(() => null), [slug]);
+  const mockCourse = rawCourses.find((c) => c.slug === slug) || rawCourses[0];
+  const course = data?.course ? mapCourse(data.course) : mockCourse;
 
   return (
     <div>
       {/* Dark header */}
-      <div style={{ background: 'linear-gradient(120deg,#14142b,#2a1a3a)', color: '#fff', padding: '44px 0 130px' }}>
+      <div style={{ background: gradients.darkPanel, color: '#fff', padding: '44px 0 130px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px' }}>
           <div style={{ fontSize: 13, color: '#b6b6cc', marginBottom: 14 }}>
             <span onClick={() => navigate('/courses')} style={{ cursor: 'pointer' }}>
@@ -21,8 +24,8 @@ export default function CourseDetail() {
           </div>
           <span
             style={{
-              background: 'rgba(225,27,34,.2)',
-              color: '#ff8a8f',
+              background: 'rgba(201,162,39,.22)',
+              color: '#e8c766',
               fontSize: 12,
               fontWeight: 800,
               padding: '6px 12px',

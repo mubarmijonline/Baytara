@@ -3,10 +3,15 @@ import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
 import { articles } from '../data/mock.js';
+import { webapi, useFetch } from '../lib/api.js';
 
 export default function Blog() {
   const navigate = useNavigate();
-  const [featured, ...rest] = articles;
+  const { data } = useFetch(() => webapi.articles('blog'), []);
+  const list = data?.articles?.length
+    ? data.articles.map((a) => ({ ...a, date: (a.published_at || a.created_at || '').slice(0, 10), read: '' }))
+    : articles;
+  const [featured, ...rest] = list;
 
   return (
     <div>
