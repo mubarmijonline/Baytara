@@ -8,3 +8,4 @@ argon2-cffi==23.1.0
 marshmallow==3.22.0
 Flask-Cors==4.0.1
 google-cloud-vision==3.7.4
+gunicorn==23.0.0

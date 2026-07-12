@@ -1,0 +1,35 @@
+[Unit]
+Description=Baytara API (Flask/Gunicorn on 127.0.0.1:8090)
+After=network.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ahmeddiab
+Group=ahmeddiab
+WorkingDirectory=/development/projects/baytara/backend
+EnvironmentFile=-/development/projects/baytara/backend/.env
+Environment=PYTHONUNBUFFERED=1
+
+ExecStart=/development/projects/baytara/backend/.venv/bin/gunicorn \
+    --bind 127.0.0.1:8090 \
+    --workers 3 \
+    --threads 4 \
+    --worker-class gthread \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --keep-alive 5 \
+    --access-logfile /development/projects/baytara/backend/logs/access.log \
+    --error-logfile  /development/projects/baytara/backend/logs/error.log \
+    --capture-output \
+    wsgi:app
+
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

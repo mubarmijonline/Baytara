@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 // Admin Portal (Material Design 3 look, brand navy/gold palette).
 // Dev proxies /api -> Flask backend so the SPA and API share an origin.
 export default defineConfig({
+  // served under https://baytara.mubarmijonline.com/admin/ in prod
+  base: '/admin/',
   plugins: [react()],
   server: {
     port: 5174,
