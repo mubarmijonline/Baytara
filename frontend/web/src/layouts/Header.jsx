@@ -1,7 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { colors, gradients, layout } from '../theme/tokens.js';
-import { isAuthed } from '../lib/api.js';
+import { isAuthed, auth } from '../lib/api.js';
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState([]);
+  const [unread, setUnread] = useState(0);
+
+  const load = () => auth.notifications().then((r) => { setItems(r.notifications); setUnread(r.unread); }).catch(() => {});
+  useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
+
+  async function markAll() { try { await auth.notifReadAll(); load(); } catch { /* noop */ } }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        aria-label="الإشعارات"
+        onClick={() => setOpen((o) => !o)}
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 20, position: 'relative', padding: 6 }}
+      >
+        🔔
+        {unread > 0 && (
+          <span style={{ position: 'absolute', top: 0, insetInlineEnd: 0, background: colors.accent, color: '#fff',
+            fontSize: 10, fontWeight: 800, borderRadius: 10, padding: '1px 5px', minWidth: 16 }}>{unread}</span>
+        )}
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', insetInlineEnd: 0, top: 44, width: 320, maxHeight: 420, overflowY: 'auto',
+          background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 14, boxShadow: '0 18px 44px rgba(20,20,43,.18)', zIndex: 60 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderBottom: `1px solid ${colors.line2}` }}>
+            <b style={{ fontSize: 14 }}>الإشعارات</b>
+            {unread > 0 && <span onClick={markAll} style={{ fontSize: 12, color: colors.accent, cursor: 'pointer', fontWeight: 700 }}>تعليم الكل كمقروء</span>}
+          </div>
+          {items.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', color: colors.muted, fontSize: 13 }}>لا إشعارات.</div>
+          ) : items.map((n) => (
+            <div key={n.id} style={{ padding: '12px 14px', borderBottom: `1px solid ${colors.line2}`,
+              background: n.is_read ? '#fff' : colors.accentSoft }}>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>{n.title}</div>
+              {n.body && <div style={{ fontSize: 13, color: colors.muted, marginTop: 3 }}>{n.body}</div>}
+              <div style={{ fontSize: 11, color: colors.muted2, marginTop: 4 }}>{(n.created_at || '').slice(0, 16).replace('T', ' ')}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SearchIcon() {
   return (
@@ -216,6 +262,7 @@ export default function Header() {
             >
               اشترك الآن
             </button>
+            {isAuthed() && <NotificationBell />}
             <div
               onClick={() => navigate('/dashboard')}
               title="لوحتي"

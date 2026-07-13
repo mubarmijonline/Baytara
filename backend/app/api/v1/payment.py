@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
 from ...extensions import db
-from ...models import Course, Enrollment, InstapayAccount, InstapayPayment
+from ...models import Course, Enrollment, InstapayAccount, InstapayPayment, push_notification
 from ...security import require_role
 from ...services.instapay_ocr import parse_receipt, extract_text
 
@@ -144,7 +144,9 @@ def admin_approve(pid):
             db.session.add(enrollment)
             course = db.session.get(Course, p.course_id)
             course.enrolled_count = (course.enrolled_count or 0) + 1
-        # ponytail: invoice + instructor_revenue + notification land in Phase 4b/8.
+        course = db.session.get(Course, p.course_id)
+        push_notification(p.user_id, "payment_approved", "تم قبول دفعتك ✅",
+                          f"تم تفعيل اشتراكك في «{course.title}». ابدأ التعلّم الآن.")
         db.session.commit()
     except Exception:  # noqa: BLE001
         db.session.rollback()
@@ -164,6 +166,8 @@ def admin_reject(pid):
     p.reject_reason = (request.get_json() or {}).get("reason")
     p.reviewed_by = _uid()
     p.reviewed_at = datetime.now(timezone.utc)
+    push_notification(p.user_id, "payment_rejected", "لم يُقبل إيصال الدفع",
+                      p.reject_reason or "يرجى مراجعة الإيصال وإعادة الإرسال.")
     db.session.commit()
     return jsonify(payment=p.to_dict(admin=True))
 

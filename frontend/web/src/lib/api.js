@@ -45,6 +45,9 @@ export const auth = {
   progress: (b) => authFetch('/progress', { method: 'POST', body: JSON.stringify(b) }),
   progressGet: (slug) => authFetch('/progress?course=' + encodeURIComponent(slug)),
   playback: (lesson_id) => authFetch('/video/playback', { method: 'POST', body: JSON.stringify({ lesson_id }) }),
+  notifications: () => authFetch('/notifications'),
+  notifRead: (id) => authFetch(`/notifications/${id}/read`, { method: 'POST' }),
+  notifReadAll: () => authFetch('/notifications/read-all', { method: 'POST' }),
 };
 
 export const webapi = {

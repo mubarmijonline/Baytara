@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from ...models import (
     User, Category, Course, CourseModule, Lesson, Enrollment, InstapayPayment,
-    Setting, Article, ContactMessage,
+    Setting, Article, ContactMessage, Notification,
 )
 from ...security import require_role, hash_password
 from ...utils import slugify
@@ -488,3 +488,23 @@ def message_delete(mid):
     db.session.delete(m)
     db.session.commit()
     return jsonify(deleted=mid)
+
+
+# ------------------------------ notifications broadcast ------------------------------
+
+@bp.post("/notifications")
+@require_role("admin")
+def broadcast():
+    """Send a notification to all users, or a single role (?role=student|instructor)."""
+    d = request.get_json() or {}
+    if not d.get("title"):
+        return jsonify(error="title_required"), 422
+    q = User.query.filter_by(is_active=True)
+    if d.get("role") in ROLES:
+        q = q.filter_by(role=d["role"])
+    n = 0
+    for u in q.all():
+        db.session.add(Notification(user_id=u.id, type="broadcast", title=d["title"], body=d.get("body")))
+        n += 1
+    db.session.commit()
+    return jsonify(sent=n)

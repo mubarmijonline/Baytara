@@ -61,6 +61,29 @@ class Article(db.Model):
         return d
 
 
+class Notification(db.Model):
+    __tablename__ = "notifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    type = db.Column(db.String(40), nullable=False, default="info")
+    title = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.String(500))
+    is_read = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+
+    def to_dict(self):
+        return {
+            "id": self.id, "type": self.type, "title": self.title, "body": self.body,
+            "is_read": self.is_read, "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+def push_notification(user_id, type, title, body=None):
+    """Add a notification to the session (caller commits — safe inside an atomic tx)."""
+    db.session.add(Notification(user_id=user_id, type=type, title=title, body=body))
+
+
 class ContactMessage(db.Model):
     __tablename__ = "contact_messages"
 
