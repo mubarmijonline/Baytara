@@ -30,4 +30,11 @@ npm run build
 sudo rsync -a --delete dist/ /var/www/baytara-admin/
 sudo chown -R www-data:www-data /var/www/baytara-admin
 
+echo "==> build + publish instructor portal"
+cd "$ROOT/frontend/instructor"
+npm install --no-audit --no-fund --silent
+npm run build
+sudo rsync -a --delete dist/ /var/www/baytara-instructor/
+sudo chown -R www-data:www-data /var/www/baytara-instructor
+
 echo "==> deploy done: $(date)"
