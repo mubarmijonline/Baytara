@@ -13,6 +13,8 @@ export default function Learn() {
   const [apiCourse, setApiCourse] = useState(null);
   const [active, setActive] = useState(null);
   const [doneIds, setDoneIds] = useState({});
+  const [video, setVideo] = useState(null); // { otp, playbackInfo }
+  const [videoErr, setVideoErr] = useState('');
 
   useEffect(() => {
     webapi.course(courseId).then((r) => setApiCourse(r.course)).catch(() => {});
@@ -39,13 +41,32 @@ export default function Learn() {
     (apiCourse.modules || []).forEach((m) =>
       (m.lessons || []).forEach((ls) =>
         flat.push({ id: ls.id, key: String(ls.id), name: ls.title, mod: m.title,
-          dur: ls.duration_minutes ? `${ls.duration_minutes} د` : '' })));
+          has_video: ls.has_video, dur: ls.duration_minutes ? `${ls.duration_minutes} د` : '' })));
   } else {
     curriculum.forEach((mod, mi) => mod.lessons.forEach((ls, li) => flat.push({ ...ls, key: `${mi}-${li}`, mod: mod.title })));
   }
   const safeFlat = flat.length ? flat : [{ key: 'x', name: 'لا دروس بعد', dur: '', mod: '' }];
   const activeKey = active || safeFlat.find((l) => l.key === lessonId)?.key || safeFlat[0].key;
   const activeLesson = safeFlat.find((l) => l.key === activeKey) || safeFlat[0];
+
+  // fetch a fresh DRM OTP whenever the active lesson (with a video) changes
+  useEffect(() => {
+    setVideo(null); setVideoErr('');
+    if (!useApi || !isAuthed() || !activeLesson.id || !activeLesson.has_video) return;
+    let alive = true;
+    auth.playback(activeLesson.id)
+      .then((r) => alive && setVideo(r))
+      .catch((e) => {
+        if (!alive) return;
+        setVideoErr(
+          e.data?.error === 'no_api_key' ? 'خدمة الفيديو غير مُفعّلة بعد.'
+          : e.status === 403 ? 'اشترك في الدورة لمشاهدة الفيديو.'
+          : 'تعذّر تحميل الفيديو.'
+        );
+      });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey, useApi]);
 
   async function completeAndNext() {
     if (useApi && activeLesson.id && isAuthed()) {
@@ -72,47 +93,59 @@ export default function Learn() {
       >
         {/* Player + info */}
         <div>
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              aspectRatio: '16 / 9',
-              borderRadius: 16,
-              background: course.grad,
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+          {video ? (
+            // VdoCipher DRM player — OTP is short-lived; watermark is baked in server-side
+            <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
+              <iframe
+                title="مشغّل الفيديو"
+                src={`https://player.vdocipher.com/v2/?otp=${encodeURIComponent(video.otp)}&playbackInfo=${encodeURIComponent(video.playbackInfo)}`}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+                allow="encrypted-media; fullscreen"
+                allowFullScreen
+              />
+            </div>
+          ) : (
             <div
               style={{
-                width: 84,
-                height: 84,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,.92)',
+                position: 'relative',
+                width: '100%',
+                aspectRatio: '16 / 9',
+                borderRadius: 16,
+                background: course.grad,
+                overflow: 'hidden',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 12px 34px rgba(0,0,0,.35)',
               }}
             >
-              <span
+              <div
                 style={{
-                  width: 0,
-                  height: 0,
-                  borderTop: '14px solid transparent',
-                  borderBottom: '14px solid transparent',
-                  borderRight: '22px solid #14142b',
-                  marginRight: -4,
+                  width: 84,
+                  height: 84,
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,.92)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 12px 34px rgba(0,0,0,.35)',
                 }}
-              />
+              >
+                <span
+                  style={{
+                    width: 0,
+                    height: 0,
+                    borderTop: '14px solid transparent',
+                    borderBottom: '14px solid transparent',
+                    borderRight: '22px solid #14142b',
+                    marginRight: -4,
+                  }}
+                />
+              </div>
+              <span style={{ position: 'absolute', bottom: 14, left: 0, right: 0, textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,.85)' }}>
+                {videoErr || (activeLesson.has_video ? 'جارٍ تحميل الفيديو…' : 'معاينة — لا فيديو محمي لهذا الدرس بعد')}
+              </span>
             </div>
-            {/* Dynamic-watermark placeholder (VdoCipher provides the real one in Phase 5) */}
-            <span style={{ position: 'absolute', top: 14, left: 16, fontSize: 12, color: 'rgba(255,255,255,.6)' }}>
-              محمود · baytara — معاينة محمية
-            </span>
-          </div>
+          )}
 
           <div style={{ marginTop: 20 }}>
             <div style={{ fontSize: 13, color: '#b6b6cc', marginBottom: 6 }}>

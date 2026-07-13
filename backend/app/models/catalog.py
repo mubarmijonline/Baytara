@@ -110,4 +110,5 @@ class Lesson(db.Model):
             "position": self.position,
             "duration_minutes": self.duration_minutes,
             "is_protected": self.is_protected,
+            "has_video": bool(self.vdocipher_video_id),
         }
