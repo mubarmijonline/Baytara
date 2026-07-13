@@ -45,6 +45,25 @@ def enroll():
     return jsonify(enrollment=enrollment.to_dict()), 201
 
 
+@bp.get("/progress")
+@jwt_required()
+def get_progress():
+    """Persisted per-lesson progress for the current user in a course (?course=<slug>)."""
+    slug = request.args.get("course")
+    course = Course.query.filter_by(slug=slug, status="published").first() if slug else None
+    if not course:
+        return jsonify(error="course_not_found"), 404
+    enr = Enrollment.query.filter_by(user_id=_uid(), course_id=course.id, status="active").first()
+    if not enr:
+        return jsonify(enrolled=False, lessons={}, percent=0)
+    lessons = {
+        p.lesson_id: {"completed": p.completed_at is not None, "watched_seconds": p.watched_seconds or 0}
+        for p in enr.progress
+    }
+    percent, completed, total = enr.completion()
+    return jsonify(enrolled=True, lessons=lessons, percent=percent, completed=completed, total=total)
+
+
 @bp.post("/progress")
 @jwt_required()
 def update_progress():

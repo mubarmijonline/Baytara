@@ -74,6 +74,16 @@ def demo():
     enr = c.get("/api/v1/enrollments", headers=h).get_json()["enrollments"]
     assert enr[0]["progress"]["percent"] == 100
 
+    # persisted per-lesson progress is readable back (survives reload)
+    with app.app_context():
+        from app.models import Course
+        slug = db.session.get(Course, free_course).slug
+    prog = c.get(f"/api/v1/progress?course={slug}", headers=h)
+    assert prog.status_code == 200, prog.get_json()
+    body = prog.get_json()
+    assert body["enrolled"] is True and body["percent"] == 100
+    assert all(v["completed"] for v in body["lessons"].values()) and len(body["lessons"]) == 2
+
     print("learning self-check OK")
 
 

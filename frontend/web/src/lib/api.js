@@ -43,6 +43,7 @@ export const auth = {
   enrollments: () => authFetch('/enrollments'),
   enroll: (course_id) => authFetch('/enrollments', { method: 'POST', body: JSON.stringify({ course_id }) }),
   progress: (b) => authFetch('/progress', { method: 'POST', body: JSON.stringify(b) }),
+  progressGet: (slug) => authFetch('/progress?course=' + encodeURIComponent(slug)),
 };
 
 export const webapi = {

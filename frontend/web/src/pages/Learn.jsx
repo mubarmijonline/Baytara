@@ -16,6 +16,16 @@ export default function Learn() {
 
   useEffect(() => {
     webapi.course(courseId).then((r) => setApiCourse(r.course)).catch(() => {});
+    // load persisted per-lesson progress so completed lessons stay marked across reloads
+    if (isAuthed()) {
+      auth.progressGet(courseId)
+        .then((r) => {
+          const done = {};
+          Object.entries(r.lessons || {}).forEach(([lid, v]) => { if (v.completed) done[lid] = true; });
+          setDoneIds(done);
+        })
+        .catch(() => {});
+    }
   }, [courseId]);
 
   const useApi = !!apiCourse;
