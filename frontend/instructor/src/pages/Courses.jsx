@@ -1,3 +1,4 @@
+import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
@@ -59,7 +60,7 @@ function CourseContent({ courseId, perms, onClose }) {
     try { await api.lessonUpdate(l.id, { vdocipher_video_id: v || null }); load(); }
     catch (e) {
       const er = apiError(e);
-      alert(er === 'video_add_forbidden' ? 'غير مصرّح لك بإضافة فيديو.'
+      toast.error(er === 'video_add_forbidden' ? 'غير مصرّح لك بإضافة فيديو.'
         : er === 'video_edit_forbidden' ? 'غير مصرّح لك بتعديل الفيديو.'
         : er === 'video_delete_forbidden' ? 'غير مصرّح لك بحذف الفيديو.' : er);
     }
@@ -121,9 +122,9 @@ export default function Courses() {
 
   async function togglePublish(c) {
     try { await api.courseUpdate(c.id, { status: c.status === 'published' ? 'unpublished' : 'published' }); load(); }
-    catch (e) { alert(apiError(e)); }
+    catch (e) { toast.error(apiError(e)); }
   }
-  async function del(c) { if (confirm(`حذف «${c.title}»؟`)) { try { await api.courseDelete(c.id); load(); } catch (e) { alert(apiError(e)); } } }
+  async function del(c) { if (confirm(`حذف «${c.title}»؟`)) { try { await api.courseDelete(c.id); load(); } catch (e) { toast.error(apiError(e)); } } }
 
   return (
     <>

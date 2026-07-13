@@ -1,3 +1,4 @@
+import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
@@ -149,12 +150,12 @@ export default function Courses() {
   async function togglePublish(c) {
     const next = c.status === 'published' ? 'unpublished' : 'published';
     try { await api.courseUpdate(c.id, { status: next }); load(); }
-    catch (e) { alert(apiError(e)); }
+    catch (e) { toast.error(apiError(e)); }
   }
   async function del(c) {
     if (!confirm(`حذف «${c.title}» وكل محتواها؟`)) return;
     try { await api.courseDelete(c.id); load(); }
-    catch (e) { alert(apiError(e)); }
+    catch (e) { toast.error(apiError(e)); }
   }
 
   return (

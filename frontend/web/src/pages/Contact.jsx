@@ -3,6 +3,7 @@ import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
 import { webapi } from '../lib/api.js';
+import { toast } from '../lib/toast.jsx';
 
 const channels = [
   { icon: '✉', title: 'البريد الإلكتروني', value: 'support@baytara.com' },
@@ -33,8 +34,10 @@ export default function Contact() {
       if (!r.ok) throw new Error('failed');
       setState('sent');
       setF({ name: '', email: '', subject: '', body: '' });
+      toast.success('تم إرسال رسالتك، شكراً لك!');
     } catch {
       setState('error');
+      toast.error('تعذّر إرسال الرسالة');
     }
   }
 

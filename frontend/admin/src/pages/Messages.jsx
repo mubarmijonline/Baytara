@@ -1,3 +1,4 @@
+import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { ErrText, apiError } from '../ui.jsx';
@@ -15,11 +16,11 @@ export default function Messages() {
   useEffect(() => { load(); }, []);
 
   async function toggleRead(m) {
-    try { await api.messageUpdate(m.id, { is_read: !m.is_read }); load(); } catch (e) { alert(apiError(e)); }
+    try { await api.messageUpdate(m.id, { is_read: !m.is_read }); load(); } catch (e) { toast.error(apiError(e)); }
   }
   async function del(m) {
     if (!confirm('حذف الرسالة؟')) return;
-    try { await api.messageDelete(m.id); load(); } catch (e) { alert(apiError(e)); }
+    try { await api.messageDelete(m.id); load(); } catch (e) { toast.error(apiError(e)); }
   }
 
   return (

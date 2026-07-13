@@ -4,6 +4,7 @@ import { Container } from '../components/Primitives.jsx';
 import { colors } from '../theme/tokens.js';
 import { webapi, auth } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
+import { toast } from '../lib/toast.jsx';
 
 export default function Buy() {
   const { slug } = useParams();
@@ -41,9 +42,11 @@ export default function Buy() {
       await auth.submitReceipt(course.id, file);
       setState('done');
       setMsg('تم استلام إيصالك ✅ سيُراجعه فريقنا ويُفعّل اشتراكك قريباً. تابع الحالة من لوحتك.');
+      toast.success('تم إرسال الإيصال للمراجعة');
     } catch (err) {
       const er = err.data && err.data.error;
       setState('error');
+      toast.error('تعذّر رفع الإيصال');
       setMsg(
         er === 'already_enrolled' ? 'أنت مسجّل بالفعل في هذه الدورة.'
         : er === 'reference_already_used' ? 'رقم مرجعي مستخدم من قبل — تأكد من الإيصال.'

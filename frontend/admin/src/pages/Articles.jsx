@@ -1,3 +1,4 @@
+import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
@@ -76,11 +77,11 @@ export default function Articles() {
 
   async function togglePublish(a) {
     try { await api.articleUpdate(a.id, { status: a.status === 'published' ? 'draft' : 'published' }); load(); }
-    catch (e) { alert(apiError(e)); }
+    catch (e) { toast.error(apiError(e)); }
   }
   async function del(a) {
     if (!confirm(`حذف «${a.title}»؟`)) return;
-    try { await api.articleDelete(a.id); load(); } catch (e) { alert(apiError(e)); }
+    try { await api.articleDelete(a.id); load(); } catch (e) { toast.error(apiError(e)); }
   }
 
   return (

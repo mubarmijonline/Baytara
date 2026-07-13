@@ -1,3 +1,4 @@
+import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { ErrText, apiError } from '../ui.jsx';
@@ -17,18 +18,18 @@ export default function Categories() {
   async function create() {
     if (!name.trim()) return;
     try { await api.categoryCreate({ name: name.trim() }); setName(''); load(); }
-    catch (e) { alert(apiError(e)); }
+    catch (e) { toast.error(apiError(e)); }
   }
   async function rename(c) {
     const n = prompt('الاسم الجديد', c.name);
     if (!n) return;
     try { await api.categoryUpdate(c.id, { name: n }); load(); }
-    catch (e) { alert(apiError(e)); }
+    catch (e) { toast.error(apiError(e)); }
   }
   async function del(c) {
     if (!confirm(`حذف الفئة ${c.name}؟`)) return;
     try { await api.categoryDelete(c.id); load(); }
-    catch (e) { alert(apiError(e) === 'category_in_use' ? 'الفئة مستخدمة في دورات.' : apiError(e)); }
+    catch (e) { toast.error(apiError(e) === 'category_in_use' ? 'الفئة مستخدمة في دورات.' : apiError(e)); }
   }
 
   return (

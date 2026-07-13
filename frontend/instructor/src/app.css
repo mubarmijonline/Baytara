@@ -151,3 +151,19 @@ body {
 .modal-bg { position: fixed; inset: 0; background: rgba(10,23,48,0.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
 .modal { background: var(--surface); border-radius: 18px; padding: 22px; width: 460px; max-width: 100%; max-height: 90vh; overflow-y: auto; }
 .modal h3 { margin: 0 0 16px; }
+
+/* ---- toast notifications ---- */
+.toaster { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999;
+  display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
+.toast { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 10px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-inline-start: 4px solid var(--primary);
+  border-radius: 12px; padding: 13px 18px; font-size: 14px; font-weight: 700; box-shadow: 0 12px 34px rgba(10,23,48,.18);
+  animation: toastIn .22s ease; min-width: 260px; }
+.toast-success { border-inline-start-color: var(--success); }
+.toast-error { border-inline-start-color: var(--error); }
+.toast-info { border-inline-start-color: var(--primary); }
+.toast-icon { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; color: #fff; flex: none; background: var(--primary); }
+.toast-success .toast-icon { background: var(--success); }
+.toast-error .toast-icon { background: var(--error); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }

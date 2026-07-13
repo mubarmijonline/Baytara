@@ -1,3 +1,4 @@
+import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
@@ -85,12 +86,12 @@ export default function Users() {
 
   async function toggleActive(u) {
     try { await api.userUpdate(u.id, { is_active: !u.is_active }); load(); }
-    catch (e) { alert(apiError(e)); }
+    catch (e) { toast.error(apiError(e)); }
   }
   async function del(u) {
     if (!confirm(`حذف ${u.name}؟`)) return;
     try { await api.userDelete(u.id); load(); }
-    catch (e) { alert(apiError(e)); }
+    catch (e) { toast.error(apiError(e)); }
   }
 
   return (
