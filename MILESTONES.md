@@ -45,8 +45,9 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] Enrollments + progress + completion % (free enroll; paid deferred to Phase 4)
 - [x] Replace Main Website mock data with real APIs — all public pages wired (Home, Courses, Course
   detail, Instructor, Blog+post, Content, Pricing, About, Contact) + settings-driven chrome
-  (hero/about/footer/plans/faqs), mock fallback when API empty. _(Student-app views Dashboard/Learn
-  still mock — need auth + real enrollment wiring, tracked separately.)_
+  (hero/about/footer/plans/faqs), mock fallback when API empty.
+- [x] Student app wired: real login/register (JWT), Dashboard → my enrollments + progress %,
+  Learn → real course content + mark-complete → progress. (Real DRM playback = Phase 5.)
 
 ## Phase 4 — Payments (InstaPay: receipt OCR + admin approval)
 - [x] InstaPay account whitelist config (`instapay_account`) + admin CRUD
