@@ -13,6 +13,38 @@ async function get(path) {
   return r.json();
 }
 
+// ---- student auth (JWT in localStorage) ----
+const TOKEN_KEY = 'baytara_token';
+export const getToken = () => localStorage.getItem(TOKEN_KEY) || '';
+export const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
+export const logout = () => setToken('');
+export const isAuthed = () => !!getToken();
+
+async function authFetch(path, opts = {}) {
+  const t = getToken();
+  const r = await fetch(BASE + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+      ...(t ? { Authorization: `Bearer ${t}` } : {}),
+    },
+  });
+  const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+  if (r.status === 401) { setToken(''); throw Object.assign(new Error('unauthorized'), { status: 401 }); }
+  if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
+  return j;
+}
+
+export const auth = {
+  register: (b) => authFetch('/auth/register', { method: 'POST', body: JSON.stringify(b) }),
+  login: (b) => authFetch('/auth/login', { method: 'POST', body: JSON.stringify(b) }),
+  me: () => authFetch('/auth/me'),
+  enrollments: () => authFetch('/enrollments'),
+  enroll: (course_id) => authFetch('/enrollments', { method: 'POST', body: JSON.stringify({ course_id }) }),
+  progress: (b) => authFetch('/progress', { method: 'POST', body: JSON.stringify(b) }),
+};
+
 export const webapi = {
   courses: (params) => get('/courses' + qs(params)),
   course: (slug) => get('/courses/' + slug),

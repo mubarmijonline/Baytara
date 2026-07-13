@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { colors, gradients, layout } from '../theme/tokens.js';
+import { isAuthed } from '../lib/api.js';
 
 function SearchIcon() {
   return (
@@ -182,21 +183,23 @@ export default function Header() {
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginInlineStart: 'auto' }}>
-            <button
-              className="hide-sm"
-              onClick={() => navigate('/auth')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                fontSize: 15,
-                fontWeight: 700,
-                color: colors.ink,
-                cursor: 'pointer',
-                padding: '10px 12px',
-              }}
-            >
-              تسجيل الدخول
-            </button>
+            {!isAuthed() && (
+              <button
+                className="hide-sm"
+                onClick={() => navigate('/auth')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: colors.ink,
+                  cursor: 'pointer',
+                  padding: '10px 12px',
+                }}
+              >
+                تسجيل الدخول
+              </button>
+            )}
             <button
               className="hover-bright hide-sm"
               onClick={() => navigate('/pricing')}

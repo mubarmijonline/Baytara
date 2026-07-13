@@ -1,11 +1,39 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
-import { dashNav, dashStats, inProgress, rawCourses } from '../data/mock.js';
+import { dashNav, dashStats, rawCourses } from '../data/mock.js';
+import { auth, webapi, mapCourse, isAuthed, logout } from '../lib/api.js';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const recommended = rawCourses.slice(5, 8);
+  const [user, setUser] = useState(null);
+  const [enrollments, setEnrollments] = useState(null);
+  const [recs, setRecs] = useState([]);
+
+  useEffect(() => {
+    if (!isAuthed()) { navigate('/auth'); return; }
+    auth.me().then((r) => setUser(r.user)).catch((e) => { if (e.status === 401) navigate('/auth'); });
+    auth.enrollments().then((r) => setEnrollments(r.enrollments)).catch(() => setEnrollments([]));
+    webapi.courses({ per_page: 6 }).then((r) => setRecs((r.courses || []).map(mapCourse))).catch(() => {});
+  }, [navigate]);
+
+  const name = user?.name || '';
+  const myCourses = (enrollments || []).map((e, i) => {
+    const c = mapCourse(e.course, i);
+    const pct = e.progress?.percent ?? 0;
+    const left = (e.progress?.total_lessons ?? 0) - (e.progress?.completed_lessons ?? 0);
+    return { ...c, progress: `${pct}%`, remaining: left > 0 ? `باقٍ ${left} درس` : 'مكتملة' };
+  });
+  const recommended = recs.length ? recs : rawCourses.slice(5, 8);
+  const doneCount = (enrollments || []).filter((e) => (e.progress?.percent ?? 0) === 100).length;
+  const lessonsDone = (enrollments || []).reduce((s, e) => s + (e.progress?.completed_lessons ?? 0), 0);
+  const realStats = [
+    { num: (enrollments || []).length, label: 'دورة مسجّلة', color: dashStats[0].color },
+    { num: lessonsDone, label: 'درس مكتمل', color: dashStats[1].color },
+    { num: doneCount, label: 'دورة منجزة', color: dashStats[2].color },
+    { num: (enrollments || []).length, label: 'قيد التقدّم', color: dashStats[3].color },
+  ];
 
   return (
     <div style={{ background: colors.surfaceMuted, minHeight: 620 }}>
@@ -32,11 +60,11 @@ export default function Dashboard() {
                 fontWeight: 800,
               }}
             >
-              م
+              {(name || 'م').charAt(0)}
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>مرحباً، محمود</div>
-              <div style={{ fontSize: 12, color: colors.muted2 }}>عضو مميّز</div>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>مرحباً، {name || 'بك'}</div>
+              <div style={{ fontSize: 12, color: colors.muted2 }}>{user?.email || ''}</div>
             </div>
           </div>
           {dashNav.map((n) => (
@@ -59,19 +87,25 @@ export default function Dashboard() {
               <span>{n.icon}</span> {n.label}
             </div>
           ))}
+          <div
+            onClick={() => { logout(); navigate('/'); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', borderRadius: 10, fontSize: 14, fontWeight: 700, color: colors.accent, cursor: 'pointer', marginTop: 8 }}
+          >
+            <span>⎋</span> تسجيل الخروج
+          </div>
         </aside>
 
         <div>
-          <h1 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 6px' }}>أهلاً بعودتك، محمود 👋</h1>
+          <h1 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 6px' }}>أهلاً بعودتك، {name || ''} 👋</h1>
           <p style={{ color: colors.muted, fontSize: 16, margin: '0 0 26px' }}>
-            لديك 3 دورات قيد التقدّم. واصل من حيث توقّفت.
+            {myCourses.length ? `لديك ${myCourses.length} دورة. واصل من حيث توقّفت.` : 'لم تسجّل في أي دورة بعد.'}
           </p>
 
           <div
             className="grid-collapse-sm"
             style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 30 }}
           >
-            {dashStats.map((s) => (
+            {realStats.map((s) => (
               <div key={s.label} style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 16, padding: 20 }}>
                 <div style={{ fontSize: 28, fontWeight: 900, color: s.color }}>{s.num}</div>
                 <div style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>{s.label}</div>
@@ -81,10 +115,16 @@ export default function Dashboard() {
 
           <h2 style={{ fontSize: 20, fontWeight: 900, margin: '0 0 16px' }}>واصل التعلّم</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 34 }}>
-            {inProgress.map((c, i) => (
+            {myCourses.length === 0 && (
+              <div style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 16, padding: 24, color: colors.muted }}>
+                لا دورات مسجّلة بعد.{' '}
+                <span onClick={() => navigate('/courses')} style={{ color: colors.accent, fontWeight: 800, cursor: 'pointer' }}>تصفّح الدورات</span>
+              </div>
+            )}
+            {myCourses.map((c, i) => (
               <div
                 key={i}
-                onClick={() => navigate(`/learn/${c.id}/0-0`)}
+                onClick={() => navigate(`/learn/${c.slug}/first`)}
                 style={{
                   background: '#fff',
                   border: `1px solid ${colors.line}`,

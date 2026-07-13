@@ -2,12 +2,36 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { colors } from '../theme/tokens.js';
 import { authPerks } from '../data/mock.js';
+import { auth, setToken } from '../lib/api.js';
 
 export default function Auth() {
   const navigate = useNavigate();
   const [mode, setMode] = useState('login');
   const isSignup = mode === 'signup';
   const title = isSignup ? 'إنشاء حساب جديد' : 'تسجيل الدخول';
+  const [f, setF] = useState({ name: '', email: '', password: '' });
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  async function submit() {
+    setErr(''); setBusy(true);
+    try {
+      const res = isSignup
+        ? await auth.register({ name: f.name, email: f.email, password: f.password })
+        : await auth.login({ email: f.email, password: f.password });
+      setToken(res.access_token);
+      navigate('/dashboard');
+    } catch (e) {
+      setErr(
+        e.status === 401 ? 'بيانات الدخول غير صحيحة.'
+        : e.status === 409 ? 'البريد مسجّل مسبقاً.'
+        : e.status === 422 ? 'تحقّق من البيانات (كلمة المرور 8 أحرف على الأقل).'
+        : 'تعذّر إتمام العملية.'
+      );
+      setBusy(false);
+    }
+  }
 
   const tab = (active, label, onClick) => (
     <button
@@ -114,11 +138,13 @@ export default function Auth() {
             {tab(isSignup, 'حساب جديد', () => setMode('signup'))}
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 22px' }}>{title}</h2>
-          {isSignup && field('الاسم الكامل', <input placeholder="أدخل اسمك" style={inputStyle} />)}
-          {field('البريد الإلكتروني', <input placeholder="you@email.com" style={inputStyle} />)}
-          {field('كلمة المرور', <input type="password" placeholder="••••••••" style={inputStyle} />)}
+          {isSignup && field('الاسم الكامل', <input placeholder="أدخل اسمك" style={inputStyle} value={f.name} onChange={set('name')} />)}
+          {field('البريد الإلكتروني', <input placeholder="you@email.com" style={inputStyle} value={f.email} onChange={set('email')} />)}
+          {field('كلمة المرور', <input type="password" placeholder="••••••••" style={inputStyle} value={f.password} onChange={set('password')} onKeyDown={(e) => e.key === 'Enter' && submit()} />)}
+          {err && <div style={{ color: colors.accent, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{err}</div>}
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={submit}
+            disabled={busy}
             style={{
               width: '100%',
               background: colors.accent,
@@ -130,9 +156,10 @@ export default function Auth() {
               padding: 15,
               cursor: 'pointer',
               marginBottom: 18,
+              opacity: busy ? 0.6 : 1,
             }}
           >
-            {title}
+            {busy ? '…' : title}
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, color: colors.muted2, fontSize: 13 }}>
             <span style={{ flex: 1, height: 1, background: '#eee' }} /> أو <span style={{ flex: 1, height: 1, background: '#eee' }} />
