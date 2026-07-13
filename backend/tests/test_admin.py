@@ -72,6 +72,17 @@ def demo():
     tree = c.get(f"/api/v1/admin/courses/{course_id}", headers=h).get_json()["course"]
     assert tree["modules"][0]["lessons"][0]["title"] == "الدرس 1"
 
+    # regression: deleting a user WITH dependents (enrollment) must not 500
+    victim = c.post("/api/v1/admin/users", headers=h,
+                    json={"name": "v", "email": f"v_{tag}@t.test", "password": "secret12"}).get_json()["user"]
+    with app.app_context():
+        from app.models import Enrollment
+        db.session.add(Enrollment(user_id=victim["id"], course_id=course_id, source="free", status="active"))
+        db.session.commit()
+    assert c.delete(f"/api/v1/admin/users/{victim['id']}", headers=h).status_code == 200
+    # an instructor owning courses cannot be deleted until courses are removed
+    assert c.delete(f"/api/v1/admin/users/{instr_id}", headers=h).status_code == 409
+
     # lesson + module + course delete cascade
     assert c.delete(f"/api/v1/admin/lessons/{l['id']}", headers=h).status_code == 200
     assert c.delete(f"/api/v1/admin/courses/{course_id}", headers=h).status_code == 200

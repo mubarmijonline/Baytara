@@ -122,6 +122,15 @@ def users_delete(uid):
         return jsonify(error="not_found"), 404
     if u.id == _uid():
         return jsonify(error="cannot_delete_self"), 409
+    # instructors owning courses must have them reassigned/deleted first (FK is NOT NULL)
+    if Course.query.filter_by(instructor_id=uid).count():
+        return jsonify(error="user_has_courses"), 409
+    # clear/cascade the user's dependent rows so the delete doesn't hit FK constraints
+    for e in Enrollment.query.filter_by(user_id=uid).all():
+        db.session.delete(e)  # cascades lesson_progress
+    InstapayPayment.query.filter_by(user_id=uid).delete()
+    InstapayPayment.query.filter_by(reviewed_by=uid).update({"reviewed_by": None})
+    Article.query.filter_by(author_id=uid).update({"author_id": None})
     db.session.delete(u)
     db.session.commit()
     return jsonify(deleted=uid)
