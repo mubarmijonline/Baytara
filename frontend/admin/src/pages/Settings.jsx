@@ -72,6 +72,21 @@ export default function Settings() {
         </div>
       ))}
 
+      <div className="card">
+        <h3>مفاتيح API (سرّية)</h3>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
+          لا تظهر هذه المفاتيح في الموقع العام. تُطبّق فور الحفظ (بدون إعادة تشغيل).
+        </p>
+        <Field label="مفتاح VdoCipher السرّي (API Secret)">
+          <input type="password" dir="ltr" value={s.secret_vdocipher || ''}
+            onChange={(e) => setS({ ...s, secret_vdocipher: e.target.value })}
+            placeholder="الصق مفتاح VdoCipher السرّي هنا" />
+        </Field>
+        <div style={{ fontSize: 12, color: s.secret_vdocipher ? 'var(--success)' : 'var(--muted)' }}>
+          {s.secret_vdocipher ? '✓ مضبوط — تشغيل الفيديو مُفعّل' : 'غير مضبوط — تشغيل الفيديو معطّل'}
+        </div>
+      </div>
+
       <ErrText>{err}</ErrText>
       <div className="row" style={{ marginTop: 8 }}>
         <button className="btn btn-filled" onClick={save}>حفظ الإعدادات</button>

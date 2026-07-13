@@ -9,8 +9,8 @@ bp = Blueprint("content", __name__)
 
 @bp.get("/settings")
 def settings():
-    """Public site config as a flat {key: value} map."""
-    return jsonify(settings={s.key: s.value for s in Setting.query.all()})
+    """Public site config. Keys prefixed 'secret_' are admin-only and never exposed."""
+    return jsonify(settings={s.key: s.value for s in Setting.query.all() if not s.key.startswith("secret_")})
 
 
 @bp.get("/articles")

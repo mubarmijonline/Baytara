@@ -22,8 +22,18 @@ class VdoCipherProvider:
 
     @property
     def secret(self):
-        # read lazily so the app boots without the key; only playback needs it
-        return self._secret or os.environ.get("VDOCIPHER_API_SECRET")
+        # priority: explicit > DB setting (admin-managed, applies live) > env
+        if self._secret:
+            return self._secret
+        try:
+            from ..models import Setting
+            from ..extensions import db
+            s = db.session.get(Setting, "secret_vdocipher")
+            if s and s.value:
+                return s.value
+        except Exception:  # noqa: BLE001 — outside app context / table missing
+            pass
+        return os.environ.get("VDOCIPHER_API_SECRET")
 
     def issue_otp(self, video_id, annotate=None, ttl=300):
         if not self.secret:
