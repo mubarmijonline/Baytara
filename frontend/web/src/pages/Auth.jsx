@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { colors } from '../theme/tokens.js';
 import { authPerks } from '../data/mock.js';
 import { useAuth } from '../lib/auth.jsx';
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = params.get('next') || '/dashboard';
   const { login, register } = useAuth();
   const [mode, setMode] = useState('login');
   const isSignup = mode === 'signup';
@@ -20,7 +22,7 @@ export default function Auth() {
     try {
       if (isSignup) await register(f.name, f.email, f.password);
       else await login(f.email, f.password);
-      navigate('/dashboard');
+      navigate(next);
     } catch (e) {
       setErr(
         e.status === 401 ? 'بيانات الدخول غير صحيحة.'

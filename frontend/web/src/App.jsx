@@ -14,6 +14,7 @@ import BlogPost from './pages/BlogPost.jsx';
 import Content from './pages/Content.jsx';
 import Contact from './pages/Contact.jsx';
 import Learn from './pages/Learn.jsx';
+import Buy from './pages/Buy.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:slug" element={<CourseDetail />} />
+        <Route path="/buy/:slug" element={<Buy />} />
         <Route path="/instructors/:id" element={<Instructor />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/business" element={<Business />} />

@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { colors } from '../theme/tokens.js';
 import { plansData, faqs } from '../data/mock.js';
 import { useSettings } from '../lib/api.js';
+import { useAuth } from '../lib/auth.jsx';
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [annual, setAnnual] = useState(true);
   const settings = useSettings();
   const mockPlans = plansData(annual, colors.accent);
@@ -80,7 +82,7 @@ export default function Pricing() {
             </div>
             <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 22 }}>{p.billed}</div>
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate(user ? '/courses' : '/auth')}
               style={{
                 width: '100%',
                 background: p.btnBg,

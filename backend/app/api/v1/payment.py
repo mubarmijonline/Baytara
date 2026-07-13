@@ -88,6 +88,13 @@ def submit_receipt():
     return jsonify(payment=p.to_dict(), ocr_state=parsed.get("state")), 201
 
 
+@bp.get("/payment/instapay/accounts")
+def public_accounts():
+    """Public: the center's active InstaPay handles so students know where to pay."""
+    rows = InstapayAccount.query.filter_by(active=True).all()
+    return jsonify(accounts=[{"account_name": a.account_name, "number": a.number, "url": a.url} for a in rows])
+
+
 @bp.get("/payment/instapay/mine")
 @jwt_required()
 def my_submissions():

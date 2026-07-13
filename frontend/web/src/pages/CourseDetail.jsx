@@ -264,7 +264,7 @@ export default function CourseDetail() {
             </div>
             <div style={{ fontSize: 13, color: colors.muted2, marginBottom: 18 }}>وصول كامل لكل الدورات باشتراك واحد</div>
             <button
-              onClick={() => navigate('/pricing')}
+              onClick={() => navigate(`/buy/${slug}`)}
               style={{
                 width: '100%',
                 background: colors.accent,
@@ -278,7 +278,7 @@ export default function CourseDetail() {
                 marginBottom: 10,
               }}
             >
-              اشترك وابدأ الآن
+              {course.price > 0 ? 'اشترِ الدورة الآن' : 'التسجيل المجاني'}
             </button>
             <button
               style={{
