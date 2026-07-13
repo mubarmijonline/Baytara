@@ -217,13 +217,15 @@ function Hero() {
 }
 
 function StatsBand() {
+  const settings = useSettings();
+  const list = Array.isArray(settings.stats) && settings.stats.length ? settings.stats : stats;
   return (
     <section style={{ background: '#fff', borderBottom: `1px solid ${colors.line}` }}>
       <Container
         className="grid-collapse-sm"
         style={{ padding: '34px 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}
       >
-        {stats.map((s) => (
+        {list.map((s) => (
           <div key={s.label} style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 34, fontWeight: 900, color: colors.ink }}>{s.num}</div>
             <div style={{ fontSize: 15, color: colors.muted, fontWeight: 500, marginTop: 4 }}>{s.label}</div>
@@ -367,6 +369,14 @@ function BusinessBanner() {
 
 function InstructorsSection() {
   const navigate = useNavigate();
+  const { data } = useFetch(() => webapi.instructors(), []);
+  const list = data?.instructors?.length
+    ? data.instructors.map((m, i) => ({
+        id: m.id, name: m.name, title: m.headline || 'مدرّب معتمد',
+        ini: (m.name || '؟').trim().charAt(0), grad: rawInstructors[i % rawInstructors.length].grad,
+        courses: m.courses, students: '—',
+      }))
+    : rawInstructors;
   return (
     <section style={{ background: colors.surfaceMuted, marginTop: 44 }}>
       <Container style={{ padding: '56px 24px' }}>
@@ -382,7 +392,7 @@ function InstructorsSection() {
           className="grid-collapse-sm"
           style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20 }}
         >
-          {rawInstructors.map((m) => (
+          {list.map((m) => (
             <div
               key={m.id}
               className="hover-lift"
@@ -427,6 +437,13 @@ function InstructorsSection() {
 }
 
 function Testimonials() {
+  const settings = useSettings();
+  const list = Array.isArray(settings.testimonials) && settings.testimonials.length
+    ? settings.testimonials.map((t, i) => ({
+        quote: t.quote || t.text || '', name: t.name, role: t.role,
+        ini: (t.name || '؟').trim().charAt(0), grad: testimonials[i % testimonials.length].grad,
+      }))
+    : testimonials;
   return (
     <Container style={{ padding: '60px 24px' }}>
       <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 34px', textAlign: 'center', letterSpacing: '-.5px' }}>
@@ -436,7 +453,7 @@ function Testimonials() {
         className="grid-collapse-sm"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22 }}
       >
-        {testimonials.map((t) => (
+        {list.map((t) => (
           <div
             key={t.name}
             style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 18, padding: 28 }}
@@ -537,6 +554,13 @@ function FinalCta() {
 
 function CategoriesSection() {
   const navigate = useNavigate();
+  const { data } = useFetch(() => webapi.categories(), []);
+  const list = data?.categories?.length
+    ? data.categories.map((c, i) => ({
+        name: c.name, slug: c.slug, count: categories[i % categories.length].count,
+        bg: categories[i % categories.length].bg, letter: (c.name || '؟').trim().charAt(0),
+      }))
+    : categories;
   return (
     <Container style={{ padding: '56px 24px 20px' }}>
       <SectionHeading
@@ -555,7 +579,7 @@ function CategoriesSection() {
         className="grid-collapse-sm"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}
       >
-        {categories.map((c) => (
+        {list.map((c) => (
           <div
             key={c.name}
             className="hover-card"

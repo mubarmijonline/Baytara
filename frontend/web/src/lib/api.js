@@ -54,6 +54,7 @@ export const webapi = {
   courses: (params) => get('/courses' + qs(params)),
   course: (slug) => get('/courses/' + slug),
   categories: () => get('/categories'),
+  instructors: () => get('/instructors'),
   instructor: (id) => get('/instructors/' + id),
   articles: (type) => get('/articles' + qs({ type })),
   article: (slug) => get('/articles/' + slug),

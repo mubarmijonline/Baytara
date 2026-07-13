@@ -45,6 +45,18 @@ def course_detail(slug):
     return jsonify(course=course.to_dict(with_content=True))
 
 
+@bp.get("/instructors")
+def list_instructors():
+    rows = User.query.filter_by(role="instructor", is_active=True).all()
+    out = []
+    for u in rows:
+        cnt = Course.query.filter_by(instructor_id=u.id, status="published").count()
+        p = u.public_profile()
+        p["courses"] = cnt
+        out.append(p)
+    return jsonify(instructors=out)
+
+
 @bp.get("/instructors/<int:user_id>")
 def instructor_profile(user_id):
     user = User.query.filter_by(id=user_id, role="instructor").first()
