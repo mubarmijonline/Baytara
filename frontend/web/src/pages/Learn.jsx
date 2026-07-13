@@ -136,7 +136,7 @@ export default function Learn() {
                     gap: 12,
                     padding: '12px 18px',
                     cursor: 'pointer',
-                    background: isActive ? 'rgba(225,27,34,.14)' : 'transparent',
+                    background: isActive ? 'rgba(18,40,90,.14)' : 'transparent',
                     borderRight: isActive ? `3px solid ${colors.accent}` : '3px solid transparent',
                   }}
                 >

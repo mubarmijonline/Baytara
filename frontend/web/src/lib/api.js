@@ -32,6 +32,7 @@ export const webapi = {
 // Map an API course to the shape the approved design expects (fills display-only fields).
 export function mapCourse(c, i = 0) {
   return {
+    id: c.id,
     title: c.title,
     slug: c.slug,
     instructor: c.instructor?.name || '',
@@ -48,6 +49,13 @@ export function mapCourse(c, i = 0) {
     image: c.image,
     _api: true,
   };
+}
+
+// Site settings hook: returns the {key: value} map (empty object until loaded).
+// Pages read e.g. settings.hero?.title ?? mockDefault.
+export function useSettings() {
+  const { data } = useFetch(() => webapi.settings(), []);
+  return data?.settings || {};
 }
 
 // Fetch hook: returns { data, error, loading }. Deps default to [].

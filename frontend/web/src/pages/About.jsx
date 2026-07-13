@@ -2,6 +2,7 @@ import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
 import { stats } from '../data/mock.js';
+import { useSettings } from '../lib/api.js';
 
 const values = [
   { icon: '🎯', title: 'رسالتنا', desc: 'إتاحة المعرفة البيطرية الاحترافية لكل طبيب وطالب ومربّي حيوان في العالم العربي بلغته الأم.' },
@@ -10,12 +11,14 @@ const values = [
 ];
 
 export default function About() {
+  const settings = useSettings();
+  const about = settings.about || {};
   return (
     <div>
       <PageHero
         breadcrumb="الرئيسية › من نحن"
-        title="من نحن"
-        subtitle="بيطرة منصة تعليمية واستشارية متخصّصة في الطب البيطري والإنتاج الحيواني، تجمع نخبة الخبراء العرب في مكان واحد."
+        title={about.title || 'من نحن'}
+        subtitle={about.body || 'بيطرة منصة تعليمية واستشارية متخصّصة في الطب البيطري والإنتاج الحيواني، تجمع نخبة الخبراء العرب في مكان واحد.'}
       />
       <Container style={{ padding: '50px 24px' }}>
         <div

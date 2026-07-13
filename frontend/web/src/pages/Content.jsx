@@ -2,8 +2,18 @@ import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
 import { freeContent } from '../data/mock.js';
+import { webapi, useFetch } from '../lib/api.js';
 
 export default function Content() {
+  const { data } = useFetch(() => webapi.articles('content'), []);
+  const list = data?.articles?.length
+    ? data.articles.map((a, i) => ({
+        title: a.title,
+        dur: a.excerpt || '',
+        type: 'محتوى',
+        grad: freeContent[i % freeContent.length].grad,
+      }))
+    : freeContent;
   return (
     <div>
       <PageHero
@@ -16,7 +26,7 @@ export default function Content() {
           className="grid-collapse-sm"
           style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 22 }}
         >
-          {freeContent.map((c) => (
+          {list.map((c) => (
             <div
               key={c.title}
               className="hover-lift"

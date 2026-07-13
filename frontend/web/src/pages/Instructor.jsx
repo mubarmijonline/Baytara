@@ -2,19 +2,29 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import { colors, layout } from '../theme/tokens.js';
 import { rawInstructors, rawCourses, expertise } from '../data/mock.js';
+import { webapi, mapCourse, useFetch } from '../lib/api.js';
 
 export default function Instructor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const idx = Number(id) || 0;
-  const mentor = rawInstructors[idx] || rawInstructors[0];
-  let mentorCourses = rawCourses.filter((c) => c.mentorIdx === idx).slice(0, 4);
+  const { data } = useFetch(() => webapi.instructor(id).catch(() => null), [id]);
+  const apiIns = data?.instructor;
+  const mentorMock = rawInstructors[idx] || rawInstructors[0];
+  // real name/title/bio when the instructor exists in the DB; keep mock visual fields (grad, counts)
+  const mentor = apiIns
+    ? { ...mentorMock, name: apiIns.name, title: apiIns.headline || mentorMock.title,
+        bio: apiIns.bio || mentorMock.bio, ini: (apiIns.name || '؟').trim().charAt(0) }
+    : mentorMock;
+  let mentorCourses = data?.courses?.length
+    ? data.courses.map(mapCourse)
+    : rawCourses.filter((c) => c.mentorIdx === idx).slice(0, 4);
   if (!mentorCourses.length) mentorCourses = rawCourses.slice(0, 2);
 
   return (
     <div>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(120deg,#14142b,#2a1a3a)', color: '#fff', padding: '50px 0' }}>
+      <div style={{ background: 'linear-gradient(120deg,#14142b,#12285a)', color: '#fff', padding: '50px 0' }}>
         <Container style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
           <div
             style={{

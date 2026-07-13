@@ -11,9 +11,12 @@ import {
   rawInstructors,
   testimonials,
 } from '../data/mock.js';
+import { webapi, mapCourse, useFetch, useSettings } from '../lib/api.js';
 
 function Hero() {
   const navigate = useNavigate();
+  const settings = useSettings();
+  const hero = settings.hero || {};
   return (
     <section style={{ position: 'relative', background: gradients.hero, color: '#fff', overflow: 'hidden' }}>
       <div
@@ -23,7 +26,7 @@ function Hero() {
           left: -80,
           width: 380,
           height: 380,
-          background: 'radial-gradient(circle, rgba(225,27,34,.45), transparent 70%)',
+          background: 'radial-gradient(circle, rgba(201,162,39,.40), transparent 70%)',
           filter: 'blur(20px)',
         }}
       />
@@ -34,7 +37,7 @@ function Hero() {
           right: -60,
           width: 340,
           height: 340,
-          background: 'radial-gradient(circle, rgba(120,60,220,.35), transparent 70%)',
+          background: 'radial-gradient(circle, rgba(42,90,160,.35), transparent 70%)',
           filter: 'blur(20px)',
         }}
       />
@@ -68,13 +71,17 @@ function Hero() {
             أكثر من 2000 دورة بيطرية بالعربية
           </div>
           <h1 style={{ fontSize: 52, lineHeight: 1.15, fontWeight: 900, margin: '0 0 20px', letterSpacing: '-1px' }}>
-            تعلّم من نخبة الأطباء
-            <br />
-            البيطريين في العالم العربي
+            {hero.title || (
+              <>
+                تعلّم من نخبة الأطباء
+                <br />
+                البيطريين في العالم العربي
+              </>
+            )}
           </h1>
           <p style={{ fontSize: 19, lineHeight: 1.7, color: '#c9c9dc', margin: '0 0 32px', maxWidth: 520 }}>
-            آلاف الدورات في الطب البيطري والإنتاج الحيواني والتشخيص والجراحة، بمحتوى عربي أصيل من خبراء
-            حقيقيين — تعلّم في أي وقت ومن أي مكان.
+            {hero.subtitle ||
+              'آلاف الدورات في الطب البيطري والإنتاج الحيواني والتشخيص والجراحة، بمحتوى عربي أصيل من خبراء حقيقيين — تعلّم في أي وقت ومن أي مكان.'}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 34, flexWrap: 'wrap' }}>
             <button
@@ -135,7 +142,7 @@ function Hero() {
               maxWidth: 420,
               aspectRatio: '4 / 3',
               borderRadius: 20,
-              background: 'linear-gradient(160deg, #2d2d55, #3a2050)',
+              background: 'linear-gradient(160deg, #12285a, #1a3566)',
               border: '1px solid rgba(255,255,255,.12)',
               boxShadow: '0 30px 70px rgba(0,0,0,.4)',
               position: 'relative',
@@ -152,7 +159,7 @@ function Hero() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 12px 34px rgba(225,27,34,.5)',
+                  boxShadow: '0 12px 34px rgba(18,40,90,.5)',
                 }}
               >
                 <span
@@ -177,7 +184,7 @@ function Hero() {
                 background: 'linear-gradient(transparent, rgba(0,0,0,.55))',
               }}
             >
-              <div style={{ fontSize: 13, color: '#d4b3ff', fontWeight: 700 }}>دورة مميّزة</div>
+              <div style={{ fontSize: 13, color: '#e8c766', fontWeight: 700 }}>دورة مميّزة</div>
               <div style={{ fontSize: 18, fontWeight: 800 }}>جراحة الحيوانات الصغيرة</div>
             </div>
           </div>
@@ -307,7 +314,7 @@ function BusinessBanner() {
             left: -40,
             width: 240,
             height: 240,
-            background: 'radial-gradient(circle, rgba(225,27,34,.4), transparent 70%)',
+            background: 'radial-gradient(circle, rgba(201,162,39,.35), transparent 70%)',
             filter: 'blur(10px)',
           }}
         />
@@ -582,14 +589,18 @@ function CategoriesSection() {
 }
 
 export default function Home() {
+  const { data } = useFetch(() => webapi.courses({ per_page: 12 }), []);
+  const apiCourses = data?.courses?.length ? data.courses.map(mapCourse) : null;
+  const trending = apiCourses ? apiCourses.slice(0, 5) : rawCourses.slice(0, 5);
+  const recent = apiCourses ? apiCourses.slice(5, 10) : rawCourses.slice(4, 9);
   return (
     <>
       <Hero />
       <StatsBand />
       <CategoriesSection />
-      <Carousel title="الأكثر رواجاً هذا الأسبوع" badge="🔥 رائج" courses={rawCourses.slice(0, 5)} />
+      <Carousel title="الأكثر رواجاً هذا الأسبوع" badge="🔥 رائج" courses={trending.length ? trending : rawCourses.slice(0, 5)} />
       <BusinessBanner />
-      <Carousel title="أضيفت حديثاً" courses={rawCourses.slice(4, 9)} markNew />
+      <Carousel title="أضيفت حديثاً" courses={recent.length ? recent : rawCourses.slice(4, 9)} markNew />
       <InstructorsSection />
       <Testimonials />
       <FinalCta />

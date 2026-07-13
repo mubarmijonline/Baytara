@@ -1,9 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { colors, layout } from '../theme/tokens.js';
 import { footerCols, socials } from '../data/mock.js';
+import { useSettings } from '../lib/api.js';
 
 export default function Footer() {
   const navigate = useNavigate();
+  const settings = useSettings();
+  const tagline = settings.footer?.tagline;
   return (
     <footer style={{ background: colors.footer, color: '#b6b6cc' }}>
       <div style={{ maxWidth: layout.maxWidth, margin: '0 auto', padding: '56px 24px 30px' }}>
@@ -34,8 +37,8 @@ export default function Footer() {
               }}
             />
             <p style={{ fontSize: 14, lineHeight: 1.7, margin: '0 0 20px', maxWidth: 300 }}>
-              منصة التعلّم البيطري الأولى في العالم العربي — نُتيح المعرفة للأطباء والطلاب ومربّي الحيوان
-              بمحتوى عربي أصيل من نخبة الخبراء.
+              {tagline ||
+                'منصة التعلّم البيطري الأولى في العالم العربي — نُتيح المعرفة للأطباء والطلاب ومربّي الحيوان بمحتوى عربي أصيل من نخبة الخبراء.'}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               {socials.map((s) => (

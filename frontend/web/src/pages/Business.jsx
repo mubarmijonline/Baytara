@@ -5,7 +5,7 @@ import { bizStats, bizFeatures, logos } from '../data/mock.js';
 export default function Business() {
   return (
     <div>
-      <section style={{ background: 'linear-gradient(120deg,#14142b,#2a1a3a)', color: '#fff', padding: '70px 0' }}>
+      <section style={{ background: 'linear-gradient(120deg,#14142b,#12285a)', color: '#fff', padding: '70px 0' }}>
         <Container
           className="grid-collapse-2"
           style={{ display: 'grid', gridTemplateColumns: '1.1fr .9fr', gap: 40, alignItems: 'center' }}

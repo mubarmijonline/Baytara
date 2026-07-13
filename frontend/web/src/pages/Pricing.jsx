@@ -2,11 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { colors } from '../theme/tokens.js';
 import { plansData, faqs } from '../data/mock.js';
+import { useSettings } from '../lib/api.js';
 
 export default function Pricing() {
   const navigate = useNavigate();
   const [annual, setAnnual] = useState(true);
-  const plans = plansData(annual, colors.accent);
+  const settings = useSettings();
+  const mockPlans = plansData(annual, colors.accent);
+  // admin-defined plans override content over the design's styled templates; else mock
+  const plans = Array.isArray(settings.plans) && settings.plans.length
+    ? settings.plans.map((item, i) => ({ ...mockPlans[i % mockPlans.length], ...item }))
+    : mockPlans;
+  const faqList = Array.isArray(settings.faqs) && settings.faqs.length ? settings.faqs : faqs;
 
   const toggleBtn = (active, label, onClick) => (
     <button
@@ -103,7 +110,7 @@ export default function Pricing() {
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '30px 24px 70px' }}>
         <h2 style={{ fontSize: 26, fontWeight: 900, margin: '0 0 22px', textAlign: 'center' }}>الأسئلة الشائعة</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {faqs.map((q) => (
+          {faqList.map((q) => (
             <div key={q.q} style={{ border: `1px solid ${colors.line}`, borderRadius: 14, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 16, fontWeight: 800 }}>
                 <span>{q.q}</span>

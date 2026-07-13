@@ -67,7 +67,7 @@ export default function Auth() {
             left: -60,
             width: 300,
             height: 300,
-            background: 'radial-gradient(circle, rgba(225,27,34,.4), transparent 70%)',
+            background: 'radial-gradient(circle, rgba(18,40,90,.4), transparent 70%)',
             filter: 'blur(20px)',
           }}
         />
