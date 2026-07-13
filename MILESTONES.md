@@ -47,7 +47,8 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
   detail, Instructor, Blog+post, Content, Pricing, About, Contact) + settings-driven chrome
   (hero/about/footer/plans/faqs), mock fallback when API empty.
 - [x] Student app wired: real login/register (JWT), Dashboard → my enrollments + progress %,
-  Learn → real course content + mark-complete → progress. (Real DRM playback = Phase 5.)
+  Learn → real course content + mark-complete → progress, per-lesson progress persisted
+  (`GET /progress?course=slug`, restored on reload). (Real DRM playback = Phase 5.)
 
 ## Phase 4 — Payments (InstaPay: receipt OCR + admin approval)
 - [x] InstaPay account whitelist config (`instapay_account`) + admin CRUD
