@@ -81,7 +81,8 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [ ] Reports, instructor permissions, audit logs, settings (need new backend tables)
 
 ## Phase 8 — Notifications, content/blog, i18n scaffolding, hardening
-- [ ] Notifications (SQL index + Mongo logs)
+- [x] Notifications (SQL) — emitted on payment approve/reject + admin broadcast (all/role); student API
+  (list/unread-count/read/read-all, own-only) + header bell with unread badge. Mongo delivery-log deferred.
 - [~] Free content / blog CMS — backend done (Article model, admin CRUD, public API); admin UI + site wiring pending
 - [~] Site settings (hero/about/contact/socials/plans/faqs) + contact-message inbox — backend done
 - [ ] i18n structure (Arabic default, multilingual-ready)
