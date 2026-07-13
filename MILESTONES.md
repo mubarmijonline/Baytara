@@ -92,7 +92,8 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
   Referrer-Policy, Permissions-Policy; `server_tokens off`) — live: main site, `/admin`, `/api` proxy
 - [x] Gunicorn backend service (`baytara-backend.service`, 127.0.0.1:8090, **8 workers**, gthread)
 - [x] Health check (`/api/v1/health`)
-- [ ] Migrations on deploy (automate); DB backups (automate — manual dumps exist)
+- [x] Migrations on deploy — `deploy/deploy.sh` runs `flask db upgrade` (pull→deps→migrate→restart→build SPAs)
+- [x] DB backups — `baytara-backup.timer` daily 02:30 (pg_dump→gzip→/var/lib/baytara/backups, keep 14)
 - [ ] E2E + UAT → go-live
 
 ## Phase 10 — Mobile-readiness verification
