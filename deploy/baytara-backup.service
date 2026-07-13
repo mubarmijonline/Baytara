@@ -1,0 +1,10 @@
+[Unit]
+Description=Baytara PostgreSQL backup (pg_dump -> gzip, rotate 14)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=ahmeddiab
+Group=ahmeddiab
+ExecStart=/development/projects/baytara/deploy/backup-db.sh
