@@ -9,11 +9,13 @@ import Accounts from './pages/Accounts.jsx';
 import Articles from './pages/Articles.jsx';
 import Messages from './pages/Messages.jsx';
 import Settings from './pages/Settings.jsx';
+import Hierarchy from './pages/Hierarchy.jsx';
 
 const NAV = [
   ['dashboard', 'لوحة القيادة'],
   ['payments', 'مدفوعات إنستاباي'],
   ['courses', 'الدورات'],
+  ['hierarchy', 'الهيكلة'],
   ['categories', 'الفئات'],
   ['articles', 'المحتوى والمدوّنة'],
   ['users', 'المستخدمون'],
@@ -21,7 +23,7 @@ const NAV = [
   ['accounts', 'حسابات إنستاباي'],
   ['settings', 'إعدادات الموقع'],
 ];
-const PAGES = { dashboard: Dashboard, payments: Payments, courses: Courses, categories: Categories, articles: Articles, users: Users, messages: Messages, accounts: Accounts, settings: Settings };
+const PAGES = { dashboard: Dashboard, payments: Payments, courses: Courses, hierarchy: Hierarchy, categories: Categories, articles: Articles, users: Users, messages: Messages, accounts: Accounts, settings: Settings };
 
 export default function Shell({ onLogout }) {
   const [page, setPage] = useState('dashboard');

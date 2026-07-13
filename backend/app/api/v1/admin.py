@@ -190,11 +190,15 @@ def courses_list():
     status = request.args.get("status")
     if status:
         q = q.filter_by(status=status)
+    iid = request.args.get("instructor_id", type=int)
+    if iid:
+        q = q.filter_by(instructor_id=iid)
     search = request.args.get("q")
     if search:
         q = q.filter(Course.title.ilike(f"%{search}%"))
     page = max(request.args.get("page", 1, type=int), 1)
-    pg = db.paginate(q.order_by(Course.created_at.desc()), page=page, per_page=20, error_out=False)
+    per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
+    pg = db.paginate(q.order_by(Course.created_at.desc()), page=page, per_page=per_page, error_out=False)
     return jsonify(courses=[c.to_dict() for c in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
 
 
