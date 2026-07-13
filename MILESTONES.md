@@ -68,10 +68,10 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [ ] Watch logs → MongoDB (deferred — Mongo not provisioned; OTP issuance is already gated)
 - _needs `VDOCIPHER_API_SECRET` in backend/.env to mint real OTPs (verified: gate works, returns no_api_key without it)_
 
-## Phase 6 — Instructor Portal (Material Design 3)
-- [ ] Login + dashboard; own courses/lessons
-- [ ] Add-video (permission-gated); own students/payments/revenue/stats
-- [ ] Strict `instructor_id` isolation (foreign access → 404)
+## Phase 6 — Instructor Portal (Material Design 3) ✅
+- [x] Login + dashboard; own courses/lessons (`frontend/instructor` at `/instructor/`, brand navy/gold)
+- [x] Add-video permission-gated (can_add/edit/delete_video flags, admin-toggled); own students/revenue/stats
+- [x] Strict `instructor_id` isolation — foreign course/module/lesson access → 404 (verified)
 
 ## Phase 7 — Admin Portal (Material Design 3)
 - [x] InstaPay payment review queue (`frontend/admin`): login, list, view receipt, approve/reject
