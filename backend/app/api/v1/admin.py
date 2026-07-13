@@ -133,6 +133,7 @@ def users_delete(uid):
     InstapayPayment.query.filter_by(user_id=uid).delete()
     InstapayPayment.query.filter_by(reviewed_by=uid).update({"reviewed_by": None})
     Article.query.filter_by(author_id=uid).update({"author_id": None})
+    Notification.query.filter_by(user_id=uid).delete()
     db.session.delete(u)
     db.session.commit()
     return jsonify(deleted=uid)

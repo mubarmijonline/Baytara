@@ -76,8 +76,9 @@ def demo():
     victim = c.post("/api/v1/admin/users", headers=h,
                     json={"name": "v", "email": f"v_{tag}@t.test", "password": "secret12"}).get_json()["user"]
     with app.app_context():
-        from app.models import Enrollment
+        from app.models import Enrollment, Notification
         db.session.add(Enrollment(user_id=victim["id"], course_id=course_id, source="free", status="active"))
+        db.session.add(Notification(user_id=victim["id"], type="info", title="x"))
         db.session.commit()
     assert c.delete(f"/api/v1/admin/users/{victim['id']}", headers=h).status_code == 200
     # an instructor owning courses cannot be deleted until courses are removed
