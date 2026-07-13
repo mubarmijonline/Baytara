@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
@@ -89,7 +90,7 @@ export default function Users() {
     catch (e) { toast.error(apiError(e)); }
   }
   async function del(u) {
-    if (!confirm(`حذف ${u.name}؟`)) return;
+    if (!await confirmDialog(`حذف ${u.name}؟`)) return;
     try { await api.userDelete(u.id); load(); }
     catch (e) { toast.error(apiError(e)); }
   }

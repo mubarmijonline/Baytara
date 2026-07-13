@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
@@ -80,7 +81,7 @@ export default function Articles() {
     catch (e) { toast.error(apiError(e)); }
   }
   async function del(a) {
-    if (!confirm(`حذف «${a.title}»؟`)) return;
+    if (!await confirmDialog(`حذف «${a.title}»؟`)) return;
     try { await api.articleDelete(a.id); load(); } catch (e) { toast.error(apiError(e)); }
   }
 

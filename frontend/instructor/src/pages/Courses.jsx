@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
@@ -50,12 +51,12 @@ function CourseContent({ courseId, perms, onClose }) {
   const load = () => api.course(courseId).then((r) => setCourse(r.course)).catch(() => setErr('تعذّر التحميل.'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [courseId]);
 
-  async function addModule() { const t = prompt('عنوان الوحدة'); if (t) { await api.moduleCreate(courseId, { title: t }); load(); } }
-  async function delModule(m) { if (confirm('حذف الوحدة؟')) { await api.moduleDelete(m.id); load(); } }
-  async function addLesson(m) { const t = prompt('عنوان الدرس'); if (t) { await api.lessonCreate(m.id, { title: t }); load(); } }
-  async function delLesson(l) { if (confirm('حذف الدرس؟')) { await api.lessonDelete(l.id); load(); } }
+  async function addModule() { const t = await promptDialog('عنوان الوحدة'); if (t) { await api.moduleCreate(courseId, { title: t }); load(); } }
+  async function delModule(m) { if (await confirmDialog('حذف الوحدة؟')) { await api.moduleDelete(m.id); load(); } }
+  async function addLesson(m) { const t = await promptDialog('عنوان الدرس'); if (t) { await api.lessonCreate(m.id, { title: t }); load(); } }
+  async function delLesson(l) { if (await confirmDialog('حذف الدرس؟')) { await api.lessonDelete(l.id); load(); } }
   async function setVideo(l) {
-    const v = prompt('معرّف فيديو VdoCipher', l.has_video ? '(موجود)' : '');
+    const v = await promptDialog('معرّف فيديو VdoCipher', l.has_video ? '(موجود)' : '');
     if (v === null) return;
     try { await api.lessonUpdate(l.id, { vdocipher_video_id: v || null }); load(); }
     catch (e) {
@@ -124,7 +125,7 @@ export default function Courses() {
     try { await api.courseUpdate(c.id, { status: c.status === 'published' ? 'unpublished' : 'published' }); load(); }
     catch (e) { toast.error(apiError(e)); }
   }
-  async function del(c) { if (confirm(`حذف «${c.title}»؟`)) { try { await api.courseDelete(c.id); load(); } catch (e) { toast.error(apiError(e)); } } }
+  async function del(c) { if (await confirmDialog(`حذف «${c.title}»؟`)) { try { await api.courseDelete(c.id); load(); } catch (e) { toast.error(apiError(e)); } } }
 
   return (
     <>

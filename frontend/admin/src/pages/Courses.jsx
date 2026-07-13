@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
@@ -75,21 +76,21 @@ function CourseContent({ courseId, onClose }) {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [courseId]);
 
   async function addModule() {
-    const title = prompt('عنوان الوحدة');
+    const title = await promptDialog('عنوان الوحدة');
     if (!title) return;
     await api.moduleCreate(courseId, { title, position: (course.modules?.length || 0) });
     load();
   }
-  async function editModule(m) { const t = prompt('عنوان الوحدة', m.title); if (t) { await api.moduleUpdate(m.id, { title: t }); load(); } }
-  async function delModule(m) { if (confirm('حذف الوحدة ودروسها؟')) { await api.moduleDelete(m.id); load(); } }
+  async function editModule(m) { const t = await promptDialog('عنوان الوحدة', m.title); if (t) { await api.moduleUpdate(m.id, { title: t }); load(); } }
+  async function delModule(m) { if (await confirmDialog('حذف الوحدة ودروسها؟')) { await api.moduleDelete(m.id); load(); } }
   async function addLesson(m) {
-    const title = prompt('عنوان الدرس');
+    const title = await promptDialog('عنوان الدرس');
     if (!title) return;
     await api.lessonCreate(m.id, { title, position: (m.lessons?.length || 0) });
     load();
   }
-  async function editLesson(l) { const t = prompt('عنوان الدرس', l.title); if (t) { await api.lessonUpdate(l.id, { title: t }); load(); } }
-  async function delLesson(l) { if (confirm('حذف الدرس؟')) { await api.lessonDelete(l.id); load(); } }
+  async function editLesson(l) { const t = await promptDialog('عنوان الدرس', l.title); if (t) { await api.lessonUpdate(l.id, { title: t }); load(); } }
+  async function delLesson(l) { if (await confirmDialog('حذف الدرس؟')) { await api.lessonDelete(l.id); load(); } }
 
   return (
     <Modal title={course ? `محتوى: ${course.title}` : 'المحتوى'} onClose={onClose}>
@@ -153,7 +154,7 @@ export default function Courses() {
     catch (e) { toast.error(apiError(e)); }
   }
   async function del(c) {
-    if (!confirm(`حذف «${c.title}» وكل محتواها؟`)) return;
+    if (!await confirmDialog(`حذف «${c.title}» وكل محتواها؟`)) return;
     try { await api.courseDelete(c.id); load(); }
     catch (e) { toast.error(apiError(e)); }
   }

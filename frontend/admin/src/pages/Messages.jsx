@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
@@ -19,7 +20,7 @@ export default function Messages() {
     try { await api.messageUpdate(m.id, { is_read: !m.is_read }); load(); } catch (e) { toast.error(apiError(e)); }
   }
   async function del(m) {
-    if (!confirm('حذف الرسالة؟')) return;
+    if (!await confirmDialog('حذف الرسالة؟')) return;
     try { await api.messageDelete(m.id); load(); } catch (e) { toast.error(apiError(e)); }
   }
 

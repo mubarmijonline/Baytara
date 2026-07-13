@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api, fetchReceipt } from '../api.js';
@@ -19,7 +20,7 @@ function PaymentCard({ p, onAction }) {
   async function act(kind) {
     setErr('');
     let reason;
-    if (kind === 'reject') { reason = window.prompt('سبب الرفض؟'); if (reason === null) return; }
+    if (kind === 'reject') { reason = await promptDialog('سبب الرفض؟'); if (reason === null) return; }
     setBusy(true);
     try {
       if (kind === 'approve') await api.approve(p.id); else await api.reject(p.id, reason);

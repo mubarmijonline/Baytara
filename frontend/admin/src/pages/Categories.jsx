@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
@@ -21,13 +22,13 @@ export default function Categories() {
     catch (e) { toast.error(apiError(e)); }
   }
   async function rename(c) {
-    const n = prompt('الاسم الجديد', c.name);
+    const n = await promptDialog('الاسم الجديد', c.name);
     if (!n) return;
     try { await api.categoryUpdate(c.id, { name: n }); load(); }
     catch (e) { toast.error(apiError(e)); }
   }
   async function del(c) {
-    if (!confirm(`حذف الفئة ${c.name}؟`)) return;
+    if (!await confirmDialog(`حذف الفئة ${c.name}؟`)) return;
     try { await api.categoryDelete(c.id); load(); }
     catch (e) { toast.error(apiError(e) === 'category_in_use' ? 'الفئة مستخدمة في دورات.' : apiError(e)); }
   }
