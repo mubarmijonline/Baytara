@@ -48,7 +48,8 @@ def stats():
 def _user_json(u):
     return {"id": u.id, "name": u.name, "email": u.email, "role": u.role,
             "is_active": u.is_active, "created_at": u.created_at.isoformat() if u.created_at else None,
-            "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or []}
+            "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or [],
+            "can_add_video": u.can_add_video, "can_edit_video": u.can_edit_video, "can_delete_video": u.can_delete_video}
 
 
 @bp.get("/users")
@@ -107,7 +108,8 @@ def users_update(uid):
         u.is_active = bool(d["is_active"])
     if d.get("password"):
         u.password_hash = hash_password(d["password"])
-    for f in ("headline", "bio", "avatar_url", "expertise"):
+    for f in ("headline", "bio", "avatar_url", "expertise",
+              "can_add_video", "can_edit_video", "can_delete_video"):
         if f in d:
             setattr(u, f, d[f])
     db.session.commit()

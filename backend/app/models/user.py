@@ -26,6 +26,11 @@ class User(db.Model):
     avatar_url = db.Column(db.String(500))
     expertise = db.Column(db.JSON)  # list[str]
 
+    # instructor video permission flags (admin-toggled; defaults per plan §10)
+    can_add_video = db.Column(db.Boolean, nullable=False, default=True, server_default=db.text("true"))
+    can_edit_video = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    can_delete_video = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
+
     def public_profile(self):
         return {
             "id": self.id,
