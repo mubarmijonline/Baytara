@@ -61,9 +61,12 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [ ] Admin Portal UI for the review queue (Phase 7) + purchase-success notification (Phase 8)
 
 ## Phase 5 — VdoCipher video protection
-- [ ] Store `vdocipher_video_id`; no public URLs
-- [ ] Backend access validation → OTP/playbackInfo
-- [ ] Dynamic watermark; watch logs → MongoDB
+- [x] Store `vdocipher_video_id` on lessons (admin-editable); no public URLs, `has_video` flag only
+- [x] Backend access validation → OTP/playbackInfo (`POST /video/playback`, enrollment-gated,
+  VideoProvider abstraction); Learn renders the VdoCipher iframe player
+- [x] Dynamic watermark (viewer name/email/id baked into the OTP annotate)
+- [ ] Watch logs → MongoDB (deferred — Mongo not provisioned; OTP issuance is already gated)
+- _needs `VDOCIPHER_API_SECRET` in backend/.env to mint real OTPs (verified: gate works, returns no_api_key without it)_
 
 ## Phase 6 — Instructor Portal (Material Design 3)
 - [ ] Login + dashboard; own courses/lessons
