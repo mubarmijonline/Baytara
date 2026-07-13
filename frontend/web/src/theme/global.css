@@ -125,3 +125,11 @@ textarea {
 .toast-success .toast-icon { background: #1a7f4b; }
 .toast-error .toast-icon { background: #b3261e; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+/* enhanced selects */
+select { appearance: none; -webkit-appearance: none; background-color: #fff;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2312285a' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat: no-repeat; background-position: left 12px center;
+  border: 1px solid #ececf2; border-radius: 10px; padding: 10px 14px; padding-inline-start: 34px;
+  font: inherit; font-weight: 700; color: #14142b; cursor: pointer; }
+select:focus { outline: none; border-color: #12285a; box-shadow: 0 0 0 3px #eef2fb; }

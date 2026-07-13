@@ -14,7 +14,7 @@ export default function Courses() {
 
   // Real API data when present; otherwise the approved mock catalog (keeps the design full).
   const apiCourses = coursesData?.courses?.length ? coursesData.courses.map(mapCourse) : null;
-  const allCourses = apiCourses || rawCourses;
+  const allCourses = apiCourses || [];
   const catList = catsData?.categories?.length
     ? catsData.categories.map((c) => ({ name: c.name, count: undefined }))
     : categories;
@@ -115,6 +115,11 @@ export default function Courses() {
             className="grid-collapse-sm"
             style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}
           >
+            {catalog.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: colors.muted, padding: '50px 0' }}>
+                لا توجد دورات منشورة بعد.
+              </div>
+            )}
             {catalog.map((c) => (
               <div
                 key={c.id}

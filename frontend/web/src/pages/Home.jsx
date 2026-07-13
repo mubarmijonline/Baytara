@@ -615,16 +615,16 @@ function CategoriesSection() {
 export default function Home() {
   const { data } = useFetch(() => webapi.courses({ per_page: 12 }), []);
   const apiCourses = data?.courses?.length ? data.courses.map(mapCourse) : null;
-  const trending = apiCourses ? apiCourses.slice(0, 5) : rawCourses.slice(0, 5);
-  const recent = apiCourses ? apiCourses.slice(5, 10) : rawCourses.slice(4, 9);
+  const trending = apiCourses ? apiCourses.slice(0, 5) : [];
+  const recent = apiCourses ? apiCourses.slice(5, 10) : [];
   return (
     <>
       <Hero />
       <StatsBand />
       <CategoriesSection />
-      <Carousel title="الأكثر رواجاً هذا الأسبوع" badge="🔥 رائج" courses={trending.length ? trending : rawCourses.slice(0, 5)} />
+      {trending.length > 0 && <Carousel title="الأكثر رواجاً هذا الأسبوع" badge="🔥 رائج" courses={trending} />}
       <BusinessBanner />
-      <Carousel title="أضيفت حديثاً" courses={recent.length ? recent : rawCourses.slice(4, 9)} markNew />
+      {recent.length > 0 && <Carousel title="أضيفت حديثاً" courses={recent} markNew />}
       <InstructorsSection />
       <Testimonials />
       <FinalCta />
