@@ -1,7 +1,37 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { colors, gradients, layout } from '../theme/tokens.js';
-import { isAuthed, auth } from '../lib/api.js';
+import { auth } from '../lib/api.js';
+import { useAuth } from '../lib/auth.jsx';
+
+function UserMenu() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: 'relative' }}>
+      <div
+        onClick={() => setOpen((o) => !o)}
+        title="حسابي"
+        style={{ width: 42, height: 42, borderRadius: '50%', background: gradients.avatar, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, cursor: 'pointer', flex: 'none' }}
+      >
+        {(user?.name || '?').trim().charAt(0)}
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', insetInlineEnd: 0, top: 48, width: 220, background: '#fff',
+          border: '1px solid #ececf2', borderRadius: 14, boxShadow: '0 18px 44px rgba(20,20,43,.18)', zIndex: 60, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid #f0f0f4' }}>
+            <div style={{ fontWeight: 800, fontSize: 14 }}>{user?.name}</div>
+            <div style={{ fontSize: 12, color: '#6b6b7b', direction: 'ltr', textAlign: 'right' }}>{user?.email}</div>
+          </div>
+          <div onClick={() => { setOpen(false); navigate('/dashboard'); }} style={{ padding: '11px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>لوحتي</div>
+          <div onClick={() => { logout(); setOpen(false); navigate('/'); }} style={{ padding: '11px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 14, color: '#12285a', borderTop: '1px solid #f0f0f4' }}>تسجيل الخروج</div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -86,6 +116,7 @@ const NAV = [
 
 export default function Header() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const go = (to) => {
@@ -229,7 +260,7 @@ export default function Header() {
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginInlineStart: 'auto' }}>
-            {!isAuthed() && (
+            {!user && (
               <button
                 className="hide-sm"
                 onClick={() => navigate('/auth')}
@@ -262,26 +293,8 @@ export default function Header() {
             >
               اشترك الآن
             </button>
-            {isAuthed() && <NotificationBell />}
-            <div
-              onClick={() => navigate('/dashboard')}
-              title="لوحتي"
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: '50%',
-                background: gradients.avatar,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 800,
-                cursor: 'pointer',
-                flex: 'none',
-              }}
-            >
-              م
-            </div>
+            {user && <NotificationBell />}
+            {user && <UserMenu />}
             <button
               className="show-md"
               aria-label="القائمة"
@@ -336,9 +349,14 @@ export default function Header() {
                 {label}
               </span>
             ))}
+            {user && (
+              <span onClick={() => go('/dashboard')} style={{ padding: '12px 4px', cursor: 'pointer', fontWeight: 700, borderBottom: `1px solid ${colors.line2}` }}>
+                لوحتي ({user.name})
+              </span>
+            )}
             <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
               <button
-                onClick={() => go('/auth')}
+                onClick={() => { if (user) { logout(); go('/'); } else { go('/auth'); } }}
                 style={{
                   flex: 1,
                   background: colors.surfaceAlt,
@@ -351,7 +369,7 @@ export default function Header() {
                   cursor: 'pointer',
                 }}
               >
-                تسجيل الدخول
+                {user ? 'تسجيل الخروج' : 'تسجيل الدخول'}
               </button>
               <button
                 onClick={() => go('/pricing')}

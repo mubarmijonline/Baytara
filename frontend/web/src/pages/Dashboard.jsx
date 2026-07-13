@@ -3,20 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { dashNav, dashStats, rawCourses } from '../data/mock.js';
-import { auth, webapi, mapCourse, isAuthed, logout } from '../lib/api.js';
+import { auth, webapi, mapCourse } from '../lib/api.js';
+import { useAuth } from '../lib/auth.jsx';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user, logout, loading } = useAuth();
   const [enrollments, setEnrollments] = useState(null);
   const [recs, setRecs] = useState([]);
 
   useEffect(() => {
-    if (!isAuthed()) { navigate('/auth'); return; }
-    auth.me().then((r) => setUser(r.user)).catch((e) => { if (e.status === 401) navigate('/auth'); });
+    if (!loading && !user) { navigate('/auth'); return; }
+    if (!user) return;
     auth.enrollments().then((r) => setEnrollments(r.enrollments)).catch(() => setEnrollments([]));
     webapi.courses({ per_page: 6 }).then((r) => setRecs((r.courses || []).map(mapCourse))).catch(() => {});
-  }, [navigate]);
+  }, [user, loading, navigate]);
 
   const name = user?.name || '';
   const myCourses = (enrollments || []).map((e, i) => {

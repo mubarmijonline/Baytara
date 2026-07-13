@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { colors } from '../theme/tokens.js';
 import { authPerks } from '../data/mock.js';
-import { auth, setToken } from '../lib/api.js';
+import { useAuth } from '../lib/auth.jsx';
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { login, register } = useAuth();
   const [mode, setMode] = useState('login');
   const isSignup = mode === 'signup';
   const title = isSignup ? 'إنشاء حساب جديد' : 'تسجيل الدخول';
@@ -17,10 +18,8 @@ export default function Auth() {
   async function submit() {
     setErr(''); setBusy(true);
     try {
-      const res = isSignup
-        ? await auth.register({ name: f.name, email: f.email, password: f.password })
-        : await auth.login({ email: f.email, password: f.password });
-      setToken(res.access_token);
+      if (isSignup) await register(f.name, f.email, f.password);
+      else await login(f.email, f.password);
       navigate('/dashboard');
     } catch (e) {
       setErr(
