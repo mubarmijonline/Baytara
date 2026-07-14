@@ -1,8 +1,15 @@
 import { Container } from '../components/Primitives.jsx';
-import { colors, gradients } from '../theme/tokens.js';
-import { bizStats, bizFeatures, logos } from '../data/mock.js';
+import { colors, gradients, categoryGradients } from '../theme/tokens.js';
+import { useSettings } from '../lib/api.js';
+
+const FEATURE_BG = Object.values(categoryGradients);
 
 export default function Business() {
+  const settings = useSettings();
+  const biz = settings.business || {};
+  const bizStats = Array.isArray(biz.stats) ? biz.stats : [];
+  const bizFeatures = Array.isArray(biz.features) ? biz.features : [];
+  const logos = Array.isArray(biz.logos) ? biz.logos : [];
   return (
     <div>
       <section style={{ background: 'linear-gradient(120deg,#14142b,#12285a)', color: '#fff', padding: '70px 0' }}>
@@ -49,69 +56,52 @@ export default function Business() {
               </button>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            {bizStats.map((b) => (
-              <div
-                key={b.label}
-                style={{ background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 16, padding: 22 }}
-              >
-                <div style={{ fontSize: 30, fontWeight: 900 }}>{b.num}</div>
-                <div style={{ fontSize: 14, color: '#b6b6cc' }}>{b.label}</div>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      <Container style={{ padding: '60px 24px' }}>
-        <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 8px', textAlign: 'center' }}>لماذا تختارنا العيادات والمزارع</h2>
-        <p style={{ textAlign: 'center', color: colors.muted, fontSize: 16, margin: '0 0 40px' }}>
-          كل ما تحتاجه لبناء ثقافة تعلّم مستمرة داخل مؤسستك
-        </p>
-        <div
-          className="grid-collapse-sm"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22 }}
-        >
-          {bizFeatures.map((f) => (
-            <div key={f.title} style={{ border: `1px solid ${colors.line}`, borderRadius: 18, padding: 28 }}>
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 14,
-                  background: f.bg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 16,
-                  fontSize: 22,
-                  color: '#fff',
-                  fontWeight: 900,
-                }}
-              >
-                {f.icon}
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>{f.title}</div>
-              <p style={{ fontSize: 15, color: colors.muted, lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
+          {bizStats.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              {bizStats.map((b) => (
+                <div key={b.label} style={{ background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 16, padding: 22 }}>
+                  <div style={{ fontSize: 30, fontWeight: 900 }}>{b.num}</div>
+                  <div style={{ fontSize: 14, color: '#b6b6cc' }}>{b.label}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </Container>
+          )}
+        </Container>
+      </section>
 
-      <section style={{ background: colors.surfaceMuted }}>
-        <Container style={{ padding: '46px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: colors.muted2, marginBottom: 24 }}>
-            تثق بنا أكثر من 900 عيادة ومزرعة في المنطقة
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 40, flexWrap: 'wrap', opacity: 0.5 }}>
-            {logos.map((l, i) => (
-              <div key={i} style={{ fontSize: 22, fontWeight: 900, color: colors.muted }}>
-                {l}
+      {bizFeatures.length > 0 && (
+        <Container style={{ padding: '60px 24px' }}>
+          <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 8px', textAlign: 'center' }}>لماذا تختارنا العيادات والمزارع</h2>
+          <p style={{ textAlign: 'center', color: colors.muted, fontSize: 16, margin: '0 0 40px' }}>
+            كل ما تحتاجه لبناء ثقافة تعلّم مستمرة داخل مؤسستك
+          </p>
+          <div className="grid-collapse-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22 }}>
+            {bizFeatures.map((f, i) => (
+              <div key={i} style={{ border: `1px solid ${colors.line}`, borderRadius: 18, padding: 28 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: FEATURE_BG[i % FEATURE_BG.length],
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 22, color: '#fff', fontWeight: 900 }}>
+                  {f.icon || '★'}
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>{f.title}</div>
+                <p style={{ fontSize: 15, color: colors.muted, lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
               </div>
             ))}
           </div>
         </Container>
-      </section>
+      )}
+
+      {logos.length > 0 && (
+        <section style={{ background: colors.surfaceMuted }}>
+          <Container style={{ padding: '46px 24px', textAlign: 'center' }}>
+            {biz.trust && <div style={{ fontSize: 14, fontWeight: 700, color: colors.muted2, marginBottom: 24 }}>{biz.trust}</div>}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 40, flexWrap: 'wrap', opacity: 0.5 }}>
+              {logos.map((l, i) => (
+                <div key={i} style={{ fontSize: 22, fontWeight: 900, color: colors.muted }}>{l}</div>
+              ))}
+            </div>
+          </Container>
+        </section>
+      )}
 
       <section style={{ maxWidth: 900, margin: '0 auto', padding: '60px 24px' }}>
         <div style={{ background: gradients.accentCta, borderRadius: 24, padding: 46, textAlign: 'center', color: '#fff' }}>
