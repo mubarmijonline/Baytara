@@ -14,6 +14,7 @@ const JSON_KEYS = [
   ['plans', 'خطط الاشتراك (JSON)'],
   ['faqs', 'الأسئلة الشائعة (JSON)'],
   ['testimonials', 'آراء العملاء (JSON)'],
+  ['business', 'صفحة الأعمال — {stats:[{num,label}], features:[{icon,title,desc}], logos:[], trust} (JSON)'],
 ];
 
 export default function Settings() {
