@@ -68,7 +68,7 @@ function Hero() {
             }}
           >
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.accent }} />
-            أكثر من 2000 دورة بيطرية بالعربية
+            منصة التعلّم البيطري الأولى عربياً
           </div>
           <h1 style={{ fontSize: 52, lineHeight: 1.15, fontWeight: 900, margin: '0 0 20px', letterSpacing: '-1px' }}>
             {hero.title || (
@@ -218,7 +218,7 @@ function Hero() {
 
 function StatsBand() {
   const settings = useSettings();
-  const list = Array.isArray(settings.stats) && settings.stats.length ? settings.stats : stats;
+  const list = Array.isArray(settings.stats) && settings.stats.length ? settings.stats : [];
   return (
     <section style={{ background: '#fff', borderBottom: `1px solid ${colors.line}` }}>
       <Container
@@ -376,7 +376,7 @@ function InstructorsSection() {
         ini: (m.name || '؟').trim().charAt(0), grad: rawInstructors[i % rawInstructors.length].grad,
         courses: m.courses, students: '—',
       }))
-    : rawInstructors;
+    : [];
   return (
     <section style={{ background: colors.surfaceMuted, marginTop: 44 }}>
       <Container style={{ padding: '56px 24px' }}>
@@ -443,7 +443,7 @@ function Testimonials() {
         quote: t.quote || t.text || '', name: t.name, role: t.role,
         ini: (t.name || '؟').trim().charAt(0), grad: testimonials[i % testimonials.length].grad,
       }))
-    : testimonials;
+    : [];
   return (
     <Container style={{ padding: '60px 24px' }}>
       <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 34px', textAlign: 'center', letterSpacing: '-.5px' }}>
@@ -560,7 +560,7 @@ function CategoriesSection() {
         name: c.name, slug: c.slug, count: categories[i % categories.length].count,
         bg: categories[i % categories.length].bg, letter: (c.name || '؟').trim().charAt(0),
       }))
-    : categories;
+    : [];
   return (
     <Container style={{ padding: '56px 24px 20px' }}>
       <SectionHeading

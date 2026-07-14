@@ -13,7 +13,7 @@ export default function Content() {
         type: 'محتوى',
         grad: freeContent[i % freeContent.length].grad,
       }))
-    : freeContent;
+    : [];
   return (
     <div>
       <PageHero

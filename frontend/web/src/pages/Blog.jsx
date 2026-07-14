@@ -10,8 +10,18 @@ export default function Blog() {
   const { data } = useFetch(() => webapi.articles('blog'), []);
   const list = data?.articles?.length
     ? data.articles.map((a) => ({ ...a, date: (a.published_at || a.created_at || '').slice(0, 10), read: '' }))
-    : articles;
+    : [];
   const [featured, ...rest] = list;
+
+  if (!featured) {
+    return (
+      <div>
+        <PageHero breadcrumb="الرئيسية › المدوّنة" title="المدوّنة والمقالات التوعوية"
+          subtitle="مقالات ونصائح بيطرية من خبرائنا." />
+        <div style={{ textAlign: 'center', color: colors.muted, padding: '70px 0' }}>لا توجد مقالات منشورة بعد.</div>
+      </div>
+    );
+  }
 
   return (
     <div>

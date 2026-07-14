@@ -15,16 +15,14 @@ export default function Courses() {
   // Real API data when present; otherwise the approved mock catalog (keeps the design full).
   const apiCourses = coursesData?.courses?.length ? coursesData.courses.map(mapCourse) : null;
   const allCourses = apiCourses || [];
-  const catList = catsData?.categories?.length
-    ? catsData.categories.map((c) => ({ name: c.name, count: undefined }))
-    : categories;
+  const catList = catsData?.categories?.length ? catsData.categories.map((c) => ({ name: c.name })) : [];
 
-  const filterCats = [{ key: 'all', name: 'كل التخصّصات', count: 2000 }].concat(
-    catList.map((c) => ({ key: c.name, name: c.name, count: c.count })),
+  // real counts computed from real courses — no fake numbers
+  const filterCats = [{ key: 'all', name: 'كل التخصّصات', count: allCourses.length }].concat(
+    catList.map((c) => ({ key: c.name, name: c.name, count: allCourses.filter((x) => x.cat === c.name).length })),
   );
 
-  const visible = filter === 'all' ? allCourses : allCourses.filter((c) => c.cat === filter);
-  const catalog = visible.length ? visible : allCourses;
+  const catalog = filter === 'all' ? allCourses : allCourses.filter((c) => c.cat === filter);
 
   return (
     <div>
@@ -34,7 +32,7 @@ export default function Courses() {
           <div style={{ fontSize: 13, color: '#b6b6cc', marginBottom: 10 }}>الرئيسية › الدورات</div>
           <h1 style={{ fontSize: 38, fontWeight: 900, margin: '0 0 8px' }}>استكشف كل الدورات</h1>
           <p style={{ fontSize: 17, color: '#c9c9dc', margin: 0 }}>
-            أكثر من 2000 دورة في 19 تخصّصاً بيطرياً — اعثر على ما يناسب هدفك.
+            {allCourses.length > 0 ? `${allCourses.length} دورة بيطرية — اعثر على ما يناسب هدفك.` : 'اعثر على ما يناسب هدفك.'}
           </p>
         </Container>
       </div>
