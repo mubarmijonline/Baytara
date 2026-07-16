@@ -43,8 +43,9 @@ export default function Buy() {
   const [accounts, setAccounts] = useState([]);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [state, setState] = useState('idle'); // idle | working | done | error
-  const [result, setResult] = useState(null); // parsed payment from OCR
+  const [state, setState] = useState('idle'); // idle | analyzing | analyzed | working | done | error
+  const [analysis, setAnalysis] = useState(null); // preview OCR analysis (nothing saved yet)
+  const [result, setResult] = useState(null); // final submitted payment
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
@@ -62,7 +63,27 @@ export default function Buy() {
   function pick(f) {
     if (!f) return;
     setFile(f);
+    setAnalysis(null);
+    setState('idle');
     setPreview((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(f); });
+  }
+
+  async function analyze(e) {
+    e.preventDefault();
+    if (!file) { toast.error('أرفق صورة إيصال إنستاباي أولاً'); return; }
+    setState('analyzing'); setMsg(''); setAnalysis(null);
+    try {
+      const r = await auth.analyzeReceipt(course.id, file);
+      setAnalysis(r);
+      setState('analyzed');
+    } catch (err) {
+      const er = err.data && err.data.error;
+      setState('error');
+      const m = er === 'already_enrolled' ? 'أنت مسجّل بالفعل في هذه الدورة.'
+        : er === 'unsupported_media_type' ? 'صيغة الصورة غير مدعومة (JPG/PNG/WEBP).'
+        : 'تعذّر تحليل الإيصال. حاول مجدداً.';
+      setMsg(m); toast.error(m);
+    }
   }
 
   function copy(text) {
@@ -78,8 +99,7 @@ export default function Buy() {
     }
   }
 
-  async function submitReceipt(e) {
-    e.preventDefault();
+  async function submitReceipt() {
     if (!file) { toast.error('أرفق صورة إيصال إنستاباي أولاً'); return; }
     setState('working'); setMsg('');
     try {
@@ -99,6 +119,19 @@ export default function Buy() {
   }
 
   if (!course) return <Container style={{ padding: 60 }}><div style={{ color: colors.muted }}>{msg || 'جارٍ التحميل…'}</div></Container>;
+
+  // analysis checks — ALL must be green to allow proceeding
+  const p = analysis?.parsed || {};
+  const checks = analysis ? [
+    { label: 'الرقم المرجعي', ok: !!val(p.reference), value: val(p.reference) || 'غير موجود' },
+    { label: 'غير مستخدم سابقاً (معلّق/معتمد)', ok: !analysis.reference_used, value: analysis.reference_used ? 'مستخدم من قبل!' : 'جديد ✓' },
+    { label: 'المبلغ المحوّل', ok: typeof p.total_amount === 'number', value: typeof p.total_amount === 'number' ? `${p.total_amount} EGP` : 'غير موجود' },
+    { label: `يغطي سعر الدورة (${analysis.expected_amount} ${course.currency})`, ok: !!analysis.amount_matches_price, value: analysis.amount_matches_price ? 'كافٍ' : 'أقل من السعر' },
+    { label: 'تطابق المبالغ (الإجمالي − الرسوم)', ok: p.is_total_amount_correct === true, value: p.is_total_amount_correct ? 'متطابقة' : 'غير متطابقة' },
+    { label: 'حساب المستقبِل حساب المنصة', ok: p.ogs_account_found === 'Exist', value: p.ogs_account_found === 'Exist' ? 'موثّق' : 'غير موثّق' },
+    { label: 'صحة الإيصال', ok: p.transaction_approved === 'Transaction Approved', value: p.transaction_approved === 'Transaction Approved' ? 'معاملة ناجحة' : 'غير مؤكدة' },
+  ] : [];
+  const allGreen = checks.length > 0 && checks.every((c) => c.ok);
 
   const card = { background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 18, padding: 24, boxShadow: '0 8px 30px rgba(30,42,94,.05)' };
   const btn = { background: colors.accent, border: 'none', borderRadius: 12, color: '#fff', fontSize: 16, fontWeight: 800, padding: '13px 26px', cursor: 'pointer' };
@@ -223,8 +256,8 @@ export default function Buy() {
               )}
             </div>
 
-            {/* step 2: upload */}
-            <form onSubmit={submitReceipt} style={card}>
+            {/* step 2: upload + analyze */}
+            <form onSubmit={analyze} style={card}>
               <h3 style={{ margin: '0 0 10px', fontSize: 17 }}>٢ · ارفع صورة الإيصال</h3>
               <label htmlFor="receipt" style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -244,9 +277,53 @@ export default function Buy() {
                   onChange={(e) => pick(e.target.files[0])} />
               </label>
               {file && <div style={{ fontSize: 13, color: colors.muted, marginTop: 8 }}>{file.name}</div>}
-              <button type="submit" disabled={state === 'working' || !file} style={{ ...btn, width: '100%', marginTop: 14, opacity: state === 'working' || !file ? 0.6 : 1 }}>
-                {state === 'working' ? 'جارٍ الرفع والتحليل الآلي…' : 'إرسال الإيصال للمراجعة'}
-              </button>
+
+              {state !== 'analyzed' && state !== 'working' && (
+                <button type="submit" disabled={state === 'analyzing' || !file}
+                  style={{ ...btn, width: '100%', marginTop: 14, opacity: state === 'analyzing' || !file ? 0.6 : 1 }}>
+                  {state === 'analyzing' ? '⏳ جارٍ الرفع والتحليل الآلي…' : 'تحليل الإيصال'}
+                </button>
+              )}
+
+              {state === 'analyzing' && (
+                <div style={{ textAlign: 'center', padding: '18px 0 4px', color: colors.muted, fontSize: 14 }}>
+                  <span style={{ display: 'inline-block', width: 22, height: 22, border: `3px solid ${colors.line}`,
+                    borderTopColor: colors.accent, borderRadius: '50%', animation: 'spin .8s linear infinite',
+                    verticalAlign: 'middle', marginInlineEnd: 8 }} />
+                  يُحلَّل الإيصال آلياً (OCR)…
+                  <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+                </div>
+              )}
+
+              {(state === 'analyzed' || state === 'working') && analysis && (
+                <div style={{ marginTop: 16 }}>
+                  <h4 style={{ margin: '0 0 10px', fontSize: 15 }}>نتيجة التحليل الآلي</h4>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {checks.map((c, i) => (
+                      <Check key={i} ok={c.ok} warn={!c.ok} label={c.label} value={c.value} />
+                    ))}
+                  </div>
+                  {allGreen ? (
+                    <button type="button" onClick={submitReceipt} disabled={state === 'working'}
+                      style={{ ...btn, width: '100%', marginTop: 14, background: '#1a7f4b' }}>
+                      {state === 'working' ? '…' : '✓ كل الفحوصات ناجحة — إرسال طلب الدفع'}
+                    </button>
+                  ) : (
+                    <div style={{ marginTop: 14, padding: '12px 14px', background: '#fdecea', border: '1px solid #f5c6c2', borderRadius: 10, fontSize: 13, color: '#b3261e', fontWeight: 700 }}>
+                      {analysis.reference_used
+                        ? 'هذا الإيصال مستخدم من قبل (طلب معلّق أو معتمد) — لا يمكن إعادة استخدامه.'
+                        : 'بعض الفحوصات لم تنجح — تأكد من وضوح الصورة وصحة التحويل ثم أعد التحليل.'}
+                      <div style={{ marginTop: 10 }}>
+                        <button type="button" onClick={() => { setFile(null); setPreview(null); setAnalysis(null); setState('idle'); }}
+                          style={{ ...btn, background: 'transparent', color: colors.accent, border: `1.5px solid ${colors.accent}`, padding: '8px 18px', fontSize: 14 }}>
+                          اختيار صورة أخرى
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {msg && <p style={{ color: '#b3261e', marginTop: 12, fontWeight: 700, fontSize: 14 }}>{msg}</p>}
               <p style={{ fontSize: 12, color: colors.muted, margin: '12px 0 0', textAlign: 'center' }}>
                 يُحلَّل الإيصال آلياً (OCR) للتحقق من الرقم المرجعي والمبلغ وحساب المستقبِل، ثم يعتمده فريق الإدارة.

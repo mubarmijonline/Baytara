@@ -26,6 +26,57 @@ def _uid():
 
 # ----------------------------- student -----------------------------
 
+@bp.post("/payment/instapay/analyze")
+@jwt_required()
+def analyze_receipt():
+    """Preview step: OCR-parse the uploaded receipt + run all validations (incl. reference
+    dedup against pending/approved) WITHOUT creating a payment. Nothing is persisted."""
+    course_id = request.form.get("course_id", type=int)
+    file = request.files.get("image")
+    course = Course.query.filter_by(id=course_id, status="published").first() if course_id else None
+    if not course:
+        return jsonify(error="course_not_found"), 404
+    if Enrollment.query.filter_by(user_id=_uid(), course_id=course.id, status="active").first():
+        return jsonify(error="already_enrolled"), 409
+    if not file or file.filename == "":
+        return jsonify(error="image_required"), 400
+    if file.mimetype not in ALLOWED_TYPES:
+        return jsonify(error="unsupported_media_type", allowed=sorted(ALLOWED_TYPES)), 415
+
+    import tempfile
+    fd, tmp = tempfile.mkstemp(suffix=os.path.splitext(secure_filename(file.filename))[1] or ".png")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            file.save(f)
+        try:
+            text = extract_text(tmp)
+            ocr_ok = True
+        except Exception:  # noqa: BLE001
+            text, ocr_ok = "No text found", False
+    finally:
+        os.unlink(tmp)
+
+    accounts = InstapayAccount.query.filter_by(active=True).all()
+    parsed = parse_receipt(text, accounts)
+
+    # MUST: reference not already used in a pending or approved payment
+    ref = _num(parsed.get("reference"))
+    reference_used = bool(ref) and InstapayPayment.query.filter(
+        InstapayPayment.reference == ref,
+        InstapayPayment.status.in_(("pending", "approved")),
+    ).first() is not None
+
+    expected = float(course.price)
+    amount = parsed.get("total_amount")
+    return jsonify(
+        parsed=parsed,
+        ocr_ok=ocr_ok,
+        reference_used=reference_used,
+        expected_amount=expected,
+        amount_matches_price=(isinstance(amount, (int, float)) and float(amount) >= expected),
+    )
+
+
 @bp.post("/payment/instapay")
 @jwt_required()
 def submit_receipt():

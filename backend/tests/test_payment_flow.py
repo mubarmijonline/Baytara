@@ -78,6 +78,14 @@ def demo():
     sh = {"Authorization": f"Bearer {_token(c, f's_{tag}@t.test')}"}
     ah = {"Authorization": f"Bearer {_token(c, f'ad_{tag}@t.test', role='admin', app=app)}"}
 
+    # analyze (preview): parsed + reference not yet used, nothing persisted
+    an = c.post("/api/v1/payment/instapay/analyze", data={"course_id": course_id, "image": _img()},
+                content_type="multipart/form-data", headers=sh)
+    assert an.status_code == 200, an.get_json()
+    ab = an.get_json()
+    assert ab["parsed"]["reference"] == ref and ab["reference_used"] is False
+    assert ab["parsed"]["ogs_account_found"] == "Exist"
+
     # submit receipt -> pending, parsed reference + navy-account validated
     r = c.post("/api/v1/payment/instapay", data={"course_id": course_id, "image": _img()},
                content_type="multipart/form-data", headers=sh)
@@ -91,6 +99,11 @@ def demo():
     assert c.get(f"/api/v1/admin/payments/{pid}/receipt", headers=sh).status_code == 403
     rc = c.get(f"/api/v1/admin/payments/{pid}/receipt", headers=ah)
     assert rc.status_code == 200 and rc.data == b"\x89PNG fake receipt bytes"
+
+    # analyze again after submit: reference now flagged as used (pending)
+    an2 = c.post("/api/v1/payment/instapay/analyze", data={"course_id": course2_id, "image": _img()},
+                 content_type="multipart/form-data", headers=sh)
+    assert an2.get_json()["reference_used"] is True
 
     # duplicate reference rejected
     dup = c.post("/api/v1/payment/instapay", data={"course_id": course_id, "image": _img()},

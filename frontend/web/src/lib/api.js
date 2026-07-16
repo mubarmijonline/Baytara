@@ -48,21 +48,24 @@ export const auth = {
   notifications: () => authFetch('/notifications'),
   notifRead: (id) => authFetch(`/notifications/${id}/read`, { method: 'POST' }),
   notifReadAll: () => authFetch('/notifications/read-all', { method: 'POST' }),
-  // multipart receipt upload (don't set Content-Type — browser sets the boundary)
-  submitReceipt: async (courseId, file) => {
-    const fd = new FormData();
-    fd.append('course_id', courseId);
-    fd.append('image', file);
-    const r = await fetch(BASE + '/payment/instapay', {
-      method: 'POST',
-      headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
-      body: fd,
-    });
-    const data = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
-    if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
-    return data;
-  },
+  // multipart receipt endpoints (don't set Content-Type — browser sets the boundary)
+  submitReceipt: (courseId, file) => sendReceipt('/payment/instapay', courseId, file),
+  analyzeReceipt: (courseId, file) => sendReceipt('/payment/instapay/analyze', courseId, file),
 };
+
+async function sendReceipt(path, courseId, file) {
+  const fd = new FormData();
+  fd.append('course_id', courseId);
+  fd.append('image', file);
+  const r = await fetch(BASE + path, {
+    method: 'POST',
+    headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
+    body: fd,
+  });
+  const data = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+  if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
+  return data;
+}
 
 export const webapi = {
   courses: (params) => get('/courses' + qs(params)),
