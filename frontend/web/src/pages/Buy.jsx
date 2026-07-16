@@ -64,16 +64,14 @@ export default function Buy() {
     if (!f) return;
     setFile(f);
     setAnalysis(null);
-    setState('idle');
     setPreview((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(f); });
+    runAnalyze(f); // auto-analyze on upload
   }
 
-  async function analyze(e) {
-    e.preventDefault();
-    if (!file) { toast.error('أرفق صورة إيصال إنستاباي أولاً'); return; }
+  async function runAnalyze(f) {
     setState('analyzing'); setMsg(''); setAnalysis(null);
     try {
-      const r = await auth.analyzeReceipt(course.id, file);
+      const r = await auth.analyzeReceipt(course.id, f);
       setAnalysis(r);
       setState('analyzed');
     } catch (err) {
@@ -257,7 +255,7 @@ export default function Buy() {
             </div>
 
             {/* step 2: upload + analyze */}
-            <form onSubmit={analyze} style={card}>
+            <form onSubmit={(e) => { e.preventDefault(); if (file) runAnalyze(file); }} style={card}>
               <h3 style={{ margin: '0 0 10px', fontSize: 17 }}>٢ · ارفع صورة الإيصال</h3>
               <label htmlFor="receipt" style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -281,7 +279,7 @@ export default function Buy() {
               {state !== 'analyzed' && state !== 'working' && (
                 <button type="submit" disabled={state === 'analyzing' || !file}
                   style={{ ...btn, width: '100%', marginTop: 14, opacity: state === 'analyzing' || !file ? 0.6 : 1 }}>
-                  {state === 'analyzing' ? '⏳ جارٍ الرفع والتحليل الآلي…' : 'تحليل الإيصال'}
+                  {state === 'analyzing' ? '⏳ جارٍ الرفع والتحليل الآلي…' : 'إعادة التحليل'}
                 </button>
               )}
 
