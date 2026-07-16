@@ -1,17 +1,27 @@
+/* Brand fonts (served locally) */
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Light.woff2') format('woff2'); font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Medium.woff2') format('woff2'); font-weight: 500 600; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Black.woff2') format('woff2'); font-weight: 800 900; font-display: swap; }
+@font-face { font-family: 'Stolzl'; src: url('/fonts/stolzl_book.otf') format('opentype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Stolzl'; src: url('/fonts/stolzl_medium.otf') format('opentype'); font-weight: 500 600; font-display: swap; }
+@font-face { font-family: 'Stolzl'; src: url('/fonts/stolzl_bold.otf') format('opentype'); font-weight: 700 900; font-display: swap; }
+
 /* Admin Portal theme.
    Material Design 3 structure, but the palette is the Baytara brand (navy/gold) — NO M3 purple.
    Brand vars are the source of truth; M3 sys-color names are aliased onto them. */
 :root {
-  /* brand palette (from frontend/web theme tokens: navy #12285a, gold #c9a227) */
-  --primary: #12285a;
+  /* brand palette (from frontend/web theme tokens: navy #3048A0, gold #E9BE43) */
+  --primary: #3048A0;
   --on-primary: #ffffff;
   --primary-container: #eef2fb;
-  --on-primary-container: #0d1f47;
-  --gold: #c9a227;
+  --on-primary-container: #16255C;
+  --gold: #E9BE43;
   --surface: #ffffff;
   --surface-container: #f5f5f8;
   --surface-container-high: #eef2fb;
-  --text: #14142b;
+  --text: #1E2A5E;
   --muted: #6b6b7b;
   --border: #ececf2;
   --error: #b3261e;
@@ -31,7 +41,7 @@
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: 'Tajawal', system-ui, sans-serif;
+  font-family: 'Thmanyah', 'Stolzl', system-ui, sans-serif;
   background: var(--surface-container);
   color: var(--text);
 }
@@ -148,7 +158,7 @@ body {
 .stat .lbl { color: var(--muted); font-size: 13px; margin-top: 4px; }
 
 /* ---- modal ---- */
-.modal-bg { position: fixed; inset: 0; background: rgba(10,23,48,0.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+.modal-bg { position: fixed; inset: 0; background: rgba(20,30,66,0.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
 .modal { background: var(--surface); border-radius: 18px; padding: 22px; width: 460px; max-width: 100%; max-height: 90vh; overflow-y: auto; }
 .modal h3 { margin: 0 0 16px; }
 
@@ -157,7 +167,7 @@ body {
   display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
 .toast { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 10px;
   background: var(--surface); color: var(--text); border: 1px solid var(--border); border-inline-start: 4px solid var(--primary);
-  border-radius: 12px; padding: 13px 18px; font-size: 14px; font-weight: 700; box-shadow: 0 12px 34px rgba(10,23,48,.18);
+  border-radius: 12px; padding: 13px 18px; font-size: 14px; font-weight: 700; box-shadow: 0 12px 34px rgba(20,30,66,.18);
   animation: toastIn .22s ease; min-width: 260px; }
 .toast-success { border-inline-start-color: var(--success); }
 .toast-error { border-inline-start-color: var(--error); }
@@ -170,7 +180,7 @@ body {
 
 /* ---- enhanced selects/dropdowns ---- */
 select { appearance: none; -webkit-appearance: none; background-color: var(--surface);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2312285a' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233048A0' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
   background-repeat: no-repeat; background-position: left 12px center;
   border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; padding-inline-start: 34px;
   font: inherit; font-weight: 700; color: var(--text); cursor: pointer; min-width: 130px; transition: border-color .15s; }
