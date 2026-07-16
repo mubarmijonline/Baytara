@@ -78,6 +78,13 @@ POWERED BY
     assert r2["ogs_account_found"] == "Exist"
     assert r2["note"] == "Living Expenses"
 
+    # real ipn.eg link format: BOTH identifiers (phone / @instapay handle) match one account row
+    real_link = [{"account_name": "B", "number": "01024527770",
+                  "url": "https://ipn.eg/S/ahmeddiab171293/instapay/924UO3"}]
+    for recv in ("01024527770", "ahmeddiab171293@instapay"):
+        rr = parse_receipt(REAL.replace("01024527770", recv), real_link)
+        assert rr["receiver_account"] == recv and rr["ogs_account_found"] == "Exist", (recv, rr["ogs_account_found"])
+
     # empty / no text
     assert parse_receipt("No text found", OGS)["state"] == "No text found"
 
