@@ -24,8 +24,8 @@ export default function CourseDetail() {
           </div>
           <span
             style={{
-              background: 'rgba(201,162,39,.22)',
-              color: '#e8c766',
+              background: 'rgba(233,190,67,.22)',
+              color: '#F5D877',
               fontSize: 12,
               fontWeight: 800,
               padding: '6px 12px',
@@ -252,7 +252,7 @@ export default function CourseDetail() {
                   height: 0,
                   borderTop: '10px solid transparent',
                   borderBottom: '10px solid transparent',
-                  borderRight: '16px solid #14142b',
+                  borderRight: '16px solid #1E2A5E',
                   marginRight: -3,
                 }}
               />

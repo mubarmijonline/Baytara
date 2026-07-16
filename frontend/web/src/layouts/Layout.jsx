@@ -11,7 +11,7 @@ export default function Layout() {
   }, [pathname]);
 
   return (
-    <div style={{ background: '#fff', color: '#14142b', minHeight: '100vh', overflowX: 'hidden' }}>
+    <div style={{ background: '#fff', color: '#1E2A5E', minHeight: '100vh', overflowX: 'hidden' }}>
       <Header />
       <main className="am-fade" key={pathname}>
         <Outlet />

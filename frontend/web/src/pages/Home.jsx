@@ -26,7 +26,7 @@ function Hero() {
           left: -80,
           width: 380,
           height: 380,
-          background: 'radial-gradient(circle, rgba(201,162,39,.40), transparent 70%)',
+          background: 'radial-gradient(circle, rgba(233,190,67,.40), transparent 70%)',
           filter: 'blur(20px)',
         }}
       />
@@ -37,7 +37,7 @@ function Hero() {
           right: -60,
           width: 340,
           height: 340,
-          background: 'radial-gradient(circle, rgba(42,90,160,.35), transparent 70%)',
+          background: 'radial-gradient(circle, rgba(67,86,166,.35), transparent 70%)',
           filter: 'blur(20px)',
         }}
       />
@@ -142,7 +142,7 @@ function Hero() {
               maxWidth: 420,
               aspectRatio: '4 / 3',
               borderRadius: 20,
-              background: 'linear-gradient(160deg, #12285a, #1a3566)',
+              background: 'linear-gradient(160deg, #3048A0, #24357A)',
               border: '1px solid rgba(255,255,255,.12)',
               boxShadow: '0 30px 70px rgba(0,0,0,.4)',
               position: 'relative',
@@ -159,7 +159,7 @@ function Hero() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 12px 34px rgba(18,40,90,.5)',
+                  boxShadow: '0 12px 34px rgba(48,72,160,.5)',
                 }}
               >
                 <span
@@ -184,7 +184,7 @@ function Hero() {
                 background: 'linear-gradient(transparent, rgba(0,0,0,.55))',
               }}
             >
-              <div style={{ fontSize: 13, color: '#e8c766', fontWeight: 700 }}>دورة مميّزة</div>
+              <div style={{ fontSize: 13, color: '#F5D877', fontWeight: 700 }}>دورة مميّزة</div>
               <div style={{ fontSize: 18, fontWeight: 800 }}>جراحة الحيوانات الصغيرة</div>
             </div>
           </div>
@@ -316,7 +316,7 @@ function BusinessBanner() {
             left: -40,
             width: 240,
             height: 240,
-            background: 'radial-gradient(circle, rgba(201,162,39,.35), transparent 70%)',
+            background: 'radial-gradient(circle, rgba(233,190,67,.35), transparent 70%)',
             filter: 'blur(10px)',
           }}
         />

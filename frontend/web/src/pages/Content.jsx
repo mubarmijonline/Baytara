@@ -70,7 +70,7 @@ export default function Content() {
                       height: 0,
                       borderTop: '9px solid transparent',
                       borderBottom: '9px solid transparent',
-                      borderRight: '14px solid #14142b',
+                      borderRight: '14px solid #1E2A5E',
                       marginRight: -3,
                     }}
                   />

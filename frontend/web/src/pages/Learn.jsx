@@ -78,7 +78,7 @@ export default function Learn() {
   }
 
   return (
-    <div style={{ background: '#0a1730', minHeight: '100vh', color: '#fff' }}>
+    <div style={{ background: '#141E42', minHeight: '100vh', color: '#fff' }}>
       <div
         style={{
           maxWidth: layout.maxWidth,
@@ -136,7 +136,7 @@ export default function Learn() {
                     height: 0,
                     borderTop: '14px solid transparent',
                     borderBottom: '14px solid transparent',
-                    borderRight: '22px solid #14142b',
+                    borderRight: '22px solid #1E2A5E',
                     marginRight: -4,
                   }}
                 />
@@ -191,7 +191,7 @@ export default function Learn() {
         </div>
 
         {/* Playlist */}
-        <aside style={{ background: '#171730', borderRadius: 16, overflow: 'hidden' }}>
+        <aside style={{ background: '#1B2A66', borderRadius: 16, overflow: 'hidden' }}>
           <div style={{ padding: '18px 18px 12px', fontSize: 16, fontWeight: 900 }}>محتوى الدورة</div>
           <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             {safeFlat.map((l, i) => {
@@ -209,7 +209,7 @@ export default function Learn() {
                     gap: 12,
                     padding: '12px 18px',
                     cursor: 'pointer',
-                    background: isActive ? 'rgba(18,40,90,.14)' : 'transparent',
+                    background: isActive ? 'rgba(48,72,160,.14)' : 'transparent',
                     borderRight: isActive ? `3px solid ${colors.accent}` : '3px solid transparent',
                   }}
                 >

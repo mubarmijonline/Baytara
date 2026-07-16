@@ -1,6 +1,16 @@
+/* Brand fonts (brand_identity kit, served locally) */
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Light.woff2') format('woff2'); font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Medium.woff2') format('woff2'); font-weight: 500 600; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('/fonts/thmanyahsans-Black.woff2') format('woff2'); font-weight: 800 900; font-display: swap; }
+@font-face { font-family: 'Stolzl'; src: url('/fonts/stolzl_book.otf') format('opentype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Stolzl'; src: url('/fonts/stolzl_medium.otf') format('opentype'); font-weight: 500 600; font-display: swap; }
+@font-face { font-family: 'Stolzl'; src: url('/fonts/stolzl_bold.otf') format('opentype'); font-weight: 700 900; font-display: swap; }
+
 :root {
-  --accent: #12285a;
-  --ink: #14142b;
+  --accent: #3048A0;
+  --ink: #1E2A5E;
   --muted: #6b6b7b;
   --line: #ececf2;
 }
@@ -16,9 +26,9 @@ body {
 }
 
 body {
-  font-family: 'Tajawal', system-ui, sans-serif;
+  font-family: 'Thmanyah', 'Stolzl', system-ui, sans-serif;
   background: #ffffff;
-  color: #14142b;
+  color: #1E2A5E;
   overflow-x: hidden;
 }
 
@@ -118,18 +128,18 @@ textarea {
 
 /* toast notifications */
 .toaster { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
-.toast { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 10px; background: #fff; color: #14142b; border: 1px solid #ececf2; border-inline-start: 4px solid #12285a; border-radius: 12px; padding: 13px 18px; font-size: 14px; font-weight: 700; box-shadow: 0 12px 34px rgba(10,23,48,.18); animation: toastIn .22s ease; min-width: 260px; }
+.toast { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 10px; background: #fff; color: #1E2A5E; border: 1px solid #ececf2; border-inline-start: 4px solid #3048A0; border-radius: 12px; padding: 13px 18px; font-size: 14px; font-weight: 700; box-shadow: 0 12px 34px rgba(20,30,66,.18); animation: toastIn .22s ease; min-width: 260px; }
 .toast-success { border-inline-start-color: #1a7f4b; }
 .toast-error { border-inline-start-color: #b3261e; }
-.toast-icon { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #fff; flex: none; background: #12285a; }
+.toast-icon { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #fff; flex: none; background: #3048A0; }
 .toast-success .toast-icon { background: #1a7f4b; }
 .toast-error .toast-icon { background: #b3261e; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 
 /* enhanced selects */
 select { appearance: none; -webkit-appearance: none; background-color: #fff;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2312285a' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233048A0' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
   background-repeat: no-repeat; background-position: left 12px center;
   border: 1px solid #ececf2; border-radius: 10px; padding: 10px 14px; padding-inline-start: 34px;
-  font: inherit; font-weight: 700; color: #14142b; cursor: pointer; }
-select:focus { outline: none; border-color: #12285a; box-shadow: 0 0 0 3px #eef2fb; }
+  font: inherit; font-weight: 700; color: #1E2A5E; cursor: pointer; }
+select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2fb; }

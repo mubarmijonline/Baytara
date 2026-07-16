@@ -26,7 +26,7 @@ function UserMenu() {
             <div style={{ fontSize: 12, color: '#6b6b7b', direction: 'ltr', textAlign: 'right' }}>{user?.email}</div>
           </div>
           <div onClick={() => { setOpen(false); navigate('/dashboard'); }} style={{ padding: '11px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>لوحتي</div>
-          <div onClick={() => { logout(); setOpen(false); navigate('/'); }} style={{ padding: '11px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 14, color: '#12285a', borderTop: '1px solid #f0f0f4' }}>تسجيل الخروج</div>
+          <div onClick={() => { logout(); setOpen(false); navigate('/'); }} style={{ padding: '11px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 14, color: '#3048A0', borderTop: '1px solid #f0f0f4' }}>تسجيل الخروج</div>
         </div>
       )}
     </div>
@@ -182,15 +182,13 @@ export default function Header() {
           }}
         >
           <img
-            src="/baytara_logo.jpeg"
-            alt="بيطرة"
+            src="/brand/logo-blue.png"
+            alt="بيطرة BAYTARA"
             onClick={() => navigate('/')}
             style={{
-              height: 48,
-              width: 156,
-              objectFit: 'cover',
-              objectPosition: 'center',
-              borderRadius: 10,
+              height: 44,
+              width: 'auto',
+              objectFit: 'contain',
               cursor: 'pointer',
               flex: 'none',
             }}

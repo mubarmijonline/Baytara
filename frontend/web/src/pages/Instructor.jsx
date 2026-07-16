@@ -24,7 +24,7 @@ export default function Instructor() {
   return (
     <div>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(120deg,#14142b,#12285a)', color: '#fff', padding: '50px 0' }}>
+      <div style={{ background: 'linear-gradient(120deg,#1E2A5E,#3048A0)', color: '#fff', padding: '50px 0' }}>
         <Container style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
           <div
             style={{

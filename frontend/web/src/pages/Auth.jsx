@@ -75,7 +75,7 @@ export default function Auth() {
       <div
         className="hide-md"
         style={{
-          background: 'linear-gradient(150deg,#14142b,#2d1730)',
+          background: 'linear-gradient(150deg,#1E2A5E,#16255C)',
           color: '#fff',
           padding: 60,
           display: 'flex',
@@ -92,7 +92,7 @@ export default function Auth() {
             left: -60,
             width: 300,
             height: 300,
-            background: 'radial-gradient(circle, rgba(18,40,90,.4), transparent 70%)',
+            background: 'radial-gradient(circle, rgba(48,72,160,.4), transparent 70%)',
             filter: 'blur(20px)',
           }}
         />

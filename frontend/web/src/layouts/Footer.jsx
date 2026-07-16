@@ -22,15 +22,13 @@ export default function Footer() {
         >
           <div>
             <img
-              src="/baytara_logo.jpeg"
-              alt="بيطرة"
+              src="/brand/logo-white.png"
+              alt="بيطرة BAYTARA"
               onClick={() => navigate('/')}
               style={{
-                height: 58,
-                width: 188,
-                objectFit: 'cover',
-                objectPosition: 'center',
-                borderRadius: 12,
+                height: 54,
+                width: 'auto',
+                objectFit: 'contain',
                 marginBottom: 16,
                 cursor: 'pointer',
                 display: 'block',
