@@ -50,6 +50,34 @@ def demo():
     declined = parse_receipt("Total Amount 5 EGP\nsome random text\n", OGS)
     assert declined["transaction_approved"] == "Transaction Declined", declined
 
+    # REAL InstaPay app layout (user-provided sample): amount before label, "To Instapay"
+    # header, masked receiver name, phone receiver, same-line Reference, no Total/Fees
+    REAL = """Transaction Successful
+2,000 EGP
+Transfer Amount
+QNB
+From
+ahmed1209@instapay
+AHMED MOHAMED ADEL BAHGAT STAFF
+To Instapay
+AHMED I***** I****** H*****
+01024527770
+Reference 259913032469
+Date: 26 Jun 2026 12:35 PM
+Note Living Expenses
+POWERED BY
+"""
+    real_ogs = [{"account_name": "OGS", "number": "01024527770", "url": "https://ipn.eg/x/instapay"}]
+    r2 = parse_receipt(REAL, real_ogs)
+    assert r2["transaction_approved"] == "Transaction Approved"
+    assert r2["total_amount"] == 2000 and r2["fees"] == 0 and r2["is_total_amount_correct"] is True
+    assert r2["reference"] == "259913032469", r2["reference"]
+    assert r2["date"] == "26 Jun 2026 12:35 PM"
+    assert r2["receiver_hash"].startswith("AHMED I"), r2["receiver_hash"]
+    assert r2["receiver_account"] == "01024527770", r2["receiver_account"]
+    assert r2["ogs_account_found"] == "Exist"
+    assert r2["note"] == "Living Expenses"
+
     # empty / no text
     assert parse_receipt("No text found", OGS)["state"] == "No text found"
 
