@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from ..extensions import db
 
@@ -8,6 +8,11 @@ ENROLL_STATUSES = ("active", "revoked")
 
 def _now():
     return datetime.now(timezone.utc)
+
+
+def _aware(dt):
+    """Postgres may hand back naive datetimes; treat them as UTC for comparison."""
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 class Enrollment(db.Model):
@@ -20,9 +25,32 @@ class Enrollment(db.Model):
     source = db.Column(db.String(20), nullable=False, default="free")
     status = db.Column(db.String(20), nullable=False, default="active")
     enrolled_at = db.Column(db.DateTime(timezone=True), default=_now)
+    # Access Duration (contract البند3): NULL = lifetime; else access ends at this instant.
+    expires_at = db.Column(db.DateTime(timezone=True))
 
     course = db.relationship("Course")
     progress = db.relationship("LessonProgress", back_populates="enrollment", cascade="all, delete-orphan")
+
+    def is_expired(self):
+        return self.expires_at is not None and _aware(self.expires_at) <= _now()
+
+    def has_access(self):
+        return self.status == "active" and not self.is_expired()
+
+    @staticmethod
+    def compute_expiry(access_days, base=None):
+        """expires_at for a given access window; None (lifetime) when access_days is falsy."""
+        if not access_days:
+            return None
+        return (base or _now()) + timedelta(days=int(access_days))
+
+    def extend(self, access_days):
+        """Renewal: extend from the later of now / current expiry (never shorten)."""
+        if not access_days:
+            self.expires_at = None
+            return
+        base = max(_now(), _aware(self.expires_at)) if self.expires_at else _now()
+        self.expires_at = base + timedelta(days=int(access_days))
 
     def completion(self):
         """(-> percent int, completed int, total int) computed from lesson_progress."""
@@ -38,13 +66,15 @@ class Enrollment(db.Model):
         percent = round(completed / total * 100) if total else 0
         return percent, completed, total
 
-    def to_dict(self):
+    def to_dict(self, lang="ar"):
         percent, completed, total = self.completion()
         return {
             "id": self.id,
-            "course": self.course.to_dict() if self.course else None,
+            "course": self.course.to_dict(lang=lang) if self.course else None,
             "source": self.source,
             "status": self.status,
+            "expires_at": _aware(self.expires_at).isoformat() if self.expires_at else None,
+            "is_expired": self.is_expired(),
             "progress": {"percent": percent, "completed_lessons": completed, "total_lessons": total},
         }
 

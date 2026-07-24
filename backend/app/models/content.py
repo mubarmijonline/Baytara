@@ -32,9 +32,12 @@ class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(20), nullable=False, default="blog", index=True)
     title = db.Column(db.String(250), nullable=False)
+    title_en = db.Column(db.String(250))
     slug = db.Column(db.String(280), unique=True, nullable=False, index=True)
     excerpt = db.Column(db.String(500))
+    excerpt_en = db.Column(db.String(500))
     body = db.Column(db.Text, nullable=False, default="")
+    body_en = db.Column(db.Text)
     cover = db.Column(db.String(500))
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
@@ -43,13 +46,17 @@ class Article(db.Model):
 
     author = db.relationship("User")
 
-    def to_dict(self, full=False):
+    def to_dict(self, full=False, lang="ar"):
+        def loc(base, en):
+            return en if (lang == "en" and en) else base
         d = {
             "id": self.id,
             "type": self.type,
-            "title": self.title,
+            "title": loc(self.title, self.title_en),
+            "title_en": self.title_en,
             "slug": self.slug,
-            "excerpt": self.excerpt,
+            "excerpt": loc(self.excerpt, self.excerpt_en),
+            "excerpt_en": self.excerpt_en,
             "cover": self.cover,
             "status": self.status,
             "author": self.author.name if self.author else None,
@@ -57,7 +64,8 @@ class Article(db.Model):
             "published_at": self.published_at.isoformat() if self.published_at else None,
         }
         if full:
-            d["body"] = self.body
+            d["body"] = loc(self.body, self.body_en)
+            d["body_en"] = self.body_en
         return d
 
 

@@ -3,6 +3,7 @@ from marshmallow import Schema, ValidationError, fields, validate
 
 from ...extensions import db
 from ...models import Setting, Article, ContactMessage
+from ...utils import req_lang
 
 bp = Blueprint("content", __name__)
 
@@ -22,7 +23,9 @@ def articles():
     page = max(request.args.get("page", 1, type=int), 1)
     pg = db.paginate(q.order_by(Article.published_at.desc().nullslast(), Article.created_at.desc()),
                      page=page, per_page=12, error_out=False)
-    return jsonify(articles=[a.to_dict() for a in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
+    lang = req_lang()
+    return jsonify(articles=[a.to_dict(lang=lang) for a in pg.items],
+                   total=pg.total, page=pg.page, pages=pg.pages)
 
 
 @bp.get("/articles/<slug>")
@@ -30,7 +33,7 @@ def article(slug):
     a = Article.query.filter_by(slug=slug, status="published").first()
     if not a:
         return jsonify(error="not_found"), 404
-    return jsonify(article=a.to_dict(full=True))
+    return jsonify(article=a.to_dict(full=True, lang=req_lang()))
 
 
 class ContactSchema(Schema):

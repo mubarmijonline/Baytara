@@ -6,9 +6,10 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
 from ...extensions import db
-from ...models import Course, Enrollment, InstapayAccount, InstapayPayment, push_notification
+from ...models import Bundle, Course, Enrollment, InstapayAccount, InstapayPayment, push_notification
 from ...security import require_role
 from ...services.instapay_ocr import parse_receipt, extract_text
+from ...utils import renewal_percent
 
 bp = Blueprint("payment", __name__)
 
@@ -24,20 +25,89 @@ def _uid():
     return int(get_jwt_identity())
 
 
+def _resolve_target(kind, course_id, bundle_id, uid):
+    """Validate the purchase target and compute the expected InstaPay amount.
+    Returns (ctx dict, error_tuple). ctx has: kind, course, bundle, expected, title."""
+    if kind == "bundle":
+        bundle = Bundle.query.filter_by(id=bundle_id, status="published").first() if bundle_id else None
+        if not bundle:
+            return None, (jsonify(error="bundle_not_found"), 404)
+        # already fully enrolled in every course?
+        cids = [c.id for c in bundle.courses]
+        if cids:
+            active = {e.course_id for e in Enrollment.query.filter(
+                Enrollment.user_id == uid, Enrollment.course_id.in_(cids), Enrollment.status == "active"
+            ).all() if not e.is_expired()}
+            if set(cids) <= active:
+                return None, (jsonify(error="already_enrolled"), 409)
+        return {"kind": "bundle", "course": None, "bundle": bundle,
+                "expected": float(bundle.price), "title": bundle.title}, None
+
+    course = Course.query.filter_by(id=course_id, status="published").first() if course_id else None
+    if not course:
+        return None, (jsonify(error="course_not_found"), 404)
+    enr = Enrollment.query.filter_by(user_id=uid, course_id=course.id, status="active").first()
+
+    if kind == "renewal":
+        if not enr:
+            return None, (jsonify(error="not_enrolled"), 409)
+        if not course.access_days:
+            return None, (jsonify(error="course_is_lifetime"), 409)  # nothing to renew
+        expected = round(float(course.price) * renewal_percent() / 100.0, 2)
+        return {"kind": "renewal", "course": course, "bundle": None,
+                "expected": expected, "title": course.title}, None
+
+    # default: enroll
+    if enr and not enr.is_expired():
+        return None, (jsonify(error="already_enrolled"), 409)
+    return {"kind": "enroll", "course": course, "bundle": None,
+            "expected": float(course.price), "title": course.title}, None
+
+
+def _enroll_course(uid, course, access_days):
+    """Upsert an active enrollment; bump enrolled_count only on first enrollment.
+    A repurchase/reactivation starts a fresh access window."""
+    enr = Enrollment.query.filter_by(user_id=uid, course_id=course.id).first()
+    if enr:
+        enr.status = "active"
+        enr.expires_at = Enrollment.compute_expiry(access_days)
+    else:
+        enr = Enrollment(user_id=uid, course_id=course.id, source="purchase", status="active",
+                         expires_at=Enrollment.compute_expiry(access_days))
+        db.session.add(enr)
+        course.enrolled_count = (course.enrolled_count or 0) + 1
+    return enr
+
+
 # ----------------------------- student -----------------------------
+
+@bp.get("/payment/quote")
+@jwt_required()
+def payment_quote():
+    """Expected InstaPay amount + title for an enroll/renewal/bundle purchase (shown
+    to the student before they upload the receipt)."""
+    kind = request.args.get("kind", "enroll")
+    ctx, err = _resolve_target(kind, request.args.get("course_id", type=int),
+                               request.args.get("bundle_id", type=int), _uid())
+    if err:
+        body, code = err
+        return body, code
+    return jsonify(kind=ctx["kind"], expected_amount=ctx["expected"], title=ctx["title"],
+                   renewal_percent=renewal_percent() if kind == "renewal" else None)
+
 
 @bp.post("/payment/instapay/analyze")
 @jwt_required()
 def analyze_receipt():
     """Preview step: OCR-parse the uploaded receipt + run all validations (incl. reference
     dedup against pending/approved) WITHOUT creating a payment. Nothing is persisted."""
-    course_id = request.form.get("course_id", type=int)
+    kind = request.form.get("kind", "enroll")
+    ctx, err = _resolve_target(kind, request.form.get("course_id", type=int),
+                               request.form.get("bundle_id", type=int), _uid())
+    if err:
+        body, code = err
+        return body, code
     file = request.files.get("image")
-    course = Course.query.filter_by(id=course_id, status="published").first() if course_id else None
-    if not course:
-        return jsonify(error="course_not_found"), 404
-    if Enrollment.query.filter_by(user_id=_uid(), course_id=course.id, status="active").first():
-        return jsonify(error="already_enrolled"), 409
     if not file or file.filename == "":
         return jsonify(error="image_required"), 400
     if file.mimetype not in ALLOWED_TYPES:
@@ -66,12 +136,13 @@ def analyze_receipt():
         InstapayPayment.status.in_(("pending", "approved")),
     ).first() is not None
 
-    expected = float(course.price)
+    expected = ctx["expected"]
     amount = parsed.get("total_amount")
     return jsonify(
         parsed=parsed,
         ocr_ok=ocr_ok,
         reference_used=reference_used,
+        kind=ctx["kind"],
         expected_amount=expected,
         amount_matches_price=(isinstance(amount, (int, float)) and float(amount) >= expected),
     )
@@ -80,20 +151,23 @@ def analyze_receipt():
 @bp.post("/payment/instapay")
 @jwt_required()
 def submit_receipt():
-    course_id = request.form.get("course_id", type=int)
+    kind = request.form.get("kind", "enroll")
+    ctx, err = _resolve_target(kind, request.form.get("course_id", type=int),
+                               request.form.get("bundle_id", type=int), _uid())
+    if err:
+        body, code = err
+        return body, code
+    course = ctx["course"]
+    bundle = ctx["bundle"]
     file = request.files.get("image")
-    course = Course.query.filter_by(id=course_id, status="published").first() if course_id else None
-    if not course:
-        return jsonify(error="course_not_found"), 404
-    if Enrollment.query.filter_by(user_id=_uid(), course_id=course.id, status="active").first():
-        return jsonify(error="already_enrolled"), 409
     if not file or file.filename == "":
         return jsonify(error="image_required"), 400
     if file.mimetype not in ALLOWED_TYPES:
         return jsonify(error="unsupported_media_type", allowed=sorted(ALLOWED_TYPES)), 415
 
-    # save under INSTAPAY_IMAGE_DIR/{user_id}_{course_id}/{filename}
-    folder = os.path.join(current_app.config["INSTAPAY_IMAGE_DIR"], f"{_uid()}_{course.id}")
+    # save under INSTAPAY_IMAGE_DIR/{user_id}_{target}/{filename}
+    target = f"c{course.id}" if course else f"b{bundle.id}"
+    folder = os.path.join(current_app.config["INSTAPAY_IMAGE_DIR"], f"{_uid()}_{target}")
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, secure_filename(file.filename))
     file.save(path)
@@ -117,7 +191,9 @@ def submit_receipt():
 
     p = InstapayPayment(
         user_id=_uid(),
-        course_id=course.id,
+        course_id=course.id if course else None,
+        bundle_id=bundle.id if bundle else None,
+        kind=ctx["kind"],
         image_path=path,
         status="pending",
         reference=ref,
@@ -191,25 +267,38 @@ def admin_approve(pid):
     ).first():
         return jsonify(error="reference_already_approved"), 409
 
-    # atomic: approve -> enroll -> bump count (single commit; rollback on any error)
+    # atomic: approve -> enroll/renew/bundle-enroll -> bump counts (single commit; rollback on error)
     try:
         p.status = "approved"
         p.reviewed_by = _uid()
         p.reviewed_at = datetime.now(timezone.utc)
-        enrollment = Enrollment.query.filter_by(user_id=p.user_id, course_id=p.course_id).first()
-        if not enrollment:
-            enrollment = Enrollment(user_id=p.user_id, course_id=p.course_id, source="purchase", status="active")
-            db.session.add(enrollment)
+        enrollment_ids = []
+
+        if p.kind == "renewal":
             course = db.session.get(Course, p.course_id)
-            course.enrolled_count = (course.enrolled_count or 0) + 1
-        course = db.session.get(Course, p.course_id)
-        push_notification(p.user_id, "payment_approved", "تم قبول دفعتك ✅",
-                          f"تم تفعيل اشتراكك في «{course.title}». ابدأ التعلّم الآن.")
+            enr = Enrollment.query.filter_by(user_id=p.user_id, course_id=p.course_id).first() \
+                or _enroll_course(p.user_id, course, course.access_days)
+            enr.status = "active"
+            enr.extend(course.access_days)
+            enrollment_ids = [enr.id]
+            push_notification(p.user_id, "payment_approved", "تم تجديد اشتراكك ✅",
+                              f"تم تمديد صلاحية «{course.title}». تابع التعلّم الآن.")
+        elif p.kind == "bundle":
+            bundle = db.session.get(Bundle, p.bundle_id)
+            for c in bundle.courses:
+                enrollment_ids.append(_enroll_course(p.user_id, c, bundle.access_days).id)
+            push_notification(p.user_id, "payment_approved", "تم قبول دفعتك ✅",
+                              f"تم تفعيل اشتراكك في حزمة «{bundle.title}» ({len(bundle.courses)} كورس).")
+        else:  # enroll
+            course = db.session.get(Course, p.course_id)
+            enrollment_ids = [_enroll_course(p.user_id, course, course.access_days).id]
+            push_notification(p.user_id, "payment_approved", "تم قبول دفعتك ✅",
+                              f"تم تفعيل اشتراكك في «{course.title}». ابدأ التعلّم الآن.")
         db.session.commit()
     except Exception:  # noqa: BLE001
         db.session.rollback()
         raise
-    return jsonify(payment=p.to_dict(admin=True), enrollment_id=enrollment.id)
+    return jsonify(payment=p.to_dict(admin=True), enrollment_ids=enrollment_ids)
 
 
 @bp.post("/admin/payments/<int:pid>/reject")

@@ -5,6 +5,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
 from ...models import Course, CourseModule, Lesson, Enrollment, LessonProgress
+from ...utils import req_lang
 
 bp = Blueprint("learning", __name__)
 
@@ -17,7 +18,7 @@ def _uid():
 @jwt_required()
 def my_enrollments():
     rows = Enrollment.query.filter_by(user_id=_uid(), status="active").all()
-    return jsonify(enrollments=[e.to_dict() for e in rows])
+    return jsonify(enrollments=[e.to_dict(lang=req_lang()) for e in rows])
 
 
 @bp.post("/enrollments")
@@ -38,7 +39,8 @@ def enroll():
     if float(course.price) > 0:
         return jsonify(error="payment_required"), 402
 
-    enrollment = Enrollment(user_id=_uid(), course_id=course.id, source="free", status="active")
+    enrollment = Enrollment(user_id=_uid(), course_id=course.id, source="free", status="active",
+                            expires_at=Enrollment.compute_expiry(course.access_days))
     db.session.add(enrollment)
     course.enrolled_count = (course.enrolled_count or 0) + 1
     db.session.commit()
@@ -61,7 +63,9 @@ def get_progress():
         for p in enr.progress
     }
     percent, completed, total = enr.completion()
-    return jsonify(enrolled=True, lessons=lessons, percent=percent, completed=completed, total=total)
+    return jsonify(enrolled=True, expired=enr.is_expired(),
+                   expires_at=enr.to_dict()["expires_at"],
+                   lessons=lessons, percent=percent, completed=completed, total=total)
 
 
 @bp.post("/progress")
@@ -78,6 +82,8 @@ def update_progress():
     enrollment = Enrollment.query.filter_by(user_id=_uid(), course_id=course_id, status="active").first()
     if not enrollment:
         return jsonify(error="not_enrolled"), 403
+    if enrollment.is_expired():
+        return jsonify(error="access_expired"), 403
 
     prog = LessonProgress.query.filter_by(enrollment_id=enrollment.id, lesson_id=lesson.id).first()
     if not prog:

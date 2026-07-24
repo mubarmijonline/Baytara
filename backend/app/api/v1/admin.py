@@ -4,7 +4,7 @@ from ...extensions import db
 from datetime import datetime, timezone
 
 from ...models import (
-    User, Category, Course, CourseModule, Lesson, Enrollment, InstapayPayment,
+    User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment,
     Setting, Article, ContactMessage, Notification,
 )
 from ...security import require_role, hash_password
@@ -147,7 +147,7 @@ def category_create():
     d = request.get_json() or {}
     if not d.get("name"):
         return jsonify(error="name_required"), 422
-    c = Category(name=d["name"],
+    c = Category(name=d["name"], name_en=d.get("name_en"),
                  slug=slugify(d.get("slug") or d["name"],
                               lambda s: Category.query.filter_by(slug=s).first() is not None))
     db.session.add(c)
@@ -162,8 +162,9 @@ def category_update(cid):
     if not c:
         return jsonify(error="not_found"), 404
     d = request.get_json() or {}
-    if "name" in d:
-        c.name = d["name"]
+    for f in ("name", "name_en"):
+        if f in d:
+            setattr(c, f, d[f])
     db.session.commit()
     return jsonify(category=c.to_dict())
 
@@ -225,14 +226,17 @@ def course_create():
         return jsonify(error="bad_status"), 422
     c = Course(
         title=d["title"],
+        title_en=d.get("title_en"),
         slug=slugify(d.get("slug") or d["title"], lambda s: Course.query.filter_by(slug=s).first() is not None),
         description=d.get("description", ""),
+        description_en=d.get("description_en"),
         image=d.get("image"),
         price=d.get("price", 0),
         currency=d.get("currency", "EGP"),
         instructor_id=instr_id,
         category_id=d.get("category_id"),
         duration_minutes=d.get("duration_minutes"),
+        access_days=d.get("access_days") or None,
         status=status,
     )
     db.session.add(c)
@@ -251,10 +255,10 @@ def course_update(cid):
         return jsonify(error="bad_status"), 422
     if "instructor_id" in d and not User.query.filter_by(id=d["instructor_id"], role="instructor").first():
         return jsonify(error="valid_instructor_required"), 422
-    for f in ("title", "description", "image", "price", "currency", "instructor_id",
-              "category_id", "duration_minutes", "status"):
+    for f in ("title", "title_en", "description", "description_en", "image", "price", "currency",
+              "instructor_id", "category_id", "duration_minutes", "access_days", "status"):
         if f in d:
-            setattr(c, f, d[f])
+            setattr(c, f, (d[f] or None) if f == "access_days" else d[f])
     db.session.commit()
     return jsonify(course=c.to_dict())
 
@@ -278,7 +282,8 @@ def module_create(cid):
     if not db.session.get(Course, cid):
         return jsonify(error="course_not_found"), 404
     d = request.get_json() or {}
-    m = CourseModule(course_id=cid, title=d.get("title", "وحدة"), position=d.get("position", 0))
+    m = CourseModule(course_id=cid, title=d.get("title", "وحدة"), title_en=d.get("title_en"),
+                     position=d.get("position", 0))
     db.session.add(m)
     db.session.commit()
     return jsonify(module=m.to_dict()), 201
@@ -291,7 +296,7 @@ def module_update(mid):
     if not m:
         return jsonify(error="not_found"), 404
     d = request.get_json() or {}
-    for f in ("title", "position"):
+    for f in ("title", "title_en", "position"):
         if f in d:
             setattr(m, f, d[f])
     db.session.commit()
@@ -320,6 +325,7 @@ def lesson_create(mid):
     l = Lesson(
         module_id=mid,
         title=d.get("title", "درس"),
+        title_en=d.get("title_en"),
         position=d.get("position", 0),
         duration_minutes=d.get("duration_minutes"),
         vdocipher_video_id=d.get("vdocipher_video_id"),
@@ -337,7 +343,7 @@ def lesson_update(lid):
     if not l:
         return jsonify(error="not_found"), 404
     d = request.get_json() or {}
-    for f in ("title", "position", "duration_minutes", "vdocipher_video_id", "is_protected"):
+    for f in ("title", "title_en", "position", "duration_minutes", "vdocipher_video_id", "is_protected"):
         if f in d:
             setattr(l, f, d[f])
     db.session.commit()
@@ -353,6 +359,81 @@ def lesson_delete(lid):
     db.session.delete(l)
     db.session.commit()
     return jsonify(deleted=lid)
+
+
+# ------------------------------ bundles ------------------------------
+
+def _set_bundle_courses(b, course_ids):
+    if course_ids is None:
+        return
+    b.courses = Course.query.filter(Course.id.in_(course_ids)).all() if course_ids else []
+
+
+@bp.get("/bundles")
+@require_role("admin")
+def bundles_list():
+    rows = Bundle.query.order_by(Bundle.created_at.desc()).all()
+    return jsonify(bundles=[b.to_dict() for b in rows])
+
+
+@bp.get("/bundles/<int:bid>")
+@require_role("admin")
+def bundle_get(bid):
+    b = db.session.get(Bundle, bid)
+    if not b:
+        return jsonify(error="not_found"), 404
+    return jsonify(bundle=b.to_dict())
+
+
+@bp.post("/bundles")
+@require_role("admin")
+def bundle_create():
+    d = request.get_json() or {}
+    if not d.get("title"):
+        return jsonify(error="title_required"), 422
+    status = d.get("status", "draft")
+    if status not in ("draft", "published", "unpublished"):
+        return jsonify(error="bad_status"), 422
+    b = Bundle(
+        title=d["title"], title_en=d.get("title_en"),
+        slug=slugify(d.get("slug") or d["title"], lambda s: Bundle.query.filter_by(slug=s).first() is not None),
+        description=d.get("description", ""), description_en=d.get("description_en"),
+        image=d.get("image"), price=d.get("price", 0), currency=d.get("currency", "EGP"),
+        access_days=d.get("access_days") or None, status=status,
+    )
+    _set_bundle_courses(b, d.get("course_ids"))
+    db.session.add(b)
+    db.session.commit()
+    return jsonify(bundle=b.to_dict()), 201
+
+
+@bp.patch("/bundles/<int:bid>")
+@require_role("admin")
+def bundle_update(bid):
+    b = db.session.get(Bundle, bid)
+    if not b:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    if "status" in d and d["status"] not in ("draft", "published", "unpublished"):
+        return jsonify(error="bad_status"), 422
+    for f in ("title", "title_en", "description", "description_en", "image", "price",
+              "currency", "access_days", "status"):
+        if f in d:
+            setattr(b, f, (d[f] or None) if f == "access_days" else d[f])
+    _set_bundle_courses(b, d.get("course_ids"))
+    db.session.commit()
+    return jsonify(bundle=b.to_dict())
+
+
+@bp.delete("/bundles/<int:bid>")
+@require_role("admin")
+def bundle_delete(bid):
+    b = db.session.get(Bundle, bid)
+    if not b:
+        return jsonify(error="not_found"), 404
+    db.session.delete(b)
+    db.session.commit()
+    return jsonify(deleted=bid)
 
 
 # ------------------------------ site settings ------------------------------
@@ -417,9 +498,12 @@ def article_create():
     a = Article(
         type=atype,
         title=d["title"],
+        title_en=d.get("title_en"),
         slug=slugify(d.get("slug") or d["title"], lambda s: Article.query.filter_by(slug=s).first() is not None),
         excerpt=d.get("excerpt"),
+        excerpt_en=d.get("excerpt_en"),
         body=d.get("body", ""),
+        body_en=d.get("body_en"),
         cover=d.get("cover"),
         status=status if status in ("draft", "published") else "draft",
         author_id=_uid(),
@@ -442,7 +526,7 @@ def article_update(aid):
             return jsonify(error="bad_status"), 422
         if d["status"] == "published" and not a.published_at:
             a.published_at = datetime.now(timezone.utc)
-    for f in ("type", "title", "excerpt", "body", "cover", "status"):
+    for f in ("type", "title", "title_en", "excerpt", "excerpt_en", "body", "body_en", "cover", "status"):
         if f in d:
             setattr(a, f, d[f])
     db.session.commit()

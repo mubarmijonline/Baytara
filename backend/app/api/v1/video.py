@@ -25,6 +25,9 @@ def playback():
     enrollment = Enrollment.query.filter_by(user_id=uid, course_id=course_id, status="active").first()
     if not enrollment:
         return jsonify(error="not_enrolled"), 403
+    if enrollment.is_expired():
+        # Access Duration lapsed (contract البند3) — renew to restore playback.
+        return jsonify(error="access_expired"), 403
 
     user = db.session.get(User, uid)
     try:

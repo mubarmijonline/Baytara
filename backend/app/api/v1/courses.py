@@ -1,15 +1,17 @@
 from flask import Blueprint, jsonify, request
 
 from ...extensions import db
-from ...models import Category, Course, User
+from ...models import Category, Course, Bundle, User
+from ...utils import req_lang
 
 bp = Blueprint("courses", __name__)
 
 
 @bp.get("/categories")
 def list_categories():
+    lang = req_lang()
     cats = Category.query.order_by(Category.name).all()
-    return jsonify(categories=[c.to_dict() for c in cats])
+    return jsonify(categories=[c.to_dict(lang) for c in cats])
 
 
 @bp.get("/courses")
@@ -27,9 +29,10 @@ def list_courses():
         q = q.filter(Course.title.ilike(f"%{search}%"))
 
     q = q.order_by(Course.created_at.desc())
+    lang = req_lang()
     pg = db.paginate(q, page=page, per_page=per_page, error_out=False)
     return jsonify(
-        courses=[c.to_dict() for c in pg.items],
+        courses=[c.to_dict(lang=lang) for c in pg.items],
         total=pg.total,
         page=pg.page,
         per_page=pg.per_page,
@@ -42,7 +45,24 @@ def course_detail(slug):
     course = Course.query.filter_by(slug=slug, status="published").first()
     if not course:
         return jsonify(error="not_found"), 404
-    return jsonify(course=course.to_dict(with_content=True))
+    return jsonify(course=course.to_dict(with_content=True, lang=req_lang()))
+
+
+# ------------------------------ bundles (public) ------------------------------
+
+@bp.get("/bundles")
+def list_bundles():
+    lang = req_lang()
+    rows = Bundle.query.filter_by(status="published").order_by(Bundle.created_at.desc()).all()
+    return jsonify(bundles=[b.to_dict(with_courses=True, lang=lang) for b in rows])
+
+
+@bp.get("/bundles/<slug>")
+def bundle_detail(slug):
+    b = Bundle.query.filter_by(slug=slug, status="published").first()
+    if not b:
+        return jsonify(error="not_found"), 404
+    return jsonify(bundle=b.to_dict(with_courses=True, lang=req_lang()))
 
 
 @bp.get("/instructors")
@@ -65,5 +85,5 @@ def instructor_profile(user_id):
     courses = Course.query.filter_by(instructor_id=user.id, status="published").all()
     return jsonify(
         instructor=user.public_profile(),
-        courses=[c.to_dict() for c in courses],
+        courses=[c.to_dict(lang=req_lang()) for c in courses],
     )

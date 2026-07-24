@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from ..extensions import db
 
 PAYMENT_STATUSES = ("pending", "approved", "rejected")
+PAYMENT_KINDS = ("enroll", "renewal", "bundle")  # enroll/renewal -> course_id; bundle -> bundle_id
 
 
 def _now():
@@ -37,7 +38,10 @@ class InstapayPayment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=False, index=True)
+    # enroll/renewal target a course; bundle purchase targets a bundle (course_id NULL).
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True, index=True)
+    bundle_id = db.Column(db.Integer, db.ForeignKey("bundles.id"), nullable=True, index=True)
+    kind = db.Column(db.String(20), nullable=False, default="enroll", server_default="enroll", index=True)
     image_path = db.Column(db.String(500), nullable=False)
     status = db.Column(db.String(20), nullable=False, default="pending", index=True)
 
@@ -64,11 +68,14 @@ class InstapayPayment(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
 
     course = db.relationship("Course")
+    bundle = db.relationship("Bundle")
 
     def to_dict(self, admin=False):
         d = {
             "id": self.id,
             "course_id": self.course_id,
+            "bundle_id": self.bundle_id,
+            "kind": self.kind,
             "status": self.status,
             "reference": self.reference,
             "transfer_amount": float(self.transfer_amount) if self.transfer_amount is not None else None,
