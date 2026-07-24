@@ -1,12 +1,15 @@
-from flask import Blueprint, jsonify, request
+import os
+
+from flask import Blueprint, jsonify, request, send_file
 
 from ...extensions import db
 from datetime import datetime, timezone
 
 from ...models import (
     User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment,
-    Setting, Article, ContactMessage, Notification,
+    Setting, Article, ContactMessage, Notification, BaytarianRequest, push_notification,
 )
+from ...models.catalog import ACCESS_TYPES, access_is_paid
 from ...security import require_role, hash_password
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
@@ -40,6 +43,7 @@ def stats():
         },
         enrollments=Enrollment.query.filter_by(status="active").count(),
         payments={"pending": InstapayPayment.query.filter_by(status="pending").count()},
+        baytarian={"pending": BaytarianRequest.query.filter_by(status="pending").count()},
     )
 
 
@@ -47,7 +51,8 @@ def stats():
 
 def _user_json(u):
     return {"id": u.id, "name": u.name, "email": u.email, "role": u.role,
-            "is_active": u.is_active, "created_at": u.created_at.isoformat() if u.created_at else None,
+            "is_active": u.is_active, "is_baytarian": u.is_baytarian,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
             "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or [],
             "can_add_video": u.can_add_video, "can_edit_video": u.can_edit_video, "can_delete_video": u.can_delete_video}
 
@@ -108,7 +113,7 @@ def users_update(uid):
         u.is_active = bool(d["is_active"])
     if d.get("password"):
         u.password_hash = hash_password(d["password"])
-    for f in ("headline", "bio", "avatar_url", "expertise",
+    for f in ("headline", "bio", "avatar_url", "expertise", "is_baytarian",
               "can_add_video", "can_edit_video", "can_delete_video"):
         if f in d:
             setattr(u, f, d[f])
@@ -224,6 +229,11 @@ def course_create():
     status = d.get("status", "draft")
     if status not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
+    access_type = d.get("access_type", "general")
+    if access_type not in ACCESS_TYPES:
+        return jsonify(error="bad_access_type", allowed=list(ACCESS_TYPES)), 422
+    # free tiers carry no price
+    price = d.get("price", 0) if access_is_paid(access_type) else 0
     c = Course(
         title=d["title"],
         title_en=d.get("title_en"),
@@ -231,12 +241,13 @@ def course_create():
         description=d.get("description", ""),
         description_en=d.get("description_en"),
         image=d.get("image"),
-        price=d.get("price", 0),
+        price=price,
         currency=d.get("currency", "EGP"),
         instructor_id=instr_id,
         category_id=d.get("category_id"),
         duration_minutes=d.get("duration_minutes"),
         access_days=d.get("access_days") or None,
+        access_type=access_type,
         status=status,
     )
     db.session.add(c)
@@ -253,12 +264,17 @@ def course_update(cid):
     d = request.get_json() or {}
     if "status" in d and d["status"] not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
+    if "access_type" in d and d["access_type"] not in ACCESS_TYPES:
+        return jsonify(error="bad_access_type", allowed=list(ACCESS_TYPES)), 422
     if "instructor_id" in d and not User.query.filter_by(id=d["instructor_id"], role="instructor").first():
         return jsonify(error="valid_instructor_required"), 422
     for f in ("title", "title_en", "description", "description_en", "image", "price", "currency",
-              "instructor_id", "category_id", "duration_minutes", "access_days", "status"):
+              "instructor_id", "category_id", "duration_minutes", "access_days", "access_type", "status"):
         if f in d:
             setattr(c, f, (d[f] or None) if f == "access_days" else d[f])
+    # free tiers carry no price
+    if not access_is_paid(c.access_type):
+        c.price = 0
     db.session.commit()
     return jsonify(course=c.to_dict())
 
@@ -359,6 +375,71 @@ def lesson_delete(lid):
     db.session.delete(l)
     db.session.commit()
     return jsonify(deleted=lid)
+
+
+# ------------------------------ baytarian verification ------------------------------
+
+@bp.get("/baytarian-requests")
+@require_role("admin")
+def baytarian_list():
+    q = BaytarianRequest.query
+    status = request.args.get("status")
+    if status:
+        q = q.filter_by(status=status)
+    rows = q.order_by(BaytarianRequest.created_at.desc()).all()
+    return jsonify(requests=[r.to_dict(admin=True) for r in rows],
+                   pending=BaytarianRequest.query.filter_by(status="pending").count())
+
+
+@bp.get("/baytarian-requests/<int:rid>/doc/<int:idx>")
+@require_role("admin")
+def baytarian_doc(rid, idx):
+    r = db.session.get(BaytarianRequest, rid)
+    docs = (r.documents or []) if r else []
+    if not r or idx < 0 or idx >= len(docs) or not os.path.exists(docs[idx]):
+        return jsonify(error="not_found"), 404
+    return send_file(os.path.abspath(docs[idx]))
+
+
+@bp.post("/baytarian-requests/<int:rid>/approve")
+@require_role("admin")
+def baytarian_approve(rid):
+    r = db.session.get(BaytarianRequest, rid)
+    if not r:
+        return jsonify(error="not_found"), 404
+    if r.status != "pending":
+        return jsonify(error="not_pending", status=r.status), 409
+    try:
+        r.status = "approved"
+        r.reviewed_by = _uid()
+        r.reviewed_at = datetime.now(timezone.utc)
+        user = db.session.get(User, r.user_id)
+        user.is_baytarian = True
+        push_notification(r.user_id, "baytarian_approved", "تم توثيق حسابك كطبيب بيطري ✅",
+                          "أصبح بإمكانك الآن الوصول إلى محتوى «بيطريّ» المخصّص للأطباء.")
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        raise
+    return jsonify(request=r.to_dict(admin=True))
+
+
+@bp.post("/baytarian-requests/<int:rid>/reject")
+@require_role("admin")
+def baytarian_reject(rid):
+    r = db.session.get(BaytarianRequest, rid)
+    if not r:
+        return jsonify(error="not_found"), 404
+    if r.status != "pending":
+        return jsonify(error="not_pending", status=r.status), 409
+    r.status = "rejected"
+    r.reject_reason = (request.get_json() or {}).get("reason")
+    r.reviewed_by = _uid()
+    r.reviewed_at = datetime.now(timezone.utc)
+    push_notification(r.user_id, "baytarian_rejected", "لم يُقبل طلب التوثيق",
+                      r.reject_reason or "يرجى مراجعة المستندات وإعادة الإرسال.")
+    db.session.commit()
+    return jsonify(request=r.to_dict(admin=True))
 
 
 # ------------------------------ bundles ------------------------------

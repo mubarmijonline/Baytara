@@ -34,7 +34,7 @@ def demo():
         db.session.add(instr); db.session.flush()
         cat = Category(name=f"C{tag}", slug=f"c-{tag}"); db.session.add(cat); db.session.flush()
         course = Course(title=f"K{tag}", slug=f"k-{tag}", price=0, instructor_id=instr.id,
-                        category_id=cat.id, status="published")
+                        category_id=cat.id, status="published", access_type="free")
         db.session.add(course); db.session.flush()
         mod = CourseModule(course_id=course.id, title="M", position=0); db.session.add(mod); db.session.flush()
         vlesson = Lesson(module_id=mod.id, title="مع فيديو", position=0, vdocipher_video_id="VID123")

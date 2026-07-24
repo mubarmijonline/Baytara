@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
-from ...models import Course, CourseModule, Lesson, Enrollment, LessonProgress
+from ...models import Course, CourseModule, Lesson, Enrollment, LessonProgress, User
 from ...utils import req_lang
 
 bp = Blueprint("learning", __name__)
@@ -34,10 +34,14 @@ def enroll():
     if existing:
         return jsonify(enrollment=existing.to_dict()), 200
 
-    # ponytail: only free courses self-enroll here. Paid enrollment is created
-    # inside the atomic payment transaction in Phase 4 — reject it at this endpoint.
-    if float(course.price) > 0:
+    # Only free-tier courses self-enroll here. Paid tiers (baytarian/general) go
+    # through the payment flow; vet_free is free but instructor-only.
+    if course.is_paid():
         return jsonify(error="payment_required"), 402
+    user = db.session.get(User, _uid())
+    reason = course.lock_reason(user)
+    if reason:  # e.g. vet_free for a non-instructor
+        return jsonify(error=reason), 403
 
     enrollment = Enrollment(user_id=_uid(), course_id=course.id, source="free", status="active",
                             expires_at=Enrollment.compute_expiry(course.access_days))

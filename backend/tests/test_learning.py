@@ -18,7 +18,8 @@ def _seed(tag, price=0):
     db.session.add(cat)
     db.session.flush()
     course = Course(title=f"K{tag}", slug=f"k-{tag}", price=price, instructor_id=instr.id,
-                    category_id=cat.id, status="published")
+                    category_id=cat.id, status="published",
+                    access_type=("general" if price else "free"))
     db.session.add(course)
     db.session.flush()
     mod = CourseModule(course_id=course.id, title="M", position=0)

@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
 from ...extensions import db
-from ...models import Bundle, Course, Enrollment, InstapayAccount, InstapayPayment, push_notification
+from ...models import Bundle, Course, Enrollment, InstapayAccount, InstapayPayment, User, push_notification
 from ...security import require_role
 from ...services.instapay_ocr import parse_receipt, extract_text
 from ...utils import renewal_percent
@@ -46,6 +46,13 @@ def _resolve_target(kind, course_id, bundle_id, uid):
     course = Course.query.filter_by(id=course_id, status="published").first() if course_id else None
     if not course:
         return None, (jsonify(error="course_not_found"), 404)
+    if not course.is_paid():
+        return None, (jsonify(error="not_purchasable"), 409)  # free / vet_free
+    # baytarian-tier courses require a verified pet-doctor account
+    if course.access_type == "baytarian":
+        buyer = db.session.get(User, uid)
+        if not getattr(buyer, "is_baytarian", False):
+            return None, (jsonify(error="needs_baytarian"), 403)
     enr = Enrollment.query.filter_by(user_id=uid, course_id=course.id, status="active").first()
 
     if kind == "renewal":

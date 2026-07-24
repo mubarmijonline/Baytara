@@ -66,7 +66,7 @@ def _tokens(user: User):
 
 def _user_json(user: User):
     return {"id": user.id, "name": user.name, "email": user.email, "phone": user.phone,
-            "role": user.role, "locale": user.locale}
+            "role": user.role, "locale": user.locale, "is_baytarian": user.is_baytarian}
 
 
 @bp.post("/register")

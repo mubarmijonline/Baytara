@@ -19,6 +19,9 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default="student")
     locale = db.Column(db.String(10), nullable=False, default="ar")
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    # Baytarian = verified pet doctor (admin-approved via document upload). Gates
+    # access to baytarian-tier courses (client البند3 revision).
+    is_baytarian = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # instructor public-profile fields (used when role == instructor)
@@ -44,6 +47,44 @@ class User(db.Model):
 
     def __repr__(self):
         return f"<User {self.id} {self.email} {self.role}>"
+
+
+BAYTARIAN_STATUSES = ("pending", "approved", "rejected")
+
+
+class BaytarianRequest(db.Model):
+    """A user's request to be verified as a Baytarian (pet doctor). Documents
+    (PDF/images) are uploaded and an admin approves/rejects."""
+
+    __tablename__ = "baytarian_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default="pending", index=True)
+    documents = db.Column(db.JSON)  # list[str] of stored file paths
+    note = db.Column(db.String(500))  # applicant note (clinic, license no., etc.)
+    reject_reason = db.Column(db.String(300))
+    reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    reviewed_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship("User", foreign_keys=[user_id])
+
+    def to_dict(self, admin=False):
+        d = {
+            "id": self.id,
+            "status": self.status,
+            "note": self.note,
+            "reject_reason": self.reject_reason,
+            "documents_count": len(self.documents or []),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
+        }
+        if admin:
+            d.update(user_id=self.user_id,
+                     user={"id": self.user.id, "name": self.user.name, "email": self.user.email} if self.user else None,
+                     documents=self.documents or [])
+        return d
 
 
 class UserDevice(db.Model):

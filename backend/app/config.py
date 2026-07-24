@@ -16,7 +16,9 @@ class BaseConfig:
     ]
     # InstaPay receipt uploads
     INSTAPAY_IMAGE_DIR = os.environ.get("INSTAPAY_IMAGE_DIR", "./instapay_image")
-    MAX_CONTENT_LENGTH = 8 * 1024 * 1024  # 8 MB cap on uploads
+    # Baytarian verification documents (PDF/images)
+    BAYTARIAN_DOC_DIR = os.environ.get("BAYTARIAN_DOC_DIR", "./baytarian_docs")
+    MAX_CONTENT_LENGTH = 12 * 1024 * 1024  # 12 MB cap on uploads (docs may include PDFs)
 
 
 class DevelopmentConfig(BaseConfig):
