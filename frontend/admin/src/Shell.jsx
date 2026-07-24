@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Payments from './pages/Payments.jsx';
 import Courses from './pages/Courses.jsx';
 import Bundles from './pages/Bundles.jsx';
+import Baytarian from './pages/Baytarian.jsx';
 import Users from './pages/Users.jsx';
 import Categories from './pages/Categories.jsx';
 import Accounts from './pages/Accounts.jsx';
@@ -15,6 +16,7 @@ import Hierarchy from './pages/Hierarchy.jsx';
 const NAV = [
   ['dashboard', 'لوحة القيادة'],
   ['payments', 'مدفوعات إنستاباي'],
+  ['baytarian', 'توثيق الأطباء'],
   ['courses', 'الدورات'],
   ['bundles', 'الحزم'],
   ['hierarchy', 'الهيكلة'],
@@ -25,14 +27,15 @@ const NAV = [
   ['accounts', 'حسابات إنستاباي'],
   ['settings', 'إعدادات الموقع'],
 ];
-const PAGES = { dashboard: Dashboard, payments: Payments, courses: Courses, bundles: Bundles, hierarchy: Hierarchy, categories: Categories, articles: Articles, users: Users, messages: Messages, accounts: Accounts, settings: Settings };
+const PAGES = { dashboard: Dashboard, payments: Payments, baytarian: Baytarian, courses: Courses, bundles: Bundles, hierarchy: Hierarchy, categories: Categories, articles: Articles, users: Users, messages: Messages, accounts: Accounts, settings: Settings };
 
 export default function Shell({ onLogout }) {
   const [page, setPage] = useState('dashboard');
   const [pending, setPending] = useState(0);
+  const [baytPending, setBaytPending] = useState(0);
 
   useEffect(() => {
-    api.stats().then((s) => setPending(s.payments.pending)).catch((e) => {
+    api.stats().then((s) => { setPending(s.payments.pending); setBaytPending(s.baytarian?.pending || 0); }).catch((e) => {
       if (e.status === 401) onLogout();
     });
   }, [page, onLogout]);
@@ -46,6 +49,7 @@ export default function Shell({ onLogout }) {
           <div key={k} className={`navitem ${page === k ? 'active' : ''}`} onClick={() => setPage(k)}>
             <span>{label}</span>
             {k === 'payments' && pending ? <span className="count">{pending}</span> : null}
+            {k === 'baytarian' && baytPending ? <span className="count">{baytPending}</span> : null}
           </div>
         ))}
         <div className="spacer" />

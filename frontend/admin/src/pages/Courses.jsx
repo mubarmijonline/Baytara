@@ -6,6 +6,14 @@ import { Modal, Field, ErrText, apiError } from '../ui.jsx';
 
 const STATUS = [['', 'كل الحالات'], ['draft', 'مسودة'], ['published', 'منشورة'], ['unpublished', 'غير منشورة']];
 const statusLabel = (s) => ({ draft: 'مسودة', published: 'منشورة', unpublished: 'غير منشورة' }[s] || s);
+const ACCESS_TYPES = [
+  ['free', 'مجاني — للجميع'],
+  ['vet_free', 'مجاني — للأطباء المحاضرين فقط'],
+  ['baytarian', 'مدفوع — للأطباء الموثّقين (بيطريّ) فقط'],
+  ['general', 'مدفوع — عام للجميع'],
+];
+const accessLabel = (t) => (ACCESS_TYPES.find(([v]) => v === t) || [t, t])[1];
+const isPaidType = (t) => t === 'baytarian' || t === 'general';
 
 function CourseForm({ course, instructors, categories, onClose, onSaved }) {
   const editing = !!course;
@@ -13,6 +21,7 @@ function CourseForm({ course, instructors, categories, onClose, onSaved }) {
     title: course?.title || '', title_en: course?.title_en || '',
     description: course?.description || '', description_en: course?.description_en || '',
     price: course?.price ?? 0, currency: course?.currency || 'EGP',
+    access_type: course?.access_type || 'general',
     access_days: course?.access_days ?? '',
     instructor_id: course?.instructor?.id || instructors[0]?.id || '',
     category_id: course?.category?.id || '', status: course?.status || 'draft',
@@ -38,9 +47,18 @@ function CourseForm({ course, instructors, categories, onClose, onSaved }) {
       <Field label="Title (English)"><input dir="ltr" value={f.title_en} onChange={set('title_en')} /></Field>
       <Field label="الوصف (عربي)"><input value={f.description} onChange={set('description')} /></Field>
       <Field label="Description (English)"><input dir="ltr" value={f.description_en} onChange={set('description_en')} /></Field>
+      <Field label="نوع الوصول">
+        <select value={f.access_type} onChange={set('access_type')}>
+          {ACCESS_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </Field>
       <div className="row">
-        <Field label="السعر"><input type="number" value={f.price} onChange={set('price')} style={{ width: 100 }} /></Field>
-        <Field label="العملة"><input value={f.currency} onChange={set('currency')} style={{ width: 80 }} /></Field>
+        {isPaidType(f.access_type) && (
+          <>
+            <Field label="السعر"><input type="number" value={f.price} onChange={set('price')} style={{ width: 100 }} /></Field>
+            <Field label="العملة"><input value={f.currency} onChange={set('currency')} style={{ width: 80 }} /></Field>
+          </>
+        )}
         <Field label="مدة الوصول (أيام)"><input type="number" min="0" placeholder="مدى الحياة" value={f.access_days} onChange={set('access_days')} style={{ width: 130 }} /></Field>
       </div>
       <Field label="المدرّب">
@@ -192,13 +210,14 @@ export default function Courses() {
       <ErrText>{err}</ErrText>
       {!rows ? <div className="empty">جارٍ التحميل…</div> : (
         <table className="table">
-          <thead><tr><th>العنوان</th><th>الحالة</th><th>السعر</th><th>المدرّب</th><th>مسجّلون</th><th>إجراءات</th></tr></thead>
+          <thead><tr><th>العنوان</th><th>الحالة</th><th>النوع</th><th>السعر</th><th>المدرّب</th><th>مسجّلون</th><th>إجراءات</th></tr></thead>
           <tbody>
             {rows.map((c) => (
               <tr key={c.id}>
                 <td>{c.title}</td>
                 <td><span className={`chip chip-${c.status}`}>{statusLabel(c.status)}</span></td>
-                <td>{c.price} {c.currency}</td>
+                <td style={{ fontSize: 12 }}>{accessLabel(c.access_type)}</td>
+                <td>{c.is_paid ? `${c.price} ${c.currency}` : '—'}</td>
                 <td>{c.instructor?.name || '—'}</td>
                 <td>{c.enrolled_count}</td>
                 <td className="actions">
@@ -209,7 +228,7 @@ export default function Courses() {
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan="6" className="empty">لا دورات.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan="7" className="empty">لا دورات.</td></tr>}
           </tbody>
         </table>
       )}

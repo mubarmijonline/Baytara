@@ -65,6 +65,11 @@ export const api = {
   lessonUpdate: (id, body) => req(`/admin/lessons/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   lessonDelete: (id) => req(`/admin/lessons/${id}`, { method: 'DELETE' }),
 
+  // baytarian verification requests
+  baytarianRequests: (status) => req('/admin/baytarian-requests' + (status ? `?status=${status}` : '')),
+  baytarianApprove: (id) => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST' }),
+  baytarianReject: (id, reason) => req(`/admin/baytarian-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+
   // bundles (course bundling)
   bundles: () => req('/admin/bundles'),
   bundleGet: (id) => req(`/admin/bundles/${id}`),
@@ -105,5 +110,14 @@ export async function fetchReceipt(id) {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!r.ok) throw new Error('receipt_failed');
+  return URL.createObjectURL(await r.blob());
+}
+
+// Baytarian verification document (PDF/image) — auth-gated, returned as an object URL.
+export async function fetchBaytarianDoc(rid, idx) {
+  const r = await fetch(`${BASE}/admin/baytarian-requests/${rid}/doc/${idx}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!r.ok) throw new Error('doc_failed');
   return URL.createObjectURL(await r.blob());
 }

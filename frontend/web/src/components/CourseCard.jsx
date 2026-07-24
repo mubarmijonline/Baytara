@@ -1,10 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { colors } from '../theme/tokens.js';
+import { useI18n } from '../lib/i18n.jsx';
 
 // Course card used in carousels and grids. Matches the Baytara design card.
 export default function CourseCard({ course, isNew = false, width = 288 }) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const flexBasis = width ? `0 0 ${width}px` : undefined;
+  const at = course.access_type;
+  const isPaid = course.is_paid ?? course.price > 0;
+  const accessBadge = at === 'baytarian' ? { label: '🔒 ' + t('access.baytarian'), bg: colors.accent }
+    : at === 'vet_free' ? { label: t('access.vet_free'), bg: '#2b6cb0' }
+    : at === 'free' ? { label: t('access.free'), bg: '#1a7f4b' } : null;
   return (
     <div
       className="hover-lift"
@@ -34,18 +41,20 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
         >
           {course.cat}
         </span>
-        {isNew && (
+        {accessBadge ? (
           <span
             style={{
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              background: colors.accent,
-              color: '#fff',
-              fontSize: 11,
-              fontWeight: 800,
-              padding: '5px 10px',
-              borderRadius: 100,
+              position: 'absolute', top: 12, left: 12, background: accessBadge.bg, color: '#fff',
+              fontSize: 11, fontWeight: 800, padding: '5px 10px', borderRadius: 100,
+            }}
+          >
+            {accessBadge.label}
+          </span>
+        ) : isNew && (
+          <span
+            style={{
+              position: 'absolute', top: 12, left: 12, background: colors.accent, color: '#fff',
+              fontSize: 11, fontWeight: 800, padding: '5px 10px', borderRadius: 100,
             }}
           >
             جديد
@@ -105,7 +114,9 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
           }}
         >
           <span style={{ fontSize: 13, color: colors.muted2 }}>{course.learners} متعلّم</span>
-          <span style={{ fontSize: 14, fontWeight: 800, color: colors.accent }}>ضمن الاشتراك</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: colors.accent }}>
+            {isPaid ? `${course.price} ${course.currency || t('common.egp')}` : t('access.free')}
+          </span>
         </div>
       </div>
     </div>

@@ -3,13 +3,18 @@ import { Container } from '../components/Primitives.jsx';
 import { colors, gradients, layout } from '../theme/tokens.js';
 import { rawCourses, learnPoints, curriculum, includes, reviews } from '../data/mock.js';
 import { webapi, mapCourse, useFetch } from '../lib/api.js';
+import { useI18n } from '../lib/i18n.jsx';
 
 export default function CourseDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { data } = useFetch(() => webapi.course(slug).catch(() => null), [slug]);
   const mockCourse = rawCourses.find((c) => c.slug === slug) || rawCourses[0];
   const course = data?.course ? mapCourse(data.course) : mockCourse;
+  const accessType = course.access_type || (course.price > 0 ? 'general' : 'free');
+  const isPaid = course.is_paid ?? course.price > 0;
+  const locked = course.lock_reason; // 'needs_baytarian' | 'instructors_only' | null
 
   return (
     <div>
@@ -260,26 +265,37 @@ export default function CourseDetail() {
           </div>
           <div style={{ padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: colors.accent }}>ضمن الاشتراك</span>
+              <span style={{ fontSize: 22, fontWeight: 900, color: colors.accent }}>
+                {isPaid ? `${course.price} ${course.currency || t('common.egp')}` : t('access.free')}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: colors.muted2 }}>· {t('access.' + accessType)}</span>
             </div>
-            <div style={{ fontSize: 13, color: colors.muted2, marginBottom: 18 }}>وصول كامل لكل الدورات باشتراك واحد</div>
-            <button
-              onClick={() => navigate(`/buy/${slug}`)}
-              style={{
-                width: '100%',
-                background: colors.accent,
-                border: 'none',
-                borderRadius: 12,
-                color: '#fff',
-                fontSize: 16,
-                fontWeight: 800,
-                padding: 15,
-                cursor: 'pointer',
-                marginBottom: 10,
-              }}
-            >
-              {course.price > 0 ? 'اشترِ الدورة الآن' : 'التسجيل المجاني'}
-            </button>
+            {locked ? (
+              <>
+                <div style={{ fontSize: 13, color: '#b3261e', margin: '10px 0 14px', fontWeight: 700 }}>{t('lock.' + locked)}</div>
+                <button
+                  onClick={() => navigate(locked === 'needs_baytarian' ? '/pricing' : '/courses')}
+                  style={{ width: '100%', background: locked === 'needs_baytarian' ? colors.accent : '#9a9aac',
+                    border: 'none', borderRadius: 12, color: '#fff', fontSize: 16, fontWeight: 800, padding: 15,
+                    cursor: 'pointer', marginBottom: 10 }}
+                >
+                  {locked === 'needs_baytarian' ? t('membership.verify') : t('lock.instructors_only')}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, color: colors.muted2, margin: '4px 0 18px' }}>
+                  {course.access_days ? `${t('access.expires')} — ${course.access_days} ${t('access.daysLeft')}` : t('access.lifetime')}
+                </div>
+                <button
+                  onClick={() => navigate(`/buy/${slug}`)}
+                  style={{ width: '100%', background: colors.accent, border: 'none', borderRadius: 12, color: '#fff',
+                    fontSize: 16, fontWeight: 800, padding: 15, cursor: 'pointer', marginBottom: 10 }}
+                >
+                  {isPaid ? t('common.enroll') : (t('lang.name') === 'English' ? 'Enroll free' : 'التسجيل المجاني')}
+                </button>
+              </>
+            )}
             <button
               style={{
                 width: '100%',

@@ -64,6 +64,20 @@ export const auth = {
   removeDevice: (id) => authFetch(`/auth/devices/${id}`, { method: 'DELETE' }),
   enrollments: () => authFetch('/enrollments'),
   enroll: (course_id) => authFetch('/enrollments', { method: 'POST', body: JSON.stringify({ course_id }) }),
+  // baytarian (verified pet-doctor) status + verification request
+  baytarianMe: () => authFetch('/baytarian/me'),
+  baytarianRequest: (files, note) => {
+    const fd = new FormData();
+    (files || []).forEach((f) => fd.append('documents', f));
+    if (note) fd.append('note', note);
+    return fetch(BASE + '/baytarian/request', {
+      method: 'POST', headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}, body: fd,
+    }).then(async (r) => {
+      const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+      if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
+      return j;
+    });
+  },
   progress: (b) => authFetch('/progress', { method: 'POST', body: JSON.stringify(b) }),
   progressGet: (slug) => authFetch('/progress?course=' + encodeURIComponent(slug)),
   playback: (lesson_id) => authFetch('/video/playback', { method: 'POST', body: JSON.stringify({ lesson_id }) }),
@@ -131,6 +145,9 @@ export function mapCourse(c, i = 0) {
     currency: c.currency,
     description: c.description,
     image: c.image,
+    access_type: c.access_type,
+    is_paid: c.is_paid,
+    lock_reason: c.lock_reason,
     _api: true,
   };
 }

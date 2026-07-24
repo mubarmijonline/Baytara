@@ -1,128 +1,109 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { colors } from '../theme/tokens.js';
-import { plansData, faqs } from '../data/mock.js';
-import { useSettings } from '../lib/api.js';
+import { Container } from '../components/Primitives.jsx';
+import { colors, gradients } from '../theme/tokens.js';
+import { auth } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
+import { useI18n } from '../lib/i18n.jsx';
+import { toast } from '../lib/toast.jsx';
+
+const TIER_KEYS = ['free', 'vet_free', 'baytarian', 'general'];
 
 export default function Pricing() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [annual, setAnnual] = useState(true);
-  const settings = useSettings();
-  const mockPlans = plansData(annual, colors.accent);
-  // admin-defined plans override content over the design's styled templates; else mock
-  const plans = Array.isArray(settings.plans) && settings.plans.length
-    ? settings.plans.map((item, i) => ({ ...mockPlans[i % mockPlans.length], ...item }))
-    : mockPlans;
-  const faqList = Array.isArray(settings.faqs) && settings.faqs.length ? settings.faqs : faqs;
+  const { t } = useI18n();
+  const [state, setState] = useState(null); // {is_baytarian, request}
+  const [files, setFiles] = useState([]);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
 
-  const toggleBtn = (active, label, onClick) => (
-    <button
-      onClick={onClick}
-      style={{
-        border: 'none',
-        borderRadius: 100,
-        padding: '10px 24px',
-        fontSize: 15,
-        fontWeight: 800,
-        cursor: 'pointer',
-        background: active ? '#fff' : 'transparent',
-        color: active ? colors.ink : colors.muted,
-      }}
-    >
-      {label}
-    </button>
-  );
+  const load = () => user && auth.baytarianMe().then(setState).catch(() => {});
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user]);
+
+  async function submit() {
+    if (!files.length) { toast.error(t('membership.upload')); return; }
+    setBusy(true);
+    try {
+      await auth.baytarianRequest(files, note);
+      setFiles([]); setNote(''); if (fileRef.current) fileRef.current.value = '';
+      toast.success(t('membership.pending'));
+      load();
+    } catch (e) {
+      toast.error(e.data?.error === 'request_pending' ? t('membership.pending') : 'تعذّر الإرسال');
+    } finally { setBusy(false); }
+  }
+
+  const card = { background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 18, padding: 24 };
+  const tierColor = { free: '#1a7f4b', vet_free: '#2b6cb0', baytarian: colors.accent, general: '#6b6b7b' };
+  const status = state?.request?.status;
+  const verified = state?.is_baytarian;
 
   return (
-    <div>
-      <div style={{ textAlign: 'center', padding: '60px 24px 30px' }}>
-        <h1 style={{ fontSize: 40, fontWeight: 900, margin: '0 0 12px' }}>اختر خطة اشتراكك</h1>
-        <p style={{ fontSize: 18, color: colors.muted, margin: '0 auto 26px', maxWidth: 560 }}>
-          وصول غير محدود لأكثر من 2000 دورة بيطرية. ألغِ في أي وقت.
-        </p>
-        <div style={{ display: 'inline-flex', background: colors.surfaceAlt, borderRadius: 100, padding: 5 }}>
-          {toggleBtn(!annual, 'شهري', () => setAnnual(false))}
-          {toggleBtn(annual, 'سنوي · وفّر 40%', () => setAnnual(true))}
-        </div>
+    <div style={{ background: colors.surfaceMuted, minHeight: '70vh' }}>
+      <div style={{ background: gradients.darkPanel, color: '#fff', padding: '46px 0' }}>
+        <Container>
+          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0 }}>{t('membership.title')}</h1>
+          <p style={{ color: '#c9c9dc', marginTop: 8, fontSize: 17 }}>{t('membership.subtitle')}</p>
+        </Container>
       </div>
 
-      <div
-        className="grid-collapse-sm"
-        style={{ maxWidth: 1080, margin: '0 auto', padding: '20px 24px 40px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22, alignItems: 'stretch' }}
-      >
-        {plans.map((p) => (
-          <div
-            key={p.name}
-            style={{ border: p.border, borderRadius: 20, padding: 30, position: 'relative', background: p.bg, color: p.fg }}
-          >
-            {p.featured && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: -13,
-                  right: 24,
-                  background: colors.accent,
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  padding: '6px 14px',
-                  borderRadius: 100,
-                }}
-              >
-                الأكثر شعبية
-              </span>
-            )}
-            <div style={{ fontSize: 19, fontWeight: 900, marginBottom: 6 }}>{p.name}</div>
-            <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 20 }}>{p.tagline}</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-              <span style={{ fontSize: 42, fontWeight: 900 }}>{p.price}</span>
-              <span style={{ fontSize: 15, opacity: 0.7 }}>ج.م / {p.per}</span>
-            </div>
-            <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 22 }}>{p.billed}</div>
-            <button
-              onClick={() => navigate(user ? '/courses' : '/auth')}
-              style={{
-                width: '100%',
-                background: p.btnBg,
-                color: p.btnFg,
-                border: p.btnBorder,
-                borderRadius: 12,
-                fontSize: 15,
-                fontWeight: 800,
-                padding: 14,
-                cursor: 'pointer',
-                marginBottom: 22,
-              }}
-            >
-              {p.cta}
-            </button>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {p.features.map((f) => (
-                <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
-                  <span style={{ color: colors.accent, fontWeight: 900 }}>✓</span> {f}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '30px 24px 70px' }}>
-        <h2 style={{ fontSize: 26, fontWeight: 900, margin: '0 0 22px', textAlign: 'center' }}>الأسئلة الشائعة</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {faqList.map((q) => (
-            <div key={q.q} style={{ border: `1px solid ${colors.line}`, borderRadius: 14, padding: '18px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 16, fontWeight: 800 }}>
-                <span>{q.q}</span>
-                <span style={{ color: colors.muted2 }}>+</span>
-              </div>
-              <p style={{ fontSize: 14, color: colors.muted, lineHeight: 1.6, margin: '10px 0 0' }}>{q.a}</p>
+      <Container style={{ padding: '32px 24px 60px', maxWidth: 1000 }}>
+        {/* 4 access tiers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 18, marginBottom: 40 }}>
+          {TIER_KEYS.map((k) => (
+            <div key={k} style={{ ...card, borderTop: `4px solid ${tierColor[k]}` }}>
+              <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8, color: tierColor[k] }}>{t('access.' + k)}</div>
+              <p style={{ fontSize: 14, color: colors.ink2, lineHeight: 1.7, margin: 0 }}>
+                {k === 'free' && (t('lang.name') === 'English' ? 'Open to everyone, no payment.' : 'متاح للجميع بدون دفع.')}
+                {k === 'vet_free' && t('lock.instructors_only')}
+                {k === 'baytarian' && t('lock.needs_baytarian')}
+                {k === 'general' && (t('lang.name') === 'English' ? 'Paid, open to everyone.' : 'مدفوع ومتاح للجميع.')}
+              </p>
             </div>
           ))}
         </div>
-      </div>
+
+        {/* Become a Baytarian */}
+        <div style={{ ...card, borderTop: `4px solid ${colors.accent}` }}>
+          <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 6px' }}>{t('membership.becomeTitle')}</h2>
+          <p style={{ color: colors.ink2, fontSize: 15, lineHeight: 1.7, marginTop: 0 }}>{t('membership.becomeDesc')}</p>
+
+          {!user ? (
+            <button onClick={() => navigate('/auth?next=/pricing')}
+              style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, padding: '12px 24px', cursor: 'pointer' }}>
+              {t('membership.loginFirst')}
+            </button>
+          ) : verified ? (
+            <div style={{ padding: '14px 18px', background: '#e8f5ee', color: '#1a7f4b', borderRadius: 12, fontWeight: 800 }}>
+              {t('membership.approved')}
+            </div>
+          ) : status === 'pending' ? (
+            <div style={{ padding: '14px 18px', background: '#fdf6e3', color: '#5e5524', borderRadius: 12, fontWeight: 800 }}>
+              {t('membership.pending')}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 520 }}>
+              {status === 'rejected' && state?.request?.reject_reason && (
+                <div style={{ padding: '10px 14px', background: '#fdecea', color: '#b3261e', borderRadius: 10, fontSize: 14 }}>
+                  {t('membership.rejected')}: {state.request.reject_reason}
+                </div>
+              )}
+              <label style={{ fontSize: 14, fontWeight: 800 }}>{t('membership.upload')}</label>
+              <input ref={fileRef} type="file" multiple accept="image/*,application/pdf"
+                onChange={(e) => setFiles(Array.from(e.target.files))}
+                style={{ border: `1px solid ${colors.line}`, borderRadius: 10, padding: 10 }} />
+              <input placeholder={t('membership.note')} value={note} onChange={(e) => setNote(e.target.value)}
+                style={{ border: `1px solid ${colors.line}`, borderRadius: 10, padding: '12px 14px', fontSize: 15 }} />
+              <button onClick={submit} disabled={busy}
+                style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, padding: '13px 26px', cursor: 'pointer', opacity: busy ? 0.6 : 1, alignSelf: 'flex-start' }}>
+                {busy ? '…' : t('membership.submit')}
+              </button>
+            </div>
+          )}
+        </div>
+      </Container>
     </div>
   );
 }

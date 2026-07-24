@@ -60,7 +60,12 @@ export default function Buy() {
     const load = isBundle
       ? webapi.bundle(slug).then((r) => { const b = r.bundle; setCourse(b); setTarget({ kind: 'bundle', bundle_id: b.id }); return { kind: 'bundle', bundle_id: b.id }; })
       : webapi.course(slug).then((r) => { const c = r.course; setCourse(c); setTarget({ kind, course_id: c.id }); return { kind, course_id: c.id }; });
-    load.then((t) => auth.quote(t).then((q) => setQuotedPrice(q.expected_amount)).catch(() => {}))
+    load.then((t) => auth.quote(t)
+        .then((q) => setQuotedPrice(q.expected_amount))
+        .catch((e) => {
+          const er = e.data && e.data.error;
+          if (er === 'needs_baytarian') { toast.error('خاص بالأطباء الموثّقين — وثّق حسابك أولاً'); navigate('/pricing'); }
+        }))
       .catch(() => setMsg(isBundle ? 'الحزمة غير موجودة.' : 'الدورة غير موجودة.'));
     webapi.instapayAccounts().then((r) => setAccounts(r.accounts)).catch(() => {});
   }, [slug, user, loading, navigate, isBundle, kind]);
@@ -89,6 +94,8 @@ export default function Buy() {
       const er = err.data && err.data.error;
       setState('error');
       const m = er === 'already_enrolled' ? 'أنت مسجّل بالفعل في هذه الدورة.'
+        : er === 'needs_baytarian' ? 'هذا المحتوى خاص بالأطباء الموثّقين — وثّق حسابك أولاً.'
+        : er === 'not_purchasable' ? 'هذا الكورس غير قابل للشراء.'
         : er === 'unsupported_media_type' ? 'صيغة الصورة غير مدعومة (JPG/PNG/WEBP).'
         : 'تعذّر تحليل الإيصال. حاول مجدداً.';
       setMsg(m); toast.error(m);

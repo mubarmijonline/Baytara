@@ -31,8 +31,21 @@ Decisions (client-confirmed):
       Arabic chrome strings in web pages (Home/Courses/Pricing/etc.) still need t() extraction;
       instructor portal UI not yet localized.
 
+## G7 · Content access tiers + Baytarian verification + animal categories (client revision, 2026-07-25)
+- [x] **Access types per course**: `free` (anyone), `vet_free` (instructors only, free),
+      `baytarian` (verified pet-doctors only, paid), `general` (anyone, paid). Backfilled existing.
+- [x] **Gating**: vet_free hidden from non-instructors; baytarian shown-but-locked; enroll +
+      payment enforce audience; baytarian purchase requires verified account.
+- [x] **Baytarian verification**: user uploads docs (PDF/images) → admin review (view/approve/reject)
+      → `is_baytarian`. Admin page + pending badge; student flow on /pricing (now Membership page).
+- [x] **Animal categories seeded** (Large Animals, Equine, Pet, Poultry, Fish, Camel; AR+EN).
+      Admin can add more. CLI: `flask seed-categories`.
+- [x] **Web**: access badges on cards/detail, locked CTA, Membership+verification page, buy gating.
+- [x] **Admin**: course access_type field, Baytarian review page, is_baytarian toggle on users.
+
 ## Explicitly out of scope
 - Paymob / Fawry / e-wallet gateways — replaced by InstaPay (client decision).
+- /pricing subscription plans removed — replaced by Membership + verification (access is per-course).
 
 ## Notes
 - Test suite (`tests/test_*.py`) runs against the LIVE DB (DATABASE_URL). It should use a
