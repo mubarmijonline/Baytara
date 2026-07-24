@@ -14,17 +14,26 @@ Decisions (client-confirmed):
 
 ## Features
 
-- [ ] **G1 · Dynamic watermark → add phone** (contract البند2). User.phone + register + `watermark_for`.
-- [ ] **G2 · Access Duration** (البند3). Course.access_days (null=lifetime), Enrollment.expires_at,
-      set on enroll/approve, enforce on video playback + learn, show expiry in dashboard.
-- [ ] **G3 · Renewal** (البند3). Global `renewal_percent` setting; student renewal → InstaPay
-      payment (kind=renewal) → admin approve extends expires_at. Student "extend" button.
-- [ ] **G4 · Course Bundling** (البند3). Bundle model + bundle_courses M2M, custom discount price,
-      public page, admin CRUD, purchase (InstaPay) → approve enrolls all courses.
-- [ ] **G5 · Device Limit — 2 devices** (البند2). UserDevice table, device_id from client on
-      login/refresh, block when 2 active + a new one appears; manage/remove devices.
-- [ ] **G6 · Full bilingual AR/EN** (البند1). Dual `_en` columns on catalog/content; localized
-      to_dict; language toggle + i18n chrome dict in all 3 SPAs; dual inputs in admin.
+- [x] **G1 · Dynamic watermark → add phone** (البند2). User.phone + register + `watermark_for`;
+      phone field on web signup. DONE + deployed.
+- [x] **G2 · Access Duration** (البند3). Course.access_days (null=lifetime), Enrollment.expires_at,
+      set on enroll/approve, enforced on video playback + progress; dashboard expiry badges;
+      admin access_days field. DONE + deployed.
+- [x] **G3 · Renewal** (البند3). Global `renewal_percent` setting (admin Settings); InstaPay
+      kind=renewal extends expires_at; dashboard renew button; /payment/quote for pricing. DONE.
+- [x] **G4 · Course Bundling** (البند3). Bundle model + M2M, public /bundles page, admin CRUD page,
+      InstaPay kind=bundle enrolls all member courses. DONE + deployed.
+- [x] **G5 · Device Limit — 2 devices** (البند2). UserDevice table, device_id from client,
+      blocks 3rd on login, dashboard device list + remove. DONE + deployed.
+- [~] **G6 · Full bilingual AR/EN** (البند1). Backend: dual `_en` columns + localized to_dict via
+      ?lang (DONE). Admin authoring: EN inputs on course/module/lesson/category/article (DONE).
+      Web: i18n layer + language toggle + API content localizes (DONE). REMAINING: some hardcoded
+      Arabic chrome strings in web pages (Home/Courses/Pricing/etc.) still need t() extraction;
+      instructor portal UI not yet localized.
 
 ## Explicitly out of scope
 - Paymob / Fawry / e-wallet gateways — replaced by InstaPay (client decision).
+
+## Notes
+- Test suite (`tests/test_*.py`) runs against the LIVE DB (DATABASE_URL). It should use a
+  separate test database — running it pollutes production data (cleaned up manually after this build).

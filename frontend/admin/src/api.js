@@ -65,6 +65,13 @@ export const api = {
   lessonUpdate: (id, body) => req(`/admin/lessons/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   lessonDelete: (id) => req(`/admin/lessons/${id}`, { method: 'DELETE' }),
 
+  // bundles (course bundling)
+  bundles: () => req('/admin/bundles'),
+  bundleGet: (id) => req(`/admin/bundles/${id}`),
+  bundleCreate: (body) => req('/admin/bundles', { method: 'POST', body: JSON.stringify(body) }),
+  bundleUpdate: (id, body) => req(`/admin/bundles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  bundleDelete: (id) => req(`/admin/bundles/${id}`, { method: 'DELETE' }),
+
   // payments
   payments: (status) => req('/admin/payments' + (status ? `?status=${status}` : '')),
   approve: (id) => req(`/admin/payments/${id}/approve`, { method: 'POST' }),

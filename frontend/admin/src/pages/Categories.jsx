@@ -7,6 +7,7 @@ import { ErrText, apiError } from '../ui.jsx';
 export default function Categories() {
   const [rows, setRows] = useState(null);
   const [name, setName] = useState('');
+  const [nameEn, setNameEn] = useState('');
   const [err, setErr] = useState('');
 
   async function load() {
@@ -18,13 +19,14 @@ export default function Categories() {
 
   async function create() {
     if (!name.trim()) return;
-    try { await api.categoryCreate({ name: name.trim() }); setName(''); load(); }
+    try { await api.categoryCreate({ name: name.trim(), name_en: nameEn.trim() || null }); setName(''); setNameEn(''); load(); }
     catch (e) { toast.error(apiError(e)); }
   }
   async function rename(c) {
-    const n = await promptDialog('الاسم الجديد', c.name);
+    const n = await promptDialog('الاسم (عربي)', c.name);
     if (!n) return;
-    try { await api.categoryUpdate(c.id, { name: n }); load(); }
+    const en = await promptDialog('Name (English)', c.name_en || '');
+    try { await api.categoryUpdate(c.id, { name: n, name_en: en || null }); load(); }
     catch (e) { toast.error(apiError(e)); }
   }
   async function del(c) {
@@ -37,7 +39,9 @@ export default function Categories() {
     <>
       <h2>الفئات</h2>
       <div className="toolbar">
-        <input placeholder="اسم فئة جديدة" value={name} onChange={(e) => setName(e.target.value)}
+        <input placeholder="اسم فئة جديدة (عربي)" value={name} onChange={(e) => setName(e.target.value)}
+               onKeyDown={(e) => e.key === 'Enter' && create()} />
+        <input placeholder="Name (English)" dir="ltr" value={nameEn} onChange={(e) => setNameEn(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && create()} />
         <button className="btn btn-filled btn-sm" onClick={create}>+ إضافة</button>
       </div>

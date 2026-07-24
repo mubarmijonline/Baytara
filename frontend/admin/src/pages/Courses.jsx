@@ -10,8 +10,10 @@ const statusLabel = (s) => ({ draft: 'مسودة', published: 'منشورة', un
 function CourseForm({ course, instructors, categories, onClose, onSaved }) {
   const editing = !!course;
   const [f, setF] = useState({
-    title: course?.title || '', description: course?.description || '',
+    title: course?.title || '', title_en: course?.title_en || '',
+    description: course?.description || '', description_en: course?.description_en || '',
     price: course?.price ?? 0, currency: course?.currency || 'EGP',
+    access_days: course?.access_days ?? '',
     instructor_id: course?.instructor?.id || instructors[0]?.id || '',
     category_id: course?.category?.id || '', status: course?.status || 'draft',
   });
@@ -21,7 +23,8 @@ function CourseForm({ course, instructors, categories, onClose, onSaved }) {
   async function save() {
     setErr('');
     const body = { ...f, price: Number(f.price), instructor_id: Number(f.instructor_id),
-      category_id: f.category_id ? Number(f.category_id) : null };
+      category_id: f.category_id ? Number(f.category_id) : null,
+      access_days: f.access_days === '' ? null : Number(f.access_days) };
     try {
       if (editing) await api.courseUpdate(course.id, body);
       else await api.courseCreate(body);
@@ -31,11 +34,14 @@ function CourseForm({ course, instructors, categories, onClose, onSaved }) {
 
   return (
     <Modal title={editing ? 'تعديل دورة' : 'دورة جديدة'} onClose={onClose}>
-      <Field label="العنوان"><input value={f.title} onChange={set('title')} /></Field>
-      <Field label="الوصف"><input value={f.description} onChange={set('description')} /></Field>
+      <Field label="العنوان (عربي)"><input value={f.title} onChange={set('title')} /></Field>
+      <Field label="Title (English)"><input dir="ltr" value={f.title_en} onChange={set('title_en')} /></Field>
+      <Field label="الوصف (عربي)"><input value={f.description} onChange={set('description')} /></Field>
+      <Field label="Description (English)"><input dir="ltr" value={f.description_en} onChange={set('description_en')} /></Field>
       <div className="row">
         <Field label="السعر"><input type="number" value={f.price} onChange={set('price')} style={{ width: 100 }} /></Field>
         <Field label="العملة"><input value={f.currency} onChange={set('currency')} style={{ width: 80 }} /></Field>
+        <Field label="مدة الوصول (أيام)"><input type="number" min="0" placeholder="مدى الحياة" value={f.access_days} onChange={set('access_days')} style={{ width: 130 }} /></Field>
       </div>
       <Field label="المدرّب">
         <select value={f.instructor_id} onChange={set('instructor_id')}>
@@ -76,20 +82,32 @@ function CourseContent({ courseId, onClose }) {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [courseId]);
 
   async function addModule() {
-    const title = await promptDialog('عنوان الوحدة');
+    const title = await promptDialog('عنوان الوحدة (عربي)');
     if (!title) return;
-    await api.moduleCreate(courseId, { title, position: (course.modules?.length || 0) });
+    const title_en = await promptDialog('Module title (English)', '');
+    await api.moduleCreate(courseId, { title, title_en: title_en || null, position: (course.modules?.length || 0) });
     load();
   }
-  async function editModule(m) { const t = await promptDialog('عنوان الوحدة', m.title); if (t) { await api.moduleUpdate(m.id, { title: t }); load(); } }
+  async function editModule(m) {
+    const t = await promptDialog('عنوان الوحدة (عربي)', m.title);
+    if (!t) return;
+    const en = await promptDialog('Module title (English)', m.title_en || '');
+    await api.moduleUpdate(m.id, { title: t, title_en: en || null }); load();
+  }
   async function delModule(m) { if (await confirmDialog('حذف الوحدة ودروسها؟')) { await api.moduleDelete(m.id); load(); } }
   async function addLesson(m) {
-    const title = await promptDialog('عنوان الدرس');
+    const title = await promptDialog('عنوان الدرس (عربي)');
     if (!title) return;
-    await api.lessonCreate(m.id, { title, position: (m.lessons?.length || 0) });
+    const title_en = await promptDialog('Lesson title (English)', '');
+    await api.lessonCreate(m.id, { title, title_en: title_en || null, position: (m.lessons?.length || 0) });
     load();
   }
-  async function editLesson(l) { const t = await promptDialog('عنوان الدرس', l.title); if (t) { await api.lessonUpdate(l.id, { title: t }); load(); } }
+  async function editLesson(l) {
+    const t = await promptDialog('عنوان الدرس (عربي)', l.title);
+    if (!t) return;
+    const en = await promptDialog('Lesson title (English)', l.title_en || '');
+    await api.lessonUpdate(l.id, { title: t, title_en: en || null }); load();
+  }
   async function delLesson(l) { if (await confirmDialog('حذف الدرس؟')) { await api.lessonDelete(l.id); load(); } }
 
   return (

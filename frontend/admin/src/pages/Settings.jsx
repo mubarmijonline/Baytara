@@ -74,6 +74,18 @@ export default function Settings() {
       ))}
 
       <div className="card">
+        <h3>التجديد (Renewal)</h3>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
+          نسبة سعر التجديد من سعر الكورس — تُطبّق على كل عمليات تجديد الاشتراك.
+        </p>
+        <Field label="نسبة التجديد (%)">
+          <input type="number" min="0" max="100" dir="ltr" style={{ width: 120 }}
+            value={s.renewal_percent ?? ''} placeholder="30"
+            onChange={(e) => setS({ ...s, renewal_percent: e.target.value === '' ? '' : Number(e.target.value) })} />
+        </Field>
+      </div>
+
+      <div className="card">
         <h3>مفاتيح API (سرّية)</h3>
         <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
           لا تظهر هذه المفاتيح في الموقع العام. تُطبّق فور الحفظ (بدون إعادة تشغيل).

@@ -3,6 +3,7 @@ import { api } from './api.js';
 import Dashboard from './pages/Dashboard.jsx';
 import Payments from './pages/Payments.jsx';
 import Courses from './pages/Courses.jsx';
+import Bundles from './pages/Bundles.jsx';
 import Users from './pages/Users.jsx';
 import Categories from './pages/Categories.jsx';
 import Accounts from './pages/Accounts.jsx';
@@ -15,6 +16,7 @@ const NAV = [
   ['dashboard', 'لوحة القيادة'],
   ['payments', 'مدفوعات إنستاباي'],
   ['courses', 'الدورات'],
+  ['bundles', 'الحزم'],
   ['hierarchy', 'الهيكلة'],
   ['categories', 'الفئات'],
   ['articles', 'المحتوى والمدوّنة'],
@@ -23,7 +25,7 @@ const NAV = [
   ['accounts', 'حسابات إنستاباي'],
   ['settings', 'إعدادات الموقع'],
 ];
-const PAGES = { dashboard: Dashboard, payments: Payments, courses: Courses, hierarchy: Hierarchy, categories: Categories, articles: Articles, users: Users, messages: Messages, accounts: Accounts, settings: Settings };
+const PAGES = { dashboard: Dashboard, payments: Payments, courses: Courses, bundles: Bundles, hierarchy: Hierarchy, categories: Categories, articles: Articles, users: Users, messages: Messages, accounts: Accounts, settings: Settings };
 
 export default function Shell({ onLogout }) {
   const [page, setPage] = useState('dashboard');

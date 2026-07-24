@@ -10,8 +10,10 @@ const typeLabel = (t) => ({ blog: 'مدوّنة', content: 'محتوى مجان�
 function ArticleForm({ article, onClose, onSaved }) {
   const editing = !!article;
   const [f, setF] = useState({
-    type: article?.type || 'blog', title: article?.title || '', excerpt: article?.excerpt || '',
-    body: article?.body || '', cover: article?.cover || '', status: article?.status || 'draft',
+    type: article?.type || 'blog', title: article?.title || '', title_en: article?.title_en || '',
+    excerpt: article?.excerpt || '', excerpt_en: article?.excerpt_en || '',
+    body: article?.body || '', body_en: article?.body_en || '',
+    cover: article?.cover || '', status: article?.status || 'draft',
   });
   const [err, setErr] = useState('');
   const [loaded, setLoaded] = useState(!editing);
@@ -39,11 +41,17 @@ function ArticleForm({ article, onClose, onSaved }) {
               <option value="content">محتوى مجاني</option>
             </select>
           </Field>
-          <Field label="العنوان"><input value={f.title} onChange={set('title')} /></Field>
-          <Field label="مقتطف"><input value={f.excerpt} onChange={set('excerpt')} /></Field>
+          <Field label="العنوان (عربي)"><input value={f.title} onChange={set('title')} /></Field>
+          <Field label="Title (English)"><input dir="ltr" value={f.title_en} onChange={set('title_en')} /></Field>
+          <Field label="مقتطف (عربي)"><input value={f.excerpt} onChange={set('excerpt')} /></Field>
+          <Field label="Excerpt (English)"><input dir="ltr" value={f.excerpt_en} onChange={set('excerpt_en')} /></Field>
           <Field label="رابط صورة الغلاف"><input value={f.cover} onChange={set('cover')} dir="ltr" /></Field>
-          <Field label="المحتوى">
+          <Field label="المحتوى (عربي)">
             <textarea value={f.body} onChange={set('body')} rows={8}
+              style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12, font: 'inherit', resize: 'vertical' }} />
+          </Field>
+          <Field label="Content (English)">
+            <textarea dir="ltr" value={f.body_en} onChange={set('body_en')} rows={8}
               style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12, font: 'inherit', resize: 'vertical' }} />
           </Field>
           <Field label="الحالة">
