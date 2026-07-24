@@ -3,12 +3,31 @@ import { useEffect, useState } from 'react';
 import { thumbGradients } from '../theme/tokens.js';
 
 const BASE = '/api/v1';
+
+// ---- language (contract البند1: AR default, EN toggle) ----
+const LANG_KEY = 'baytara_lang';
+export const getLang = () => localStorage.getItem(LANG_KEY) || 'ar';
+export const setLang = (l) => { localStorage.setItem(LANG_KEY, l === 'en' ? 'en' : 'ar'); };
+
+// ---- stable device id (contract البند2: 2-device limit) ----
+const DEVICE_KEY = 'baytara_device_id';
+export function getDeviceId() {
+  let d = localStorage.getItem(DEVICE_KEY);
+  if (!d) {
+    d = (crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Math.random().toString(36).slice(2) + Date.now());
+    localStorage.setItem(DEVICE_KEY, d);
+  }
+  return d;
+}
+
 const qs = (p) => {
   const s = new URLSearchParams(Object.entries(p || {}).filter(([, v]) => v != null && v !== '')).toString();
   return s ? `?${s}` : '';
 };
+// Append the active language so the API returns localized content.
+const withLang = (path) => path + (path.includes('?') ? '&' : '?') + 'lang=' + getLang();
 async function get(path) {
-  const r = await fetch(BASE + path);
+  const r = await fetch(BASE + withLang(path), { headers: { 'Accept-Language': getLang() } });
   if (!r.ok) throw Object.assign(new Error('http'), { status: r.status });
   return r.json();
 }
@@ -37,9 +56,12 @@ async function authFetch(path, opts = {}) {
 }
 
 export const auth = {
-  register: (b) => authFetch('/auth/register', { method: 'POST', body: JSON.stringify(b) }),
-  login: (b) => authFetch('/auth/login', { method: 'POST', body: JSON.stringify(b) }),
+  register: (b) => authFetch('/auth/register', { method: 'POST', body: JSON.stringify({ ...b, device_id: getDeviceId() }) }),
+  login: (b) => authFetch('/auth/login', { method: 'POST', body: JSON.stringify({ ...b, device_id: getDeviceId() }) }),
+  logoutServer: () => authFetch('/auth/logout', { method: 'POST', body: JSON.stringify({ device_id: getDeviceId() }) }).catch(() => {}),
   me: () => authFetch('/auth/me'),
+  devices: () => authFetch('/auth/devices'),
+  removeDevice: (id) => authFetch(`/auth/devices/${id}`, { method: 'DELETE' }),
   enrollments: () => authFetch('/enrollments'),
   enroll: (course_id) => authFetch('/enrollments', { method: 'POST', body: JSON.stringify({ course_id }) }),
   progress: (b) => authFetch('/progress', { method: 'POST', body: JSON.stringify(b) }),
@@ -48,14 +70,18 @@ export const auth = {
   notifications: () => authFetch('/notifications'),
   notifRead: (id) => authFetch(`/notifications/${id}/read`, { method: 'POST' }),
   notifReadAll: () => authFetch('/notifications/read-all', { method: 'POST' }),
+  // price/title before uploading a receipt (kind: enroll|renewal|bundle)
+  quote: (params) => authFetch('/payment/quote' + qs(params)),
   // multipart receipt endpoints (don't set Content-Type — browser sets the boundary)
-  submitReceipt: (courseId, file) => sendReceipt('/payment/instapay', courseId, file),
-  analyzeReceipt: (courseId, file) => sendReceipt('/payment/instapay/analyze', courseId, file),
+  submitReceipt: (target, file) => sendReceipt('/payment/instapay', target, file),
+  analyzeReceipt: (target, file) => sendReceipt('/payment/instapay/analyze', target, file),
 };
 
-async function sendReceipt(path, courseId, file) {
+// target: { kind?, course_id?, bundle_id? }
+async function sendReceipt(path, target, file) {
   const fd = new FormData();
-  fd.append('course_id', courseId);
+  const t = typeof target === 'object' ? target : { course_id: target };
+  Object.entries(t).forEach(([k, v]) => v != null && fd.append(k, v));
   fd.append('image', file);
   const r = await fetch(BASE + path, {
     method: 'POST',
@@ -71,6 +97,8 @@ export const webapi = {
   courses: (params) => get('/courses' + qs(params)),
   course: (slug) => get('/courses/' + slug),
   categories: () => get('/categories'),
+  bundles: () => get('/bundles'),
+  bundle: (slug) => get('/bundles/' + slug),
   instructors: () => get('/instructors'),
   instructor: (id) => get('/instructors/' + id),
   instapayAccounts: () => get('/payment/instapay/accounts'),

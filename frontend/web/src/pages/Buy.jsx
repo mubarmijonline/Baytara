@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { webapi, auth } from '../lib/api.js';
@@ -38,8 +38,13 @@ function Check({ ok, warn, label, value }) {
 export default function Buy() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  const isBundle = sp.get('type') === 'bundle';
+  const kind = isBundle ? 'bundle' : (sp.get('kind') === 'renewal' ? 'renewal' : 'enroll');
   const { user, loading } = useAuth();
-  const [course, setCourse] = useState(null);
+  const [course, setCourse] = useState(null); // display item (course or bundle), unified fields
+  const [target, setTarget] = useState(null); // {kind, course_id|bundle_id} for the API
+  const [quotedPrice, setQuotedPrice] = useState(null); // server price (handles renewal %)
   const [accounts, setAccounts] = useState([]);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -49,14 +54,20 @@ export default function Buy() {
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    if (!loading && !user) { navigate(`/auth?next=/buy/${slug}`); return; }
-    webapi.course(slug).then((r) => setCourse(r.course)).catch(() => setMsg('الدورة غير موجودة.'));
+    const back = isBundle ? `/buy/${slug}?type=bundle` : `/buy/${slug}${kind === 'renewal' ? '?kind=renewal' : ''}`;
+    if (!loading && !user) { navigate(`/auth?next=${encodeURIComponent(back)}`); return; }
+    if (!user) return;
+    const load = isBundle
+      ? webapi.bundle(slug).then((r) => { const b = r.bundle; setCourse(b); setTarget({ kind: 'bundle', bundle_id: b.id }); return { kind: 'bundle', bundle_id: b.id }; })
+      : webapi.course(slug).then((r) => { const c = r.course; setCourse(c); setTarget({ kind, course_id: c.id }); return { kind, course_id: c.id }; });
+    load.then((t) => auth.quote(t).then((q) => setQuotedPrice(q.expected_amount)).catch(() => {}))
+      .catch(() => setMsg(isBundle ? 'الحزمة غير موجودة.' : 'الدورة غير موجودة.'));
     webapi.instapayAccounts().then((r) => setAccounts(r.accounts)).catch(() => {});
-  }, [slug, user, loading, navigate]);
+  }, [slug, user, loading, navigate, isBundle, kind]);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
-  const price = course ? Number(course.price) : 0;
+  const price = quotedPrice != null ? Number(quotedPrice) : (course ? Number(course.price) : 0);
   const payAccount = accounts.find((a) => a.url) || accounts[0];
   const payUrl = payAccount?.url;
 
@@ -71,7 +82,7 @@ export default function Buy() {
   async function runAnalyze(f) {
     setState('analyzing'); setMsg(''); setAnalysis(null);
     try {
-      const r = await auth.analyzeReceipt(course.id, f);
+      const r = await auth.analyzeReceipt(target, f);
       setAnalysis(r);
       setState('analyzed');
     } catch (err) {
@@ -101,7 +112,7 @@ export default function Buy() {
     if (!file) { toast.error('أرفق صورة إيصال إنستاباي أولاً'); return; }
     setState('working'); setMsg('');
     try {
-      const r = await auth.submitReceipt(course.id, file);
+      const r = await auth.submitReceipt(target, file);
       setResult(r.payment);
       setState('done');
       toast.success('تم استلام الإيصال وتحليله');
@@ -140,7 +151,9 @@ export default function Buy() {
       <div style={{ background: gradients.darkPanel, color: '#fff', padding: '34px 0' }}>
         <Container>
           <div style={{ fontSize: 13, color: '#c9c9dc', marginBottom: 8 }}>
-            <span onClick={() => navigate(`/courses/${slug}`)} style={{ cursor: 'pointer' }}>الدورة</span> › إتمام الاشتراك
+            {kind === 'bundle' ? 'حزمة تعليمية'
+              : kind === 'renewal' ? 'تجديد الاشتراك'
+              : <><span onClick={() => navigate(`/courses/${slug}`)} style={{ cursor: 'pointer' }}>الدورة</span> › إتمام الاشتراك</>}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <h1 style={{ fontSize: 26, fontWeight: 900, margin: 0 }}>{course.title}</h1>
@@ -152,7 +165,7 @@ export default function Buy() {
       </div>
 
       <Container style={{ padding: '28px 24px 60px', maxWidth: 760 }}>
-        {price === 0 ? (
+        {price === 0 && kind === 'enroll' ? (
           <div style={card}>
             {state === 'done' ? (
               <div style={{ textAlign: 'center', padding: 10 }}>

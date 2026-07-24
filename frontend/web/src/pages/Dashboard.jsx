@@ -3,28 +3,44 @@ import { useNavigate } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { dashNav, dashStats, rawCourses } from '../data/mock.js';
-import { auth, webapi, mapCourse } from '../lib/api.js';
+import { auth, webapi, mapCourse, getDeviceId } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
+import { useI18n } from '../lib/i18n.jsx';
+
+function daysLeft(iso) {
+  if (!iso) return null;
+  return Math.ceil((new Date(iso) - new Date()) / 86400000);
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, logout, loading } = useAuth();
+  const { t } = useI18n();
   const [enrollments, setEnrollments] = useState(null);
   const [recs, setRecs] = useState([]);
+  const [devices, setDevices] = useState([]);
 
+  const loadDevices = () => auth.devices().then((r) => setDevices(r.devices)).catch(() => {});
   useEffect(() => {
     if (!loading && !user) { navigate('/auth'); return; }
     if (!user) return;
     auth.enrollments().then((r) => setEnrollments(r.enrollments)).catch(() => setEnrollments([]));
     webapi.courses({ per_page: 6 }).then((r) => setRecs((r.courses || []).map(mapCourse))).catch(() => {});
+    loadDevices();
   }, [user, loading, navigate]);
 
+  async function removeDevice(id) {
+    try { await auth.removeDevice(id); loadDevices(); } catch { /* noop */ }
+  }
+
   const name = user?.name || '';
+  const thisDevice = getDeviceId();
   const myCourses = (enrollments || []).map((e, i) => {
     const c = mapCourse(e.course, i);
     const pct = e.progress?.percent ?? 0;
     const left = (e.progress?.total_lessons ?? 0) - (e.progress?.completed_lessons ?? 0);
-    return { ...c, progress: `${pct}%`, remaining: left > 0 ? `باقٍ ${left} درس` : 'مكتملة' };
+    return { ...c, progress: `${pct}%`, remaining: left > 0 ? `باقٍ ${left} درس` : 'مكتملة',
+      expiresAt: e.expires_at, isExpired: e.is_expired, daysLeft: daysLeft(e.expires_at) };
   });
   const recommended = recs.length ? recs : rawCourses.slice(5, 8);
   const doneCount = (enrollments || []).filter((e) => (e.progress?.percent ?? 0) === 100).length;
@@ -125,16 +141,17 @@ export default function Dashboard() {
             {myCourses.map((c, i) => (
               <div
                 key={i}
-                onClick={() => navigate(`/learn/${c.slug}/first`)}
+                onClick={() => !c.isExpired && navigate(`/learn/${c.slug}/first`)}
                 style={{
                   background: '#fff',
-                  border: `1px solid ${colors.line}`,
+                  border: `1px solid ${c.isExpired ? '#f5c6c2' : colors.line}`,
                   borderRadius: 16,
                   padding: 16,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 18,
-                  cursor: 'pointer',
+                  cursor: c.isExpired ? 'default' : 'pointer',
+                  opacity: c.isExpired ? 0.85 : 1,
                 }}
               >
                 <div
@@ -171,24 +188,32 @@ export default function Dashboard() {
                   </div>
                   <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>
                     اكتمل {c.progress} · {c.remaining}
+                    {c.expiresAt && !c.isExpired && (
+                      <span style={{ color: colors.muted2 }}> · {t('access.expires')} {c.expiresAt.slice(0, 10)}
+                        {c.daysLeft != null && c.daysLeft <= 14 ? ` (${c.daysLeft} ${t('access.daysLeft')})` : ''}</span>
+                    )}
+                    {!c.expiresAt && <span style={{ color: '#1a7f4b' }}> · {t('access.lifetime')}</span>}
+                    {c.isExpired && <span style={{ color: '#b3261e', fontWeight: 800 }}> · {t('access.expired')}</span>}
                   </div>
                 </div>
-                <button
-                  className="hide-sm"
-                  style={{
-                    background: colors.accent,
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 10,
-                    fontSize: 14,
-                    fontWeight: 800,
-                    padding: '11px 20px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  متابعة
-                </button>
+                {c.isExpired ? (
+                  <button
+                    className="hide-sm"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/buy/${c.slug}?kind=renewal`); }}
+                    style={{ background: '#b3261e', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14,
+                      fontWeight: 800, padding: '11px 20px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {t('access.renew')}
+                  </button>
+                ) : (
+                  <button
+                    className="hide-sm"
+                    style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14,
+                      fontWeight: 800, padding: '11px 20px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    متابعة
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -214,6 +239,35 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Devices (contract البند2: 2-device limit) */}
+          <h2 style={{ fontSize: 20, fontWeight: 900, margin: '34px 0 6px' }}>{t('devices.title')}</h2>
+          <p style={{ color: colors.muted, fontSize: 13, margin: '0 0 16px' }}>{t('devices.limit')}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {devices.map((d) => {
+              const isCurrent = d.device_id === thisDevice;
+              return (
+                <div key={d.id} style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 14,
+                  padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800 }}>
+                      {isCurrent ? `${t('devices.current')} ✓` : (d.label || d.device_id).slice(0, 60)}
+                    </div>
+                    <div style={{ fontSize: 12, color: colors.muted2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {(d.label || '').slice(0, 80)} · {(d.last_seen || '').slice(0, 16).replace('T', ' ')}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeDevice(d.id)}
+                    style={{ background: 'transparent', color: '#b3261e', border: '1px solid #f5c6c2', borderRadius: 9,
+                      fontSize: 13, fontWeight: 700, padding: '8px 14px', cursor: 'pointer', flex: 'none' }}
+                  >
+                    {t('devices.remove')}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </Container>

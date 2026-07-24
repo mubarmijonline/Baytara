@@ -22,13 +22,14 @@ export function AuthProvider({ children }) {
     setUser(res.user);
     return res.user;
   }
-  async function register(name, email, password) {
-    const res = await auth.register({ name, email, password });
+  async function register(name, email, password, phone) {
+    const res = await auth.register({ name, email, password, phone });
     setToken(res.access_token);
     setUser(res.user);
     return res.user;
   }
   function logout() {
+    auth.logoutServer();
     setToken('');
     setUser(null);
   }

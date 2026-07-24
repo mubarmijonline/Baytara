@@ -3,16 +3,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { colors } from '../theme/tokens.js';
 import { authPerks } from '../data/mock.js';
 import { useAuth } from '../lib/auth.jsx';
+import { useI18n } from '../lib/i18n.jsx';
 
 export default function Auth() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = params.get('next') || '/dashboard';
   const { login, register } = useAuth();
+  const { t } = useI18n();
   const [mode, setMode] = useState('login');
   const isSignup = mode === 'signup';
   const title = isSignup ? 'إنشاء حساب جديد' : 'تسجيل الدخول';
-  const [f, setF] = useState({ name: '', email: '', password: '' });
+  const [f, setF] = useState({ name: '', email: '', phone: '', password: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -20,12 +22,14 @@ export default function Auth() {
   async function submit() {
     setErr(''); setBusy(true);
     try {
-      if (isSignup) await register(f.name, f.email, f.password);
+      if (isSignup) await register(f.name, f.email, f.password, f.phone);
       else await login(f.email, f.password);
       navigate(next);
     } catch (e) {
+      const code = e.data && e.data.error;
       setErr(
-        e.status === 401 ? 'بيانات الدخول غير صحيحة.'
+        code === 'device_limit_reached' ? t('devices.limitReached')
+        : e.status === 401 ? 'بيانات الدخول غير صحيحة.'
         : e.status === 409 ? 'البريد مسجّل مسبقاً.'
         : e.status === 422 ? 'تحقّق من البيانات (كلمة المرور 8 أحرف على الأقل).'
         : 'تعذّر إتمام العملية.'
@@ -141,6 +145,11 @@ export default function Auth() {
           <h2 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 22px' }}>{title}</h2>
           {isSignup && field('الاسم الكامل', <input placeholder="أدخل اسمك" style={inputStyle} value={f.name} onChange={set('name')} />)}
           {field('البريد الإلكتروني', <input placeholder="you@email.com" style={inputStyle} value={f.email} onChange={set('email')} />)}
+          {isSignup && field(t('auth.phone'),
+            <>
+              <input placeholder="+2010xxxxxxxx" style={inputStyle} value={f.phone} onChange={set('phone')} />
+              <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{t('auth.phoneHint')}</div>
+            </>)}
           {field('كلمة المرور', <input type="password" placeholder="••••••••" style={inputStyle} value={f.password} onChange={set('password')} onKeyDown={(e) => e.key === 'Enter' && submit()} />)}
           {err && <div style={{ color: colors.accent, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{err}</div>}
           <button

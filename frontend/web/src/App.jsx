@@ -3,6 +3,7 @@ import Layout from './layouts/Layout.jsx';
 import Home from './pages/Home.jsx';
 import Courses from './pages/Courses.jsx';
 import CourseDetail from './pages/CourseDetail.jsx';
+import Bundles from './pages/Bundles.jsx';
 import Instructor from './pages/Instructor.jsx';
 import Pricing from './pages/Pricing.jsx';
 import Business from './pages/Business.jsx';
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:slug" element={<CourseDetail />} />
+        <Route path="/bundles" element={<Bundles />} />
         <Route path="/buy/:slug" element={<Buy />} />
         <Route path="/instructors/:id" element={<Instructor />} />
         <Route path="/pricing" element={<Pricing />} />

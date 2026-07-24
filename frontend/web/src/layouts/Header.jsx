@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { colors, gradients, layout } from '../theme/tokens.js';
 import { auth } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
+import { useI18n } from '../lib/i18n.jsx';
 
 function UserMenu() {
   const navigate = useNavigate();
@@ -108,17 +109,29 @@ function SearchIcon() {
 }
 
 const NAV = [
-  ['/courses', 'الدورات'],
-  ['/pricing', 'الاشتراكات'],
-  ['/business', 'للأعمال'],
-  ['/blog', 'المدوّنة'],
+  ['/courses', 'nav.courses'],
+  ['/bundles', 'nav.bundles'],
+  ['/pricing', 'nav.pricing'],
+  ['/business', 'nav.business'],
+  ['/blog', 'nav.blog'],
 ];
 
 export default function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
+  const { t, lang, switchLang } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
+  const langToggle = (extra = {}) => (
+    <button
+      onClick={() => switchLang(lang === 'en' ? 'ar' : 'en')}
+      title={lang === 'en' ? 'العربية' : 'English'}
+      style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer',
+        fontWeight: 800, fontSize: 13, ...extra }}
+    >
+      {t('lang.toggle')}
+    </button>
+  );
   const go = (to) => {
     setMenuOpen(false);
     navigate(to);
@@ -154,7 +167,7 @@ export default function Header() {
               المساعدة
             </span>
             <span style={{ opacity: 0.4 }}>|</span>
-            <span style={{ cursor: 'pointer' }}>EN</span>
+            {langToggle()}
           </div>
         </div>
       </div>
@@ -251,10 +264,11 @@ export default function Header() {
             className="hide-md"
             style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 15, fontWeight: 700 }}
           >
-            {navItem('/courses', 'الدورات')}
-            {navItem('/pricing', 'الاشتراكات')}
-            {navItem('/business', 'للأعمال')}
-            {navItem('/blog', 'المدوّنة')}
+            {navItem('/courses', t('nav.courses'))}
+            {navItem('/bundles', t('nav.bundles'))}
+            {navItem('/pricing', t('nav.pricing'))}
+            {navItem('/business', t('nav.business'))}
+            {navItem('/blog', t('nav.blog'))}
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginInlineStart: 'auto' }}>
@@ -344,9 +358,12 @@ export default function Header() {
                   borderBottom: `1px solid ${colors.line2}`,
                 }}
               >
-                {label}
+                {t(label)}
               </span>
             ))}
+            <span style={{ padding: '12px 4px', borderBottom: `1px solid ${colors.line2}` }}>
+              {langToggle({ fontSize: 15, color: colors.ink })}
+            </span>
             {user && (
               <span onClick={() => go('/dashboard')} style={{ padding: '12px 4px', cursor: 'pointer', fontWeight: 700, borderBottom: `1px solid ${colors.line2}` }}>
                 لوحتي ({user.name})
