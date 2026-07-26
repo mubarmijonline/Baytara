@@ -6,7 +6,7 @@ from ...extensions import db
 from datetime import datetime, timezone
 
 from ...models import (
-    User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment,
+    User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, push_notification,
 )
 from ...models.catalog import ACCESS_TYPES, access_is_paid
@@ -42,7 +42,11 @@ def stats():
             "published": Course.query.filter_by(status="published").count(),
         },
         enrollments=Enrollment.query.filter_by(status="active").count(),
-        payments={"pending": InstapayPayment.query.filter_by(status="pending").count()},
+        payments={
+            "paid": Payment.query.filter_by(status="paid").count(),
+            "revenue": float(db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0))
+                             .filter(Payment.status == "paid").scalar() or 0),
+        },
         baytarian={"pending": BaytarianRequest.query.filter_by(status="pending").count()},
     )
 
@@ -137,6 +141,7 @@ def users_delete(uid):
         db.session.delete(e)  # cascades lesson_progress
     InstapayPayment.query.filter_by(user_id=uid).delete()
     InstapayPayment.query.filter_by(reviewed_by=uid).update({"reviewed_by": None})
+    Payment.query.filter_by(user_id=uid).delete()
     Article.query.filter_by(author_id=uid).update({"author_id": None})
     Notification.query.filter_by(user_id=uid).delete()
     db.session.delete(u)

@@ -5,9 +5,56 @@ from ..extensions import db
 PAYMENT_STATUSES = ("pending", "approved", "rejected")
 PAYMENT_KINDS = ("enroll", "renewal", "bundle")  # enroll/renewal -> course_id; bundle -> bundle_id
 
+# Fawaterak (gateway) payment lifecycle
+FAWATERK_STATUSES = ("pending", "paid", "failed", "expired", "refunded")
+
 
 def _now():
     return datetime.now(timezone.utc)
+
+
+class Payment(db.Model):
+    """A Fawaterak gateway payment. Created pending at checkout; confirmed by the
+    verified webhook. Grant (enroll/renew/bundle) happens atomically on 'paid'."""
+
+    __tablename__ = "payments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    kind = db.Column(db.String(20), nullable=False, default="enroll")  # enroll|renewal|bundle
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True, index=True)
+    bundle_id = db.Column(db.Integer, db.ForeignKey("bundles.id"), nullable=True, index=True)
+
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False, default="EGP")
+    status = db.Column(db.String(20), nullable=False, default="pending", index=True)
+
+    gateway = db.Column(db.String(20), nullable=False, default="fawaterk")
+    invoice_id = db.Column(db.String(40), index=True)     # Fawaterak invoice id
+    invoice_key = db.Column(db.String(80))                # Fawaterak invoice key
+    payment_method = db.Column(db.String(60))             # Visa / Fawry / wallet ...
+    reference_number = db.Column(db.String(80))           # gateway reference
+    pay_url = db.Column(db.String(500))                   # hosted checkout url
+
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+    paid_at = db.Column(db.DateTime(timezone=True))
+
+    course = db.relationship("Course")
+    bundle = db.relationship("Bundle")
+
+    def to_dict(self, admin=False):
+        d = {
+            "id": self.id, "kind": self.kind, "course_id": self.course_id, "bundle_id": self.bundle_id,
+            "amount": float(self.amount) if self.amount is not None else None,
+            "currency": self.currency, "status": self.status,
+            "payment_method": self.payment_method, "reference_number": self.reference_number,
+            "invoice_id": self.invoice_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "paid_at": self.paid_at.isoformat() if self.paid_at else None,
+        }
+        if admin:
+            d.update(user_id=self.user_id, invoice_key=self.invoice_key, gateway=self.gateway)
+        return d
 
 
 class InstapayAccount(db.Model):

@@ -1,18 +1,19 @@
-"""Notifications self-check: payment-approve emits, student reads/marks, admin broadcast.
+"""Notifications self-check: gateway paid-payment emits, student reads/marks, admin broadcast.
 
 Run: python -m tests.test_notifications  (needs DATABASE_URL)
 """
-import io
+import hmac
 import uuid
-import tempfile
+import hashlib
 
+import app.services.fawaterk as fw
 import app.api.v1.payment as paymod
 from app import create_app
 from app.extensions import db
-from app.models import Category, Course, CourseModule, Lesson, User, InstapayAccount
+from app.models import Category, Course, Payment, Setting, User
 from app.security import hash_password
 
-RECEIPT = "Transaction Successful\n✓\n100 EGP\nTotal Amount 100 EGP\nReference\n{ref}\nFrom\nX\nx@instapay\nTo\n**h\nogs@instapay\n"
+VENDOR = "notif-vendor-key"
 
 
 def _tok(c, email, role=None, app=None):
@@ -25,19 +26,24 @@ def _tok(c, email, role=None, app=None):
 
 def demo():
     app = create_app()
-    app.config["INSTAPAY_IMAGE_DIR"] = tempfile.mkdtemp()
     tag = uuid.uuid4().hex[:8]
-    ref = "7" + uuid.uuid4().int.__str__()[:13]
-    paymod.extract_text = lambda p: RECEIPT.format(ref=ref)
+    inv = [5000]
+
+    def fake_link(amount, currency, customer, items, payload, redirect_urls):
+        inv[0] += 1
+        return {"url": f"https://staging.fawaterk.com/link/{inv[0]}", "invoice_id": str(inv[0]), "invoice_key": f"key{inv[0]}"}
+    fw.create_invoice_link = fake_link
+    paymod.fawaterk.create_invoice_link = fake_link
 
     with app.app_context():
         db.create_all()
-        db.session.add(InstapayAccount(account_name="OGS", number="011", url="https://x/ogs/instapay", active=True))
+        for k, v in (("secret_fawaterk_api", "x"), ("secret_fawaterk_vendor", VENDOR)):
+            s = db.session.get(Setting, k) or Setting(key=k); s.value = v; db.session.merge(s)
         instr = User(name="i", email=f"ni_{tag}@t.test", password_hash=hash_password("secret12"), role="instructor")
         db.session.add(instr); db.session.flush()
         cat = Category(name=f"C{tag}", slug=f"c-{tag}"); db.session.add(cat); db.session.flush()
         course = Course(title="دورة الإشعارات", slug=f"k-{tag}", price=100, instructor_id=instr.id,
-                        category_id=cat.id, status="published")
+                        category_id=cat.id, status="published", access_type="general")
         db.session.add(course); db.session.commit()
         cid = course.id
 
@@ -45,13 +51,18 @@ def demo():
     sh = _tok(c, f"ns_{tag}@t.test")
     ah = _tok(c, f"na_{tag}@t.test", role="admin", app=app)
 
-    # student submits a receipt (paid course), admin approves -> notification emitted
-    c.post("/api/v1/payment/instapay", data={"course_id": cid, "image": (io.BytesIO(b"x"), "r.png", "image/png")},
-           content_type="multipart/form-data", headers=sh)
-    pid = c.get("/api/v1/admin/payments?status=pending", headers=ah).get_json()["payments"][0]["id"]
-
+    # student checkout (paid course) -> paid webhook emits a notification
+    r = c.post("/api/v1/payment/checkout", json={"kind": "enroll", "course_id": cid}, headers=sh)
+    pid = r.get_json()["payment_id"]
     assert c.get("/api/v1/notifications", headers=sh).get_json()["unread"] == 0
-    c.post(f"/api/v1/admin/payments/{pid}/approve", headers=ah)
+    with app.app_context():
+        p = db.session.get(Payment, pid)
+        msg = f"InvoiceId={p.invoice_id}&InvoiceKey={p.invoice_key}&PaymentMethod=Visa"
+        h = hmac.new(VENDOR.encode(), msg.encode(), hashlib.sha256).hexdigest()
+    c.post("/api/v1/payment/fawaterk/webhook", json={
+        "hashKey": h, "invoice_id": p.invoice_id, "invoice_key": p.invoice_key,
+        "payment_method": "Visa", "invoice_status": "paid", "pay_load": {"payment_id": pid}})
+
     n = c.get("/api/v1/notifications", headers=sh).get_json()
     assert n["unread"] == 1 and n["notifications"][0]["type"] == "payment_approved", n
 

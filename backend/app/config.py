@@ -19,6 +19,8 @@ class BaseConfig:
     # Baytarian verification documents (PDF/images)
     BAYTARIAN_DOC_DIR = os.environ.get("BAYTARIAN_DOC_DIR", "./baytarian_docs")
     MAX_CONTENT_LENGTH = 12 * 1024 * 1024  # 12 MB cap on uploads (docs may include PDFs)
+    # Public site origin — used to build Fawaterak redirect + webhook URLs
+    SITE_URL = os.environ.get("SITE_URL", "https://baytara.mubarmijonline.com")
 
 
 class DevelopmentConfig(BaseConfig):
