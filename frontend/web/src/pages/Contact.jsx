@@ -2,14 +2,8 @@ import { useState } from 'react';
 import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
-import { webapi } from '../lib/api.js';
+import { webapi, useSettings } from '../lib/api.js';
 import { toast } from '../lib/toast.jsx';
-
-const channels = [
-  { icon: '✉', title: 'البريد الإلكتروني', value: 'support@baytara.com' },
-  { icon: '☎', title: 'الهاتف', value: '+20 100 000 0000' },
-  { icon: '⌂', title: 'العنوان', value: 'القاهرة، جمهورية مصر العربية' },
-];
 
 const inputStyle = {
   width: '100%',
@@ -22,6 +16,14 @@ const inputStyle = {
 };
 
 export default function Contact() {
+  const settings = useSettings();
+  const c = settings.contact || {};
+  const channels = [
+    { icon: '✉', title: 'البريد الإلكتروني', value: c.email },
+    { icon: '☎', title: 'الهاتف', value: c.phone },
+    { icon: '⌂', title: 'العنوان', value: c.address },
+    { icon: '⏰', title: 'ساعات العمل', value: c.hours },
+  ].filter((ch) => ch.value);  // only show what admin has set
   const [f, setF] = useState({ name: '', email: '', subject: '', body: '' });
   const [state, setState] = useState('idle'); // idle | sending | sent | error
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -111,7 +113,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <div style={{ fontSize: 13, color: colors.muted2, marginBottom: 3 }}>{c.title}</div>
-                  <div style={{ fontSize: 15, fontWeight: 800 }}>{c.value}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, direction: /@|[0-9]/.test(c.value) ? 'ltr' : 'rtl', textAlign: 'start' }}>{c.value}</div>
                 </div>
               </div>
             ))}
