@@ -16,6 +16,7 @@ import Content from './pages/Content.jsx';
 import Contact from './pages/Contact.jsx';
 import Learn from './pages/Learn.jsx';
 import Buy from './pages/Buy.jsx';
+import PaymentCallback from './pages/PaymentCallback.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/courses/:slug" element={<CourseDetail />} />
         <Route path="/bundles" element={<Bundles />} />
         <Route path="/buy/:slug" element={<Buy />} />
+        <Route path="/payment/callback" element={<PaymentCallback />} />
         <Route path="/instructors/:id" element={<Instructor />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/business" element={<Business />} />

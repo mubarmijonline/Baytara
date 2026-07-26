@@ -84,28 +84,13 @@ export const auth = {
   notifications: () => authFetch('/notifications'),
   notifRead: (id) => authFetch(`/notifications/${id}/read`, { method: 'POST' }),
   notifReadAll: () => authFetch('/notifications/read-all', { method: 'POST' }),
-  // price/title before uploading a receipt (kind: enroll|renewal|bundle)
+  // price/title before checkout (kind: enroll|renewal|bundle)
   quote: (params) => authFetch('/payment/quote' + qs(params)),
-  // multipart receipt endpoints (don't set Content-Type — browser sets the boundary)
-  submitReceipt: (target, file) => sendReceipt('/payment/instapay', target, file),
-  analyzeReceipt: (target, file) => sendReceipt('/payment/instapay/analyze', target, file),
+  // Fawaterak checkout -> { url, payment_id }; redirect the browser to url
+  checkout: (body) => authFetch('/payment/checkout', { method: 'POST', body: JSON.stringify(body) }),
+  paymentStatus: (id) => authFetch(`/payment/${id}`),
+  myPayments: () => authFetch('/payment/mine'),
 };
-
-// target: { kind?, course_id?, bundle_id? }
-async function sendReceipt(path, target, file) {
-  const fd = new FormData();
-  const t = typeof target === 'object' ? target : { course_id: target };
-  Object.entries(t).forEach(([k, v]) => v != null && fd.append(k, v));
-  fd.append('image', file);
-  const r = await fetch(BASE + path, {
-    method: 'POST',
-    headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
-    body: fd,
-  });
-  const data = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
-  if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
-  return data;
-}
 
 export const webapi = {
   courses: (params) => get('/courses' + qs(params)),

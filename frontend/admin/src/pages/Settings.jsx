@@ -86,6 +86,32 @@ export default function Settings() {
       </div>
 
       <div className="card">
+        <h3>بوابة الدفع — فواتيرك (Fawaterak)</h3>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
+          سرّية، لا تظهر في الموقع العام. تُطبّق فور الحفظ (بدون إعادة تشغيل).
+        </p>
+        <Field label="API / Provider Key (Bearer)">
+          <input type="password" dir="ltr" value={s.secret_fawaterk_api || ''}
+            onChange={(e) => setS({ ...s, secret_fawaterk_api: e.target.value })}
+            placeholder="مفتاح الـ API من لوحة فواتيرك" />
+        </Field>
+        <Field label="Vendor / Hash Key (توقيع الويب هوك)">
+          <input type="password" dir="ltr" value={s.secret_fawaterk_vendor || ''}
+            onChange={(e) => setS({ ...s, secret_fawaterk_vendor: e.target.value })}
+            placeholder="مفتاح الـ Hash للتحقق من الويب هوك" />
+        </Field>
+        <Field label="الوضع">
+          <select value={s.fawaterk_mode || 'staging'} onChange={(e) => setS({ ...s, fawaterk_mode: e.target.value })}>
+            <option value="staging">اختبار (staging)</option>
+            <option value="production">إنتاج (production)</option>
+          </select>
+        </Field>
+        <div style={{ fontSize: 12, color: (s.secret_fawaterk_api && s.secret_fawaterk_vendor) ? 'var(--success)' : 'var(--muted)' }}>
+          {(s.secret_fawaterk_api && s.secret_fawaterk_vendor) ? '✓ مضبوط — الدفع مُفعّل' : 'غير مضبوط — الدفع معطّل'}
+        </div>
+      </div>
+
+      <div className="card">
         <h3>مفاتيح API (سرّية)</h3>
         <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
           لا تظهر هذه المفاتيح في الموقع العام. تُطبّق فور الحفظ (بدون إعادة تشغيل).

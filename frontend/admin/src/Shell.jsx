@@ -7,7 +7,6 @@ import Bundles from './pages/Bundles.jsx';
 import Baytarian from './pages/Baytarian.jsx';
 import Users from './pages/Users.jsx';
 import Categories from './pages/Categories.jsx';
-import Accounts from './pages/Accounts.jsx';
 import Articles from './pages/Articles.jsx';
 import Messages from './pages/Messages.jsx';
 import Settings from './pages/Settings.jsx';
@@ -15,7 +14,7 @@ import Hierarchy from './pages/Hierarchy.jsx';
 
 const NAV = [
   ['dashboard', 'لوحة القيادة'],
-  ['payments', 'مدفوعات إنستاباي'],
+  ['payments', 'المعاملات'],
   ['baytarian', 'توثيق الأطباء'],
   ['courses', 'الدورات'],
   ['bundles', 'الحزم'],
@@ -24,10 +23,9 @@ const NAV = [
   ['articles', 'المحتوى والمدوّنة'],
   ['users', 'المستخدمون'],
   ['messages', 'الرسائل'],
-  ['accounts', 'حسابات إنستاباي'],
   ['settings', 'إعدادات الموقع'],
 ];
-const PAGES = { dashboard: Dashboard, payments: Payments, baytarian: Baytarian, courses: Courses, bundles: Bundles, hierarchy: Hierarchy, categories: Categories, articles: Articles, users: Users, messages: Messages, accounts: Accounts, settings: Settings };
+const PAGES = { dashboard: Dashboard, payments: Payments, baytarian: Baytarian, courses: Courses, bundles: Bundles, hierarchy: Hierarchy, categories: Categories, articles: Articles, users: Users, messages: Messages, settings: Settings };
 
 export default function Shell({ onLogout }) {
   const [page, setPage] = useState('dashboard');
