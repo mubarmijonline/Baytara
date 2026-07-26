@@ -96,7 +96,7 @@ export default function Business() {
             {biz.trust && <div style={{ fontSize: 14, fontWeight: 700, color: colors.muted2, marginBottom: 24 }}>{biz.trust}</div>}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 40, flexWrap: 'wrap', opacity: 0.5 }}>
               {logos.map((l, i) => (
-                <div key={i} style={{ fontSize: 22, fontWeight: 900, color: colors.muted }}>{l}</div>
+                <div key={i} style={{ fontSize: 22, fontWeight: 900, color: colors.muted }}>{typeof l === 'string' ? l : (l.name || l.url)}</div>
               ))}
             </div>
           </Container>

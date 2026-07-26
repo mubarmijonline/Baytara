@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Field, ErrText } from '../ui.jsx';
+import ListEditor from '../listeditor.jsx';
 
-// text fields grouped by settings key -> [subkey, label]
+// plain text fields grouped by settings key -> [subkey, label]
 const GROUPS = [
   ['hero', 'الواجهة الرئيسية', [['title', 'العنوان'], ['subtitle', 'العنوان الفرعي'], ['cta', 'زر الدعوة']]],
   ['about', 'من نحن', [['title', 'العنوان'], ['body', 'النص']]],
@@ -10,43 +11,33 @@ const GROUPS = [
   ['socials', 'التواصل الاجتماعي', [['facebook', 'فيسبوك'], ['instagram', 'إنستغرام'], ['youtube', 'يوتيوب'], ['whatsapp', 'واتساب']]],
   ['footer', 'التذييل', [['tagline', 'الوصف المختصر']]],
 ];
-const JSON_KEYS = [
-  ['plans', 'خطط الاشتراك (JSON)'],
-  ['faqs', 'الأسئلة الشائعة (JSON)'],
-  ['testimonials', 'آراء العملاء (JSON)'],
-  ['business', 'صفحة الأعمال — {stats:[{num,label}], features:[{icon,title,desc}], logos:[], trust} (JSON)'],
-];
+
+const STAT_FIELDS = [['num', 'الرقم'], ['label', 'الوصف']].map(([key, label]) => ({ key, label }));
+const TESTI_FIELDS = [{ key: 'name', label: 'الاسم' }, { key: 'role', label: 'الصفة' }, { key: 'quote', label: 'الرأي', type: 'textarea' }];
+const FEATURE_FIELDS = [{ key: 'icon', label: 'أيقونة (إيموجي)' }, { key: 'title', label: 'العنوان' }, { key: 'desc', label: 'الوصف', type: 'textarea' }];
+const LOGO_FIELDS = [{ key: 'name', label: 'اسم / نص الشعار' }];
 
 export default function Settings() {
   const [s, setS] = useState(null);
-  const [jsonText, setJsonText] = useState({});
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    api.settingsGet().then((r) => {
-      const v = r.settings || {};
-      setS(v);
-      const jt = {};
-      JSON_KEYS.forEach(([k]) => { jt[k] = JSON.stringify(v[k] ?? [], null, 2); });
-      setJsonText(jt);
-    }).catch(() => setErr('تعذّر التحميل.'));
+    api.settingsGet().then((r) => setS(r.settings || {})).catch(() => setErr('تعذّر التحميل.'));
   }, []);
 
   const setField = (grp, sub) => (e) => setS({ ...s, [grp]: { ...(s[grp] || {}), [sub]: e.target.value } });
+  const setKey = (key, val) => setS({ ...s, [key]: val });
+  const setBiz = (sub, val) => setS({ ...s, business: { ...(s.business || {}), [sub]: val } });
 
   async function save() {
     setErr(''); setMsg('');
-    const body = { ...s };
-    for (const [k] of JSON_KEYS) {
-      try { body[k] = JSON.parse(jsonText[k] || '[]'); }
-      catch { setErr(`JSON غير صالح في: ${k}`); return; }
-    }
-    try { await api.settingsPut(body); setMsg('تم الحفظ ✓'); setTimeout(() => setMsg(''), 2500); }
+    try { await api.settingsPut(s); setMsg('تم الحفظ ✓'); setTimeout(() => setMsg(''), 2500); }
     catch { setErr('تعذّر الحفظ.'); }
   }
 
   if (!s) return <div className="empty">جارٍ التحميل…</div>;
+  const biz = s.business || {};
   return (
     <>
       <h2>إعدادات الموقع</h2>
@@ -64,52 +55,47 @@ export default function Settings() {
         </div>
       ))}
 
-      {JSON_KEYS.map(([k, lbl]) => (
-        <div key={k} className="card">
-          <h3>{lbl}</h3>
-          <textarea value={jsonText[k] || ''} onChange={(e) => setJsonText({ ...jsonText, [k]: e.target.value })}
-            rows={8} dir="ltr"
-            style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 10, padding: 12, font: '13px monospace', resize: 'vertical' }} />
-        </div>
-      ))}
+      {/* Home page content — no JSON, just tables */}
+      <ListEditor title="أرقام وإحصائيات (الرئيسية)" items={s.stats} fields={STAT_FIELDS}
+        onChange={(v) => setKey('stats', v)} />
+      <ListEditor title="آراء العملاء" items={s.testimonials} fields={TESTI_FIELDS}
+        onChange={(v) => setKey('testimonials', v)} />
 
+      {/* Business page content */}
+      <h2 style={{ marginTop: 26 }}>صفحة الأعمال</h2>
+      <ListEditor title="إحصائيات الأعمال" items={biz.stats} fields={STAT_FIELDS}
+        onChange={(v) => setBiz('stats', v)} />
+      <ListEditor title="المميزات" items={biz.features} fields={FEATURE_FIELDS}
+        onChange={(v) => setBiz('features', v)} />
+      <ListEditor title="شعارات العملاء" items={biz.logos} fields={LOGO_FIELDS}
+        onChange={(v) => setBiz('logos', v)} addLabel="+ شعار" />
       <div className="card">
-        <h3>التجديد (Renewal)</h3>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
-          نسبة سعر التجديد من سعر الكورس — تُطبّق على كل عمليات تجديد الاشتراك.
-        </p>
-        <Field label="نسبة التجديد (%)">
-          <input type="number" min="0" max="100" dir="ltr" style={{ width: 120 }}
-            value={s.renewal_percent ?? ''} placeholder="30"
-            onChange={(e) => setS({ ...s, renewal_percent: e.target.value === '' ? '' : Number(e.target.value) })} />
+        <h3>نص الثقة (Business)</h3>
+        <Field label="نص أسفل الشعارات">
+          <input value={biz.trust || ''} onChange={(e) => setBiz('trust', e.target.value)} />
         </Field>
       </div>
 
+      {/* Fawaterak gateway */}
       <div className="card">
         <h3>بوابة الدفع — فواتيرك (Fawaterak)</h3>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
-          سرّية، لا تظهر في الموقع العام. تُطبّق فور الحفظ (بدون إعادة تشغيل).
-        </p>
         <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: -2 }}>
           من لوحة فواتيرك: Integrations Transactions → OAuth client credentials → Create client.
         </p>
         <Field label="OAuth Client ID">
           <input type="password" dir="ltr" value={s.secret_fawaterk_client_id || ''}
-            onChange={(e) => setS({ ...s, secret_fawaterk_client_id: e.target.value })}
-            placeholder="Client ID من فواتيرك" />
+            onChange={(e) => setKey('secret_fawaterk_client_id', e.target.value)} placeholder="Client ID من فواتيرك" />
         </Field>
         <Field label="OAuth Client Secret">
           <input type="password" dir="ltr" value={s.secret_fawaterk_client_secret || ''}
-            onChange={(e) => setS({ ...s, secret_fawaterk_client_secret: e.target.value })}
-            placeholder="Client Secret (يظهر مرة واحدة عند الإنشاء)" />
+            onChange={(e) => setKey('secret_fawaterk_client_secret', e.target.value)} placeholder="Client Secret (يظهر مرة واحدة)" />
         </Field>
         <Field label="HASH API Key (توقيع الويب هوك)">
           <input type="password" dir="ltr" value={s.secret_fawaterk_vendor || ''}
-            onChange={(e) => setS({ ...s, secret_fawaterk_vendor: e.target.value })}
-            placeholder="HASH API key من إعدادات الويب هوك" />
+            onChange={(e) => setKey('secret_fawaterk_vendor', e.target.value)} placeholder="HASH API key" />
         </Field>
         <Field label="الوضع">
-          <select value={s.fawaterk_mode || 'staging'} onChange={(e) => setS({ ...s, fawaterk_mode: e.target.value })}>
+          <select value={s.fawaterk_mode || 'staging'} onChange={(e) => setKey('fawaterk_mode', e.target.value)}>
             <option value="staging">اختبار (staging)</option>
             <option value="production">إنتاج (production)</option>
           </select>
@@ -120,14 +106,10 @@ export default function Settings() {
       </div>
 
       <div className="card">
-        <h3>مفاتيح API (سرّية)</h3>
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
-          لا تظهر هذه المفاتيح في الموقع العام. تُطبّق فور الحفظ (بدون إعادة تشغيل).
-        </p>
-        <Field label="مفتاح VdoCipher السرّي (API Secret)">
+        <h3>مفتاح VdoCipher (سرّي)</h3>
+        <Field label="VdoCipher API Secret">
           <input type="password" dir="ltr" value={s.secret_vdocipher || ''}
-            onChange={(e) => setS({ ...s, secret_vdocipher: e.target.value })}
-            placeholder="الصق مفتاح VdoCipher السرّي هنا" />
+            onChange={(e) => setKey('secret_vdocipher', e.target.value)} placeholder="مفتاح VdoCipher السرّي" />
         </Field>
         <div style={{ fontSize: 12, color: s.secret_vdocipher ? 'var(--success)' : 'var(--muted)' }}>
           {s.secret_vdocipher ? '✓ مضبوط — تشغيل الفيديو مُفعّل' : 'غير مضبوط — تشغيل الفيديو معطّل'}
@@ -135,7 +117,7 @@ export default function Settings() {
       </div>
 
       <ErrText>{err}</ErrText>
-      <div className="row" style={{ marginTop: 8 }}>
+      <div className="row" style={{ marginTop: 8, position: 'sticky', bottom: 0, background: 'var(--bg)', padding: '10px 0' }}>
         <button className="btn btn-filled" onClick={save}>حفظ الإعدادات</button>
         {msg && <span style={{ color: 'var(--success)', fontWeight: 700 }}>{msg}</span>}
       </div>
