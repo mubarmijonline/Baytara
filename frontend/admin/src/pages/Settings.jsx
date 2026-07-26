@@ -90,15 +90,23 @@ export default function Settings() {
         <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: -6 }}>
           سرّية، لا تظهر في الموقع العام. تُطبّق فور الحفظ (بدون إعادة تشغيل).
         </p>
-        <Field label="API / Provider Key (Bearer)">
-          <input type="password" dir="ltr" value={s.secret_fawaterk_api || ''}
-            onChange={(e) => setS({ ...s, secret_fawaterk_api: e.target.value })}
-            placeholder="مفتاح الـ API من لوحة فواتيرك" />
+        <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: -2 }}>
+          من لوحة فواتيرك: Integrations Transactions → OAuth client credentials → Create client.
+        </p>
+        <Field label="OAuth Client ID">
+          <input type="password" dir="ltr" value={s.secret_fawaterk_client_id || ''}
+            onChange={(e) => setS({ ...s, secret_fawaterk_client_id: e.target.value })}
+            placeholder="Client ID من فواتيرك" />
         </Field>
-        <Field label="Vendor / Hash Key (توقيع الويب هوك)">
+        <Field label="OAuth Client Secret">
+          <input type="password" dir="ltr" value={s.secret_fawaterk_client_secret || ''}
+            onChange={(e) => setS({ ...s, secret_fawaterk_client_secret: e.target.value })}
+            placeholder="Client Secret (يظهر مرة واحدة عند الإنشاء)" />
+        </Field>
+        <Field label="HASH API Key (توقيع الويب هوك)">
           <input type="password" dir="ltr" value={s.secret_fawaterk_vendor || ''}
             onChange={(e) => setS({ ...s, secret_fawaterk_vendor: e.target.value })}
-            placeholder="مفتاح الـ Hash للتحقق من الويب هوك" />
+            placeholder="HASH API key من إعدادات الويب هوك" />
         </Field>
         <Field label="الوضع">
           <select value={s.fawaterk_mode || 'staging'} onChange={(e) => setS({ ...s, fawaterk_mode: e.target.value })}>
@@ -106,8 +114,8 @@ export default function Settings() {
             <option value="production">إنتاج (production)</option>
           </select>
         </Field>
-        <div style={{ fontSize: 12, color: (s.secret_fawaterk_api && s.secret_fawaterk_vendor) ? 'var(--success)' : 'var(--muted)' }}>
-          {(s.secret_fawaterk_api && s.secret_fawaterk_vendor) ? '✓ مضبوط — الدفع مُفعّل' : 'غير مضبوط — الدفع معطّل'}
+        <div style={{ fontSize: 12, color: (s.secret_fawaterk_client_id && s.secret_fawaterk_client_secret && s.secret_fawaterk_vendor) ? 'var(--success)' : 'var(--muted)' }}>
+          {(s.secret_fawaterk_client_id && s.secret_fawaterk_client_secret && s.secret_fawaterk_vendor) ? '✓ مضبوط — الدفع مُفعّل' : 'غير مضبوط — الدفع معطّل'}
         </div>
       </div>
 
