@@ -21,7 +21,7 @@ def playback():
     if not lesson.vdocipher_video_id:
         return jsonify(error="no_video"), 409
 
-    course_id = db.session.query(CourseModule.course_id).filter_by(id=lesson.module_id).scalar()
+    course_id = lesson.resolve_course_id()
     enrollment = Enrollment.query.filter_by(user_id=uid, course_id=course_id, status="active").first()
     if not enrollment:
         return jsonify(error="not_enrolled"), 403

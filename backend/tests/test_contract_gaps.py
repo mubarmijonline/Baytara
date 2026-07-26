@@ -80,11 +80,10 @@ def demo():
 
     # ---- access-duration gate: force-expire, playback + progress blocked ----
     with app.app_context():
-        from app.models import CourseModule, Lesson
+        from app.models import Lesson
         row = Enrollment.query.filter_by(course_id=c30).first()
         row.expires_at = datetime.now(timezone.utc) - timedelta(days=1)
-        m = CourseModule(course_id=c30, title="m"); db.session.add(m); db.session.flush()
-        l = Lesson(module_id=m.id, title="l", vdocipher_video_id="vid123"); db.session.add(l)
+        l = Lesson(course_id=c30, title="l", vdocipher_video_id="vid123"); db.session.add(l)
         db.session.commit()
         lesson_id = l.id
     pr = c.post("/api/v1/progress", json={"lesson_id": lesson_id, "completed": True}, headers=sh)

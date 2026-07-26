@@ -29,10 +29,7 @@ def demo():
                        category_id=cat.id, status="draft")
         db.session.add_all([pub, draft])
         db.session.flush()
-        mod = CourseModule(course_id=pub.id, title="Module 1", position=0)
-        db.session.add(mod)
-        db.session.flush()
-        db.session.add(Lesson(module_id=mod.id, title="Lesson 1", position=0, duration_minutes=20))
+        db.session.add(Lesson(course_id=pub.id, title="Lesson 1", position=0, duration_minutes=20))
         db.session.commit()
         instr_id, cat_slug = instr.id, cat.slug
 
@@ -48,11 +45,11 @@ def demo():
     assert c.get(f"/api/v1/courses?q=Published+{tag}").get_json()["total"] >= 1
     assert c.get(f"/api/v1/courses?q=zzz-{tag}").get_json()["total"] == 0
 
-    # detail returns nested modules/lessons; draft 404s
+    # detail returns course videos (directly under course); draft 404s
     det = c.get(f"/api/v1/courses/pub-{tag}")
     assert det.status_code == 200
     body = det.get_json()["course"]
-    assert body["modules"][0]["lessons"][0]["title"] == "Lesson 1"
+    assert body["videos"][0]["title"] == "Lesson 1", body
     assert c.get(f"/api/v1/courses/draft-{tag}").status_code == 404
 
     # categories + instructor scoping (only published)

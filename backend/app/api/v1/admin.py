@@ -343,8 +343,10 @@ def lesson_create(mid):
     if not db.session.get(CourseModule, mid):
         return jsonify(error="module_not_found"), 404
     d = request.get_json() or {}
+    _m = db.session.get(CourseModule, mid)
     l = Lesson(
         module_id=mid,
+        course_id=_m.course_id if _m else None,  # keep the direct-course link consistent
         title=d.get("title", "درس"),
         title_en=d.get("title_en"),
         position=d.get("position", 0),
@@ -520,6 +522,95 @@ def bundle_delete(bid):
     db.session.delete(b)
     db.session.commit()
     return jsonify(deleted=bid)
+
+
+# ------------------------------ videos (directly under a course, ordered) ------------------------------
+
+def _video_dict(l):
+    d = l.to_dict()
+    d["title_en"] = l.title_en
+    d["vdocipher_video_id"] = l.vdocipher_video_id
+    return d
+
+
+@bp.get("/videos")
+@require_role("admin")
+def videos_list():
+    """List videos. ?course_id=<id> for a course (ordered); ?standalone=1 for unattached."""
+    q = Lesson.query
+    cid = request.args.get("course_id", type=int)
+    if cid:
+        q = q.filter_by(course_id=cid)
+    elif request.args.get("standalone") == "1":
+        q = q.filter(Lesson.course_id.is_(None), Lesson.module_id.is_(None))
+    rows = q.order_by(Lesson.position, Lesson.id).all()
+    return jsonify(videos=[_video_dict(l) for l in rows])
+
+
+@bp.post("/videos")
+@require_role("admin")
+def video_create():
+    d = request.get_json() or {}
+    if not d.get("title"):
+        return jsonify(error="title_required"), 422
+    cid = d.get("course_id")
+    if cid and not db.session.get(Course, cid):
+        return jsonify(error="course_not_found"), 404
+    # append to the end of the target list
+    last = Lesson.query.filter_by(course_id=cid).order_by(Lesson.position.desc()).first() if cid else None
+    l = Lesson(
+        course_id=cid, module_id=None,
+        title=d["title"], title_en=d.get("title_en"),
+        position=(last.position + 1 if last else 0),
+        duration_minutes=d.get("duration_minutes"),
+        vdocipher_video_id=d.get("vdocipher_video_id"),
+        is_protected=d.get("is_protected", True),
+    )
+    db.session.add(l)
+    db.session.commit()
+    return jsonify(video=_video_dict(l)), 201
+
+
+@bp.patch("/videos/<int:vid>")
+@require_role("admin")
+def video_update(vid):
+    l = db.session.get(Lesson, vid)
+    if not l:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    if "course_id" in d and d["course_id"] and not db.session.get(Course, d["course_id"]):
+        return jsonify(error="course_not_found"), 404
+    for f in ("title", "title_en", "duration_minutes", "vdocipher_video_id", "is_protected", "course_id", "position"):
+        if f in d:
+            setattr(l, f, d[f])
+    if "course_id" in d:
+        l.module_id = None  # moving to the direct-course model
+    db.session.commit()
+    return jsonify(video=_video_dict(l))
+
+
+@bp.delete("/videos/<int:vid>")
+@require_role("admin")
+def video_delete(vid):
+    l = db.session.get(Lesson, vid)
+    if not l:
+        return jsonify(error="not_found"), 404
+    db.session.delete(l)
+    db.session.commit()
+    return jsonify(deleted=vid)
+
+
+@bp.post("/courses/<int:cid>/videos/reorder")
+@require_role("admin")
+def videos_reorder(cid):
+    """Body: {order: [videoId, ...]} — set positions in that sequence."""
+    order = (request.get_json() or {}).get("order") or []
+    rows = {l.id: l for l in Lesson.query.filter_by(course_id=cid).all()}
+    for pos, vid in enumerate(order):
+        if vid in rows:
+            rows[vid].position = pos
+    db.session.commit()
+    return jsonify(ok=True, count=len(order))
 
 
 # ------------------------------ site settings ------------------------------

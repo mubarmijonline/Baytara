@@ -22,10 +22,7 @@ def _seed(tag, price=0):
                     access_type=("general" if price else "free"))
     db.session.add(course)
     db.session.flush()
-    mod = CourseModule(course_id=course.id, title="M", position=0)
-    db.session.add(mod)
-    db.session.flush()
-    lessons = [Lesson(module_id=mod.id, title=f"L{i}", position=i) for i in range(2)]
+    lessons = [Lesson(course_id=course.id, title=f"L{i}", position=i) for i in range(2)]
     db.session.add_all(lessons)
     db.session.commit()
     return course.id, [l.id for l in lessons]

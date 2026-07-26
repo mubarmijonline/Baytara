@@ -82,7 +82,7 @@ def update_progress():
     if not lesson:
         return jsonify(error="lesson_not_found"), 404
 
-    course_id = db.session.query(CourseModule.course_id).filter_by(id=lesson.module_id).scalar()
+    course_id = lesson.resolve_course_id()
     enrollment = Enrollment.query.filter_by(user_id=_uid(), course_id=course_id, status="active").first()
     if not enrollment:
         return jsonify(error="not_enrolled"), 403

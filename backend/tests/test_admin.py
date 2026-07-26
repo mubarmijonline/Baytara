@@ -64,13 +64,20 @@ def demo():
     assert c.post("/api/v1/admin/courses", headers=h,
                   json={"title": "x", "instructor_id": 999999}).status_code == 422
 
-    # module + lesson
-    m = c.post(f"/api/v1/admin/courses/{course_id}/modules", headers=h, json={"title": "الوحدة 1"}).get_json()["module"]
-    l = c.post(f"/api/v1/admin/modules/{m['id']}/lessons", headers=h,
-               json={"title": "الدرس 1", "duration_minutes": 12}).get_json()["lesson"]
-    # full admin course tree shows them
+    # video directly under the course (new model)
+    v = c.post("/api/v1/admin/videos", headers=h,
+               json={"course_id": course_id, "title": "الدرس 1", "duration_minutes": 12,
+                     "vdocipher_video_id": "vid1"}).get_json()["video"]
+    v2 = c.post("/api/v1/admin/videos", headers=h,
+                json={"course_id": course_id, "title": "الدرس 2"}).get_json()["video"]
+    # full admin course tree shows ordered videos
     tree = c.get(f"/api/v1/admin/courses/{course_id}", headers=h).get_json()["course"]
-    assert tree["modules"][0]["lessons"][0]["title"] == "الدرس 1"
+    assert tree["videos"][0]["title"] == "الدرس 1", tree
+    # reorder puts v2 first
+    c.post(f"/api/v1/admin/courses/{course_id}/videos/reorder", headers=h, json={"order": [v2["id"], v["id"]]})
+    tree = c.get(f"/api/v1/admin/courses/{course_id}", headers=h).get_json()["course"]
+    assert tree["videos"][0]["id"] == v2["id"], "reorder failed"
+    l = v  # reused below for delete
 
     # regression: deleting a user WITH dependents (enrollment) must not 500
     victim = c.post("/api/v1/admin/users", headers=h,
@@ -84,8 +91,8 @@ def demo():
     # an instructor owning courses cannot be deleted until courses are removed
     assert c.delete(f"/api/v1/admin/users/{instr_id}", headers=h).status_code == 409
 
-    # lesson + module + course delete cascade
-    assert c.delete(f"/api/v1/admin/lessons/{l['id']}", headers=h).status_code == 200
+    # video delete + course delete cascade
+    assert c.delete(f"/api/v1/admin/videos/{l['id']}", headers=h).status_code == 200
     assert c.delete(f"/api/v1/admin/courses/{course_id}", headers=h).status_code == 200
     assert c.get(f"/api/v1/admin/courses/{course_id}", headers=h).status_code == 404
 

@@ -89,76 +89,103 @@ function CourseForm({ course, instructors, categories, onClose, onSaved }) {
   );
 }
 
+function VideoForm({ courseId, video, onClose, onSaved }) {
+  const editing = !!video;
+  const [f, setF] = useState({
+    title: video?.title || '', title_en: video?.title_en || '',
+    vdocipher_video_id: video?.vdocipher_video_id || '', duration_minutes: video?.duration_minutes ?? '',
+    is_protected: video?.is_protected ?? true,
+  });
+  const [err, setErr] = useState('');
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  async function save() {
+    setErr('');
+    if (!f.title.trim()) { setErr('العنوان مطلوب.'); return; }
+    const body = { ...f, duration_minutes: f.duration_minutes === '' ? null : Number(f.duration_minutes) };
+    try {
+      if (editing) await api.videoUpdate(video.id, body);
+      else await api.videoCreate({ ...body, course_id: courseId });
+      onSaved();
+    } catch (e) { setErr(apiError(e)); }
+  }
+
+  return (
+    <Modal title={editing ? 'تعديل فيديو' : 'فيديو جديد'} onClose={onClose}>
+      <Field label="العنوان (عربي)"><input value={f.title} onChange={set('title')} /></Field>
+      <Field label="Title (English)"><input dir="ltr" value={f.title_en} onChange={set('title_en')} /></Field>
+      <Field label="VdoCipher Video ID"><input dir="ltr" value={f.vdocipher_video_id} onChange={set('vdocipher_video_id')} placeholder="مُعرّف الفيديو في VdoCipher" /></Field>
+      <div className="row">
+        <Field label="المدة (دقائق)"><input type="number" min="0" value={f.duration_minutes} onChange={set('duration_minutes')} style={{ width: 120 }} /></Field>
+        <Field label="محمي (DRM)">
+          <select value={f.is_protected ? '1' : '0'} onChange={(e) => setF({ ...f, is_protected: e.target.value === '1' })}>
+            <option value="1">نعم</option><option value="0">لا</option>
+          </select>
+        </Field>
+      </div>
+      <ErrText>{err}</ErrText>
+      <div className="row"><button className="btn btn-filled" onClick={save}>حفظ</button><button className="btn btn-text" onClick={onClose}>إلغاء</button></div>
+    </Modal>
+  );
+}
+
 function CourseContent({ courseId, onClose }) {
   const [course, setCourse] = useState(null);
+  const [vids, setVids] = useState([]);
+  const [form, setForm] = useState(undefined); // undefined=closed, null=new, obj=edit
   const [err, setErr] = useState('');
 
   async function load() {
-    try { setCourse((await api.course(courseId)).course); }
-    catch { setErr('تعذّر التحميل.'); }
+    try {
+      const cr = await api.course(courseId);
+      setCourse(cr.course);
+      setVids((cr.course.videos || []).slice());
+    } catch { setErr('تعذّر التحميل.'); }
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [courseId]);
 
-  async function addModule() {
-    const title = await promptDialog('عنوان الوحدة (عربي)');
-    if (!title) return;
-    const title_en = await promptDialog('Module title (English)', '');
-    await api.moduleCreate(courseId, { title, title_en: title_en || null, position: (course.modules?.length || 0) });
-    load();
+  async function move(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= vids.length) return;
+    const next = vids.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    setVids(next);  // optimistic
+    try { await api.videosReorder(courseId, next.map((v) => v.id)); }
+    catch (e) { toast.error(apiError(e)); load(); }
   }
-  async function editModule(m) {
-    const t = await promptDialog('عنوان الوحدة (عربي)', m.title);
-    if (!t) return;
-    const en = await promptDialog('Module title (English)', m.title_en || '');
-    await api.moduleUpdate(m.id, { title: t, title_en: en || null }); load();
-  }
-  async function delModule(m) { if (await confirmDialog('حذف الوحدة ودروسها؟')) { await api.moduleDelete(m.id); load(); } }
-  async function addLesson(m) {
-    const title = await promptDialog('عنوان الدرس (عربي)');
-    if (!title) return;
-    const title_en = await promptDialog('Lesson title (English)', '');
-    await api.lessonCreate(m.id, { title, title_en: title_en || null, position: (m.lessons?.length || 0) });
-    load();
-  }
-  async function editLesson(l) {
-    const t = await promptDialog('عنوان الدرس (عربي)', l.title);
-    if (!t) return;
-    const en = await promptDialog('Lesson title (English)', l.title_en || '');
-    await api.lessonUpdate(l.id, { title: t, title_en: en || null }); load();
-  }
-  async function delLesson(l) { if (await confirmDialog('حذف الدرس؟')) { await api.lessonDelete(l.id); load(); } }
+  async function del(v) { if (await confirmDialog('حذف الفيديو؟')) { try { await api.videoDelete(v.id); load(); } catch (e) { toast.error(apiError(e)); } } }
 
   return (
-    <Modal title={course ? `محتوى: ${course.title}` : 'المحتوى'} onClose={onClose}>
+    <Modal title={course ? `فيديوهات: ${course.title}` : 'الفيديوهات'} onClose={onClose}>
       <ErrText>{err}</ErrText>
       {!course ? <div className="empty">جارٍ التحميل…</div> : (
         <>
-          <button className="btn btn-tonal btn-sm" onClick={addModule} style={{ marginBottom: 12 }}>+ وحدة</button>
-          {course.modules.length === 0 && <div className="empty">لا وحدات بعد.</div>}
-          {course.modules.map((m) => (
-            <div key={m.id} className="card" style={{ padding: 12 }}>
-              <div className="row" style={{ justifyContent: 'space-between' }}>
-                <b>{m.title}</b>
-                <div className="actions">
-                  <button className="btn btn-tonal btn-sm" onClick={() => addLesson(m)}>+ درس</button>
-                  <button className="btn btn-tonal btn-sm" onClick={() => editModule(m)}>✎</button>
-                  <button className="btn btn-error btn-sm" onClick={() => delModule(m)}>حذف</button>
-                </div>
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ color: 'var(--muted)', fontSize: 13 }}>رتّب الفيديوهات بالأسهم ↑ ↓</span>
+            <button className="btn btn-filled btn-sm" onClick={() => setForm(null)}>+ فيديو</button>
+          </div>
+          {vids.length === 0 && <div className="empty">لا فيديوهات بعد.</div>}
+          {vids.map((v, i) => (
+            <div key={v.id} className="row" style={{ justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+              <span>
+                <b style={{ color: 'var(--muted)' }}>{i + 1}.</b> {v.title}
+                {v.duration_minutes ? ` (${v.duration_minutes}د)` : ''}
+                {v.has_video ? '' : ' ⚠️ بدون فيديو'}
+              </span>
+              <div className="actions">
+                <button className="btn btn-tonal btn-sm" disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
+                <button className="btn btn-tonal btn-sm" disabled={i === vids.length - 1} onClick={() => move(i, 1)}>↓</button>
+                <button className="btn btn-tonal btn-sm" onClick={() => setForm(v)}>✎</button>
+                <button className="btn btn-error btn-sm" onClick={() => del(v)}>حذف</button>
               </div>
-              {m.lessons.map((l) => (
-                <div key={l.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--border)' }}>
-                  <span>• {l.title} {l.duration_minutes ? `(${l.duration_minutes}د)` : ''}</span>
-                  <div className="actions">
-                    <button className="btn btn-text btn-sm" onClick={() => editLesson(l)}>✎</button>
-                    <button className="btn btn-text btn-sm" style={{ color: 'var(--error)' }} onClick={() => delLesson(l)}>حذف</button>
-                  </div>
-                </div>
-              ))}
             </div>
           ))}
         </>
       )}
-      <div className="row" style={{ marginTop: 8 }}><button className="btn btn-filled" onClick={onClose}>تم</button></div>
+      {form !== undefined && (
+        <VideoForm courseId={courseId} video={form} onClose={() => setForm(undefined)} onSaved={() => { setForm(undefined); load(); }} />
+      )}
+      <div className="row" style={{ marginTop: 14 }}><button className="btn btn-filled" onClick={onClose}>تم</button></div>
     </Modal>
   );
 }

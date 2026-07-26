@@ -65,6 +65,13 @@ export const api = {
   lessonUpdate: (id, body) => req(`/admin/lessons/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   lessonDelete: (id) => req(`/admin/lessons/${id}`, { method: 'DELETE' }),
 
+  // videos (directly under a course, ordered; or standalone)
+  videos: (params) => req('/admin/videos' + qs(params)),
+  videoCreate: (body) => req('/admin/videos', { method: 'POST', body: JSON.stringify(body) }),
+  videoUpdate: (id, body) => req(`/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  videoDelete: (id) => req(`/admin/videos/${id}`, { method: 'DELETE' }),
+  videosReorder: (courseId, order) => req(`/admin/courses/${courseId}/videos/reorder`, { method: 'POST', body: JSON.stringify({ order }) }),
+
   // baytarian verification requests
   baytarianRequests: (status) => req('/admin/baytarian-requests' + (status ? `?status=${status}` : '')),
   baytarianApprove: (id) => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST' }),

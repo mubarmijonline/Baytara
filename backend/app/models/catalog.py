@@ -72,6 +72,11 @@ class Course(db.Model):
     modules = db.relationship(
         "CourseModule", back_populates="course", order_by="CourseModule.position", cascade="all, delete-orphan"
     )
+    # Videos directly under the course (ordered). Standalone videos have course_id=NULL.
+    videos = db.relationship(
+        "Lesson", primaryjoin="Lesson.course_id==Course.id", foreign_keys="Lesson.course_id",
+        order_by="Lesson.position", cascade="all, delete-orphan",
+    )
 
     def is_paid(self):
         return access_is_paid(self.access_type)
@@ -119,7 +124,10 @@ class Course(db.Model):
             "instructor": {"id": self.instructor.id, "name": self.instructor.name} if self.instructor else None,
         }
         if with_content:
-            d["modules"] = [m.to_dict(lang) for m in self.modules]
+            # Videos live directly under the course now (ordered). Modules kept for
+            # backward compatibility but no longer the primary structure.
+            vids = sorted(self.videos, key=lambda l: (l.position, l.id))
+            d["videos"] = [l.to_dict(lang) for l in vids]
         return d
 
 
@@ -151,17 +159,26 @@ class Lesson(db.Model):
     __tablename__ = "lessons"
 
     id = db.Column(db.Integer, primary_key=True)
-    module_id = db.Column(db.Integer, db.ForeignKey("course_modules.id"), nullable=False, index=True)
+    # Videos attach directly to a course now (NULL = standalone). module_id kept
+    # nullable for legacy rows only.
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True, index=True)
+    module_id = db.Column(db.Integer, db.ForeignKey("course_modules.id"), nullable=True, index=True)
     title = db.Column(db.String(200), nullable=False)
     title_en = db.Column(db.String(200))
     position = db.Column(db.Integer, nullable=False, default=0)
     duration_minutes = db.Column(db.Integer)
-    # ponytail: single video id on the lesson for now; a dedicated `videos` table
-    # (multiple protected videos per lesson) lands in Phase 5 (VdoCipher) if needed.
     vdocipher_video_id = db.Column(db.String(120))
     is_protected = db.Column(db.Boolean, nullable=False, default=True)
 
     module = db.relationship("CourseModule", back_populates="lessons")
+
+    def resolve_course_id(self):
+        """Course this video belongs to: direct course_id, else via its legacy module."""
+        if self.course_id:
+            return self.course_id
+        if self.module_id:
+            return db.session.query(CourseModule.course_id).filter_by(id=self.module_id).scalar()
+        return None
 
     def to_dict(self, lang="ar"):
         return {
@@ -172,6 +189,7 @@ class Lesson(db.Model):
             "duration_minutes": self.duration_minutes,
             "is_protected": self.is_protected,
             "has_video": bool(self.vdocipher_video_id),
+            "course_id": self.course_id,
         }
 
 

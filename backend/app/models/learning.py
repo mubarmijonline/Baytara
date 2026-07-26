@@ -54,14 +54,9 @@ class Enrollment(db.Model):
 
     def completion(self):
         """(-> percent int, completed int, total int) computed from lesson_progress."""
-        from .catalog import CourseModule, Lesson
+        from .catalog import Lesson
 
-        total = (
-            db.session.query(Lesson.id)
-            .join(CourseModule, Lesson.module_id == CourseModule.id)
-            .filter(CourseModule.course_id == self.course_id)
-            .count()
-        )
+        total = Lesson.query.filter_by(course_id=self.course_id).count()
         completed = sum(1 for p in self.progress if p.completed_at is not None)
         percent = round(completed / total * 100) if total else 0
         return percent, completed, total

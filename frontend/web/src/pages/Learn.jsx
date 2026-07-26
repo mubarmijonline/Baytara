@@ -35,13 +35,12 @@ export default function Learn() {
     ? mapCourse(apiCourse)
     : rawCourses.find((c) => c.slug === courseId) || rawCourses[Number(courseId)] || rawCourses[0];
 
-  // flat lesson list: real modules->lessons, else the mock curriculum
+  // flat video list: videos directly under the course (new model), else the mock curriculum
   const flat = [];
   if (useApi) {
-    (apiCourse.modules || []).forEach((m) =>
-      (m.lessons || []).forEach((ls) =>
-        flat.push({ id: ls.id, key: String(ls.id), name: ls.title, mod: m.title,
-          has_video: ls.has_video, dur: ls.duration_minutes ? `${ls.duration_minutes} د` : '' })));
+    (apiCourse.videos || []).forEach((ls) =>
+      flat.push({ id: ls.id, key: String(ls.id), name: ls.title, mod: apiCourse.title,
+        has_video: ls.has_video, dur: ls.duration_minutes ? `${ls.duration_minutes} د` : '' }));
   } else {
     curriculum.forEach((mod, mi) => mod.lessons.forEach((ls, li) => flat.push({ ...ls, key: `${mi}-${li}`, mod: mod.title })));
   }
