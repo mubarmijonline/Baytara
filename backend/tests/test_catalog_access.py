@@ -142,7 +142,7 @@ def test_video_access_honors_audience_entitlements_enrollment_and_assignment(cat
         db.session.commit()
 
         assert video_access(student, video) == (False, "not_entitled")
-        assert video_access(baytarian, video) == (False, "not_entitled")
+        assert video_access(baytarian, video) == (False, "non_veterinarians_only")
         assert video_access(instructor, video) == (True, None)
         assert video_access(instructor, direct_video) == (True, None)
         assert video_access(admin, video) == (True, None)
@@ -247,6 +247,38 @@ def test_course_entitlement_uses_course_audience_before_standalone_video_audienc
         db.session.commit()
 
         assert video_access(baytarian, video) == (True, None)
+
+
+def test_associated_videos_fall_back_to_their_own_access_type_without_course_grants(catalog_app):
+    with catalog_app.app_context():
+        category = Category(name="Equine", slug="equine-video-fallback")
+        instructor = User(name="Instructor", email="instructor-video-fallback@test", password_hash="hash", role="instructor")
+        student = User(name="Student", email="student-video-fallback@test", password_hash="hash")
+        baytarian = User(name="Baytarian", email="baytarian-video-fallback@test", password_hash="hash", is_baytarian=True)
+        db.session.add_all([category, instructor, student, baytarian])
+        db.session.flush()
+        course = Course(
+            title="Associated course", slug="associated-video-fallback", instructor_id=instructor.id,
+            category_id=category.id, price=100, access_type="general", status="published",
+        )
+        db.session.add(course)
+        db.session.flush()
+        free_video = Lesson(title="Free", access_type="free", status="published")
+        vet_free_video = Lesson(title="Vet free", access_type="vet_free", status="published")
+        paid_video = Lesson(title="Paid", access_type="general", price=100, status="published")
+        db.session.add_all([free_video, vet_free_video, paid_video])
+        db.session.flush()
+        db.session.add_all([
+            CourseVideo(course_id=course.id, video_id=free_video.id),
+            CourseVideo(course_id=course.id, video_id=vet_free_video.id),
+            CourseVideo(course_id=course.id, video_id=paid_video.id),
+        ])
+        db.session.commit()
+
+        assert video_access(student, free_video) == (True, None)
+        assert video_access(baytarian, vet_free_video) == (True, None)
+        assert video_access(student, vet_free_video) == (False, "needs_baytarian")
+        assert video_access(student, paid_video) == (False, "not_entitled")
 
 
 def test_reusable_video_progress_and_completion_are_scoped_to_each_course(catalog_app):

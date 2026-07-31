@@ -110,6 +110,7 @@ def video_access(user, video):
     if entitlement and entitlement.has_access():
         return True, None
 
+    expired_course_access = False
     if course_ids:
         enrollments = Enrollment.query.filter(
             Enrollment.user_id == user_id,
@@ -122,14 +123,14 @@ def video_access(user, video):
         ]
         if any(enrollment.has_access() for enrollment in eligible):
             return True, None
-        if any(enrollment.is_expired() for enrollment in eligible):
-            return False, "access_expired"
-        return False, "not_entitled"
+        expired_course_access = any(enrollment.is_expired() for enrollment in eligible)
 
     reason = audience_error(user, video.access_type)
     if reason:
         return False, reason
     if video.access_type in FREE_ACCESS:
         return True, None
+    if expired_course_access:
+        return False, "access_expired"
 
     return False, "not_entitled"
