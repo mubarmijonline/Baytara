@@ -6,9 +6,11 @@ head before exercising the schema.
 """
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import tempfile
 import uuid
 
 from app import create_app
+from app.config import BaseConfig
 from app.extensions import db
 from flask_migrate import upgrade
 from app.models import (
@@ -23,7 +25,14 @@ from app.models import (
 from app.models.catalog import FIXED_CATEGORIES
 from app.models.payment import Payment
 from app.security import hash_password
+import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
+
+
+MIGRATIONS_DIR = str(Path(__file__).resolve().parents[1] / "migrations")
+PRE_CATALOG_REVISION = "49ad88f02a93"
+pytestmark = pytest.mark.filterwarnings("ignore:.*get_engine.*:DeprecationWarning")
 
 
 def demo():
@@ -31,7 +40,7 @@ def demo():
     tag = uuid.uuid4().hex[:8]
 
     with app.app_context():
-        upgrade(directory=str(Path(__file__).resolve().parents[1] / "migrations"))
+        upgrade(directory=MIGRATIONS_DIR)
         expected_categories = [
             ("large-animals", "الحيوانات الكبيرة - الأبقار والأغنام", "Large animals - Cattle & Sheep"),
             ("equine", "الخيول", "Equine"),
@@ -129,6 +138,68 @@ def demo():
         assert not entitlement.has_access()
 
     print("catalog access self-check OK")
+
+
+def test_fixed_taxonomy_and_reusable_video_models():
+    demo()
+
+
+def test_duplicate_legacy_vdocipher_ids_abort_before_schema_mutation():
+    with tempfile.TemporaryDirectory(prefix="baytara-catalog-migration-") as temp_dir:
+        database_url = f"sqlite:///{Path(temp_dir) / 'catalog.sqlite'}"
+        config = type("MigrationTestConfig", (BaseConfig,), {
+            "SQLALCHEMY_DATABASE_URI": database_url,
+            "TESTING": True,
+        })
+        app = create_app(config)
+
+        with app.app_context():
+            upgrade(directory=MIGRATIONS_DIR, revision=PRE_CATALOG_REVISION)
+            db.session.execute(text(
+                "INSERT INTO users (id, name, email, password_hash, role, locale, is_active) "
+                "VALUES (1, 'Legacy instructor', 'legacy@example.test', 'hash', 'instructor', 'ar', 1)"
+            ))
+            db.session.execute(text(
+                "INSERT INTO categories (id, name, name_en, slug) "
+                "VALUES (1, 'Legacy category', 'Legacy category', 'legacy-category')"
+            ))
+            db.session.execute(text(
+                "INSERT INTO courses (id, title, slug, description, price, currency, instructor_id, category_id, "
+                "status, enrolled_count) VALUES (1, 'Legacy course', 'legacy-course', '', 0, 'EGP', 1, 1, 'draft', 0)"
+            ))
+            db.session.execute(text(
+                "INSERT INTO lessons (id, course_id, title, position, is_protected, vdocipher_video_id) "
+                "VALUES (1, 1, 'Legacy video one', 0, 1, 'duplicate-legacy-vdo')"
+            ))
+            db.session.execute(text(
+                "INSERT INTO lessons (id, course_id, title, position, is_protected, vdocipher_video_id) "
+                "VALUES (2, 1, 'Legacy video two', 1, 1, 'duplicate-legacy-vdo')"
+            ))
+            db.session.commit()
+
+            with pytest.raises(RuntimeError) as exc_info:
+                upgrade.__wrapped__(directory=MIGRATIONS_DIR)
+
+            message = str(exc_info.value)
+            assert "duplicate VdoCipher IDs" in message
+            assert "duplicate-legacy-vdo (2)" in message
+            assert "Resolve duplicate provider IDs before retrying this migration." in message
+            assert db.session.execute(text("SELECT COUNT(*) FROM lessons")).scalar_one() == 2
+            assert db.session.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == PRE_CATALOG_REVISION
+            assert "description" not in {
+                row[1] for row in db.session.execute(text("PRAGMA table_info(lessons)"))
+            }
+
+            db.session.execute(text(
+                "UPDATE lessons SET vdocipher_video_id = 'resolved-legacy-vdo' WHERE id = 2"
+            ))
+            db.session.commit()
+            upgrade(directory=MIGRATIONS_DIR)
+
+            assert db.session.execute(text("SELECT COUNT(*) FROM lessons")).scalar_one() == 2
+            assert db.session.execute(text(
+                "SELECT COUNT(*) FROM course_videos WHERE course_id = 1"
+            )).scalar_one() == 2
 
 
 if __name__ == "__main__":

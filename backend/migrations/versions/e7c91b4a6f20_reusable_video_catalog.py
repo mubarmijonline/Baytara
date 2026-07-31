@@ -46,7 +46,24 @@ def _upsert_fixed_categories():
             connection.execute(insert, values)
 
 
+def _abort_for_duplicate_vdocipher_ids():
+    duplicates = op.get_bind().execute(sa.text(
+        "SELECT vdocipher_video_id, COUNT(*) AS duplicate_count "
+        "FROM lessons WHERE vdocipher_video_id IS NOT NULL "
+        "GROUP BY vdocipher_video_id HAVING COUNT(*) > 1 "
+        "ORDER BY vdocipher_video_id"
+    )).all()
+    if duplicates:
+        details = ", ".join(f"{video_id} ({count})" for video_id, count in duplicates)
+        raise RuntimeError(
+            "Cannot add uq_lessons_vdocipher_video_id: duplicate VdoCipher IDs detected: "
+            f"{details}. Resolve duplicate provider IDs before retrying this migration."
+        )
+
+
 def upgrade():
+    _abort_for_duplicate_vdocipher_ids()
+
     with op.batch_alter_table("categories", schema=None) as batch_op:
         batch_op.add_column(sa.Column("sort_order", sa.Integer(), server_default=sa.text("0"), nullable=False))
         batch_op.add_column(sa.Column("is_fixed", sa.Boolean(), server_default=sa.false(), nullable=False))
