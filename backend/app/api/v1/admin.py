@@ -12,7 +12,10 @@ from ...models import (
 )
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
-from ...services.catalog_access import CatalogValidationError, validate_catalog_item, video_is_standalone
+from ...services.catalog_access import (
+    CatalogValidationError, validate_bundle_compatibility, validate_catalog_item,
+    validate_course_bundle_compatibility, validate_video_bundle_compatibility,
+)
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
 from ...services import vdocipher_admin
@@ -287,6 +290,7 @@ def course_update(cid):
         catalog = validate_catalog_item({
             key: d[key] for key in ("status", "access_type", "price", "currency", "category_id", "access_days") if key in d
         }, current=c)
+        validate_course_bundle_compatibility(c, catalog["access_type"])
     except CatalogValidationError as exc:
         return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     for f in ("title", "title_en", "description", "description_en", "image", "price", "currency",
@@ -464,14 +468,6 @@ def baytarian_reject(rid):
 
 # ------------------------------ bundles ------------------------------
 
-_AUDIENCES = {
-    "free": {"veterinarian", "non_veterinarian"},
-    "vet_free": {"veterinarian"},
-    "baytarian": {"veterinarian"},
-    "general": {"non_veterinarian"},
-}
-
-
 def _bundle_catalog_fields(data, current=None):
     if "criteria" in data:
         raise CatalogValidationError(["unsupported_criteria"])
@@ -514,26 +510,13 @@ def _bundle_contents(data, current=None):
         courses = _bundle_ids(data, "course_ids", Course, "course_not_found")
     if "video_ids" in data:
         videos = _bundle_ids(data, "video_ids", Lesson, "video_not_found")
-    if any(not video_is_standalone(video) for video in videos):
-        raise CatalogValidationError(["video_not_standalone"])
     return courses, videos
-
-
-def _validate_bundle_audience(access_type, courses, videos):
-    package_audience = _AUDIENCES[access_type]
-    errors = []
-    if any(not package_audience <= _AUDIENCES[course.access_type] for course in courses):
-        errors.append("incompatible_course_audience")
-    if any(not package_audience <= _AUDIENCES[video.access_type] for video in videos):
-        errors.append("incompatible_video_audience")
-    if errors:
-        raise CatalogValidationError(errors)
 
 
 def _bundle_input(data, current=None):
     catalog = _bundle_catalog_fields(data, current=current)
     courses, videos = _bundle_contents(data, current=current)
-    _validate_bundle_audience(catalog["access_type"], courses, videos)
+    validate_bundle_compatibility(catalog["access_type"], courses, videos)
     return catalog, courses, videos
 
 
@@ -659,6 +642,9 @@ def set_video_courses(video, course_ids):
     courses = Course.query.filter(Course.id.in_(wanted)).all() if wanted else []
     if len(courses) != len(wanted):
         raise CatalogValidationError(["course_not_found"])
+    validate_video_bundle_compatibility(
+        video, standalone=not wanted and not video.course_id and not video.module_id,
+    )
     existing = {row.course_id: row for row in video.course_assignments}
     for course_id, row in existing.items():
         if course_id not in wanted:
@@ -779,6 +765,10 @@ def video_update(vid):
     catalog, error = _catalog_video_fields(d, current=l)
     if error:
         return error
+    try:
+        validate_video_bundle_compatibility(l, access_type=catalog["access_type"])
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     if "vdocipher_video_id" in d:
         provider_id = d["vdocipher_video_id"] or None
         duplicate = Lesson.query.filter(Lesson.vdocipher_video_id == provider_id, Lesson.id != l.id).first() if provider_id else None
@@ -970,6 +960,7 @@ def vdocipher_import():
         return error
     if existing:
         try:
+            validate_video_bundle_compatibility(existing, access_type=catalog["access_type"])
             for field in ("category_id", "price", "currency", "access_days", "access_type", "status"):
                 setattr(existing, field, catalog[field])
             add_video_courses(existing, course_ids)

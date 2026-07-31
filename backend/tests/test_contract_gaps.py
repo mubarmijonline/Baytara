@@ -12,7 +12,7 @@ import pytest
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
-from app.models import Bundle, Category, Course, Enrollment, Lesson, Setting, User
+from app.models import Bundle, Category, Course, CourseVideo, Enrollment, Lesson, Setting, User
 from app.security import hash_password
 from app.services.video_provider import watermark_for
 
@@ -101,6 +101,27 @@ def test_admin_mixed_bundle_validates_final_contents_before_commit(isolated_app)
         "incompatible_course_audience", "incompatible_video_audience",
     }
 
+    course_reverse = client.patch(
+        f"/api/v1/admin/courses/{ids['general_course']}", headers=headers,
+        json={"access_type": "baytarian"},
+    )
+    assert course_reverse.status_code == 422
+    assert course_reverse.get_json()["errors"] == ["incompatible_course_audience"]
+
+    video_reverse = client.patch(
+        f"/api/v1/admin/videos/{ids['general_video']}", headers=headers,
+        json={"access_type": "baytarian"},
+    )
+    assert video_reverse.status_code == 422
+    assert video_reverse.get_json()["errors"] == ["incompatible_video_audience"]
+
+    assignment_reverse = client.post(
+        f"/api/v1/admin/videos/{ids['general_video']}/courses", headers=headers,
+        json={"course_ids": [ids["general_course"]]},
+    )
+    assert assignment_reverse.status_code == 422
+    assert assignment_reverse.get_json()["errors"] == ["video_not_standalone"]
+
     update = client.patch(f"/api/v1/admin/bundles/{bundle['id']}", headers=headers, json={
         "access_type": "baytarian",
     })
@@ -111,6 +132,9 @@ def test_admin_mixed_bundle_validates_final_contents_before_commit(isolated_app)
         assert unchanged.access_type == "general"
         assert [course.id for course in unchanged.courses] == [ids["general_course"]]
         assert [video.id for video in unchanged.videos] == [ids["general_video"]]
+        assert db.session.get(Course, ids["general_course"]).access_type == "general"
+        assert db.session.get(Lesson, ids["general_video"]).access_type == "general"
+        assert CourseVideo.query.filter_by(video_id=ids["general_video"]).count() == 0
 
 
 def _mk_course(tag, price=200, access_days=None, title_en=None):
@@ -183,6 +207,8 @@ def demo():
         row = Enrollment.query.filter_by(course_id=c30).first()
         row.expires_at = datetime.now(timezone.utc) - timedelta(days=1)
         l = Lesson(course_id=c30, title="l", vdocipher_video_id="vid123"); db.session.add(l)
+        db.session.flush()
+        db.session.add(CourseVideo(course_id=c30, video_id=l.id, position=0))
         db.session.commit()
         lesson_id = l.id
     pr = c.post("/api/v1/progress", json={"lesson_id": lesson_id, "completed": True}, headers=sh)

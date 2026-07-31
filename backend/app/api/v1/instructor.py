@@ -6,7 +6,9 @@ from flask_jwt_extended import get_jwt_identity
 from ...extensions import db
 from ...models import User, Course, CourseModule, CourseVideo, Lesson, Enrollment, InstapayPayment
 from ...security import require_role
-from ...services.catalog_access import CatalogValidationError, validate_catalog_item
+from ...services.catalog_access import (
+    CatalogValidationError, validate_catalog_item, validate_course_bundle_compatibility,
+)
 from ...utils import slugify
 
 bp = Blueprint("instructor", __name__)
@@ -138,6 +140,7 @@ def course_update(cid):
         catalog = validate_catalog_item({
             key: d[key] for key in ("status", "access_type", "price", "currency", "category_id", "access_days") if key in d
         }, current=c)
+        validate_course_bundle_compatibility(c, catalog["access_type"])
     except CatalogValidationError as exc:
         return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     for f in ("title", "description", "image", "price", "currency", "category_id", "duration_minutes", "access_days", "access_type", "status"):
@@ -205,7 +208,7 @@ def lesson_create(mid):
         return jsonify(error="not_found"), 404
     d = request.get_json() or {}
     provider_id = d.get("vdocipher_video_id") or None
-    if provider_id and not _me().can_add_video:
+    if not _me().can_add_video:
         return jsonify(error="video_add_forbidden"), 403
     if provider_id and Lesson.query.filter_by(vdocipher_video_id=provider_id).first():
         return jsonify(error="duplicate_video"), 409
@@ -229,19 +232,30 @@ def lesson_update(lid):
     if not l:
         return jsonify(error="not_found"), 404
     d = request.get_json() or {}
-    # video changes are permission-gated (plan §10)
-    if "vdocipher_video_id" in d:
+    mutable_fields = {"title", "position", "duration_minutes", "is_protected", "vdocipher_video_id"}
+    assignments = list(l.course_assignments)
+    if assignments and mutable_fields.intersection(d):
+        me = _me()
+        if any(row.course.instructor_id != _uid() for row in assignments):
+            return jsonify(error="shared_video_admin_required"), 403
+        if not me.can_edit_video:
+            return jsonify(error="video_edit_forbidden"), 403
+    elif "vdocipher_video_id" in d:
         me = _me()
         new_val = d["vdocipher_video_id"]
-        if l.vdocipher_video_id and not new_val:
-            if not me.can_delete_video:
-                return jsonify(error="video_delete_forbidden"), 403
-        elif l.vdocipher_video_id and new_val != l.vdocipher_video_id:
-            if not me.can_edit_video:
-                return jsonify(error="video_edit_forbidden"), 403
-        elif not l.vdocipher_video_id and new_val:
-            if not me.can_add_video:
-                return jsonify(error="video_add_forbidden"), 403
+        if l.vdocipher_video_id and not new_val and not me.can_delete_video:
+            return jsonify(error="video_delete_forbidden"), 403
+        if l.vdocipher_video_id and new_val != l.vdocipher_video_id and not me.can_edit_video:
+            return jsonify(error="video_edit_forbidden"), 403
+        if not l.vdocipher_video_id and new_val and not me.can_add_video:
+            return jsonify(error="video_add_forbidden"), 403
+    if "vdocipher_video_id" in d:
+        new_val = d["vdocipher_video_id"] or None
+        duplicate = Lesson.query.filter(
+            Lesson.vdocipher_video_id == new_val, Lesson.id != l.id,
+        ).first() if new_val else None
+        if duplicate:
+            return jsonify(error="duplicate_video"), 409
         l.vdocipher_video_id = new_val
     for f in ("title", "position", "duration_minutes", "is_protected"):
         if f in d:
@@ -256,6 +270,17 @@ def lesson_delete(lid):
     l = _own_lesson(lid)
     if not l:
         return jsonify(error="not_found"), 404
+    assignments = list(l.course_assignments)
+    if assignments:
+        if not _me().can_delete_video:
+            return jsonify(error="video_delete_forbidden"), 403
+        owned = [row for row in assignments if row.course.instructor_id == _uid()]
+        if not owned:
+            return jsonify(error="not_found"), 404
+        for row in owned:
+            db.session.delete(row)
+        db.session.commit()
+        return jsonify(deleted=lid, removed_assignments=len(owned), video_preserved=True)
     if l.vdocipher_video_id and not _me().can_delete_video:
         return jsonify(error="video_delete_forbidden"), 403
     db.session.delete(l)

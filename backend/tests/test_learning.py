@@ -9,7 +9,7 @@ import pytest
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
-from app.models import Category, Course, CourseVideo, Enrollment, Lesson, User
+from app.models import Category, Course, CourseModule, CourseVideo, Enrollment, Lesson, User
 from app.security import hash_password
 
 
@@ -37,15 +37,23 @@ def learning_app(tmp_path):
             title="Unrelated", slug="progress-unrelated", instructor_id=instructor.id,
             category_id=category.id, access_type="free", status="published",
         )
+        db.session.add_all([source, unrelated])
+        db.session.flush()
         video = Lesson(title="Reusable progress video")
-        db.session.add_all([source, unrelated, video])
+        module = CourseModule(course_id=unrelated.id, title="Legacy module")
+        direct_legacy = Lesson(course_id=unrelated.id, title="Direct legacy")
+        module_legacy = Lesson(module=module, title="Module legacy")
+        db.session.add_all([video, module, direct_legacy, module_legacy])
         db.session.flush()
         db.session.add_all([
             CourseVideo(course_id=source.id, video_id=video.id, position=0),
             Enrollment(user_id=student.id, course_id=unrelated.id, status="active"),
         ])
         db.session.commit()
-        data = {"source_id": source.id, "unrelated_id": unrelated.id, "video_id": video.id}
+        data = {
+            "source_id": source.id, "unrelated_id": unrelated.id, "video_id": video.id,
+            "direct_legacy_id": direct_legacy.id, "module_legacy_id": module_legacy.id,
+        }
         yield app, data
         db.session.remove()
         db.drop_all()
@@ -64,6 +72,13 @@ def test_progress_requires_video_membership_in_supplied_enrollment_course(learni
     })
     assert denied.status_code == 403
     assert denied.get_json()["error"] == "not_enrolled"
+
+    for legacy_id in (data["direct_legacy_id"], data["module_legacy_id"]):
+        legacy = client.post("/api/v1/progress", headers=headers, json={
+            "course_id": data["unrelated_id"], "lesson_id": legacy_id, "completed": True,
+        })
+        assert legacy.status_code == 403
+        assert legacy.get_json()["error"] == "not_enrolled"
 
     with app.app_context():
         db.session.add(CourseVideo(
@@ -93,6 +108,11 @@ def _seed(tag, price=0):
     db.session.flush()
     lessons = [Lesson(course_id=course.id, title=f"L{i}", position=i) for i in range(2)]
     db.session.add_all(lessons)
+    db.session.flush()
+    db.session.add_all([
+        CourseVideo(course_id=course.id, video_id=lesson.id, position=lesson.position)
+        for lesson in lessons
+    ])
     db.session.commit()
     return course.id, [l.id for l in lessons]
 

@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import or_
-
 from ..extensions import db
 
 ENROLL_SOURCES = ("purchase", "assigned", "free")
@@ -19,19 +17,27 @@ def _aware(dt):
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def _course_lessons_query(course_id):
-    """All unique lessons available through one course's current and legacy links."""
-    from .catalog import CourseModule, CourseVideo, Lesson
+def merge_access_expiry(status, expires_at, access_days, base=None):
+    """Merge a purchase window without shortening active access.
 
-    return Lesson.query.outerjoin(
-        CourseModule, Lesson.module_id == CourseModule.id
-    ).outerjoin(
+    Active lifetime access stays lifetime. Revoked grants restart from the new
+    purchase window, while active finite grants keep the later expiry.
+    """
+    new_expiry = None if not access_days else (base or _now()) + timedelta(days=int(access_days))
+    if status != "active":
+        return new_expiry
+    if expires_at is None or new_expiry is None:
+        return None
+    return max(_aware(expires_at), new_expiry)
+
+
+def _course_lessons_query(course_id):
+    """Canonical videos assigned to one course through CourseVideo."""
+    from .catalog import CourseVideo, Lesson
+
+    return Lesson.query.join(
         CourseVideo, CourseVideo.video_id == Lesson.id
-    ).filter(or_(
-        Lesson.course_id == course_id,
-        CourseModule.course_id == course_id,
-        CourseVideo.course_id == course_id,
-    )).distinct()
+    ).filter(CourseVideo.course_id == course_id).distinct()
 
 
 class Enrollment(db.Model):

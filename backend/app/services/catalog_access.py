@@ -7,6 +7,12 @@ PAID_ACCESS = {"baytarian", "general"}
 SUPPORTED_CURRENCIES = {"EGP"}
 CATALOG_STATUSES = ("draft", "published", "unpublished")
 PUBLISHED_STATUS = "published"
+ACCESS_AUDIENCES = {
+    "free": {"veterinarian", "non_veterinarian"},
+    "vet_free": {"veterinarian"},
+    "baytarian": {"veterinarian"},
+    "general": {"non_veterinarian"},
+}
 
 
 class CatalogValidationError(ValueError):
@@ -86,6 +92,59 @@ def validate_catalog_item(data, current=None):
 def video_is_standalone(video):
     """Whether a canonical video has no current or legacy course membership."""
     return not video.course_id and not video.module_id and not video.course_assignments
+
+
+def validate_bundle_compatibility(
+    access_type, courses, videos, *, course_access=None, video_access_types=None,
+    video_standalone=None,
+):
+    """Validate package contents, optionally against prospective child state."""
+    course_access = course_access or {}
+    video_access_types = video_access_types or {}
+    video_standalone = video_standalone or {}
+
+    if any(not video_standalone.get(video.id, video_is_standalone(video)) for video in videos):
+        raise CatalogValidationError(["video_not_standalone"])
+
+    package_audience = ACCESS_AUDIENCES[access_type]
+    errors = []
+    if any(
+        not package_audience <= ACCESS_AUDIENCES[course_access.get(course.id, course.access_type)]
+        for course in courses
+    ):
+        errors.append("incompatible_course_audience")
+    if any(
+        not package_audience <= ACCESS_AUDIENCES[video_access_types.get(video.id, video.access_type)]
+        for video in videos
+    ):
+        errors.append("incompatible_video_audience")
+    if errors:
+        raise CatalogValidationError(errors)
+
+
+def validate_course_bundle_compatibility(course, access_type):
+    """Reject a prospective course audience that breaks a containing package."""
+    from ..models.catalog import Bundle, Course
+
+    bundles = Bundle.query.filter(Bundle.courses.any(Course.id == course.id)).all()
+    for bundle in bundles:
+        validate_bundle_compatibility(
+            bundle.access_type, bundle.courses, bundle.videos,
+            course_access={course.id: access_type},
+        )
+
+
+def validate_video_bundle_compatibility(video, *, access_type=None, standalone=None):
+    """Reject prospective video criteria/assignment state that breaks a package."""
+    from ..models.catalog import Bundle, Lesson
+
+    bundles = Bundle.query.filter(Bundle.videos.any(Lesson.id == video.id)).all()
+    for bundle in bundles:
+        validate_bundle_compatibility(
+            bundle.access_type, bundle.courses, bundle.videos,
+            video_access_types={video.id: access_type or video.access_type},
+            video_standalone={video.id: video_is_standalone(video) if standalone is None else standalone},
+        )
 
 
 def video_access(user, video):

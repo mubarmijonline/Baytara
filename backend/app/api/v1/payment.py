@@ -9,6 +9,7 @@ from ...models import (
     Bundle, Course, Enrollment, Lesson, Payment, User, VideoEntitlement, push_notification,
 )
 from ...models.payment import PAYMENT_KINDS
+from ...models.learning import merge_access_expiry
 from ...security import require_role
 from ...services.catalog_access import access_is_paid, audience_error, video_is_standalone
 from ...services import fawaterk
@@ -118,8 +119,9 @@ def _enroll_course(uid, course, access_days):
     """Upsert an active enrollment; bump count only on first enroll; fresh access window."""
     enr = Enrollment.query.filter_by(user_id=uid, course_id=course.id).first()
     if enr:
+        expires_at = merge_access_expiry(enr.status, enr.expires_at, access_days)
         enr.status = "active"
-        enr.expires_at = Enrollment.compute_expiry(access_days)
+        enr.expires_at = expires_at
     else:
         enr = Enrollment(user_id=uid, course_id=course.id, source="purchase", status="active",
                          expires_at=Enrollment.compute_expiry(access_days))
@@ -132,9 +134,10 @@ def _grant_video(uid, video, access_days, source):
     """Upsert one active video entitlement with a fresh access window."""
     entitlement = VideoEntitlement.query.filter_by(user_id=uid, video_id=video.id).first()
     if entitlement:
+        expires_at = merge_access_expiry(entitlement.status, entitlement.expires_at, access_days)
         entitlement.status = "active"
         entitlement.source = source
-        entitlement.expires_at = Enrollment.compute_expiry(access_days)
+        entitlement.expires_at = expires_at
     else:
         entitlement = VideoEntitlement(
             user_id=uid, video_id=video.id, source=source, status="active",

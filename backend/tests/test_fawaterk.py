@@ -8,6 +8,7 @@ gate + not_purchasable at checkout.
 import hmac
 import uuid
 import hashlib
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -155,6 +156,64 @@ def test_mixed_bundle_payment_grants_courses_and_videos(payment_app):
         ).one()
         assert entitlement.source == "bundle"
         assert entitlement.expires_at is not None
+
+
+def test_bundle_grants_merge_course_and_video_overlap_without_shortening(payment_app):
+    app, data = payment_app
+    now = datetime.now(timezone.utc)
+    later = now + timedelta(days=90)
+    with app.app_context():
+        users = [
+            User(name="Lifetime", email="lifetime-overlap@example.test", password_hash="hash"),
+            User(name="Later", email="later-overlap@example.test", password_hash="hash"),
+            User(name="Revoked", email="revoked-overlap@example.test", password_hash="hash"),
+            User(name="Expired", email="expired-overlap@example.test", password_hash="hash"),
+        ]
+        db.session.add_all(users)
+        db.session.flush()
+        states = [
+            (users[0], "active", None),
+            (users[1], "active", later),
+            (users[2], "revoked", None),
+            (users[3], "active", now - timedelta(days=1)),
+        ]
+        payments = []
+        for user, status, expires_at in states:
+            db.session.add(Enrollment(
+                user_id=user.id, course_id=data["course_id"], status=status, expires_at=expires_at,
+            ))
+            db.session.add(VideoEntitlement(
+                user_id=user.id, video_id=data["standalone_id"], status=status,
+                source="assigned", expires_at=expires_at,
+            ))
+            payment = Payment(
+                user_id=user.id, kind="bundle", bundle_id=data["bundle_id"], amount=150,
+                status="pending",
+            )
+            db.session.add(payment)
+            payments.append(payment)
+        db.session.flush()
+        for payment in payments:
+            paymod._apply_paid(payment)
+        db.session.commit()
+
+        lifetime_course = Enrollment.query.filter_by(user_id=users[0].id).one()
+        lifetime_video = VideoEntitlement.query.filter_by(user_id=users[0].id).one()
+        assert lifetime_course.expires_at is None
+        assert lifetime_video.expires_at is None
+
+        later_course = Enrollment.query.filter_by(user_id=users[1].id).one()
+        later_video = VideoEntitlement.query.filter_by(user_id=users[1].id).one()
+        assert later_course.expires_at.replace(tzinfo=timezone.utc) == later
+        assert later_video.expires_at.replace(tzinfo=timezone.utc) == later
+
+        for user in users[2:]:
+            course_grant = Enrollment.query.filter_by(user_id=user.id).one()
+            video_grant = VideoEntitlement.query.filter_by(user_id=user.id).one()
+            assert course_grant.status == "active" and video_grant.status == "active"
+            for expiry in (course_grant.expires_at, video_grant.expires_at):
+                aware = expiry.replace(tzinfo=timezone.utc)
+                assert now + timedelta(days=29) < aware < now + timedelta(days=31)
 
 
 def test_direct_video_checkout_enforces_audience_price_and_standalone_target(payment_app):
