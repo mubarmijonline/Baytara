@@ -877,14 +877,20 @@ def videos_reorder(cid):
 # ------------------------------ vdocipher admin ------------------------------
 
 def _vdocipher_error(e):
-    return jsonify(error=str(e).split(":", 1)[0]), 503
+    code = str(e)
+    statuses = {
+        "vdocipher_not_found": 404,
+        "vdocipher_rate_limited": 429,
+        "vdocipher_invalid_folder": 422,
+    }
+    return jsonify(error=code), statuses.get(code, 503)
 
 
 @bp.post("/vdocipher/test")
 @require_role("admin")
 def vdocipher_test():
     try:
-        vdocipher_admin.list_videos(limit=1)
+        vdocipher_admin.list_videos(limit=1, refresh=True)
     except VdoCipherAdminError as e:
         return _vdocipher_error(e)
     return jsonify(ok=True, configured=vdocipher_admin.configured())
@@ -911,11 +917,104 @@ def vdocipher_videos():
             folder_id=request.args.get("folder_id"),
             page=request.args.get("page", 1, type=int),
             limit=request.args.get("limit", 20, type=int),
+            refresh=request.args.get("refresh") == "1",
         )
     except VdoCipherAdminError as e:
         return _vdocipher_error(e)
-    rows = data.get("rows") or data.get("videos") or []
-    return jsonify(count=data.get("count", len(rows)), videos=rows)
+    return jsonify(data)
+
+
+@bp.get("/vdocipher/folders/<folder_id>")
+@require_role("admin")
+def vdocipher_folder(folder_id):
+    try:
+        return jsonify(vdocipher_admin.list_folder(folder_id, refresh=request.args.get("refresh") == "1"))
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+
+
+@bp.post("/vdocipher/folders")
+@require_role("admin")
+def vdocipher_folder_create():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify(error="name_required"), 422
+    try:
+        folder = vdocipher_admin.create_folder(name, data.get("parent_id") or "root")
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+    return jsonify(folder=folder), 201
+
+
+@bp.patch("/vdocipher/folders/<folder_id>")
+@require_role("admin")
+def vdocipher_folder_rename(folder_id):
+    name = ((request.get_json() or {}).get("name") or "").strip()
+    if not name:
+        return jsonify(error="name_required"), 422
+    try:
+        return jsonify(vdocipher_admin.rename_folder(folder_id, name))
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+
+
+@bp.post("/vdocipher/move")
+@require_role("admin")
+def vdocipher_move():
+    data = request.get_json() or {}
+    video_ids = data.get("video_ids")
+    folder_ids = data.get("folder_ids")
+    if not data.get("folder_id") or not isinstance(video_ids, list) or not isinstance(folder_ids, list):
+        return jsonify(error="move_items_required"), 422
+    if not video_ids and not folder_ids:
+        return jsonify(error="move_items_required"), 422
+    try:
+        return jsonify(vdocipher_admin.move_items(data["folder_id"], video_ids, folder_ids))
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+
+
+@bp.delete("/vdocipher/folders/<folder_id>")
+@require_role("admin")
+def vdocipher_folder_delete(folder_id):
+    try:
+        return jsonify(vdocipher_admin.delete_folder(folder_id))
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+
+
+@bp.get("/vdocipher/videos/<video_id>")
+@require_role("admin")
+def vdocipher_video_get(video_id):
+    try:
+        return jsonify(video=vdocipher_admin.get_video(video_id))
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+
+
+@bp.patch("/vdocipher/videos/<video_id>")
+@require_role("admin")
+def vdocipher_video_update(video_id):
+    data = request.get_json() or {}
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify(error="title_required"), 422
+    if "description" not in data or not isinstance(data["description"], str):
+        return jsonify(error="description_required"), 422
+    try:
+        return jsonify(vdocipher_admin.update_video(video_id, title, data["description"]))
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+
+
+@bp.post("/vdocipher/videos/<video_id>/preview")
+@require_role("admin")
+def vdocipher_video_preview(video_id):
+    try:
+        return jsonify(vdocipher_admin.preview(video_id))
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
 
 
 @bp.post("/vdocipher/upload-credentials")
@@ -930,7 +1029,9 @@ def vdocipher_upload_credentials():
     if cid and not course:
         return jsonify(error="course_not_found"), 404
     try:
-        if course:
+        if "folder_id" in d:
+            folder_id = d["folder_id"]
+        elif course:
             folder_id = vdocipher_admin.ensure_course_folder(course)
         else:
             folder_id = vdocipher_admin.ensure_platform_folders(False)["standalone"]
