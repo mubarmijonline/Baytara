@@ -166,6 +166,9 @@ def test_catalog_lists_paginated_filtered_videos_and_protects_dependencies(admin
     blocked = admin_client.delete(f"/api/v1/admin/videos/{matching['id']}")
     assert blocked.status_code == 409
     assert blocked.get_json()["error"] == "video_in_use"
+    legacy_blocked = admin_client.delete(f"/api/v1/admin/lessons/{matching['id']}")
+    assert legacy_blocked.status_code == 409
+    assert legacy_blocked.get_json()["error"] == "video_in_use"
 
 
 def test_vdocipher_import_creates_and_reuses_canonical_course_assignments(

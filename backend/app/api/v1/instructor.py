@@ -47,6 +47,40 @@ def _me():
     return db.session.get(User, _uid())
 
 
+def _course_video_members(course, module_ids=None):
+    """Videos whose membership would be changed by deleting this teaching parent."""
+    module_ids = module_ids if module_ids is not None else [module.id for module in course.modules]
+    videos = {row.video_id: row.video for row in course.video_assignments}
+    for video in Lesson.query.filter_by(course_id=course.id).all():
+        videos[video.id] = video
+    if module_ids:
+        for video in Lesson.query.filter(Lesson.module_id.in_(module_ids)).all():
+            videos[video.id] = video
+    return list(videos.values())
+
+
+def _detach_course_video_memberships(course, videos, module_ids):
+    """Remove one course's ownership links without deleting canonical Lesson rows."""
+    video_ids = {video.id for video in videos}
+    assignments = [
+        row for row in course.video_assignments
+        if row.video_id in video_ids
+    ]
+    for row in assignments:
+        course.video_assignments.remove(row)
+    for video in videos:
+        if video.course_id == course.id:
+            video.course_id = None
+        if video.module_id in module_ids:
+            video.module_id = None
+    db.session.flush()
+    return len(assignments)
+
+
+def _video_delete_forbidden(videos):
+    return bool(videos) and not _me().can_delete_video
+
+
 # ------------------------------ dashboard ------------------------------
 
 @bp.get("/stats")
@@ -156,6 +190,13 @@ def course_delete(cid):
     c = _own_course(cid)
     if not c:
         return jsonify(error="not_found"), 404
+    module_ids = [module.id for module in c.modules]
+    videos = _course_video_members(c, module_ids)
+    if _video_delete_forbidden(videos):
+        return jsonify(error="video_delete_forbidden"), 403
+    _detach_course_video_memberships(c, videos, module_ids)
+    for module in c.modules:
+        db.session.expire(module, ["lessons"])
     db.session.delete(c)
     db.session.commit()
     return jsonify(deleted=cid)
@@ -195,6 +236,11 @@ def module_delete(mid):
     m = _own_module(mid)
     if not m:
         return jsonify(error="not_found"), 404
+    videos = list(m.lessons)
+    if _video_delete_forbidden(videos):
+        return jsonify(error="video_delete_forbidden"), 403
+    _detach_course_video_memberships(m.course, videos, [m.id])
+    db.session.expire(m, ["lessons"])
     db.session.delete(m)
     db.session.commit()
     return jsonify(deleted=mid)
@@ -212,7 +258,7 @@ def lesson_create(mid):
         return jsonify(error="video_add_forbidden"), 403
     if provider_id and Lesson.query.filter_by(vdocipher_video_id=provider_id).first():
         return jsonify(error="duplicate_video"), 409
-    l = Lesson(module_id=mid, title=d.get("title", "درس"), position=d.get("position", 0),
+    l = Lesson(course_id=None, module_id=None, title=d.get("title", "درس"), position=d.get("position", 0),
                duration_minutes=d.get("duration_minutes"), vdocipher_video_id=provider_id,
                is_protected=d.get("is_protected", True))
     db.session.add(l)
@@ -270,22 +316,24 @@ def lesson_delete(lid):
     l = _own_lesson(lid)
     if not l:
         return jsonify(error="not_found"), 404
-    assignments = list(l.course_assignments)
-    if assignments:
-        if not _me().can_delete_video:
-            return jsonify(error="video_delete_forbidden"), 403
-        owned = [row for row in assignments if row.course.instructor_id == _uid()]
-        if not owned:
-            return jsonify(error="not_found"), 404
-        for row in owned:
-            db.session.delete(row)
-        db.session.commit()
-        return jsonify(deleted=lid, removed_assignments=len(owned), video_preserved=True)
-    if l.vdocipher_video_id and not _me().can_delete_video:
+    if not _me().can_delete_video:
         return jsonify(error="video_delete_forbidden"), 403
-    db.session.delete(l)
+    owned_course_ids = {
+        course_id for (course_id,) in db.session.query(Course.id).filter_by(instructor_id=_uid()).all()
+    }
+    owned_assignments = [
+        row for row in l.course_assignments if row.course_id in owned_course_ids
+    ]
+    for row in owned_assignments:
+        db.session.delete(row)
+    if l.course_id in owned_course_ids:
+        l.course_id = None
+    if l.module_id:
+        module_course_id = db.session.query(CourseModule.course_id).filter_by(id=l.module_id).scalar()
+        if module_course_id in owned_course_ids:
+            l.module_id = None
     db.session.commit()
-    return jsonify(deleted=lid)
+    return jsonify(deleted=lid, removed_assignments=len(owned_assignments), video_preserved=True)
 
 
 # ------------------------------ students / revenue ------------------------------

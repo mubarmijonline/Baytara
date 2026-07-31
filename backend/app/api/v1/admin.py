@@ -393,12 +393,7 @@ def lesson_update(lid):
 @bp.delete("/lessons/<int:lid>")
 @require_role("admin")
 def lesson_delete(lid):
-    l = db.session.get(Lesson, lid)
-    if not l:
-        return jsonify(error="not_found"), 404
-    db.session.delete(l)
-    db.session.commit()
-    return jsonify(deleted=lid)
+    return _delete_catalog_video(lid)
 
 
 # ------------------------------ baytarian verification ------------------------------
@@ -610,6 +605,26 @@ def _video_dict(l):
     return d
 
 
+def _delete_catalog_video(video_id):
+    video = db.session.get(Lesson, video_id)
+    if not video:
+        return jsonify(error="not_found"), 404
+    has_dependencies = (
+        video.course_id is not None
+        or video.module_id is not None
+        or CourseVideo.query.filter_by(video_id=video_id).count()
+        or db.session.query(bundle_videos.c.bundle_id).filter(bundle_videos.c.video_id == video_id).count()
+        or Payment.query.filter_by(video_id=video_id).count()
+        or VideoEntitlement.query.filter_by(video_id=video_id).count()
+        or LessonProgress.query.filter_by(lesson_id=video_id).count()
+    )
+    if has_dependencies:
+        return jsonify(error="video_in_use"), 409
+    db.session.delete(video)
+    db.session.commit()
+    return jsonify(deleted=video_id)
+
+
 def _catalog_video_fields(data, current=None):
     if "criteria" in data:
         return None, (jsonify(error="catalog_validation_failed", errors=["unsupported_criteria"]), 422)
@@ -795,21 +810,7 @@ def video_update(vid):
 @bp.delete("/videos/<int:vid>")
 @require_role("admin")
 def video_delete(vid):
-    l = db.session.get(Lesson, vid)
-    if not l:
-        return jsonify(error="not_found"), 404
-    has_dependencies = (
-        CourseVideo.query.filter_by(video_id=vid).count()
-        or db.session.query(bundle_videos.c.bundle_id).filter(bundle_videos.c.video_id == vid).count()
-        or Payment.query.filter_by(video_id=vid).count()
-        or VideoEntitlement.query.filter_by(video_id=vid).count()
-        or LessonProgress.query.filter_by(lesson_id=vid).count()
-    )
-    if has_dependencies:
-        return jsonify(error="video_in_use"), 409
-    db.session.delete(l)
-    db.session.commit()
-    return jsonify(deleted=vid)
+    return _delete_catalog_video(vid)
 
 
 @bp.post("/videos/<int:vid>/courses")
