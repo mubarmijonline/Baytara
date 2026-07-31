@@ -102,12 +102,6 @@ def video_access(user, video):
         if assigned_course:
             return True, None
 
-    reason = audience_error(user, video.access_type)
-    if reason:
-        return False, reason
-    if video.access_type in FREE_ACCESS:
-        return True, None
-
     from ..models.learning import Enrollment, VideoEntitlement
 
     entitlement = VideoEntitlement.query.filter_by(
@@ -122,9 +116,20 @@ def video_access(user, video):
             Enrollment.course_id.in_(course_ids),
             Enrollment.status == "active",
         ).all()
-        if any(enrollment.has_access() for enrollment in enrollments):
+        eligible = [
+            enrollment for enrollment in enrollments
+            if audience_error(user, enrollment.course.access_type) is None
+        ]
+        if any(enrollment.has_access() for enrollment in eligible):
             return True, None
-        if any(enrollment.is_expired() for enrollment in enrollments):
+        if any(enrollment.is_expired() for enrollment in eligible):
             return False, "access_expired"
+        return False, "not_entitled"
+
+    reason = audience_error(user, video.access_type)
+    if reason:
+        return False, reason
+    if video.access_type in FREE_ACCESS:
+        return True, None
 
     return False, "not_entitled"

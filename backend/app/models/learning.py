@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import or_
+
 from ..extensions import db
 
 ENROLL_SOURCES = ("purchase", "assigned", "free")
@@ -15,6 +17,21 @@ def _now():
 def _aware(dt):
     """Postgres may hand back naive datetimes; treat them as UTC for comparison."""
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _course_lessons_query(course_id):
+    """All unique lessons available through one course's current and legacy links."""
+    from .catalog import CourseModule, CourseVideo, Lesson
+
+    return Lesson.query.outerjoin(
+        CourseModule, Lesson.module_id == CourseModule.id
+    ).outerjoin(
+        CourseVideo, CourseVideo.video_id == Lesson.id
+    ).filter(or_(
+        Lesson.course_id == course_id,
+        CourseModule.course_id == course_id,
+        CourseVideo.course_id == course_id,
+    )).distinct()
 
 
 class Enrollment(db.Model):
@@ -56,12 +73,20 @@ class Enrollment(db.Model):
 
     def completion(self):
         """(-> percent int, completed int, total int) computed from lesson_progress."""
-        from .catalog import Lesson
-
-        total = Lesson.query.filter_by(course_id=self.course_id).count()
-        completed = sum(1 for p in self.progress if p.completed_at is not None)
+        lessons = _course_lessons_query(self.course_id).all()
+        lesson_ids = {lesson.id for lesson in lessons}
+        total = len(lesson_ids)
+        completed = sum(
+            1 for p in self.progress
+            if p.lesson_id in lesson_ids and p.completed_at is not None
+        )
         percent = round(completed / total * 100) if total else 0
         return percent, completed, total
+
+    def includes_lesson(self, lesson_id):
+        from .catalog import Lesson
+
+        return _course_lessons_query(self.course_id).filter(Lesson.id == lesson_id).first() is not None
 
     def to_dict(self, lang="ar"):
         percent, completed, total = self.completion()

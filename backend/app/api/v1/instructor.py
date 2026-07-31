@@ -6,6 +6,7 @@ from flask_jwt_extended import get_jwt_identity
 from ...extensions import db
 from ...models import User, Course, CourseModule, Lesson, Enrollment, InstapayPayment
 from ...security import require_role
+from ...services.catalog_access import CatalogValidationError, validate_catalog_item
 from ...utils import slugify
 
 bp = Blueprint("instructor", __name__)
@@ -85,17 +86,30 @@ def course_create():
     status = d.get("status", "draft")
     if status not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
+    try:
+        catalog = validate_catalog_item({
+            "status": status,
+            "access_type": d.get("access_type", "general"),
+            "price": d.get("price", 0),
+            "currency": d.get("currency", "EGP"),
+            "category_id": d.get("category_id"),
+            "access_days": d.get("access_days"),
+        })
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     c = Course(
         title=d["title"],
         slug=slugify(d.get("slug") or d["title"], lambda s: Course.query.filter_by(slug=s).first() is not None),
         description=d.get("description", ""),
         image=d.get("image"),
-        price=d.get("price", 0),
-        currency=d.get("currency", "EGP"),
+        price=catalog["price"],
+        currency=catalog["currency"],
         instructor_id=_uid(),  # forced to self — cannot create for another instructor
-        category_id=d.get("category_id"),
+        category_id=catalog["category_id"],
         duration_minutes=d.get("duration_minutes"),
-        status=status,
+        access_days=catalog["access_days"],
+        access_type=catalog["access_type"],
+        status=catalog["status"],
     )
     db.session.add(c)
     db.session.commit()
@@ -111,9 +125,15 @@ def course_update(cid):
     d = request.get_json() or {}
     if "status" in d and d["status"] not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
-    for f in ("title", "description", "image", "price", "currency", "category_id", "duration_minutes", "status"):
-        if f in d:
-            setattr(c, f, d[f])  # instructor_id intentionally not settable
+    try:
+        catalog = validate_catalog_item({
+            key: d[key] for key in ("status", "access_type", "price", "currency", "category_id", "access_days") if key in d
+        }, current=c)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    for f in ("title", "description", "image", "price", "currency", "category_id", "duration_minutes", "access_days", "access_type", "status"):
+        if f in d or f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
+            setattr(c, f, catalog[f] if f in catalog else d[f])  # instructor_id intentionally not settable
     db.session.commit()
     return jsonify(course=c.to_dict())
 

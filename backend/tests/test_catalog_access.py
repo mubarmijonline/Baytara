@@ -92,6 +92,13 @@ def test_catalog_item_uses_current_values_for_partial_updates():
     assert item["price"] == 0
 
 
+def _headers(client, email):
+    response = client.post("/api/v1/auth/login", json={"email": email, "password": "secret12"})
+    assert response.status_code == 200, response.get_json()
+    token = response.get_json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.fixture
 def catalog_app(tmp_path):
     config = type("CatalogAccessConfig", (BaseConfig,), {
@@ -135,7 +142,7 @@ def test_video_access_honors_audience_entitlements_enrollment_and_assignment(cat
         db.session.commit()
 
         assert video_access(student, video) == (False, "not_entitled")
-        assert video_access(baytarian, video) == (False, "non_veterinarians_only")
+        assert video_access(baytarian, video) == (False, "not_entitled")
         assert video_access(instructor, video) == (True, None)
         assert video_access(instructor, direct_video) == (True, None)
         assert video_access(admin, video) == (True, None)
@@ -153,6 +160,145 @@ def test_video_access_honors_audience_entitlements_enrollment_and_assignment(cat
         enrollment.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
         db.session.commit()
         assert video_access(student, video) == (False, "access_expired")
+
+
+def test_course_routes_validate_merged_catalog_state(catalog_app):
+    with catalog_app.app_context():
+        admin = User(name="Admin", email="admin-validation@example.test", password_hash=hash_password("secret12"), role="admin")
+        instructor = User(name="Instructor", email="instructor-validation@example.test", password_hash=hash_password("secret12"), role="instructor")
+        category = Category(name="Equine", slug="equine-validation")
+        db.session.add_all([admin, instructor, category])
+        db.session.flush()
+        existing = Course(
+            title="Existing", slug="existing-validation", instructor_id=instructor.id,
+            category_id=category.id, price=100, access_type="general", status="draft",
+        )
+        db.session.add(existing)
+        db.session.commit()
+        admin_id, instructor_id, category_id, existing_id = admin.id, instructor.id, category.id, existing.id
+
+    client = catalog_app.test_client()
+    admin_headers = _headers(client, "admin-validation@example.test")
+    instructor_headers = _headers(client, "instructor-validation@example.test")
+
+    missing_category = client.post("/api/v1/admin/courses", headers=admin_headers, json={
+        "title": "Missing category", "instructor_id": instructor_id, "status": "published",
+        "access_type": "baytarian", "price": 100,
+    })
+    assert missing_category.status_code == 422
+    assert missing_category.get_json() == {"error": "catalog_validation_failed", "errors": ["category_required"]}
+
+    invalid_admin = client.patch(f"/api/v1/admin/courses/{existing_id}", headers=admin_headers, json={
+        "price": 0, "currency": "USD", "access_days": 0,
+    })
+    assert invalid_admin.status_code == 422
+    assert invalid_admin.get_json() == {
+        "error": "catalog_validation_failed",
+        "errors": ["invalid_currency", "positive_price_required", "positive_access_days_required"],
+    }
+
+    invalid_instructor = client.post("/api/v1/instructor/courses", headers=instructor_headers, json={
+        "title": "Invalid published", "status": "published", "access_type": "general", "price": 0,
+    })
+    assert invalid_instructor.status_code == 422
+    assert set(invalid_instructor.get_json()["errors"]) == {"category_required", "positive_price_required"}
+
+    invalid_instructor_update = client.patch(
+        f"/api/v1/instructor/courses/{existing_id}", headers=instructor_headers,
+        json={"currency": "USD", "access_days": 0},
+    )
+    assert invalid_instructor_update.status_code == 422
+    assert invalid_instructor_update.get_json()["errors"] == ["invalid_currency", "positive_access_days_required"]
+
+    valid_admin_draft = client.post("/api/v1/admin/courses", headers=admin_headers, json={
+        "title": "Free draft", "instructor_id": instructor_id, "status": "draft",
+        "access_type": "free", "price": 500,
+    })
+    assert valid_admin_draft.status_code == 201
+    assert valid_admin_draft.get_json()["course"]["price"] == 0
+
+    valid_instructor_draft = client.post("/api/v1/instructor/courses", headers=instructor_headers, json={
+        "title": "Instructor free draft", "status": "draft", "access_type": "free", "price": 500,
+    })
+    assert valid_instructor_draft.status_code == 201
+    assert valid_instructor_draft.get_json()["course"]["price"] == 0
+
+
+def test_course_entitlement_uses_course_audience_before_standalone_video_audience(catalog_app):
+    with catalog_app.app_context():
+        category = Category(name="Equine", slug="equine-entitlement")
+        instructor = User(name="Instructor", email="instructor-entitlement@test", password_hash="hash", role="instructor")
+        baytarian = User(name="Baytarian", email="baytarian-entitlement@test", password_hash="hash", is_baytarian=True)
+        db.session.add_all([category, instructor, baytarian])
+        db.session.flush()
+        course = Course(
+            title="Baytarian course", slug="baytarian-entitlement", instructor_id=instructor.id,
+            category_id=category.id, price=100, access_type="baytarian", status="published",
+        )
+        db.session.add(course)
+        db.session.flush()
+        video = Lesson(title="Reusable video", access_type="general", price=100, status="published")
+        db.session.add(video)
+        db.session.flush()
+        db.session.add_all([
+            CourseVideo(course_id=course.id, video_id=video.id),
+            Enrollment(user_id=baytarian.id, course_id=course.id, source="purchase"),
+        ])
+        db.session.commit()
+
+        assert video_access(baytarian, video) == (True, None)
+
+
+def test_reusable_video_progress_and_completion_are_scoped_to_each_course(catalog_app):
+    with catalog_app.app_context():
+        category = Category(name="Equine", slug="equine-progress")
+        instructor = User(name="Instructor", email="instructor-progress@example.test", password_hash=hash_password("secret12"), role="instructor")
+        student = User(name="Student", email="student-progress@example.test", password_hash=hash_password("secret12"))
+        db.session.add_all([category, instructor, student])
+        db.session.flush()
+        first = Course(title="First", slug="first-progress", instructor_id=instructor.id, category_id=category.id, access_type="free", status="published")
+        second = Course(title="Second", slug="second-progress", instructor_id=instructor.id, category_id=category.id, access_type="free", status="published")
+        db.session.add_all([first, second])
+        db.session.flush()
+        video = Lesson(title="Reusable", access_type="general", price=100)
+        legacy = Lesson(course_id=first.id, title="Legacy", access_type="general", price=100)
+        db.session.add_all([video, legacy])
+        db.session.flush()
+        db.session.add_all([
+            CourseVideo(course_id=first.id, video_id=video.id),
+            CourseVideo(course_id=second.id, video_id=video.id),
+            CourseVideo(course_id=first.id, video_id=legacy.id),
+            Enrollment(user_id=student.id, course_id=first.id, source="free"),
+            Enrollment(user_id=student.id, course_id=second.id, source="free"),
+        ])
+        db.session.commit()
+        student_id, first_id, second_id, video_id, legacy_id = student.id, first.id, second.id, video.id, legacy.id
+
+    client = catalog_app.test_client()
+    headers = _headers(client, "student-progress@example.test")
+    first_progress = client.post("/api/v1/progress", headers=headers, json={
+        "lesson_id": video_id, "course_id": first_id, "completed": True,
+    })
+    assert first_progress.status_code == 200
+    assert first_progress.get_json()["progress"] == {"percent": 50, "completed_lessons": 1, "total_lessons": 2}
+
+    second_progress = client.post("/api/v1/progress", headers=headers, json={
+        "lesson_id": video_id, "course_id": second_id, "completed": True,
+    })
+    assert second_progress.status_code == 200
+    assert second_progress.get_json()["progress"] == {"percent": 100, "completed_lessons": 1, "total_lessons": 1}
+
+    legacy_progress = client.post("/api/v1/progress", headers=headers, json={
+        "lesson_id": legacy_id, "course_id": first_id, "completed": True,
+    })
+    assert legacy_progress.status_code == 200
+    assert legacy_progress.get_json()["progress"] == {"percent": 100, "completed_lessons": 2, "total_lessons": 2}
+
+    with catalog_app.app_context():
+        first_enrollment = Enrollment.query.filter_by(user_id=student_id, course_id=first_id).one()
+        second_enrollment = Enrollment.query.filter_by(user_id=student_id, course_id=second_id).one()
+        assert first_enrollment.completion() == (100, 2, 2)
+        assert second_enrollment.completion() == (100, 1, 1)
 
 
 def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app):

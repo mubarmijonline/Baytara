@@ -6,7 +6,7 @@ import uuid
 
 from app import create_app
 from app.extensions import db
-from app.models import User
+from app.models import Category, User
 from app.security import hash_password
 
 
@@ -26,6 +26,10 @@ def demo():
     tag = uuid.uuid4().hex[:8]
     with app.app_context():
         db.create_all()
+        category = Category(name=f"C{tag}", slug=f"c-{tag}")
+        db.session.add(category)
+        db.session.commit()
+        category_id = category.id
     c = app.test_client()
     A, aid = _mk(c, app, tag, "instructor")
     B, bid = _mk(c, app, tag + "b", "instructor")
@@ -36,7 +40,10 @@ def demo():
     assert c.get("/api/v1/instructor/stats", headers=student).status_code == 403
 
     # A creates a course (instructor_id forced to A)
-    course = c.post("/api/v1/instructor/courses", headers=A, json={"title": "دورة A", "status": "published"}).get_json()["course"]
+    course = c.post("/api/v1/instructor/courses", headers=A, json={
+        "title": "دورة A", "status": "published", "category_id": category_id,
+        "access_type": "general", "price": 100,
+    }).get_json()["course"]
     cid = course["id"]
     assert course["instructor"]["id"] == aid
 

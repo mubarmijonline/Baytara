@@ -82,8 +82,14 @@ def update_progress():
     if not lesson:
         return jsonify(error="lesson_not_found"), 404
 
-    course_id = lesson.resolve_course_id()
-    enrollment = Enrollment.query.filter_by(user_id=_uid(), course_id=course_id, status="active").first()
+    course_id = data.get("course_id")
+    enrollments = Enrollment.query.filter_by(user_id=_uid(), status="active")
+    if course_id:
+        enrollment = enrollments.filter_by(course_id=course_id).first()
+        matches = [enrollment] if enrollment and enrollment.includes_lesson(lesson.id) else []
+    else:
+        matches = [enrollment for enrollment in enrollments.all() if enrollment.includes_lesson(lesson.id)]
+        enrollment = next((item for item in matches if not item.is_expired()), matches[0] if matches else None)
     if not enrollment:
         return jsonify(error="not_enrolled"), 403
     if enrollment.is_expired():

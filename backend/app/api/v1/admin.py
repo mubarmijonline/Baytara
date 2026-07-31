@@ -9,8 +9,9 @@ from ...models import (
     User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, push_notification,
 )
-from ...models.catalog import ACCESS_TYPES, access_is_paid
+from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
+from ...services.catalog_access import CatalogValidationError, validate_catalog_item
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
 from ...services import vdocipher_admin
@@ -236,11 +237,17 @@ def course_create():
     status = d.get("status", "draft")
     if status not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
-    access_type = d.get("access_type", "general")
-    if access_type not in ACCESS_TYPES:
-        return jsonify(error="bad_access_type", allowed=list(ACCESS_TYPES)), 422
-    # free tiers carry no price
-    price = d.get("price", 0) if access_is_paid(access_type) else 0
+    try:
+        catalog = validate_catalog_item({
+            "status": status,
+            "access_type": d.get("access_type", "general"),
+            "price": d.get("price", 0),
+            "currency": d.get("currency", "EGP"),
+            "category_id": d.get("category_id"),
+            "access_days": d.get("access_days"),
+        })
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     c = Course(
         title=d["title"],
         title_en=d.get("title_en"),
@@ -248,14 +255,14 @@ def course_create():
         description=d.get("description", ""),
         description_en=d.get("description_en"),
         image=d.get("image"),
-        price=price,
-        currency=d.get("currency", "EGP"),
+        price=catalog["price"],
+        currency=catalog["currency"],
         instructor_id=instr_id,
-        category_id=d.get("category_id"),
+        category_id=catalog["category_id"],
         duration_minutes=d.get("duration_minutes"),
-        access_days=d.get("access_days") or None,
-        access_type=access_type,
-        status=status,
+        access_days=catalog["access_days"],
+        access_type=catalog["access_type"],
+        status=catalog["status"],
     )
     db.session.add(c)
     db.session.commit()
@@ -271,17 +278,18 @@ def course_update(cid):
     d = request.get_json() or {}
     if "status" in d and d["status"] not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
-    if "access_type" in d and d["access_type"] not in ACCESS_TYPES:
-        return jsonify(error="bad_access_type", allowed=list(ACCESS_TYPES)), 422
     if "instructor_id" in d and not User.query.filter_by(id=d["instructor_id"], role="instructor").first():
         return jsonify(error="valid_instructor_required"), 422
+    try:
+        catalog = validate_catalog_item({
+            key: d[key] for key in ("status", "access_type", "price", "currency", "category_id", "access_days") if key in d
+        }, current=c)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     for f in ("title", "title_en", "description", "description_en", "image", "price", "currency",
               "instructor_id", "category_id", "duration_minutes", "access_days", "access_type", "status"):
-        if f in d:
-            setattr(c, f, (d[f] or None) if f == "access_days" else d[f])
-    # free tiers carry no price
-    if not access_is_paid(c.access_type):
-        c.price = 0
+        if f in d or f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
+            setattr(c, f, catalog[f] if f in catalog else d[f])
     db.session.commit()
     return jsonify(course=c.to_dict())
 
