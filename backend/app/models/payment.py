@@ -24,6 +24,7 @@ class Payment(db.Model):
     kind = db.Column(db.String(20), nullable=False, default="enroll")  # enroll|renewal|bundle
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True, index=True)
     bundle_id = db.Column(db.Integer, db.ForeignKey("bundles.id"), nullable=True, index=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("lessons.id"), nullable=True, index=True)
 
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     currency = db.Column(db.String(3), nullable=False, default="EGP")
@@ -41,10 +42,12 @@ class Payment(db.Model):
 
     course = db.relationship("Course")
     bundle = db.relationship("Bundle")
+    video = db.relationship("Lesson")
 
     def to_dict(self, admin=False):
         d = {
             "id": self.id, "kind": self.kind, "course_id": self.course_id, "bundle_id": self.bundle_id,
+            "video_id": self.video_id,
             "amount": float(self.amount) if self.amount is not None else None,
             "currency": self.currency, "status": self.status,
             "payment_method": self.payment_method, "reference_number": self.reference_number,

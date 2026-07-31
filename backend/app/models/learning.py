@@ -4,6 +4,8 @@ from ..extensions import db
 
 ENROLL_SOURCES = ("purchase", "assigned", "free")
 ENROLL_STATUSES = ("active", "revoked")
+VIDEO_ENTITLEMENT_SOURCES = ("purchase", "assigned", "bundle")
+VIDEO_ENTITLEMENT_STATUSES = ("active", "revoked")
 
 
 def _now():
@@ -87,3 +89,25 @@ class LessonProgress(db.Model):
     completed_at = db.Column(db.DateTime(timezone=True))
 
     enrollment = db.relationship("Enrollment", back_populates="progress")
+
+
+class VideoEntitlement(db.Model):
+    __tablename__ = "video_entitlements"
+    __table_args__ = (db.UniqueConstraint("user_id", "video_id", name="uq_video_entitlement_user_video"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("lessons.id"), nullable=False, index=True)
+    source = db.Column(db.String(20), nullable=False, default="purchase")
+    status = db.Column(db.String(20), nullable=False, default="active")
+    expires_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+
+    user = db.relationship("User")
+    video = db.relationship("Lesson")
+
+    def is_expired(self):
+        return self.expires_at is not None and _aware(self.expires_at) <= _now()
+
+    def has_access(self):
+        return self.status == "active" and not self.is_expired()

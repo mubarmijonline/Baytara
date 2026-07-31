@@ -3,6 +3,14 @@ from datetime import datetime, timezone
 from ..extensions import db
 
 COURSE_STATUSES = ("draft", "published", "unpublished")
+FIXED_CATEGORIES = (
+    ("large-animals", "الحيوانات الكبيرة - الأبقار والأغنام", "Large animals - Cattle & Sheep"),
+    ("equine", "الخيول", "Equine"),
+    ("pet-animals", "الحيوانات الأليفة", "Pet animals"),
+    ("poultry", "الدواجن والطيور", "Poultry"),
+    ("fish-other-animal-sources", "الأسماك أو أي مصدر حيواني آخر", "Fish and other animal sources"),
+    ("camel", "الجمال", "Camel"),
+)
 
 # Content access model (client البند3 revision):
 #   free      -> anyone, no payment
@@ -34,9 +42,12 @@ class Category(db.Model):
     name = db.Column(db.String(120), nullable=False)
     name_en = db.Column(db.String(120))
     slug = db.Column(db.String(140), unique=True, nullable=False, index=True)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    is_fixed = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
 
     courses = db.relationship("Course", back_populates="category")
+    videos = db.relationship("Lesson", back_populates="category")
 
     def to_dict(self, lang="ar"):
         return {"id": self.id, "name": loc(self.name, self.name_en, lang),
@@ -76,6 +87,13 @@ class Course(db.Model):
     videos = db.relationship(
         "Lesson", primaryjoin="Lesson.course_id==Course.id", foreign_keys="Lesson.course_id",
         order_by="Lesson.position", cascade="all, delete-orphan",
+    )
+    video_assignments = db.relationship(
+        "CourseVideo", back_populates="course", cascade="all, delete-orphan", order_by="CourseVideo.position",
+    )
+    ordered_videos = db.relationship(
+        "Lesson", secondary="course_videos", back_populates="courses", order_by="CourseVideo.position",
+        viewonly=True, lazy="selectin",
     )
 
     def is_paid(self):
@@ -157,6 +175,7 @@ class CourseModule(db.Model):
 
 class Lesson(db.Model):
     __tablename__ = "lessons"
+    __table_args__ = (db.UniqueConstraint("vdocipher_video_id", name="uq_lessons_vdocipher_video_id"),)
 
     id = db.Column(db.Integer, primary_key=True)
     # Videos attach directly to a course now (NULL = standalone). module_id kept
@@ -165,12 +184,29 @@ class Lesson(db.Model):
     module_id = db.Column(db.Integer, db.ForeignKey("course_modules.id"), nullable=True, index=True)
     title = db.Column(db.String(200), nullable=False)
     title_en = db.Column(db.String(200))
+    description = db.Column(db.Text, nullable=False, default="")
+    category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), index=True)
+    criteria = db.Column(db.JSON, default=dict)
+    price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    currency = db.Column(db.String(3), nullable=False, default="EGP")
+    access_days = db.Column(db.Integer)
+    access_type = db.Column(db.String(20), nullable=False, default="general", server_default="general", index=True)
+    status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     position = db.Column(db.Integer, nullable=False, default=0)
     duration_minutes = db.Column(db.Integer)
     vdocipher_video_id = db.Column(db.String(120))
     is_protected = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+    updated_at = db.Column(db.DateTime(timezone=True), default=_now, onupdate=_now)
 
     module = db.relationship("CourseModule", back_populates="lessons")
+    category = db.relationship("Category", back_populates="videos")
+    course_assignments = db.relationship(
+        "CourseVideo", back_populates="video", cascade="all, delete-orphan", order_by="CourseVideo.course_id",
+    )
+    courses = db.relationship(
+        "Course", secondary="course_videos", back_populates="ordered_videos", viewonly=True, lazy="selectin",
+    )
 
     def resolve_course_id(self):
         """Course this video belongs to: direct course_id, else via its legacy module."""
@@ -200,6 +236,26 @@ bundle_courses = db.Table(
     db.Column("course_id", db.Integer, db.ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True),
 )
 
+bundle_videos = db.Table(
+    "bundle_videos",
+    db.Column("bundle_id", db.Integer, db.ForeignKey("bundles.id", ondelete="CASCADE"), primary_key=True),
+    db.Column("video_id", db.Integer, db.ForeignKey("lessons.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class CourseVideo(db.Model):
+    __tablename__ = "course_videos"
+    __table_args__ = (db.UniqueConstraint("course_id", "video_id", name="uq_course_video"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+
+    course = db.relationship("Course", back_populates="video_assignments")
+    video = db.relationship("Lesson", back_populates="course_assignments")
+
 
 class Bundle(db.Model):
     __tablename__ = "bundles"
@@ -214,10 +270,12 @@ class Bundle(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False, default=0)  # custom discounted price
     currency = db.Column(db.String(3), nullable=False, default="EGP")
     access_days = db.Column(db.Integer)  # NULL = lifetime; applies to every course in the bundle
+    access_type = db.Column(db.String(20), nullable=False, default="general", server_default="general", index=True)
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
 
     courses = db.relationship("Course", secondary=bundle_courses, lazy="selectin")
+    videos = db.relationship("Lesson", secondary=bundle_videos, lazy="selectin")
 
     def courses_total(self):
         return float(sum((c.price for c in self.courses), 0))
