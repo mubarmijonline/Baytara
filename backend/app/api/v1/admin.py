@@ -659,6 +659,30 @@ def vdocipher_videos():
     return jsonify(count=data.get("count", len(rows)), videos=rows)
 
 
+@bp.post("/vdocipher/upload-credentials")
+@require_role("admin")
+def vdocipher_upload_credentials():
+    d = request.get_json() or {}
+    title = (d.get("title") or "").strip()
+    if not title:
+        return jsonify(error="title_required"), 422
+    cid = d.get("course_id")
+    course = db.session.get(Course, cid) if cid else None
+    if cid and not course:
+        return jsonify(error="course_not_found"), 404
+    try:
+        if course:
+            folder_id = vdocipher_admin.ensure_course_folder(course)
+        else:
+            folder_id = vdocipher_admin.ensure_platform_folders(False)["standalone"]
+        result = vdocipher_admin.create_upload(title, folder_id)
+        db.session.commit()
+    except VdoCipherAdminError as e:
+        db.session.rollback()
+        return _vdocipher_error(e)
+    return jsonify(result)
+
+
 @bp.post("/vdocipher/import")
 @require_role("admin")
 def vdocipher_import():

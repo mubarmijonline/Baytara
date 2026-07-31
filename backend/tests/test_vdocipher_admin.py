@@ -45,6 +45,18 @@ def demo():
             folders[fid] = {"id": fid, "name": name, "parent": parent}
             return {"id": fid, "name": name}
 
+        def create_upload(self, title, folder_id):
+            self.upload = {"title": title, "folder_id": folder_id}
+            return {
+                "videoId": "UPLOAD1",
+                "clientPayload": {
+                    "uploadLink": "https://bucket.s3.amazonaws.com",
+                    "policy": "policy",
+                    "key": "key",
+                    "x-amz-signature": "signature",
+                },
+            }
+
     va.client = FakeClient()
 
     with app.app_context():
@@ -86,6 +98,27 @@ def demo():
     listed = c.get("/api/v1/admin/vdocipher/videos?q=عنوان", headers=h)
     assert listed.status_code == 200
     assert listed.get_json()["videos"][0]["id"] == "VIDX"
+
+    upload = c.post(
+        "/api/v1/admin/vdocipher/upload-credentials",
+        headers=h,
+        json={"title": "New upload", "course_id": course_id},
+    )
+    assert upload.status_code == 200, upload.get_json()
+    assert upload.get_json() == {
+        "video_id": "UPLOAD1",
+        "upload_link": "https://bucket.s3.amazonaws.com",
+        "fields": {"policy": "policy", "key": "key", "x-amz-signature": "signature"},
+    }
+    assert va.client.upload["folder_id"] == "folder-3"
+    assert c.post(
+        "/api/v1/admin/vdocipher/upload-credentials",
+        headers=h,
+        json={"title": "New upload", "course_id": 999999},
+    ).status_code == 404
+    assert c.post(
+        "/api/v1/admin/vdocipher/upload-credentials", headers=h, json={"title": ""}
+    ).status_code == 422
 
     imported = c.post(
         "/api/v1/admin/vdocipher/import",

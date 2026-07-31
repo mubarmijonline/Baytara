@@ -78,6 +78,9 @@ class VdoCipherAdminClient:
     def create_folder(self, name, parent="root"):
         return self._request("POST", "/videos/folders", body={"name": name, "parent": parent})
 
+    def create_upload(self, title, folder_id):
+        return self._request("PUT", "/videos", params={"title": title, "folderId": folder_id})
+
 
 client = VdoCipherAdminClient()
 
@@ -132,3 +135,13 @@ def ensure_course_folder(course):
 def list_videos(q=None, folder_id=None, page=1, limit=20):
     params = {"q": q, "folderId": folder_id, "page": page, "limit": min(int(limit or 20), 40)}
     return client.list_videos(**params)
+
+
+def create_upload(title, folder_id):
+    data = client.create_upload(title, folder_id)
+    payload = dict(data.get("clientPayload") or {})
+    upload_link = payload.pop("uploadLink", None)
+    video_id = data.get("videoId")
+    if not video_id or not upload_link:
+        raise VdoCipherAdminError("vdocipher_bad_upload_response")
+    return {"video_id": video_id, "upload_link": upload_link, "fields": payload}
