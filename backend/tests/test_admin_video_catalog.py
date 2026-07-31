@@ -183,12 +183,37 @@ def test_vdocipher_import_creates_and_reuses_canonical_course_assignments(
     assert created_video["course_id"] is None
     assert {course["id"] for course in created_video["courses"]} == {first}
 
+    removed_criteria = admin_client.post("/api/v1/admin/vdocipher/import", json={
+        "video_id": "provider-canonical", "course_ids": [second], "criteria": {"level": "advanced"},
+    })
+    assert removed_criteria.status_code == 422
+    assert removed_criteria.get_json()["errors"] == ["unsupported_criteria"]
+
+    invalid_status = admin_client.post("/api/v1/admin/vdocipher/import", json={
+        "video_id": "provider-canonical", "course_ids": [second], "status": "encoding",
+    })
+    assert invalid_status.status_code == 422
+    assert invalid_status.get_json()["errors"] == ["invalid_status"]
+
+    invalid_typed = admin_client.post("/api/v1/admin/vdocipher/import", json={
+        "video_id": "provider-canonical", "course_ids": [second], "access_days": 0,
+    })
+    assert invalid_typed.status_code == 422
+    assert invalid_typed.get_json()["errors"] == ["positive_access_days_required"]
+
     reused = admin_client.post("/api/v1/admin/vdocipher/import", json={
         "video_id": "provider-canonical", "course_ids": [second],
+        "status": "published", "category_id": catalog_data["category_id"],
+        "price": 100, "access_days": 30,
     })
     assert reused.status_code == 200, reused.get_json()
-    assert reused.get_json()["video"]["id"] == created_video["id"]
-    assert {course["id"] for course in reused.get_json()["video"]["courses"]} == {first, second}
+    reused_video = reused.get_json()["video"]
+    assert reused_video["id"] == created_video["id"]
+    assert reused_video["title"] == "Canonical import"
+    assert reused_video["status"] == "published"
+    assert reused_video["access_days"] == 30
+    assert reused_video["price"] == 0
+    assert {course["id"] for course in reused_video["courses"]} == {first, second}
 
     malformed = admin_client.post("/api/v1/admin/vdocipher/import", json={
         "video_id": "provider-malformed", "course_ids": first,

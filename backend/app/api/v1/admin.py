@@ -888,17 +888,19 @@ def vdocipher_import():
     ):
         return jsonify(error="catalog_validation_failed", errors=["invalid_course_ids"]), 422
     existing = Lesson.query.filter_by(vdocipher_video_id=d["video_id"]).first()
+    catalog, error = _catalog_video_fields(d, current=existing)
+    if error:
+        return error
     if existing:
         try:
+            for field in ("category_id", "price", "currency", "access_days", "access_type", "status"):
+                setattr(existing, field, catalog[field])
             add_video_courses(existing, course_ids)
         except CatalogValidationError as exc:
             db.session.rollback()
             return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
         db.session.commit()
         return jsonify(video=_video_dict(existing), reused=True)
-    catalog, error = _catalog_video_fields(d)
-    if error:
-        return error
     try:
         for course_id in course_ids:
             course = db.session.get(Course, course_id)
