@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
 import { confirmDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
+import { uploadForm } from '../vdocipher-upload.js';
 
 function VideoForm({ video, courses, onClose, onSaved }) {
   const editing = !!video;
@@ -108,12 +109,73 @@ function VdoCipherImport({ courses, onClose, onImported }) {
   );
 }
 
+function VdoCipherUpload({ courses, onClose, onUploaded }) {
+  const [title, setTitle] = useState('');
+  const [file, setFile] = useState(null);
+  const [courseId, setCourseId] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function upload() {
+    if (!title.trim()) { setErr('العنوان مطلوب.'); return; }
+    if (!file) { setErr('اختر ملف فيديو.'); return; }
+    setBusy(true); setErr(''); setProgress(0);
+    let uploadedVideoId = '';
+    try {
+      const destination = courseId ? Number(courseId) : null;
+      const credentials = await api.vdocipherUploadCredentials({ title: title.trim(), course_id: destination });
+      const body = new FormData();
+      Object.entries(credentials.fields).forEach(([key, value]) => body.append(key, value));
+      body.append('success_action_status', '201');
+      body.append('success_action_redirect', '');
+      body.append('file', file);
+      await uploadForm(credentials.upload_link, body, setProgress);
+      uploadedVideoId = credentials.video_id;
+      await api.vdocipherImport({ video_id: uploadedVideoId, title: title.trim(), course_id: destination });
+      toast.success('تم رفع الفيديو وإضافته.');
+      onUploaded();
+    } catch (e) {
+      if (uploadedVideoId) {
+        setErr(`تم رفع الملف إلى VdoCipher بالمعرّف ${uploadedVideoId}، لكن تعذّرت إضافته إلى بيطرة.`);
+      } else {
+        setErr(e.message === 'upload_failed' ? 'تعذّر رفع الملف إلى VdoCipher.' : apiError(e));
+      }
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal title="رفع فيديو إلى VdoCipher" onClose={busy ? () => {} : onClose}>
+      <Field label="عنوان الفيديو"><input value={title} onChange={(e) => setTitle(e.target.value)} disabled={busy} /></Field>
+      <Field label="ملف الفيديو"><input type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] || null)} disabled={busy} /></Field>
+      <Field label="إضافة إلى">
+        <select value={courseId} onChange={(e) => setCourseId(e.target.value)} disabled={busy}>
+          <option value="">مستقل</option>
+          {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+        </select>
+      </Field>
+      {busy && (
+        <div className="field">
+          <label>جاري الرفع: {progress}%</label>
+          <progress max="100" value={progress} style={{ width: '100%' }} />
+        </div>
+      )}
+      <ErrText>{err}</ErrText>
+      <div className="row">
+        <button className="btn btn-filled" disabled={busy} onClick={upload}>{busy ? 'جاري الرفع…' : 'رفع الفيديو'}</button>
+        <button className="btn btn-text" disabled={busy} onClick={onClose}>إلغاء</button>
+      </div>
+    </Modal>
+  );
+}
+
 export default function Videos() {
   const [rows, setRows] = useState(null);
   const [courses, setCourses] = useState([]);
   const [scope, setScope] = useState('standalone'); // standalone | all
   const [form, setForm] = useState(undefined);
   const [vdoOpen, setVdoOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [err, setErr] = useState('');
 
   const courseName = (id) => courses.find((c) => c.id === id)?.title || (id ? `#${id}` : '—');
@@ -137,6 +199,7 @@ export default function Videos() {
           <option value="all">الكل</option>
         </select>
         <button className="btn btn-filled btn-sm" onClick={() => setForm(null)}>+ فيديو</button>
+        <button className="btn btn-filled btn-sm" onClick={() => setUploadOpen(true)}>رفع إلى VdoCipher</button>
         <button className="btn btn-tonal btn-sm" onClick={() => setVdoOpen(true)}>جلب من VdoCipher</button>
       </div>
       <ErrText>{err}</ErrText>
@@ -165,6 +228,9 @@ export default function Videos() {
       )}
       {vdoOpen && (
         <VdoCipherImport courses={courses} onClose={() => setVdoOpen(false)} onImported={() => { setVdoOpen(false); load(); }} />
+      )}
+      {uploadOpen && (
+        <VdoCipherUpload courses={courses} onClose={() => setUploadOpen(false)} onUploaded={() => { setUploadOpen(false); load(); }} />
       )}
     </>
   );

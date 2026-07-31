@@ -74,6 +74,7 @@ export const api = {
   vdocipherTest: () => req('/admin/vdocipher/test', { method: 'POST' }),
   vdocipherSyncFolders: (body) => req('/admin/vdocipher/sync-folders', { method: 'POST', body: JSON.stringify(body || {}) }),
   vdocipherVideos: (params) => req('/admin/vdocipher/videos' + qs(params)),
+  vdocipherUploadCredentials: (body) => req('/admin/vdocipher/upload-credentials', { method: 'POST', body: JSON.stringify(body) }),
   vdocipherImport: (body) => req('/admin/vdocipher/import', { method: 'POST', body: JSON.stringify(body) }),
 
   // baytarian verification requests

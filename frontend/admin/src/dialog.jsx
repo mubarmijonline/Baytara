@@ -21,7 +21,7 @@ export function DialogHost() {
   const cancel = () => done(req.type === 'prompt' ? null : false);
   return (
     <div className="modal-bg" onClick={cancel} style={{ zIndex: 10000 }}>
-      <div className="modal" style={{ width: 400 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
         <p style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>{req.message}</p>
         {req.type === 'prompt' && (
           <input autoFocus value={val} onChange={(e) => setVal(e.target.value)}
