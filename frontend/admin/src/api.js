@@ -71,6 +71,10 @@ export const api = {
   videoUpdate: (id, body) => req(`/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   videoDelete: (id) => req(`/admin/videos/${id}`, { method: 'DELETE' }),
   videosReorder: (courseId, order) => req(`/admin/courses/${courseId}/videos/reorder`, { method: 'POST', body: JSON.stringify({ order }) }),
+  vdocipherTest: () => req('/admin/vdocipher/test', { method: 'POST' }),
+  vdocipherSyncFolders: (body) => req('/admin/vdocipher/sync-folders', { method: 'POST', body: JSON.stringify(body || {}) }),
+  vdocipherVideos: (params) => req('/admin/vdocipher/videos' + qs(params)),
+  vdocipherImport: (body) => req('/admin/vdocipher/import', { method: 'POST', body: JSON.stringify(body) }),
 
   // baytarian verification requests
   baytarianRequests: (status) => req('/admin/baytarian-requests' + (status ? `?status=${status}` : '')),

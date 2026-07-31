@@ -35,6 +35,22 @@ export default function Settings() {
     try { await api.settingsPut(s); setMsg('تم الحفظ ✓'); setTimeout(() => setMsg(''), 2500); }
     catch { setErr('تعذّر الحفظ.'); }
   }
+  async function testVdoCipher() {
+    setErr(''); setMsg('');
+    try {
+      await api.settingsPut(s);
+      await api.vdocipherTest();
+      setMsg('تم الاتصال بـ VdoCipher ✓');
+    } catch (e) { setErr(e.message || 'تعذّر الاتصال بـ VdoCipher.'); }
+  }
+  async function syncVdoCipher() {
+    setErr(''); setMsg('');
+    try {
+      await api.settingsPut(s);
+      await api.vdocipherSyncFolders({ all_courses: true });
+      setMsg('تم تجهيز مجلدات VdoCipher ✓');
+    } catch (e) { setErr(e.message || 'تعذّر تجهيز المجلدات.'); }
+  }
 
   if (!s) return <div className="empty">جارٍ التحميل…</div>;
   const biz = s.business || {};
@@ -113,6 +129,10 @@ export default function Settings() {
         </Field>
         <div style={{ fontSize: 12, color: s.secret_vdocipher ? 'var(--success)' : 'var(--muted)' }}>
           {s.secret_vdocipher ? '✓ مضبوط — تشغيل الفيديو مُفعّل' : 'غير مضبوط — تشغيل الفيديو معطّل'}
+        </div>
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="btn btn-tonal btn-sm" onClick={testVdoCipher}>اختبار VdoCipher</button>
+          <button className="btn btn-tonal btn-sm" onClick={syncVdoCipher}>تجهيز المجلدات</button>
         </div>
       </div>
 

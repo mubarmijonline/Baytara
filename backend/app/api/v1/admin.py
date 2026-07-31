@@ -13,6 +13,8 @@ from ...models.catalog import ACCESS_TYPES, access_is_paid
 from ...security import require_role, hash_password
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
+from ...services import vdocipher_admin
+from ...services.vdocipher_admin import VdoCipherAdminError
 
 bp = Blueprint("admin", __name__)
 ROLES = ("student", "instructor", "admin")
@@ -611,6 +613,86 @@ def videos_reorder(cid):
             rows[vid].position = pos
     db.session.commit()
     return jsonify(ok=True, count=len(order))
+
+
+# ------------------------------ vdocipher admin ------------------------------
+
+def _vdocipher_error(e):
+    return jsonify(error=str(e).split(":", 1)[0]), 503
+
+
+@bp.post("/vdocipher/test")
+@require_role("admin")
+def vdocipher_test():
+    try:
+        vdocipher_admin.list_videos(limit=1)
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+    return jsonify(ok=True, configured=vdocipher_admin.configured())
+
+
+@bp.post("/vdocipher/sync-folders")
+@require_role("admin")
+def vdocipher_sync_folders():
+    try:
+        folders = vdocipher_admin.ensure_platform_folders(bool((request.get_json() or {}).get("all_courses")))
+        db.session.commit()
+    except VdoCipherAdminError as e:
+        db.session.rollback()
+        return _vdocipher_error(e)
+    return jsonify(ok=True, folders=folders)
+
+
+@bp.get("/vdocipher/videos")
+@require_role("admin")
+def vdocipher_videos():
+    try:
+        data = vdocipher_admin.list_videos(
+            q=request.args.get("q"),
+            folder_id=request.args.get("folder_id"),
+            page=request.args.get("page", 1, type=int),
+            limit=request.args.get("limit", 20, type=int),
+        )
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
+    rows = data.get("rows") or data.get("videos") or []
+    return jsonify(count=data.get("count", len(rows)), videos=rows)
+
+
+@bp.post("/vdocipher/import")
+@require_role("admin")
+def vdocipher_import():
+    d = request.get_json() or {}
+    if not d.get("video_id"):
+        return jsonify(error="video_id_required"), 422
+    if Lesson.query.filter_by(vdocipher_video_id=d["video_id"]).first():
+        return jsonify(error="duplicate_video"), 409
+    cid = d.get("course_id")
+    course = db.session.get(Course, cid) if cid else None
+    if cid and not course:
+        return jsonify(error="course_not_found"), 404
+    try:
+        if course:
+            vdocipher_admin.ensure_course_folder(course)
+        elif not db.session.get(Setting, "vdocipher_standalone_folder_id"):
+            vdocipher_admin.ensure_platform_folders(False)
+    except VdoCipherAdminError as e:
+        db.session.rollback()
+        return _vdocipher_error(e)
+    last = Lesson.query.filter_by(course_id=cid).order_by(Lesson.position.desc()).first() if cid else None
+    l = Lesson(
+        course_id=cid,
+        module_id=None,
+        title=d.get("title") or d["video_id"],
+        title_en=d.get("title_en"),
+        position=(last.position + 1 if last else 0),
+        duration_minutes=d.get("duration_minutes"),
+        vdocipher_video_id=d["video_id"],
+        is_protected=True,
+    )
+    db.session.add(l)
+    db.session.commit()
+    return jsonify(video=_video_dict(l)), 201
 
 
 # ------------------------------ site settings ------------------------------

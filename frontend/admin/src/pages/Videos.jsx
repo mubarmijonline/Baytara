@@ -50,11 +50,70 @@ function VideoForm({ video, courses, onClose, onSaved }) {
   );
 }
 
+function VdoCipherImport({ courses, onClose, onImported }) {
+  const [q, setQ] = useState('');
+  const [rows, setRows] = useState([]);
+  const [courseId, setCourseId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function search() {
+    setLoading(true); setErr('');
+    try { setRows((await api.vdocipherVideos({ q, limit: 20 })).videos || []); }
+    catch (e) { setErr(apiError(e)); }
+    finally { setLoading(false); }
+  }
+
+  async function imp(v) {
+    setErr('');
+    try {
+      await api.vdocipherImport({
+        video_id: v.id,
+        title: v.title || v.id,
+        duration_minutes: v.length ? Math.round(v.length / 60) : null,
+        course_id: courseId ? Number(courseId) : null,
+      });
+      onImported();
+    } catch (e) { setErr(apiError(e)); }
+  }
+
+  return (
+    <Modal title="جلب من VdoCipher" onClose={onClose}>
+      <div className="row">
+        <input dir="ltr" placeholder="بحث بالعنوان أو Video ID" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
+        <button className="btn btn-tonal btn-sm" onClick={search}>{loading ? '...' : 'بحث'}</button>
+      </div>
+      <Field label="استيراد إلى">
+        <select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+          <option value="">مستقل</option>
+          {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+        </select>
+      </Field>
+      <ErrText>{err}</ErrText>
+      <table className="table">
+        <thead><tr><th>العنوان</th><th>Video ID</th><th>الحالة</th><th>إجراء</th></tr></thead>
+        <tbody>
+          {rows.map((v) => (
+            <tr key={v.id}>
+              <td>{v.title || '—'}</td>
+              <td style={{ direction: 'ltr', fontSize: 12 }}>{v.id}</td>
+              <td>{v.status || '—'}</td>
+              <td><button className="btn btn-filled btn-sm" onClick={() => imp(v)}>استيراد</button></td>
+            </tr>
+          ))}
+          {!rows.length && <tr><td colSpan="4" className="empty">ابحث في مكتبة VdoCipher.</td></tr>}
+        </tbody>
+      </table>
+    </Modal>
+  );
+}
+
 export default function Videos() {
   const [rows, setRows] = useState(null);
   const [courses, setCourses] = useState([]);
   const [scope, setScope] = useState('standalone'); // standalone | all
   const [form, setForm] = useState(undefined);
+  const [vdoOpen, setVdoOpen] = useState(false);
   const [err, setErr] = useState('');
 
   const courseName = (id) => courses.find((c) => c.id === id)?.title || (id ? `#${id}` : '—');
@@ -78,6 +137,7 @@ export default function Videos() {
           <option value="all">الكل</option>
         </select>
         <button className="btn btn-filled btn-sm" onClick={() => setForm(null)}>+ فيديو</button>
+        <button className="btn btn-tonal btn-sm" onClick={() => setVdoOpen(true)}>جلب من VdoCipher</button>
       </div>
       <ErrText>{err}</ErrText>
       {!rows ? <div className="empty">جارٍ التحميل…</div> : (
@@ -102,6 +162,9 @@ export default function Videos() {
       )}
       {form !== undefined && (
         <VideoForm video={form} courses={courses} onClose={() => setForm(undefined)} onSaved={() => { setForm(undefined); load(); }} />
+      )}
+      {vdoOpen && (
+        <VdoCipherImport courses={courses} onClose={() => setVdoOpen(false)} onImported={() => { setVdoOpen(false); load(); }} />
       )}
     </>
   );

@@ -89,6 +89,34 @@ function CourseForm({ course, instructors, categories, onClose, onSaved }) {
   );
 }
 
+function VdoCipherPicker({ onPick }) {
+  const [q, setQ] = useState('');
+  const [rows, setRows] = useState([]);
+  const [err, setErr] = useState('');
+
+  async function search() {
+    setErr('');
+    try { setRows((await api.vdocipherVideos({ q, limit: 10 })).videos || []); }
+    catch (e) { setErr(apiError(e)); }
+  }
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12 }}>
+      <div className="row">
+        <input dir="ltr" placeholder="بحث في VdoCipher" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
+        <button className="btn btn-tonal btn-sm" onClick={search}>بحث</button>
+      </div>
+      <ErrText>{err}</ErrText>
+      {rows.map((v) => (
+        <div key={v.id} className="row" style={{ justifyContent: 'space-between', padding: '7px 0', borderTop: '1px solid var(--border)' }}>
+          <span>{v.title || v.id} <small dir="ltr" style={{ color: 'var(--muted)' }}>{v.id}</small></span>
+          <button className="btn btn-tonal btn-sm" onClick={() => onPick(v)}>اختيار</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function VideoForm({ courseId, video, onClose, onSaved }) {
   const editing = !!video;
   const [f, setF] = useState({
@@ -115,6 +143,12 @@ function VideoForm({ courseId, video, onClose, onSaved }) {
       <Field label="العنوان (عربي)"><input value={f.title} onChange={set('title')} /></Field>
       <Field label="Title (English)"><input dir="ltr" value={f.title_en} onChange={set('title_en')} /></Field>
       <Field label="VdoCipher Video ID"><input dir="ltr" value={f.vdocipher_video_id} onChange={set('vdocipher_video_id')} placeholder="مُعرّف الفيديو في VdoCipher" /></Field>
+      <VdoCipherPicker onPick={(v) => setF({
+        ...f,
+        title: f.title || v.title || '',
+        vdocipher_video_id: v.id,
+        duration_minutes: f.duration_minutes || (v.length ? Math.round(v.length / 60) : ''),
+      })} />
       <div className="row">
         <Field label="المدة (دقائق)"><input type="number" min="0" value={f.duration_minutes} onChange={set('duration_minutes')} style={{ width: 120 }} /></Field>
         <Field label="محمي (DRM)">

@@ -1,0 +1,112 @@
+"""Admin VdoCipher management self-check. Needs DATABASE_URL.
+
+Run: python -m tests.test_vdocipher_admin
+"""
+import uuid
+
+from app import create_app
+from app.extensions import db
+from app.models import Category, Course, Lesson, Setting, User
+from app.security import hash_password
+
+
+def _admin_headers(c, app, tag):
+    with app.app_context():
+        db.session.add(User(name="A", email=f"vda_{tag}@t.test",
+                            password_hash=hash_password("secret12"), role="admin"))
+        db.session.commit()
+    tok = c.post(
+        "/api/v1/auth/login",
+        json={"email": f"vda_{tag}@t.test", "password": "secret12"},
+    ).get_json()["access_token"]
+    return {"Authorization": f"Bearer {tok}"}
+
+
+def demo():
+    app = create_app()
+    tag = uuid.uuid4().hex[:8]
+
+    import app.services.vdocipher_admin as va
+
+    folders = {}
+
+    class FakeClient:
+        def list_videos(self, **params):
+            return {
+                "count": 1,
+                "rows": [{"id": "VIDX", "title": "عنوان من VdoCipher", "length": 180, "status": "ready"}],
+            }
+
+        def search_folders(self, name):
+            return {"folders": [v for v in folders.values() if v["name"] == name]}
+
+        def create_folder(self, name, parent="root"):
+            fid = f"folder-{len(folders) + 1}"
+            folders[fid] = {"id": fid, "name": name, "parent": parent}
+            return {"id": fid, "name": name}
+
+    va.client = FakeClient()
+
+    with app.app_context():
+        db.create_all()
+        instr = User(
+            name="I",
+            email=f"vdi_{tag}@t.test",
+            password_hash=hash_password("secret12"),
+            role="instructor",
+        )
+        db.session.add(instr)
+        db.session.flush()
+        cat = Category(name=f"cat {tag}", slug=f"cat-{tag}")
+        db.session.add(cat)
+        db.session.flush()
+        course = Course(
+            title=f"دورة {tag}",
+            slug=f"course-{tag}",
+            instructor_id=instr.id,
+            category_id=cat.id,
+            status="published",
+        )
+        db.session.add(course)
+        db.session.add(Setting(key="secret_vdocipher", value="fake-secret"))
+        db.session.commit()
+        course_id = course.id
+
+    c = app.test_client()
+    h = _admin_headers(c, app, tag)
+
+    assert c.post("/api/v1/admin/vdocipher/test", headers=h).status_code == 200
+
+    sync = c.post("/api/v1/admin/vdocipher/sync-folders", headers=h, json={"all_courses": True})
+    assert sync.status_code == 200, sync.get_json()
+    body = sync.get_json()
+    assert body["folders"]["root"] and body["folders"]["standalone"]
+    assert str(course_id) in body["folders"]["courses"]
+
+    listed = c.get("/api/v1/admin/vdocipher/videos?q=عنوان", headers=h)
+    assert listed.status_code == 200
+    assert listed.get_json()["videos"][0]["id"] == "VIDX"
+
+    imported = c.post(
+        "/api/v1/admin/vdocipher/import",
+        headers=h,
+        json={"video_id": "VIDX", "title": "عنوان من VdoCipher", "duration_minutes": 3, "course_id": course_id},
+    )
+    assert imported.status_code == 201, imported.get_json()
+    assert imported.get_json()["video"]["course_id"] == course_id
+
+    dup = c.post(
+        "/api/v1/admin/vdocipher/import",
+        headers=h,
+        json={"video_id": "VIDX", "title": "again", "course_id": course_id},
+    )
+    assert dup.status_code == 409
+
+    with app.app_context():
+        assert Lesson.query.filter_by(vdocipher_video_id="VIDX", course_id=course_id).count() == 1
+
+    print("vdocipher admin self-check OK")
+
+
+if __name__ == "__main__":
+    demo()
