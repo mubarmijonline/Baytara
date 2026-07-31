@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
 from ...extensions import db
-from ...models import User, Course, CourseModule, Lesson, Enrollment, InstapayPayment
+from ...models import User, Course, CourseModule, CourseVideo, Lesson, Enrollment, InstapayPayment
 from ...security import require_role
 from ...services.catalog_access import CatalogValidationError, validate_catalog_item
 from ...utils import slugify
@@ -29,7 +29,16 @@ def _own_module(mid):
 
 def _own_lesson(lid):
     l = db.session.get(Lesson, lid)
-    return l if l and _own_module(l.module_id) else None
+    if not l:
+        return None
+    if l.module_id and _own_module(l.module_id):
+        return l
+    if l.course_id and _own_course(l.course_id):
+        return l
+    assigned = CourseVideo.query.join(Course).filter(
+        CourseVideo.video_id == l.id, Course.instructor_id == _uid(),
+    ).first()
+    return l if assigned else None
 
 
 def _me():
@@ -191,12 +200,24 @@ def module_delete(mid):
 @bp.post("/modules/<int:mid>/lessons")
 @require_role("instructor")
 def lesson_create(mid):
-    if not _own_module(mid):
+    module = _own_module(mid)
+    if not module:
         return jsonify(error="not_found"), 404
     d = request.get_json() or {}
+    provider_id = d.get("vdocipher_video_id") or None
+    if provider_id and not _me().can_add_video:
+        return jsonify(error="video_add_forbidden"), 403
+    if provider_id and Lesson.query.filter_by(vdocipher_video_id=provider_id).first():
+        return jsonify(error="duplicate_video"), 409
     l = Lesson(module_id=mid, title=d.get("title", "درس"), position=d.get("position", 0),
-               duration_minutes=d.get("duration_minutes"))
+               duration_minutes=d.get("duration_minutes"), vdocipher_video_id=provider_id,
+               is_protected=d.get("is_protected", True))
     db.session.add(l)
+    db.session.flush()
+    last = CourseVideo.query.filter_by(course_id=module.course_id).order_by(CourseVideo.position.desc()).first()
+    db.session.add(CourseVideo(
+        course_id=module.course_id, video_id=l.id, position=(last.position + 1 if last else 0),
+    ))
     db.session.commit()
     return jsonify(lesson=l.to_dict()), 201
 
@@ -235,6 +256,8 @@ def lesson_delete(lid):
     l = _own_lesson(lid)
     if not l:
         return jsonify(error="not_found"), 404
+    if l.vdocipher_video_id and not _me().can_delete_video:
+        return jsonify(error="video_delete_forbidden"), 403
     db.session.delete(l)
     db.session.commit()
     return jsonify(deleted=lid)

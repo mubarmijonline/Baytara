@@ -86,7 +86,8 @@ def update_progress():
     enrollments = Enrollment.query.filter_by(user_id=_uid(), status="active")
     if course_id:
         enrollment = enrollments.filter_by(course_id=course_id).first()
-        matches = [enrollment] if enrollment and enrollment.includes_lesson(lesson.id) else []
+        if enrollment and not enrollment.includes_lesson(lesson.id):
+            enrollment = None
     else:
         matches = [enrollment for enrollment in enrollments.all() if enrollment.includes_lesson(lesson.id)]
         enrollment = next((item for item in matches if not item.is_expired()), matches[0] if matches else None)

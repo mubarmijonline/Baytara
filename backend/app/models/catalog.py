@@ -308,7 +308,10 @@ class Bundle(db.Model):
             "lock_reason": audience_error(user, self.access_type),
             "status": self.status,
             "courses_total": self.courses_total(),
+            "course_ids": [course.id for course in self.courses],
+            "video_ids": [video.id for video in self.videos],
         }
         if with_courses:
             d["courses"] = [c.to_dict(lang=lang, user=user) for c in self.courses]
+            d["videos"] = [video.to_dict(lang=lang, user=user) for video in self.videos]
         return d

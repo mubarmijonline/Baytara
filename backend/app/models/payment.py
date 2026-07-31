@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from ..extensions import db
 
 PAYMENT_STATUSES = ("pending", "approved", "rejected")
-PAYMENT_KINDS = ("enroll", "renewal", "bundle")  # enroll/renewal -> course_id; bundle -> bundle_id
+PAYMENT_KINDS = ("enroll", "renewal", "bundle", "video")
 
 # Fawaterak (gateway) payment lifecycle
 FAWATERK_STATUSES = ("pending", "paid", "failed", "expired", "refunded")
@@ -21,7 +21,7 @@ class Payment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    kind = db.Column(db.String(20), nullable=False, default="enroll")  # enroll|renewal|bundle
+    kind = db.Column(db.String(20), nullable=False, default="enroll")
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True, index=True)
     bundle_id = db.Column(db.Integer, db.ForeignKey("bundles.id"), nullable=True, index=True)
     video_id = db.Column(db.Integer, db.ForeignKey("lessons.id"), nullable=True, index=True)

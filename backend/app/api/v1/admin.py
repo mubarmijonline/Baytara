@@ -12,7 +12,7 @@ from ...models import (
 )
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
-from ...services.catalog_access import CatalogValidationError, validate_catalog_item
+from ...services.catalog_access import CatalogValidationError, validate_catalog_item, video_is_standalone
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
 from ...services import vdocipher_admin
@@ -464,10 +464,77 @@ def baytarian_reject(rid):
 
 # ------------------------------ bundles ------------------------------
 
-def _set_bundle_courses(b, course_ids):
-    if course_ids is None:
-        return
-    b.courses = Course.query.filter(Course.id.in_(course_ids)).all() if course_ids else []
+_AUDIENCES = {
+    "free": {"veterinarian", "non_veterinarian"},
+    "vet_free": {"veterinarian"},
+    "baytarian": {"veterinarian"},
+    "general": {"non_veterinarian"},
+}
+
+
+def _bundle_catalog_fields(data, current=None):
+    if "criteria" in data:
+        raise CatalogValidationError(["unsupported_criteria"])
+    base = {
+        "status": current.status if current else "draft",
+        "access_type": current.access_type if current else "general",
+        "price": current.price if current else 0,
+        "currency": current.currency if current else "EGP",
+        "access_days": current.access_days if current else None,
+        # Packages have no category of their own. This sentinel lets them share
+        # the rest of the catalog validator without weakening publication rules.
+        "category_id": True,
+    }
+    base.update({
+        key: data[key]
+        for key in ("status", "access_type", "price", "currency", "access_days")
+        if key in data
+    })
+    return validate_catalog_item(base)
+
+
+def _bundle_ids(data, key, model, missing_error):
+    values = data.get(key)
+    if not isinstance(values, list) or any(
+        not isinstance(value, int) or isinstance(value, bool) for value in values
+    ):
+        raise CatalogValidationError([f"invalid_{key}"])
+    wanted = list(dict.fromkeys(values))
+    rows = model.query.filter(model.id.in_(wanted)).all() if wanted else []
+    by_id = {row.id: row for row in rows}
+    if len(by_id) != len(wanted):
+        raise CatalogValidationError([missing_error])
+    return [by_id[value] for value in wanted]
+
+
+def _bundle_contents(data, current=None):
+    courses = list(current.courses) if current else []
+    videos = list(current.videos) if current else []
+    if "course_ids" in data:
+        courses = _bundle_ids(data, "course_ids", Course, "course_not_found")
+    if "video_ids" in data:
+        videos = _bundle_ids(data, "video_ids", Lesson, "video_not_found")
+    if any(not video_is_standalone(video) for video in videos):
+        raise CatalogValidationError(["video_not_standalone"])
+    return courses, videos
+
+
+def _validate_bundle_audience(access_type, courses, videos):
+    package_audience = _AUDIENCES[access_type]
+    errors = []
+    if any(not package_audience <= _AUDIENCES[course.access_type] for course in courses):
+        errors.append("incompatible_course_audience")
+    if any(not package_audience <= _AUDIENCES[video.access_type] for video in videos):
+        errors.append("incompatible_video_audience")
+    if errors:
+        raise CatalogValidationError(errors)
+
+
+def _bundle_input(data, current=None):
+    catalog = _bundle_catalog_fields(data, current=current)
+    courses, videos = _bundle_contents(data, current=current)
+    _validate_bundle_audience(catalog["access_type"], courses, videos)
+    return catalog, courses, videos
 
 
 @bp.get("/bundles")
@@ -495,14 +562,18 @@ def bundle_create():
     status = d.get("status", "draft")
     if status not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
+    try:
+        catalog, courses, videos = _bundle_input(d)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     b = Bundle(
         title=d["title"], title_en=d.get("title_en"),
         slug=slugify(d.get("slug") or d["title"], lambda s: Bundle.query.filter_by(slug=s).first() is not None),
         description=d.get("description", ""), description_en=d.get("description_en"),
-        image=d.get("image"), price=d.get("price", 0), currency=d.get("currency", "EGP"),
-        access_days=d.get("access_days") or None, status=status,
+        image=d.get("image"), price=catalog["price"], currency=catalog["currency"],
+        access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
+        courses=courses, videos=videos,
     )
-    _set_bundle_courses(b, d.get("course_ids"))
     db.session.add(b)
     db.session.commit()
     return jsonify(bundle=b.to_dict()), 201
@@ -517,11 +588,17 @@ def bundle_update(bid):
     d = request.get_json() or {}
     if "status" in d and d["status"] not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
-    for f in ("title", "title_en", "description", "description_en", "image", "price",
-              "currency", "access_days", "status"):
+    try:
+        catalog, courses, videos = _bundle_input(d, current=b)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    for f in ("title", "title_en", "description", "description_en", "image"):
         if f in d:
-            setattr(b, f, (d[f] or None) if f == "access_days" else d[f])
-    _set_bundle_courses(b, d.get("course_ids"))
+            setattr(b, f, d[f])
+    for f in ("price", "currency", "access_days", "access_type", "status"):
+        setattr(b, f, catalog[f])
+    b.courses = courses
+    b.videos = videos
     db.session.commit()
     return jsonify(bundle=b.to_dict())
 

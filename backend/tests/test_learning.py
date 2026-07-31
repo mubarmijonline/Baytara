@@ -4,10 +4,79 @@ Run: python -m tests.test_learning
 """
 import uuid
 
+import pytest
+
 from app import create_app
+from app.config import BaseConfig
 from app.extensions import db
-from app.models import Category, Course, CourseModule, Lesson, User
+from app.models import Category, Course, CourseVideo, Enrollment, Lesson, User
 from app.security import hash_password
+
+
+@pytest.fixture
+def learning_app(tmp_path):
+    config = type("LearningConfig", (BaseConfig,), {
+        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'learning.sqlite'}",
+        "TESTING": True,
+    })
+    app = create_app(config)
+    with app.app_context():
+        db.create_all()
+        instructor = User(name="Instructor", email="progress-instructor@example.test",
+                          password_hash="hash", role="instructor")
+        student = User(name="Student", email="progress-student@example.test",
+                       password_hash=hash_password("secret12"), role="student")
+        category = Category(name="Progress category", slug="progress-category")
+        db.session.add_all([instructor, student, category])
+        db.session.flush()
+        source = Course(
+            title="Source", slug="progress-source", instructor_id=instructor.id,
+            category_id=category.id, access_type="free", status="published",
+        )
+        unrelated = Course(
+            title="Unrelated", slug="progress-unrelated", instructor_id=instructor.id,
+            category_id=category.id, access_type="free", status="published",
+        )
+        video = Lesson(title="Reusable progress video")
+        db.session.add_all([source, unrelated, video])
+        db.session.flush()
+        db.session.add_all([
+            CourseVideo(course_id=source.id, video_id=video.id, position=0),
+            Enrollment(user_id=student.id, course_id=unrelated.id, status="active"),
+        ])
+        db.session.commit()
+        data = {"source_id": source.id, "unrelated_id": unrelated.id, "video_id": video.id}
+        yield app, data
+        db.session.remove()
+        db.drop_all()
+
+
+def test_progress_requires_video_membership_in_supplied_enrollment_course(learning_app):
+    app, data = learning_app
+    client = app.test_client()
+    login = client.post("/api/v1/auth/login", json={
+        "email": "progress-student@example.test", "password": "secret12",
+    })
+    headers = {"Authorization": f"Bearer {login.get_json()['access_token']}"}
+
+    denied = client.post("/api/v1/progress", headers=headers, json={
+        "course_id": data["unrelated_id"], "lesson_id": data["video_id"], "completed": True,
+    })
+    assert denied.status_code == 403
+    assert denied.get_json()["error"] == "not_enrolled"
+
+    with app.app_context():
+        db.session.add(CourseVideo(
+            course_id=data["unrelated_id"], video_id=data["video_id"], position=0,
+        ))
+        db.session.commit()
+    accepted = client.post("/api/v1/progress", headers=headers, json={
+        "course_id": data["unrelated_id"], "lesson_id": data["video_id"], "completed": True,
+    })
+    assert accepted.status_code == 200, accepted.get_json()
+    assert accepted.get_json()["progress"] == {
+        "percent": 100, "completed_lessons": 1, "total_lessons": 1,
+    }
 
 
 def _seed(tag, price=0):

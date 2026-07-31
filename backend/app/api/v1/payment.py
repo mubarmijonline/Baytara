@@ -5,9 +5,12 @@ from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
-from ...models import Bundle, Course, Enrollment, Payment, User, push_notification
+from ...models import (
+    Bundle, Course, Enrollment, Lesson, Payment, User, VideoEntitlement, push_notification,
+)
+from ...models.payment import PAYMENT_KINDS
 from ...security import require_role
-from ...services.catalog_access import audience_error
+from ...services.catalog_access import access_is_paid, audience_error, video_is_standalone
 from ...services import fawaterk
 from ...services.fawaterk import FawaterkError
 from ...utils import renewal_percent
@@ -25,25 +28,64 @@ def _now():
 
 # ----------------------------- target resolution + grant -----------------------------
 
-def _resolve_target(kind, course_id, bundle_id, uid):
+def _resolve_target(kind, course_id, bundle_id, video_id, uid):
     """Validate the purchase target and compute the expected amount.
-    Returns (ctx, error_tuple). ctx: kind, course, bundle, expected, title."""
+    Returns (ctx, error_tuple). ctx includes exactly one purchase target."""
+    if kind not in PAYMENT_KINDS:
+        return None, (jsonify(error="invalid_payment_kind"), 422)
+
+    buyer = db.session.get(User, uid)
+    if kind == "video":
+        video = Lesson.query.filter_by(id=video_id, status="published").first() if video_id else None
+        if not video:
+            return None, (jsonify(error="video_not_found"), 404)
+        if not video_is_standalone(video):
+            return None, (jsonify(error="video_not_standalone"), 409)
+        if not access_is_paid(video.access_type):
+            return None, (jsonify(error="not_purchasable"), 409)
+        reason = audience_error(buyer, video.access_type)
+        if reason:
+            return None, (jsonify(error=reason), 403)
+        entitlement = VideoEntitlement.query.filter_by(
+            user_id=uid, video_id=video.id, status="active",
+        ).first()
+        if entitlement and entitlement.has_access():
+            return None, (jsonify(error="already_entitled"), 409)
+        return {
+            "kind": "video", "course": None, "bundle": None, "video": video,
+            "expected": float(video.price), "title": video.title,
+        }, None
+
     if kind == "bundle":
         bundle = Bundle.query.filter_by(id=bundle_id, status="published").first() if bundle_id else None
         if not bundle:
             return None, (jsonify(error="bundle_not_found"), 404)
-        buyer = db.session.get(User, uid)
+        if not access_is_paid(bundle.access_type):
+            return None, (jsonify(error="not_purchasable"), 409)
         reason = audience_error(buyer, bundle.access_type)
         if reason:
             return None, (jsonify(error=reason), 403)
         cids = [c.id for c in bundle.courses]
+        vids = [video.id for video in bundle.videos]
+        courses_covered = not cids
         if cids:
             active = {e.course_id for e in Enrollment.query.filter(
                 Enrollment.user_id == uid, Enrollment.course_id.in_(cids), Enrollment.status == "active"
             ).all() if not e.is_expired()}
-            if set(cids) <= active:
-                return None, (jsonify(error="already_enrolled"), 409)
-        return {"kind": "bundle", "course": None, "bundle": bundle,
+            courses_covered = set(cids) <= active
+        videos_covered = not vids
+        if vids:
+            active_videos = {
+                entitlement.video_id for entitlement in VideoEntitlement.query.filter(
+                    VideoEntitlement.user_id == uid,
+                    VideoEntitlement.video_id.in_(vids),
+                    VideoEntitlement.status == "active",
+                ).all() if entitlement.has_access()
+            }
+            videos_covered = set(vids) <= active_videos
+        if (cids or vids) and courses_covered and videos_covered:
+            return None, (jsonify(error="already_entitled"), 409)
+        return {"kind": "bundle", "course": None, "bundle": bundle, "video": None,
                 "expected": float(bundle.price), "title": bundle.title}, None
 
     course = Course.query.filter_by(id=course_id, status="published").first() if course_id else None
@@ -63,12 +105,12 @@ def _resolve_target(kind, course_id, bundle_id, uid):
         if not course.access_days:
             return None, (jsonify(error="course_is_lifetime"), 409)
         expected = round(float(course.price) * renewal_percent() / 100.0, 2)
-        return {"kind": "renewal", "course": course, "bundle": None,
+        return {"kind": "renewal", "course": course, "bundle": None, "video": None,
                 "expected": expected, "title": course.title}, None
 
     if enr and not enr.is_expired():
         return None, (jsonify(error="already_enrolled"), 409)
-    return {"kind": "enroll", "course": course, "bundle": None,
+    return {"kind": "enroll", "course": course, "bundle": None, "video": None,
             "expected": float(course.price), "title": course.title}, None
 
 
@@ -84,6 +126,22 @@ def _enroll_course(uid, course, access_days):
         db.session.add(enr)
         course.enrolled_count = (course.enrolled_count or 0) + 1
     return enr
+
+
+def _grant_video(uid, video, access_days, source):
+    """Upsert one active video entitlement with a fresh access window."""
+    entitlement = VideoEntitlement.query.filter_by(user_id=uid, video_id=video.id).first()
+    if entitlement:
+        entitlement.status = "active"
+        entitlement.source = source
+        entitlement.expires_at = Enrollment.compute_expiry(access_days)
+    else:
+        entitlement = VideoEntitlement(
+            user_id=uid, video_id=video.id, source=source, status="active",
+            expires_at=Enrollment.compute_expiry(access_days),
+        )
+        db.session.add(entitlement)
+    return entitlement
 
 
 def _apply_paid(p):
@@ -105,8 +163,15 @@ def _apply_paid(p):
         bundle = db.session.get(Bundle, p.bundle_id)
         for c in bundle.courses:
             _enroll_course(p.user_id, c, bundle.access_days)
+        for video in bundle.videos:
+            _grant_video(p.user_id, video, bundle.access_days, "bundle")
         push_notification(p.user_id, "payment_approved", "تم قبول دفعتك ✅",
-                          f"تم تفعيل اشتراكك في حزمة «{bundle.title}» ({len(bundle.courses)} كورس).")
+                          f"تم تفعيل اشتراكك في حزمة «{bundle.title}».")
+    elif p.kind == "video":
+        video = db.session.get(Lesson, p.video_id)
+        _grant_video(p.user_id, video, video.access_days, "purchase")
+        push_notification(p.user_id, "payment_approved", "تم قبول دفعتك ✅",
+                          f"تم تفعيل وصولك إلى «{video.title}».")
     else:  # enroll
         course = db.session.get(Course, p.course_id)
         _enroll_course(p.user_id, course, course.access_days)
@@ -121,8 +186,10 @@ def _apply_paid(p):
 def payment_quote():
     """Expected amount + title for an enroll/renewal/bundle purchase."""
     kind = request.args.get("kind", "enroll")
-    ctx, err = _resolve_target(kind, request.args.get("course_id", type=int),
-                               request.args.get("bundle_id", type=int), _uid())
+    ctx, err = _resolve_target(
+        kind, request.args.get("course_id", type=int), request.args.get("bundle_id", type=int),
+        request.args.get("video_id", type=int), _uid(),
+    )
     if err:
         body, code = err
         return body, code
@@ -136,7 +203,7 @@ def checkout():
     """Create a pending Payment and a Fawaterak hosted invoice; return the redirect URL."""
     d = request.get_json() or {}
     kind = d.get("kind", "enroll")
-    ctx, err = _resolve_target(kind, d.get("course_id"), d.get("bundle_id"), _uid())
+    ctx, err = _resolve_target(kind, d.get("course_id"), d.get("bundle_id"), d.get("video_id"), _uid())
     if err:
         body, code = err
         return body, code
@@ -147,6 +214,7 @@ def checkout():
     p = Payment(user_id=user.id, kind=ctx["kind"],
                 course_id=ctx["course"].id if ctx["course"] else None,
                 bundle_id=ctx["bundle"].id if ctx["bundle"] else None,
+                video_id=ctx["video"].id if ctx["video"] else None,
                 amount=ctx["expected"], currency="EGP", status="pending", gateway="fawaterk")
     db.session.add(p)
     db.session.flush()  # assign p.id for payLoad

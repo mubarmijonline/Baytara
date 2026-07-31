@@ -9,14 +9,186 @@ import hmac
 import uuid
 import hashlib
 
+import pytest
+
 import app.services.fawaterk as fw
 import app.api.v1.payment as paymod
 from app import create_app
+from app.config import BaseConfig
 from app.extensions import db
-from app.models import Bundle, Category, Course, Enrollment, Payment, Setting, User
+from app.models import (
+    Bundle, Category, Course, CourseVideo, Enrollment, Lesson, Payment, Setting, User,
+    VideoEntitlement,
+)
 from app.security import hash_password
 
 VENDOR = "test-vendor-key-123"
+
+
+@pytest.fixture
+def payment_app(tmp_path, monkeypatch):
+    config = type("PaymentConfig", (BaseConfig,), {
+        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'payments.sqlite'}",
+        "TESTING": True,
+    })
+    app = create_app(config)
+    invoice = [7000]
+
+    def fake_link(amount, currency, customer, items, payload, redirect_urls):
+        invoice[0] += 1
+        return {
+            "url": f"https://payments.example.test/{invoice[0]}",
+            "invoice_id": str(invoice[0]),
+            "invoice_key": f"key-{invoice[0]}",
+        }
+
+    monkeypatch.setattr(paymod.fawaterk, "create_invoice_link", fake_link)
+    with app.app_context():
+        db.create_all()
+        db.session.add_all([
+            Setting(key="secret_fawaterk_api", value="test-api"),
+            Setting(key="secret_fawaterk_vendor", value=VENDOR),
+        ])
+        instructor = User(name="Instructor", email="payment-instructor@example.test",
+                          password_hash="hash", role="instructor")
+        category = Category(name="Payment category", slug="payment-category")
+        db.session.add_all([instructor, category])
+        db.session.flush()
+        course = Course(
+            title="Mixed course", slug="mixed-payment-course", instructor_id=instructor.id,
+            category_id=category.id, status="published", access_type="general", price=100,
+        )
+        standalone = Lesson(
+            title="Standalone", category_id=category.id, status="published", access_type="general",
+            price=80, access_days=14, vdocipher_video_id="payment-standalone",
+        )
+        assigned = Lesson(
+            title="Assigned", category_id=category.id, status="published", access_type="general",
+            price=80, vdocipher_video_id="payment-assigned",
+        )
+        baytarian = Lesson(
+            title="Baytarian", category_id=category.id, status="published", access_type="baytarian",
+            price=80, vdocipher_video_id="payment-baytarian",
+        )
+        free = Lesson(
+            title="Free", category_id=category.id, status="published", access_type="free",
+            price=0, vdocipher_video_id="payment-free",
+        )
+        db.session.add_all([course, standalone, assigned, baytarian, free])
+        db.session.flush()
+        db.session.add(CourseVideo(course_id=course.id, video_id=assigned.id, position=0))
+        bundle = Bundle(
+            title="Mixed package", slug="mixed-payment-package", price=150, access_days=30,
+            access_type="general", status="published", courses=[course], videos=[standalone],
+        )
+        db.session.add(bundle)
+        db.session.commit()
+        data = {
+            "course_id": course.id, "standalone_id": standalone.id, "assigned_id": assigned.id,
+            "baytarian_id": baytarian.id, "free_id": free.id, "bundle_id": bundle.id,
+        }
+        yield app, data
+        db.session.remove()
+        db.drop_all()
+
+
+def _student_headers(client, email="payment-student@example.test"):
+    client.post("/api/v1/auth/register", json={
+        "name": "Student", "email": email, "password": "secret12",
+    })
+    login = client.post("/api/v1/auth/login", json={"email": email, "password": "secret12"})
+    return {"Authorization": f"Bearer {login.get_json()['access_token']}"}
+
+
+def test_direct_video_checkout_and_paid_grant(payment_app):
+    app, data = payment_app
+    client = app.test_client()
+    headers = _student_headers(client)
+    with app.app_context():
+        user = User.query.filter_by(email="payment-student@example.test").one()
+        db.session.add(VideoEntitlement(
+            user_id=user.id, video_id=data["standalone_id"], source="assigned", status="revoked",
+        ))
+        db.session.commit()
+
+    response = client.post("/api/v1/payment/checkout", headers=headers, json={
+        "kind": "video", "video_id": data["standalone_id"],
+    })
+    assert response.status_code == 201, response.get_json()
+    payment_id = response.get_json()["payment_id"]
+
+    with app.app_context():
+        payment = db.session.get(Payment, payment_id)
+        assert payment.kind == "video"
+        assert payment.video_id == data["standalone_id"]
+        paymod._apply_paid(payment)
+        db.session.commit()
+        entitlement = VideoEntitlement.query.filter_by(
+            user_id=payment.user_id, video_id=data["standalone_id"],
+        ).one()
+        assert VideoEntitlement.query.filter_by(
+            user_id=payment.user_id, video_id=data["standalone_id"],
+        ).count() == 1
+        assert entitlement.source == "purchase"
+        assert entitlement.has_access()
+        assert entitlement.expires_at is not None
+
+
+def test_mixed_bundle_payment_grants_courses_and_videos(payment_app):
+    app, data = payment_app
+    client = app.test_client()
+    headers = _student_headers(client, "bundle-student@example.test")
+    response = client.post("/api/v1/payment/checkout", headers=headers, json={
+        "kind": "bundle", "bundle_id": data["bundle_id"],
+    })
+    assert response.status_code == 201, response.get_json()
+
+    with app.app_context():
+        payment = db.session.get(Payment, response.get_json()["payment_id"])
+        paymod._apply_paid(payment)
+        db.session.commit()
+        assert Enrollment.query.filter_by(
+            user_id=payment.user_id, course_id=data["course_id"], status="active",
+        ).count() == 1
+        entitlement = VideoEntitlement.query.filter_by(
+            user_id=payment.user_id, video_id=data["standalone_id"], status="active",
+        ).one()
+        assert entitlement.source == "bundle"
+        assert entitlement.expires_at is not None
+
+
+def test_direct_video_checkout_enforces_audience_price_and_standalone_target(payment_app):
+    app, data = payment_app
+    client = app.test_client()
+    headers = _student_headers(client, "validation-student@example.test")
+
+    assigned = client.post("/api/v1/payment/checkout", headers=headers, json={
+        "kind": "video", "video_id": data["assigned_id"],
+    })
+    assert assigned.status_code == 409
+    assert assigned.get_json()["error"] == "video_not_standalone"
+
+    free = client.post("/api/v1/payment/checkout", headers=headers, json={
+        "kind": "video", "video_id": data["free_id"],
+    })
+    assert free.status_code == 409
+    assert free.get_json()["error"] == "not_purchasable"
+
+    baytarian = client.post("/api/v1/payment/checkout", headers=headers, json={
+        "kind": "video", "video_id": data["baytarian_id"],
+    })
+    assert baytarian.status_code == 403
+    assert baytarian.get_json()["error"] == "needs_baytarian"
+
+    with app.app_context():
+        user = User.query.filter_by(email="validation-student@example.test").one()
+        user.is_baytarian = True
+        db.session.commit()
+    general = client.post("/api/v1/payment/checkout", headers=headers, json={
+        "kind": "video", "video_id": data["standalone_id"],
+    })
+    assert general.status_code == 403
+    assert general.get_json()["error"] == "non_veterinarians_only"
 
 
 def _mk_course(tag, access_type="general", price=200, access_days=None):

@@ -83,6 +83,11 @@ def validate_catalog_item(data, current=None):
     return normalized
 
 
+def video_is_standalone(video):
+    """Whether a canonical video has no current or legacy course membership."""
+    return not video.course_id and not video.module_id and not video.course_assignments
+
+
 def video_access(user, video):
     """Return whether a user may play a video without exposing provider credentials."""
     if getattr(user, "role", None) == "admin":
@@ -114,6 +119,7 @@ def video_access(user, video):
     ).first()
     if entitlement and entitlement.has_access():
         return True, None
+    expired_entitlement = bool(entitlement and entitlement.is_expired())
 
     expired_course_access = False
     if course_ids:
@@ -135,7 +141,7 @@ def video_access(user, video):
         return False, reason
     if video.access_type in FREE_ACCESS:
         return True, None
-    if expired_course_access:
+    if expired_entitlement or expired_course_access:
         return False, "access_expired"
 
     return False, "not_entitled"

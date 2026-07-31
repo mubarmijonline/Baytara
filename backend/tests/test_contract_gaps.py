@@ -7,11 +7,110 @@ device limit (block 3rd), i18n content fallback, watermark carries phone.
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from app import create_app
+from app.config import BaseConfig
 from app.extensions import db
-from app.models import Bundle, Category, Course, Enrollment, Setting, User
+from app.models import Bundle, Category, Course, Enrollment, Lesson, Setting, User
 from app.security import hash_password
 from app.services.video_provider import watermark_for
+
+
+@pytest.fixture
+def isolated_app(tmp_path):
+    config = type("ContractGapsConfig", (BaseConfig,), {
+        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'contract-gaps.sqlite'}",
+        "TESTING": True,
+    })
+    app = create_app(config)
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+def test_admin_mixed_bundle_validates_final_contents_before_commit(isolated_app):
+    with isolated_app.app_context():
+        admin = User(name="Admin", email="bundle-admin@example.test",
+                     password_hash=hash_password("secret12"), role="admin")
+        instructor = User(name="Instructor", email="bundle-instructor@example.test",
+                          password_hash="hash", role="instructor")
+        category = Category(name="Bundle category", slug="bundle-category")
+        db.session.add_all([admin, instructor, category])
+        db.session.flush()
+        general_course = Course(
+            title="General course", slug="bundle-general-course", instructor_id=instructor.id,
+            category_id=category.id, status="published", access_type="general", price=100,
+        )
+        baytarian_course = Course(
+            title="Baytarian course", slug="bundle-baytarian-course", instructor_id=instructor.id,
+            category_id=category.id, status="published", access_type="baytarian", price=100,
+        )
+        general_video = Lesson(
+            title="General video", category_id=category.id, status="published",
+            access_type="general", price=50, vdocipher_video_id="bundle-general-video",
+        )
+        baytarian_video = Lesson(
+            title="Baytarian video", category_id=category.id, status="published",
+            access_type="baytarian", price=50, vdocipher_video_id="bundle-baytarian-video",
+        )
+        db.session.add_all([general_course, baytarian_course, general_video, baytarian_video])
+        db.session.commit()
+        ids = {
+            "general_course": general_course.id,
+            "baytarian_course": baytarian_course.id,
+            "general_video": general_video.id,
+            "baytarian_video": baytarian_video.id,
+        }
+
+    client = isolated_app.test_client()
+    login = client.post("/api/v1/auth/login", json={
+        "email": "bundle-admin@example.test", "password": "secret12",
+    })
+    headers = {"Authorization": f"Bearer {login.get_json()['access_token']}"}
+
+    created = client.post("/api/v1/admin/bundles", headers=headers, json={
+        "title": "General package", "status": "published", "access_type": "general",
+        "price": 125, "course_ids": [ids["general_course"]],
+        "video_ids": [ids["general_video"]],
+    })
+    assert created.status_code == 201, created.get_json()
+    bundle = created.get_json()["bundle"]
+    assert bundle["access_type"] == "general"
+    assert bundle["course_ids"] == [ids["general_course"]]
+    assert bundle["video_ids"] == [ids["general_video"]]
+
+    invalid_criteria = client.post("/api/v1/admin/bundles", headers=headers, json={
+        "title": "Invalid criteria", "status": "published", "access_type": "general",
+        "price": 0, "access_days": 0, "course_ids": [], "video_ids": [],
+    })
+    assert invalid_criteria.status_code == 422
+    assert set(invalid_criteria.get_json()["errors"]) == {
+        "positive_price_required", "positive_access_days_required",
+    }
+
+    mismatch = client.post("/api/v1/admin/bundles", headers=headers, json={
+        "title": "Invalid package", "status": "published", "access_type": "general",
+        "price": 125, "course_ids": [ids["baytarian_course"]],
+        "video_ids": [ids["baytarian_video"]],
+    })
+    assert mismatch.status_code == 422
+    assert set(mismatch.get_json()["errors"]) == {
+        "incompatible_course_audience", "incompatible_video_audience",
+    }
+
+    update = client.patch(f"/api/v1/admin/bundles/{bundle['id']}", headers=headers, json={
+        "access_type": "baytarian",
+    })
+    assert update.status_code == 422
+    assert update.get_json()["errors"] == ["incompatible_course_audience", "incompatible_video_audience"]
+    with isolated_app.app_context():
+        unchanged = db.session.get(Bundle, bundle["id"])
+        assert unchanged.access_type == "general"
+        assert [course.id for course in unchanged.courses] == [ids["general_course"]]
+        assert [video.id for video in unchanged.videos] == [ids["general_video"]]
 
 
 def _mk_course(tag, price=200, access_days=None, title_en=None):
