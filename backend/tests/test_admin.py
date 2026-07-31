@@ -91,6 +91,9 @@ def demo():
     # an instructor owning courses cannot be deleted until courses are removed
     assert c.delete(f"/api/v1/admin/users/{instr_id}", headers=h).status_code == 409
 
+    # Video deletion is blocked while it remains assigned to a course.
+    assert c.delete(f"/api/v1/admin/videos/{l['id']}", headers=h).status_code == 409
+    assert c.delete(f"/api/v1/admin/videos/{l['id']}/courses/{course_id}", headers=h).status_code == 200
     # video delete + course delete cascade
     assert c.delete(f"/api/v1/admin/videos/{l['id']}", headers=h).status_code == 200
     assert c.delete(f"/api/v1/admin/courses/{course_id}", headers=h).status_code == 200

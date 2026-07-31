@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 
 from ...models import (
     User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
-    Setting, Article, ContactMessage, Notification, BaytarianRequest, push_notification,
+    Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
+    VideoEntitlement, bundle_videos, push_notification,
 )
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
@@ -188,7 +189,9 @@ def category_delete(cid):
     c = db.session.get(Category, cid)
     if not c:
         return jsonify(error="not_found"), 404
-    if Course.query.filter_by(category_id=cid).count():
+    if c.is_fixed:
+        return jsonify(error="fixed_category"), 409
+    if Course.query.filter_by(category_id=cid).count() or Lesson.query.filter_by(category_id=cid).count():
         return jsonify(error="category_in_use"), 409
     db.session.delete(c)
     db.session.commit()
@@ -534,27 +537,103 @@ def bundle_delete(bid):
     return jsonify(deleted=bid)
 
 
-# ------------------------------ videos (directly under a course, ordered) ------------------------------
+# ------------------------------ video catalog ------------------------------
 
 def _video_dict(l):
     d = l.to_dict()
     d["title_en"] = l.title_en
     d["vdocipher_video_id"] = l.vdocipher_video_id
+    d["courses"] = [
+        {"id": row.course.id, "title": row.course.title, "position": row.position}
+        for row in l.course_assignments
+    ]
     return d
+
+
+def _catalog_video_fields(data, current=None):
+    try:
+        catalog = validate_catalog_item({
+            "status": data.get("status", "draft"),
+            "access_type": data.get("access_type", "free"),
+            "price": data.get("price", 0),
+            "currency": data.get("currency", "EGP"),
+            "category_id": data.get("category_id"),
+            "access_days": data.get("access_days"),
+        } if current is None else {
+            key: data[key]
+            for key in ("status", "access_type", "price", "currency", "category_id", "access_days")
+            if key in data
+        }, current=current)
+    except CatalogValidationError as exc:
+        return None, (jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422)
+    if catalog["category_id"] is not None and not db.session.get(Category, catalog["category_id"]):
+        return None, (jsonify(error="catalog_validation_failed", errors=["invalid_category"]), 422)
+    return catalog, None
+
+
+def set_video_courses(video, course_ids):
+    if not isinstance(course_ids, list):
+        raise CatalogValidationError(["invalid_course_ids"])
+    wanted = set(course_ids or [])
+    if not all(isinstance(course_id, int) and not isinstance(course_id, bool) for course_id in wanted):
+        raise CatalogValidationError(["invalid_course_ids"])
+    courses = Course.query.filter(Course.id.in_(wanted)).all() if wanted else []
+    if len(courses) != len(wanted):
+        raise CatalogValidationError(["course_not_found"])
+    existing = {row.course_id: row for row in video.course_assignments}
+    for course_id, row in existing.items():
+        if course_id not in wanted:
+            db.session.delete(row)
+    for course in courses:
+        if course.id not in existing:
+            last = CourseVideo.query.filter_by(course_id=course.id).order_by(CourseVideo.position.desc()).first()
+            db.session.add(CourseVideo(
+                course_id=course.id, video_id=video.id, position=(last.position + 1 if last else 0),
+            ))
+
+
+def reorder_course_videos(course, video_ids):
+    if not isinstance(video_ids, list) or any(not isinstance(video_id, int) or isinstance(video_id, bool) for video_id in video_ids):
+        raise CatalogValidationError(["invalid_video_ids"])
+    rows = {row.video_id: row for row in course.video_assignments}
+    if len(video_ids) != len(rows) or set(rows) != set(video_ids):
+        raise CatalogValidationError(["video_order_membership_mismatch"])
+    for position, video_id in enumerate(video_ids):
+        rows[video_id].position = position
 
 
 @bp.get("/videos")
 @require_role("admin")
 def videos_list():
-    """List videos. ?course_id=<id> for a course (ordered); ?standalone=1 for unattached."""
+    """Paginated canonical catalog videos with optional metadata/assignment filters."""
     q = Lesson.query
     cid = request.args.get("course_id", type=int)
     if cid:
-        q = q.filter_by(course_id=cid)
+        q = q.join(CourseVideo).filter(CourseVideo.course_id == cid)
     elif request.args.get("standalone") == "1":
-        q = q.filter(Lesson.course_id.is_(None), Lesson.module_id.is_(None))
-    rows = q.order_by(Lesson.position, Lesson.id).all()
-    return jsonify(videos=[_video_dict(l) for l in rows])
+        q = q.outerjoin(CourseVideo).filter(CourseVideo.id.is_(None))
+    if request.args.get("status"):
+        q = q.filter(Lesson.status == request.args["status"])
+    if request.args.get("category_id", type=int):
+        q = q.filter(Lesson.category_id == request.args.get("category_id", type=int))
+    if request.args.get("access_type"):
+        q = q.filter(Lesson.access_type == request.args["access_type"])
+    if request.args.get("q"):
+        like = f"%{request.args['q']}%"
+        q = q.filter(db.or_(Lesson.title.ilike(like), Lesson.title_en.ilike(like), Lesson.vdocipher_video_id.ilike(like)))
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
+    pg = db.paginate(q.order_by(Lesson.created_at.desc(), Lesson.id.desc()), page=page, per_page=per_page, error_out=False)
+    return jsonify(items=[_video_dict(l) for l in pg.items], total=pg.total, page=pg.page)
+
+
+@bp.get("/videos/<int:vid>")
+@require_role("admin")
+def video_get(vid):
+    l = db.session.get(Lesson, vid)
+    if not l:
+        return jsonify(error="not_found"), 404
+    return jsonify(video=_video_dict(l))
 
 
 @bp.post("/videos")
@@ -563,20 +642,32 @@ def video_create():
     d = request.get_json() or {}
     if not d.get("title"):
         return jsonify(error="title_required"), 422
-    cid = d.get("course_id")
-    if cid and not db.session.get(Course, cid):
-        return jsonify(error="course_not_found"), 404
-    # append to the end of the target list
-    last = Lesson.query.filter_by(course_id=cid).order_by(Lesson.position.desc()).first() if cid else None
+    catalog, error = _catalog_video_fields(d)
+    if error:
+        return error
+    provider_id = d.get("vdocipher_video_id") or None
+    if provider_id and Lesson.query.filter_by(vdocipher_video_id=provider_id).first():
+        return jsonify(error="duplicate_video"), 409
+    course_ids = d.get("course_ids")
+    if course_ids is None:
+        course_ids = [d["course_id"]] if d.get("course_id") else []
     l = Lesson(
-        course_id=cid, module_id=None,
+        course_id=None, module_id=None,
         title=d["title"], title_en=d.get("title_en"),
-        position=(last.position + 1 if last else 0),
+        description=d.get("description", ""), criteria=d.get("criteria") or {},
+        category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
+        access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
-        vdocipher_video_id=d.get("vdocipher_video_id"),
+        vdocipher_video_id=provider_id,
         is_protected=d.get("is_protected", True),
     )
     db.session.add(l)
+    db.session.flush()
+    try:
+        set_video_courses(l, course_ids)
+    except CatalogValidationError as exc:
+        db.session.rollback()
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     db.session.commit()
     return jsonify(video=_video_dict(l)), 201
 
@@ -588,13 +679,28 @@ def video_update(vid):
     if not l:
         return jsonify(error="not_found"), 404
     d = request.get_json() or {}
-    if "course_id" in d and d["course_id"] and not db.session.get(Course, d["course_id"]):
-        return jsonify(error="course_not_found"), 404
-    for f in ("title", "title_en", "duration_minutes", "vdocipher_video_id", "is_protected", "course_id", "position"):
+    catalog, error = _catalog_video_fields(d, current=l)
+    if error:
+        return error
+    if "vdocipher_video_id" in d:
+        provider_id = d["vdocipher_video_id"] or None
+        duplicate = Lesson.query.filter(Lesson.vdocipher_video_id == provider_id, Lesson.id != l.id).first() if provider_id else None
+        if duplicate:
+            return jsonify(error="duplicate_video"), 409
+    for f in ("title", "title_en", "description", "criteria", "duration_minutes", "vdocipher_video_id", "is_protected"):
         if f in d:
-            setattr(l, f, d[f])
-    if "course_id" in d:
-        l.module_id = None  # moving to the direct-course model
+            setattr(l, f, (d[f] or None) if f == "vdocipher_video_id" else d[f])
+    for f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
+        setattr(l, f, catalog[f])
+    course_ids = d.get("course_ids")
+    if course_ids is None and "course_id" in d:
+        course_ids = [d["course_id"]] if d["course_id"] else []
+    if course_ids is not None:
+        try:
+            set_video_courses(l, course_ids)
+        except CatalogValidationError as exc:
+            db.session.rollback()
+            return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     db.session.commit()
     return jsonify(video=_video_dict(l))
 
@@ -605,20 +711,77 @@ def video_delete(vid):
     l = db.session.get(Lesson, vid)
     if not l:
         return jsonify(error="not_found"), 404
+    has_dependencies = (
+        CourseVideo.query.filter_by(video_id=vid).count()
+        or db.session.query(bundle_videos.c.bundle_id).filter(bundle_videos.c.video_id == vid).count()
+        or Payment.query.filter_by(video_id=vid).count()
+        or VideoEntitlement.query.filter_by(video_id=vid).count()
+        or LessonProgress.query.filter_by(lesson_id=vid).count()
+    )
+    if has_dependencies:
+        return jsonify(error="video_in_use"), 409
     db.session.delete(l)
     db.session.commit()
     return jsonify(deleted=vid)
 
 
+@bp.post("/videos/<int:vid>/courses")
+@require_role("admin")
+def video_courses_set(vid):
+    l = db.session.get(Lesson, vid)
+    if not l:
+        return jsonify(error="not_found"), 404
+    course_ids = (request.get_json() or {}).get("course_ids")
+    if not isinstance(course_ids, list):
+        return jsonify(error="catalog_validation_failed", errors=["invalid_course_ids"]), 422
+    try:
+        set_video_courses(l, course_ids)
+    except CatalogValidationError as exc:
+        db.session.rollback()
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    db.session.commit()
+    return jsonify(video=_video_dict(l))
+
+
+@bp.delete("/videos/<int:vid>/courses/<int:cid>")
+@require_role("admin")
+def video_course_delete(vid, cid):
+    row = CourseVideo.query.filter_by(video_id=vid, course_id=cid).first()
+    if not row:
+        return jsonify(error="not_found"), 404
+    db.session.delete(row)
+    db.session.commit()
+    l = db.session.get(Lesson, vid)
+    return jsonify(video=_video_dict(l))
+
+
+@bp.put("/courses/<int:cid>/videos/order")
+@require_role("admin")
+def course_videos_order(cid):
+    course = db.session.get(Course, cid)
+    if not course:
+        return jsonify(error="course_not_found"), 404
+    video_ids = (request.get_json() or {}).get("video_ids")
+    try:
+        reorder_course_videos(course, video_ids)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    db.session.commit()
+    return jsonify(ok=True, count=len(video_ids))
+
+
 @bp.post("/courses/<int:cid>/videos/reorder")
 @require_role("admin")
 def videos_reorder(cid):
-    """Body: {order: [videoId, ...]} — set positions in that sequence."""
-    order = (request.get_json() or {}).get("order") or []
-    rows = {l.id: l for l in Lesson.query.filter_by(course_id=cid).all()}
-    for pos, vid in enumerate(order):
-        if vid in rows:
-            rows[vid].position = pos
+    """Compatibility alias for deployed clients using the old ``order`` body key."""
+    course = db.session.get(Course, cid)
+    if not course:
+        return jsonify(error="course_not_found"), 404
+    order = (request.get_json() or {}).get("order")
+    try:
+        reorder_course_videos(course, order)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     db.session.commit()
     return jsonify(ok=True, count=len(order))
 

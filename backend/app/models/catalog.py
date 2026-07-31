@@ -71,10 +71,15 @@ class Course(db.Model):
     modules = db.relationship(
         "CourseModule", back_populates="course", order_by="CourseModule.position", cascade="all, delete-orphan"
     )
-    # Videos directly under the course (ordered). Standalone videos have course_id=NULL.
+    # CourseVideo is the canonical course membership and ordering source. The
+    # direct Lesson.course_id relationship remains only for legacy reads.
     videos = db.relationship(
+        "Lesson", secondary="course_videos", viewonly=True, lazy="selectin",
+        order_by="CourseVideo.position, Lesson.id",
+    )
+    legacy_videos = db.relationship(
         "Lesson", primaryjoin="Lesson.course_id==Course.id", foreign_keys="Lesson.course_id",
-        order_by="Lesson.position", cascade="all, delete-orphan",
+        viewonly=True, order_by="Lesson.position, Lesson.id",
     )
     video_assignments = db.relationship(
         "CourseVideo", back_populates="course", cascade="all, delete-orphan", order_by="CourseVideo.position",
@@ -122,9 +127,9 @@ class Course(db.Model):
             "instructor": {"id": self.instructor.id, "name": self.instructor.name} if self.instructor else None,
         }
         if with_content:
-            # Videos live directly under the course now (ordered). Modules kept for
-            # backward compatibility but no longer the primary structure.
-            vids = sorted(self.videos, key=lambda l: (l.position, l.id))
+            # Fresh writes use CourseVideo. The fallback keeps pre-migration
+            # direct-course rows readable until their association rows exist.
+            vids = self.videos or self.legacy_videos
             d["videos"] = [l.to_dict(lang, user=user) for l in vids]
         return d
 
