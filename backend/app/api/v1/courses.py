@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
 from ...models import Category, Course, Bundle, User
+from ...services.catalog_access import audience_error
 from ...utils import req_lang
 
 bp = Blueprint("courses", __name__)
@@ -25,8 +26,8 @@ def list_categories():
 @jwt_required(optional=True)
 def list_courses():
     """Public course listing: only published. Filter by ?category=<slug>, ?q=<search>,
-    ?access_type=<t>, paginated. vet_free courses are hidden from non-instructors;
-    baytarian courses are shown-but-locked."""
+    ?access_type=<t>, paginated. Audience-restricted courses are shown only when
+    the shared policy permits public visibility."""
     user = _current_user()
     page = max(request.args.get("page", 1, type=int), 1)
     per_page = min(max(request.args.get("per_page", 12, type=int), 1), 50)
@@ -42,8 +43,7 @@ def list_courses():
     if search:
         q = q.filter(Course.title.ilike(f"%{search}%"))
 
-    # vet_free is instructor/admin-only content -> exclude for everyone else
-    if not (user and user.role in ("instructor", "admin")):
+    if audience_error(user, "vet_free"):
         q = q.filter(Course.access_type != "vet_free")
 
     q = q.order_by(Course.created_at.desc())
@@ -73,18 +73,22 @@ def course_detail(slug):
 # ------------------------------ bundles (public) ------------------------------
 
 @bp.get("/bundles")
+@jwt_required(optional=True)
 def list_bundles():
     lang = req_lang()
+    user = _current_user()
     rows = Bundle.query.filter_by(status="published").order_by(Bundle.created_at.desc()).all()
-    return jsonify(bundles=[b.to_dict(with_courses=True, lang=lang) for b in rows])
+    return jsonify(bundles=[b.to_dict(with_courses=True, lang=lang, user=user) for b in rows])
 
 
 @bp.get("/bundles/<slug>")
+@jwt_required(optional=True)
 def bundle_detail(slug):
+    user = _current_user()
     b = Bundle.query.filter_by(slug=slug, status="published").first()
     if not b:
         return jsonify(error="not_found"), 404
-    return jsonify(bundle=b.to_dict(with_courses=True, lang=req_lang()))
+    return jsonify(bundle=b.to_dict(with_courses=True, lang=req_lang(), user=user))
 
 
 @bp.get("/instructors")

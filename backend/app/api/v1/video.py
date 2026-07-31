@@ -2,7 +2,8 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
-from ...models import Lesson, CourseModule, Enrollment, User
+from ...models import Lesson, User
+from ...services.catalog_access import video_access
 from ...services.video_provider import provider, watermark_for, VideoProviderError
 
 bp = Blueprint("video", __name__)
@@ -21,15 +22,10 @@ def playback():
     if not lesson.vdocipher_video_id:
         return jsonify(error="no_video"), 409
 
-    course_id = lesson.resolve_course_id()
-    enrollment = Enrollment.query.filter_by(user_id=uid, course_id=course_id, status="active").first()
-    if not enrollment:
-        return jsonify(error="not_enrolled"), 403
-    if enrollment.is_expired():
-        # Access Duration lapsed (contract البند3) — renew to restore playback.
-        return jsonify(error="access_expired"), 403
-
     user = db.session.get(User, uid)
+    allowed, reason = video_access(user, lesson)
+    if not allowed:
+        return jsonify(error=reason), 403
     try:
         res = provider.issue_otp(lesson.vdocipher_video_id, annotate=watermark_for(user))
     except VideoProviderError as e:

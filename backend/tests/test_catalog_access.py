@@ -6,6 +6,7 @@ head before exercising the schema.
 """
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import uuid
 
@@ -18,6 +19,7 @@ from app.models import (
     Category,
     Course,
     CourseVideo,
+    Enrollment,
     Lesson,
     User,
     VideoEntitlement,
@@ -29,10 +31,168 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from app.services.catalog_access import CatalogValidationError, audience_error, validate_catalog_item
+from app.services.catalog_access import video_access
+
 
 MIGRATIONS_DIR = str(Path(__file__).resolve().parents[1] / "migrations")
 PRE_CATALOG_REVISION = "49ad88f02a93"
 pytestmark = pytest.mark.filterwarnings("ignore:.*get_engine.*:DeprecationWarning")
+
+
+@pytest.fixture
+def user_factory():
+    def make_user(is_baytarian=False, role="student"):
+        return SimpleNamespace(is_baytarian=is_baytarian, role=role)
+
+    return make_user
+
+
+@pytest.mark.parametrize("access_type,is_vet,expected", [
+    ("free", False, None),
+    ("vet_free", False, "needs_baytarian"),
+    ("vet_free", True, None),
+    ("baytarian", False, "needs_baytarian"),
+    ("general", False, None),
+    ("general", True, "non_veterinarians_only"),
+])
+def test_audience_error(user_factory, access_type, is_vet, expected):
+    assert audience_error(user_factory(is_baytarian=is_vet), access_type) == expected
+
+
+def test_published_item_requires_category_and_paid_price():
+    with pytest.raises(CatalogValidationError) as exc:
+        validate_catalog_item({"status": "published", "access_type": "baytarian", "price": 0})
+
+    assert set(exc.value.errors) == {"category_required", "positive_price_required"}
+
+
+def test_catalog_item_normalizes_free_price_and_rejects_invalid_commerce_fields():
+    item = validate_catalog_item({
+        "access_type": "free", "price": 120, "currency": "EGP", "access_days": None,
+    })
+    assert item["price"] == 0
+
+    with pytest.raises(CatalogValidationError) as exc:
+        validate_catalog_item({"access_type": "unknown", "currency": "USD", "access_days": 0})
+
+    assert set(exc.value.errors) == {
+        "invalid_access_type", "invalid_currency", "positive_access_days_required",
+    }
+
+
+def test_catalog_item_uses_current_values_for_partial_updates():
+    current = SimpleNamespace(
+        access_type="free", currency="EGP", price=0, access_days=None,
+        status="draft", category_id=None,
+    )
+
+    item = validate_catalog_item({"price": 120}, current=current)
+
+    assert item["price"] == 0
+
+
+@pytest.fixture
+def catalog_app(tmp_path):
+    config = type("CatalogAccessConfig", (BaseConfig,), {
+        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'catalog-access.sqlite'}",
+        "TESTING": True,
+    })
+    app = create_app(config)
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+def test_video_access_honors_audience_entitlements_enrollment_and_assignment(catalog_app):
+    with catalog_app.app_context():
+        category = Category(name="Equine", slug="equine-access")
+        instructor = User(name="Instructor", email="instructor-access@test", password_hash="hash", role="instructor")
+        student = User(name="Student", email="student-access@test", password_hash="hash")
+        baytarian = User(name="Baytarian", email="baytarian-access@test", password_hash="hash", is_baytarian=True)
+        admin = User(name="Admin", email="admin-access@test", password_hash="hash", role="admin")
+        db.session.add_all([category, instructor, student, baytarian, admin])
+        db.session.flush()
+        course = Course(
+            title="General course", slug="general-course-access", instructor_id=instructor.id,
+            category_id=category.id, price=100, access_type="general", status="published",
+        )
+        db.session.add(course)
+        db.session.flush()
+        video = Lesson(
+            title="General video", category_id=category.id, price=100, access_type="general",
+            status="published", vdocipher_video_id="access-video",
+        )
+        direct_video = Lesson(
+            title="Direct video", course_id=course.id, category_id=category.id, price=100,
+            access_type="general", status="published", vdocipher_video_id="direct-access-video",
+        )
+        db.session.add_all([video, direct_video])
+        db.session.flush()
+        db.session.add(CourseVideo(course_id=course.id, video_id=video.id))
+        db.session.commit()
+
+        assert video_access(student, video) == (False, "not_entitled")
+        assert video_access(baytarian, video) == (False, "non_veterinarians_only")
+        assert video_access(instructor, video) == (True, None)
+        assert video_access(instructor, direct_video) == (True, None)
+        assert video_access(admin, video) == (True, None)
+
+        db.session.add(VideoEntitlement(user_id=student.id, video_id=video.id, source="purchase"))
+        db.session.commit()
+        assert video_access(student, video) == (True, None)
+
+        db.session.delete(VideoEntitlement.query.filter_by(user_id=student.id, video_id=video.id).one())
+        enrollment = Enrollment(user_id=student.id, course_id=course.id, source="purchase")
+        db.session.add(enrollment)
+        db.session.commit()
+        assert video_access(student, video) == (True, None)
+
+        enrollment.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        db.session.commit()
+        assert video_access(student, video) == (False, "access_expired")
+
+
+def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app):
+    with catalog_app.app_context():
+        category = Category(name="Equine", name_en="Equine", slug="equine-serialized")
+        instructor = User(name="Instructor", email="instructor-serialized@test", password_hash="hash", role="instructor")
+        db.session.add_all([category, instructor])
+        db.session.flush()
+        course = Course(title="Course", slug="course-serialized", instructor_id=instructor.id, category_id=category.id)
+        video = Lesson(
+            title="Video", title_en="Video", category_id=category.id, criteria={"level": "advanced"},
+            price=125, currency="EGP", access_days=30, access_type="general", status="published",
+            duration_minutes=45,
+        )
+        db.session.add_all([course, video])
+        db.session.flush()
+        db.session.add(CourseVideo(course_id=course.id, video_id=video.id))
+        db.session.commit()
+
+        assert video.to_dict(lang="en", user=instructor) == {
+            "id": video.id,
+            "title": "Video",
+            "title_en": "Video",
+            "description": "",
+            "criteria": {"level": "advanced"},
+            "position": 0,
+            "duration_minutes": 45,
+            "price": 125.0,
+            "currency": "EGP",
+            "access_days": 30,
+            "access_type": "general",
+            "is_paid": True,
+            "lock_reason": None,
+            "status": "published",
+            "category": {"id": category.id, "name": "Equine", "name_en": "Equine", "slug": "equine-serialized"},
+            "assignment_count": 1,
+            "is_protected": True,
+            "has_video": False,
+            "course_id": None,
+        }
 
 
 def demo():

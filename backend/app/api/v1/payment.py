@@ -7,6 +7,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from ...extensions import db
 from ...models import Bundle, Course, Enrollment, Payment, User, push_notification
 from ...security import require_role
+from ...services.catalog_access import audience_error
 from ...services import fawaterk
 from ...services.fawaterk import FawaterkError
 from ...utils import renewal_percent
@@ -31,6 +32,10 @@ def _resolve_target(kind, course_id, bundle_id, uid):
         bundle = Bundle.query.filter_by(id=bundle_id, status="published").first() if bundle_id else None
         if not bundle:
             return None, (jsonify(error="bundle_not_found"), 404)
+        buyer = db.session.get(User, uid)
+        reason = audience_error(buyer, bundle.access_type)
+        if reason:
+            return None, (jsonify(error=reason), 403)
         cids = [c.id for c in bundle.courses]
         if cids:
             active = {e.course_id for e in Enrollment.query.filter(
@@ -46,10 +51,10 @@ def _resolve_target(kind, course_id, bundle_id, uid):
         return None, (jsonify(error="course_not_found"), 404)
     if not course.is_paid():
         return None, (jsonify(error="not_purchasable"), 409)  # free / vet_free
-    if course.access_type == "baytarian":
-        buyer = db.session.get(User, uid)
-        if not getattr(buyer, "is_baytarian", False):
-            return None, (jsonify(error="needs_baytarian"), 403)
+    buyer = db.session.get(User, uid)
+    reason = audience_error(buyer, course.access_type)
+    if reason:
+        return None, (jsonify(error=reason), 403)
     enr = Enrollment.query.filter_by(user_id=uid, course_id=course.id, status="active").first()
 
     if kind == "renewal":

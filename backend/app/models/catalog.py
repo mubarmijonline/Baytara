@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from ..extensions import db
+from ..services.catalog_access import ACCESS_TYPES, PAID_ACCESS, access_is_paid, audience_error
 
 COURSE_STATUSES = ("draft", "published", "unpublished")
 FIXED_CATEGORIES = (
@@ -11,19 +12,6 @@ FIXED_CATEGORIES = (
     ("fish-other-animal-sources", "الأسماك أو أي مصدر حيواني آخر", "Fish and other animal sources"),
     ("camel", "الجمال", "Camel"),
 )
-
-# Content access model (client البند3 revision):
-#   free      -> anyone, no payment
-#   vet_free  -> free, but only Baytara doctor INSTRUCTORS (role == instructor)
-#   baytarian -> PAID, only verified pet-doctor (Baytarian) users
-#   general   -> anyone, PAID
-ACCESS_TYPES = ("free", "vet_free", "baytarian", "general")
-PAID_ACCESS = ("baytarian", "general")
-
-
-def access_is_paid(t):
-    return t in PAID_ACCESS
-
 
 def _now():
     return datetime.now(timezone.utc)
@@ -100,22 +88,14 @@ class Course(db.Model):
         return access_is_paid(self.access_type)
 
     def visible_to(self, user):
-        """Listable to this user? vet_free is instructor/admin-only; baytarian is
-        shown-but-locked to everyone (client decision)."""
+        """Whether the public catalog may list this course to the caller."""
         if self.access_type == "vet_free":
-            return bool(user and user.role in ("instructor", "admin"))
+            return audience_error(user, self.access_type) is None
         return True
 
     def lock_reason(self, user):
         """None if the user may enroll/watch; else why it's locked."""
-        role = getattr(user, "role", None)
-        if role == "admin":
-            return None
-        if self.access_type == "vet_free" and role != "instructor":
-            return "instructors_only"
-        if self.access_type == "baytarian" and not getattr(user, "is_baytarian", False):
-            return "needs_baytarian"
-        return None
+        return audience_error(user, self.access_type)
 
     def accessible_to(self, user):
         return self.lock_reason(user) is None
@@ -145,7 +125,7 @@ class Course(db.Model):
             # Videos live directly under the course now (ordered). Modules kept for
             # backward compatibility but no longer the primary structure.
             vids = sorted(self.videos, key=lambda l: (l.position, l.id))
-            d["videos"] = [l.to_dict(lang) for l in vids]
+            d["videos"] = [l.to_dict(lang, user=user) for l in vids]
         return d
 
 
@@ -163,13 +143,13 @@ class CourseModule(db.Model):
         "Lesson", back_populates="module", order_by="Lesson.position", cascade="all, delete-orphan"
     )
 
-    def to_dict(self, lang="ar"):
+    def to_dict(self, lang="ar", user=None):
         return {
             "id": self.id,
             "title": loc(self.title, self.title_en, lang),
             "title_en": self.title_en,
             "position": self.position,
-            "lessons": [l.to_dict(lang) for l in self.lessons],
+            "lessons": [l.to_dict(lang, user=user) for l in self.lessons],
         }
 
 
@@ -216,13 +196,24 @@ class Lesson(db.Model):
             return db.session.query(CourseModule.course_id).filter_by(id=self.module_id).scalar()
         return None
 
-    def to_dict(self, lang="ar"):
+    def to_dict(self, lang="ar", user=None):
         return {
             "id": self.id,
             "title": loc(self.title, self.title_en, lang),
             "title_en": self.title_en,
+            "description": self.description,
+            "criteria": self.criteria or {},
             "position": self.position,
             "duration_minutes": self.duration_minutes,
+            "price": float(self.price),
+            "currency": self.currency,
+            "access_days": self.access_days,
+            "access_type": self.access_type,
+            "is_paid": access_is_paid(self.access_type),
+            "lock_reason": audience_error(user, self.access_type),
+            "status": self.status,
+            "category": self.category.to_dict(lang) if self.category else None,
+            "assignment_count": len(self.course_assignments),
             "is_protected": self.is_protected,
             "has_video": bool(self.vdocipher_video_id),
             "course_id": self.course_id,
@@ -280,7 +271,7 @@ class Bundle(db.Model):
     def courses_total(self):
         return float(sum((c.price for c in self.courses), 0))
 
-    def to_dict(self, with_courses=True, lang="ar"):
+    def to_dict(self, with_courses=True, lang="ar", user=None):
         d = {
             "id": self.id,
             "title": loc(self.title, self.title_en, lang),
@@ -292,9 +283,12 @@ class Bundle(db.Model):
             "price": float(self.price),
             "currency": self.currency,
             "access_days": self.access_days,
+            "access_type": self.access_type,
+            "is_paid": access_is_paid(self.access_type),
+            "lock_reason": audience_error(user, self.access_type),
             "status": self.status,
             "courses_total": self.courses_total(),
         }
         if with_courses:
-            d["courses"] = [c.to_dict(lang=lang) for c in self.courses]
+            d["courses"] = [c.to_dict(lang=lang, user=user) for c in self.courses]
         return d
