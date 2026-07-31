@@ -341,7 +341,7 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
         db.session.flush()
         course = Course(title="Course", slug="course-serialized", instructor_id=instructor.id, category_id=category.id)
         video = Lesson(
-            title="Video", title_en="Video", category_id=category.id, criteria={"level": "advanced"},
+            title="Video", title_en="Video", category_id=category.id,
             price=125, currency="EGP", access_days=30, access_type="general", status="published",
             duration_minutes=45,
         )
@@ -355,7 +355,6 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
             "title": "Video",
             "title_en": "Video",
             "description": "",
-            "criteria": {"level": "advanced"},
             "position": 0,
             "duration_minutes": 45,
             "price": 125.0,
@@ -418,7 +417,6 @@ def demo():
             title="Equine exam",
             description="A reusable equine examination video.",
             category_id=equine.id,
-            criteria={"level": "intermediate"},
             price=125,
             currency="EGP",
             access_days=30,
@@ -482,6 +480,10 @@ def test_fixed_taxonomy_and_reusable_video_models():
     demo()
 
 
+def test_canonical_video_schema_has_no_untyped_criteria_column():
+    assert "criteria" not in Lesson.__table__.c
+
+
 def test_duplicate_legacy_vdocipher_ids_abort_before_schema_mutation():
     with tempfile.TemporaryDirectory(prefix="baytara-catalog-migration-") as temp_dir:
         database_url = f"sqlite:///{Path(temp_dir) / 'catalog.sqlite'}"
@@ -535,6 +537,9 @@ def test_duplicate_legacy_vdocipher_ids_abort_before_schema_mutation():
             upgrade(directory=MIGRATIONS_DIR)
 
             assert db.session.execute(text("SELECT COUNT(*) FROM lessons")).scalar_one() == 2
+            assert "criteria" not in {
+                row[1] for row in db.session.execute(text("PRAGMA table_info(lessons)"))
+            }
             assert db.session.execute(text(
                 "SELECT COUNT(*) FROM course_videos WHERE course_id = 1"
             )).scalar_one() == 2

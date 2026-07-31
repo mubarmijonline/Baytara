@@ -551,6 +551,8 @@ def _video_dict(l):
 
 
 def _catalog_video_fields(data, current=None):
+    if "criteria" in data:
+        return None, (jsonify(error="catalog_validation_failed", errors=["unsupported_criteria"]), 422)
     try:
         catalog = validate_catalog_item({
             "status": data.get("status", "draft"),
@@ -592,6 +594,16 @@ def set_video_courses(video, course_ids):
             ))
 
 
+def add_video_courses(video, course_ids):
+    if not isinstance(course_ids, list):
+        raise CatalogValidationError(["invalid_course_ids"])
+    wanted = set(course_ids)
+    if not all(isinstance(course_id, int) and not isinstance(course_id, bool) for course_id in wanted):
+        raise CatalogValidationError(["invalid_course_ids"])
+    existing = {row.course_id for row in video.course_assignments}
+    set_video_courses(video, sorted(existing | wanted))
+
+
 def reorder_course_videos(course, video_ids):
     if not isinstance(video_ids, list) or any(not isinstance(video_id, int) or isinstance(video_id, bool) for video_id in video_ids):
         raise CatalogValidationError(["invalid_video_ids"])
@@ -609,9 +621,17 @@ def videos_list():
     q = Lesson.query
     cid = request.args.get("course_id", type=int)
     if cid:
-        q = q.join(CourseVideo).filter(CourseVideo.course_id == cid)
+        q = q.outerjoin(CourseModule, Lesson.module_id == CourseModule.id).outerjoin(
+            CourseVideo, CourseVideo.video_id == Lesson.id,
+        ).filter(db.or_(
+            Lesson.course_id == cid,
+            CourseModule.course_id == cid,
+            CourseVideo.course_id == cid,
+        )).distinct()
     elif request.args.get("standalone") == "1":
-        q = q.outerjoin(CourseVideo).filter(CourseVideo.id.is_(None))
+        q = q.outerjoin(CourseVideo, CourseVideo.video_id == Lesson.id).filter(
+            CourseVideo.id.is_(None), Lesson.course_id.is_(None), Lesson.module_id.is_(None),
+        )
     if request.args.get("status"):
         q = q.filter(Lesson.status == request.args["status"])
     if request.args.get("category_id", type=int):
@@ -654,7 +674,7 @@ def video_create():
     l = Lesson(
         course_id=None, module_id=None,
         title=d["title"], title_en=d.get("title_en"),
-        description=d.get("description", ""), criteria=d.get("criteria") or {},
+        description=d.get("description", ""),
         category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
@@ -687,7 +707,7 @@ def video_update(vid):
         duplicate = Lesson.query.filter(Lesson.vdocipher_video_id == provider_id, Lesson.id != l.id).first() if provider_id else None
         if duplicate:
             return jsonify(error="duplicate_video"), 409
-    for f in ("title", "title_en", "description", "criteria", "duration_minutes", "vdocipher_video_id", "is_protected"):
+    for f in ("title", "title_en", "description", "duration_minutes", "vdocipher_video_id", "is_protected"):
         if f in d:
             setattr(l, f, (d[f] or None) if f == "vdocipher_video_id" else d[f])
     for f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
@@ -860,32 +880,57 @@ def vdocipher_import():
     d = request.get_json() or {}
     if not d.get("video_id"):
         return jsonify(error="video_id_required"), 422
-    if Lesson.query.filter_by(vdocipher_video_id=d["video_id"]).first():
-        return jsonify(error="duplicate_video"), 409
-    cid = d.get("course_id")
-    course = db.session.get(Course, cid) if cid else None
-    if cid and not course:
-        return jsonify(error="course_not_found"), 404
+    course_ids = d.get("course_ids")
+    if course_ids is None:
+        course_ids = [d["course_id"]] if d.get("course_id") else []
+    if not isinstance(course_ids, list) or any(
+        not isinstance(course_id, int) or isinstance(course_id, bool) for course_id in course_ids
+    ):
+        return jsonify(error="catalog_validation_failed", errors=["invalid_course_ids"]), 422
+    existing = Lesson.query.filter_by(vdocipher_video_id=d["video_id"]).first()
+    if existing:
+        try:
+            add_video_courses(existing, course_ids)
+        except CatalogValidationError as exc:
+            db.session.rollback()
+            return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+        db.session.commit()
+        return jsonify(video=_video_dict(existing), reused=True)
+    catalog, error = _catalog_video_fields(d)
+    if error:
+        return error
     try:
-        if course:
+        for course_id in course_ids:
+            course = db.session.get(Course, course_id)
+            if not course:
+                raise CatalogValidationError(["course_not_found"])
             vdocipher_admin.ensure_course_folder(course)
-        elif not db.session.get(Setting, "vdocipher_standalone_folder_id"):
+        if not course_ids and not db.session.get(Setting, "vdocipher_standalone_folder_id"):
             vdocipher_admin.ensure_platform_folders(False)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     except VdoCipherAdminError as e:
         db.session.rollback()
         return _vdocipher_error(e)
-    last = Lesson.query.filter_by(course_id=cid).order_by(Lesson.position.desc()).first() if cid else None
     l = Lesson(
-        course_id=cid,
+        course_id=None,
         module_id=None,
         title=d.get("title") or d["video_id"],
         title_en=d.get("title_en"),
-        position=(last.position + 1 if last else 0),
+        description=d.get("description", ""),
+        category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
+        access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
         vdocipher_video_id=d["video_id"],
         is_protected=True,
     )
     db.session.add(l)
+    db.session.flush()
+    try:
+        set_video_courses(l, course_ids)
+    except CatalogValidationError as exc:
+        db.session.rollback()
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     db.session.commit()
     return jsonify(video=_video_dict(l)), 201
 

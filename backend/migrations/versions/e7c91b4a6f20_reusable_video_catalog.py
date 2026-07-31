@@ -71,7 +71,6 @@ def upgrade():
     with op.batch_alter_table("lessons", schema=None) as batch_op:
         batch_op.add_column(sa.Column("description", sa.Text(), server_default="", nullable=False))
         batch_op.add_column(sa.Column("category_id", sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column("criteria", sa.JSON(), nullable=True))
         batch_op.add_column(sa.Column("price", sa.Numeric(10, 2), server_default=sa.text("0"), nullable=False))
         batch_op.add_column(sa.Column("currency", sa.String(length=3), server_default="EGP", nullable=False))
         batch_op.add_column(sa.Column("access_days", sa.Integer(), nullable=True))
@@ -179,7 +178,6 @@ def downgrade():
         batch_op.drop_column("access_days")
         batch_op.drop_column("currency")
         batch_op.drop_column("price")
-        batch_op.drop_column("criteria")
         batch_op.drop_column("category_id")
         batch_op.drop_column("description")
 

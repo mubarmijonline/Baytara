@@ -10,7 +10,7 @@ import pytest
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
-from app.models import Category, Course, Lesson, User
+from app.models import Category, Course, CourseModule, CourseVideo, Lesson, User
 from app.security import hash_password
 
 
@@ -107,6 +107,18 @@ def test_video_catalog_validates_canonical_fields_and_provider_id(admin_client, 
     })
     assert published.status_code == 200
 
+    invalid_status = admin_client.post("/api/v1/admin/videos", json={
+        "title": "Invalid status", "access_type": "free", "status": "encoding",
+    })
+    assert invalid_status.status_code == 422
+    assert invalid_status.get_json()["errors"] == ["invalid_status"]
+
+    untyped_criteria = admin_client.post("/api/v1/admin/videos", json={
+        "title": "Untyped criteria", "access_type": "free", "criteria": {"level": "advanced"},
+    })
+    assert untyped_criteria.status_code == 422
+    assert untyped_criteria.get_json()["errors"] == ["unsupported_criteria"]
+
 
 def test_remove_assignment_and_reject_order_membership_mismatch(admin_client, catalog_data):
     first, second = catalog_data["courses"]
@@ -154,6 +166,65 @@ def test_catalog_lists_paginated_filtered_videos_and_protects_dependencies(admin
     blocked = admin_client.delete(f"/api/v1/admin/videos/{matching['id']}")
     assert blocked.status_code == 409
     assert blocked.get_json()["error"] == "video_in_use"
+
+
+def test_vdocipher_import_creates_and_reuses_canonical_course_assignments(
+        admin_client, catalog_data, monkeypatch):
+    from app.api.v1 import admin as admin_api
+
+    first, second = catalog_data["courses"]
+    monkeypatch.setattr(admin_api.vdocipher_admin, "ensure_course_folder", lambda course: f"course-{course.id}")
+
+    created = admin_client.post("/api/v1/admin/vdocipher/import", json={
+        "video_id": "provider-canonical", "title": "Canonical import", "course_id": first,
+    })
+    assert created.status_code == 201, created.get_json()
+    created_video = created.get_json()["video"]
+    assert created_video["course_id"] is None
+    assert {course["id"] for course in created_video["courses"]} == {first}
+
+    reused = admin_client.post("/api/v1/admin/vdocipher/import", json={
+        "video_id": "provider-canonical", "course_ids": [second],
+    })
+    assert reused.status_code == 200, reused.get_json()
+    assert reused.get_json()["video"]["id"] == created_video["id"]
+    assert {course["id"] for course in reused.get_json()["video"]["courses"]} == {first, second}
+
+    malformed = admin_client.post("/api/v1/admin/vdocipher/import", json={
+        "video_id": "provider-malformed", "course_ids": first,
+    })
+    assert malformed.status_code == 422
+    assert malformed.get_json()["errors"] == ["invalid_course_ids"]
+
+
+def test_course_content_and_filters_union_canonical_direct_and_module_rows(admin_client, app, catalog_data):
+    first, _ = catalog_data["courses"]
+    with app.app_context():
+        direct = Lesson(title="Legacy direct", course_id=first, position=2)
+        module = CourseModule(course_id=first, title="Legacy module", position=1)
+        canonical = Lesson(title="Canonical", position=9)
+        standalone = Lesson(title="Standalone")
+        db.session.add_all([direct, module, canonical, standalone])
+        db.session.flush()
+        module_video = Lesson(title="Legacy module video", module_id=module.id, position=3)
+        db.session.add_all([module_video, CourseVideo(course_id=first, video_id=canonical.id, position=0)])
+        db.session.commit()
+        expected_ids = {canonical.id, direct.id, module_video.id}
+        canonical_id = canonical.id
+        direct_id = direct.id
+        module_video_id = module_video.id
+        standalone_id = standalone.id
+
+    content = admin_client.get(f"/api/v1/admin/courses/{first}").get_json()["course"]["videos"]
+    assert [video["id"] for video in content] == [canonical_id, direct_id, module_video_id]
+
+    assigned = admin_client.get(f"/api/v1/admin/videos?course_id={first}").get_json()["items"]
+    assert {video["id"] for video in assigned} == expected_ids
+
+    standalone = admin_client.get("/api/v1/admin/videos?standalone=1").get_json()["items"]
+    standalone_ids = {video["id"] for video in standalone}
+    assert standalone_id in standalone_ids
+    assert not expected_ids & standalone_ids
 
 
 def test_category_delete_protects_fixed_and_video_references(admin_client, app, catalog_data):

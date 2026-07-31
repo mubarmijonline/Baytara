@@ -82,7 +82,8 @@ class Course(db.Model):
         viewonly=True, order_by="Lesson.position, Lesson.id",
     )
     video_assignments = db.relationship(
-        "CourseVideo", back_populates="course", cascade="all, delete-orphan", order_by="CourseVideo.position",
+        "CourseVideo", back_populates="course", cascade="all, delete-orphan",
+        order_by="CourseVideo.position, CourseVideo.id",
     )
     ordered_videos = db.relationship(
         "Lesson", secondary="course_videos", back_populates="courses", order_by="CourseVideo.position",
@@ -127,11 +128,27 @@ class Course(db.Model):
             "instructor": {"id": self.instructor.id, "name": self.instructor.name} if self.instructor else None,
         }
         if with_content:
-            # Fresh writes use CourseVideo. The fallback keeps pre-migration
-            # direct-course rows readable until their association rows exist.
-            vids = self.videos or self.legacy_videos
-            d["videos"] = [l.to_dict(lang, user=user) for l in vids]
+            d["videos"] = [l.to_dict(lang, user=user) for l in self.content_videos()]
         return d
+
+    def content_videos(self):
+        """Return canonical and legacy course rows once in a stable display order."""
+        seen = set()
+        rows = []
+
+        def append(video):
+            if video.id not in seen:
+                seen.add(video.id)
+                rows.append(video)
+
+        for assignment in self.video_assignments:
+            append(assignment.video)
+        for video in self.legacy_videos:
+            append(video)
+        for module in self.modules:
+            for video in module.lessons:
+                append(video)
+        return rows
 
 
 class CourseModule(db.Model):
@@ -171,7 +188,6 @@ class Lesson(db.Model):
     title_en = db.Column(db.String(200))
     description = db.Column(db.Text, nullable=False, default="")
     category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), index=True)
-    criteria = db.Column(db.JSON, default=dict)
     price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     currency = db.Column(db.String(3), nullable=False, default="EGP")
     access_days = db.Column(db.Integer)
@@ -207,7 +223,6 @@ class Lesson(db.Model):
             "title": loc(self.title, self.title_en, lang),
             "title_en": self.title_en,
             "description": self.description,
-            "criteria": self.criteria or {},
             "position": self.position,
             "duration_minutes": self.duration_minutes,
             "price": float(self.price),

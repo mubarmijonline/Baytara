@@ -5,6 +5,7 @@ ACCESS_TYPES = ("free", "vet_free", "baytarian", "general")
 FREE_ACCESS = {"free", "vet_free"}
 PAID_ACCESS = {"baytarian", "general"}
 SUPPORTED_CURRENCIES = {"EGP"}
+CATALOG_STATUSES = ("draft", "published", "unpublished")
 PUBLISHED_STATUS = "published"
 
 
@@ -65,7 +66,10 @@ def validate_catalog_item(data, current=None):
     if access_days is not None and (isinstance(access_days, bool) or not isinstance(access_days, int) or access_days <= 0):
         errors.append("positive_access_days_required")
 
-    if normalized.get("status", "draft") == PUBLISHED_STATUS and not normalized.get("category_id"):
+    status = normalized.get("status", "draft")
+    if status not in CATALOG_STATUSES:
+        errors.append("invalid_status")
+    if status == PUBLISHED_STATUS and not normalized.get("category_id"):
         errors.append("category_required")
 
     if errors:
@@ -75,6 +79,7 @@ def validate_catalog_item(data, current=None):
     normalized["currency"] = currency
     normalized["price"] = price
     normalized["access_days"] = access_days
+    normalized["status"] = status
     return normalized
 
 

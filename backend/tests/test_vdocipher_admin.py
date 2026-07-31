@@ -6,7 +6,7 @@ import uuid
 
 from app import create_app
 from app.extensions import db
-from app.models import Category, Course, Lesson, Setting, User
+from app.models import Category, Course, CourseVideo, Lesson, Setting, User
 from app.security import hash_password
 
 
@@ -126,17 +126,21 @@ def demo():
         json={"video_id": "VIDX", "title": "عنوان من VdoCipher", "duration_minutes": 3, "course_id": course_id},
     )
     assert imported.status_code == 201, imported.get_json()
-    assert imported.get_json()["video"]["course_id"] == course_id
+    assert imported.get_json()["video"]["course_id"] is None
+    assert {course["id"] for course in imported.get_json()["video"]["courses"]} == {course_id}
 
-    dup = c.post(
+    reused = c.post(
         "/api/v1/admin/vdocipher/import",
         headers=h,
         json={"video_id": "VIDX", "title": "again", "course_id": course_id},
     )
-    assert dup.status_code == 409
+    assert reused.status_code == 200
+    assert reused.get_json()["reused"] is True
 
     with app.app_context():
-        assert Lesson.query.filter_by(vdocipher_video_id="VIDX", course_id=course_id).count() == 1
+        video = Lesson.query.filter_by(vdocipher_video_id="VIDX").one()
+        assert video.course_id is None
+        assert CourseVideo.query.filter_by(course_id=course_id, video_id=video.id).count() == 1
 
     print("vdocipher admin self-check OK")
 
