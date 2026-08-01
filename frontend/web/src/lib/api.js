@@ -137,13 +137,6 @@ export function mapCourse(c, i = 0) {
   };
 }
 
-// Site settings hook: returns the {key: value} map (empty object until loaded).
-// Pages read e.g. settings.hero?.title ?? mockDefault.
-export function useSettings() {
-  const { data } = useFetch(() => webapi.settings(), []);
-  return data?.settings || {};
-}
-
 // Fetch hook: returns { data, error, loading }. Deps default to [].
 export function useFetch(fn, deps = []) {
   const [data, setData] = useState(null);

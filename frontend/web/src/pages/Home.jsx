@@ -11,11 +11,12 @@ import {
   rawInstructors,
   testimonials,
 } from '../data/mock.js';
-import { webapi, mapCourse, useFetch, useSettings } from '../lib/api.js';
+import { webapi, mapCourse, useFetch } from '../lib/api.js';
+import { useSiteSettings } from '../lib/site-settings.jsx';
 
 function Hero() {
   const navigate = useNavigate();
-  const settings = useSettings();
+  const settings = useSiteSettings();
   const hero = settings.hero || {};
   return (
     <section style={{ position: 'relative', background: gradients.hero, color: '#fff', overflow: 'hidden' }}>
@@ -68,20 +69,13 @@ function Hero() {
             }}
           >
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.accent }} />
-            منصة التعلّم البيطري الأولى عربياً
+            {hero.eyebrow}
           </div>
           <h1 style={{ fontSize: 52, lineHeight: 1.15, fontWeight: 900, margin: '0 0 20px', letterSpacing: '-1px' }}>
-            {hero.title || (
-              <>
-                تعلّم من نخبة الأطباء
-                <br />
-                البيطريين في العالم العربي
-              </>
-            )}
+            {hero.title}
           </h1>
           <p style={{ fontSize: 19, lineHeight: 1.7, color: '#c9c9dc', margin: '0 0 32px', maxWidth: 520 }}>
-            {hero.subtitle ||
-              'آلاف الدورات في الطب البيطري والإنتاج الحيواني والتشخيص والجراحة، بمحتوى عربي أصيل من خبراء حقيقيين — تعلّم في أي وقت ومن أي مكان.'}
+            {hero.subtitle}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 34, flexWrap: 'wrap' }}>
             <button
@@ -98,7 +92,7 @@ function Hero() {
                 padding: '16px 34px',
               }}
             >
-              ابدأ التعلّم مجاناً
+              {hero.primary_cta}
             </button>
             <button
               style={{
@@ -124,7 +118,7 @@ function Hero() {
                   borderRight: '10px solid #fff',
                 }}
               />
-              شاهد كيف تعمل
+              {hero.secondary_cta}
             </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 26, fontSize: 14, color: '#a9a9c2', flexWrap: 'wrap' }}>
@@ -184,8 +178,8 @@ function Hero() {
                 background: 'linear-gradient(transparent, rgba(0,0,0,.55))',
               }}
             >
-              <div style={{ fontSize: 13, color: '#F5D877', fontWeight: 700 }}>دورة مميّزة</div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>جراحة الحيوانات الصغيرة</div>
+              <div style={{ fontSize: 13, color: '#F5D877', fontWeight: 700 }}>{hero.featured_label}</div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{hero.featured_title}</div>
             </div>
           </div>
           <div
@@ -217,7 +211,7 @@ function Hero() {
 }
 
 function StatsBand() {
-  const settings = useSettings();
+  const settings = useSiteSettings();
   const list = Array.isArray(settings.stats) && settings.stats.length ? settings.stats : [];
   return (
     <section style={{ background: '#fff', borderBottom: `1px solid ${colors.line}` }}>
@@ -437,7 +431,8 @@ function InstructorsSection() {
 }
 
 function Testimonials() {
-  const settings = useSettings();
+  const settings = useSiteSettings();
+  const home = settings.home || {};
   const list = Array.isArray(settings.testimonials) && settings.testimonials.length
     ? settings.testimonials.map((t, i) => ({
         quote: t.quote || t.text || '', name: t.name, role: t.role,
@@ -447,7 +442,7 @@ function Testimonials() {
   return (
     <Container style={{ padding: '60px 24px' }}>
       <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 34px', textAlign: 'center', letterSpacing: '-.5px' }}>
-        ماذا يقول متعلّمونا
+        {home.testimonials_title}
       </h2>
       <div
         className="grid-collapse-sm"

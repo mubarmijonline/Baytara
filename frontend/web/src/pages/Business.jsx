@@ -1,11 +1,11 @@
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients, categoryGradients } from '../theme/tokens.js';
-import { useSettings } from '../lib/api.js';
+import { useSiteSettings } from '../lib/site-settings.jsx';
 
 const FEATURE_BG = Object.values(categoryGradients);
 
 export default function Business() {
-  const settings = useSettings();
+  const settings = useSiteSettings();
   const biz = settings.business || {};
   const bizStats = Array.isArray(biz.stats) ? biz.stats : [];
   const bizFeatures = Array.isArray(biz.features) ? biz.features : [];
@@ -21,9 +21,9 @@ export default function Business() {
             <div style={{ fontSize: 13, fontWeight: 800, color: colors.accent, letterSpacing: 1, marginBottom: 14 }}>
               BAYTARA FOR BUSINESS
             </div>
-            <h1 style={{ fontSize: 44, fontWeight: 900, margin: '0 0 16px', lineHeight: 1.2 }}>استثمر في نمو فريقك الطبي</h1>
+            <h1 style={{ fontSize: 44, fontWeight: 900, margin: '0 0 16px', lineHeight: 1.2 }}>{biz.title}</h1>
             <p style={{ fontSize: 18, color: '#c9c9dc', lineHeight: 1.7, margin: '0 0 28px', maxWidth: 500 }}>
-              منصة تدريب متكاملة للعيادات والمزارع مع محتوى بيطري احترافي، لوحة تحكم للمدراء، وتقارير أداء لحظية.
+              {biz.body}
             </p>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
               <button

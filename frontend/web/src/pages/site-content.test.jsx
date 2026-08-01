@@ -1,0 +1,82 @@
+/* @vitest-environment jsdom */
+
+import '@testing-library/jest-dom/vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
+import App from '../App.jsx';
+import { AuthProvider } from '../lib/auth.jsx';
+import { I18nProvider } from '../lib/i18n.jsx';
+
+const settings = {
+  header: { welcome: 'Configured welcome', app_label: 'Configured app', help_label: 'Configured help' },
+  hero: { title: 'Configured hero', subtitle: 'Configured hero body', primary_cta: 'Configured primary' },
+  home: { testimonials_title: 'Configured testimonials' },
+  stats: [{ num: '321', label: 'Configured metric' }],
+  testimonials: [{ name: 'Configured learner', role: 'Configured role', quote: 'Configured quote' }],
+  about: { title: 'Configured about', body: 'Configured about body' },
+  business: { title: 'Configured business', body: 'Configured business body', stats: [], features: [], logos: [] },
+  contact: { title: 'Configured contact', subtitle: 'Configured contact body', email: 'configured@baytara.app' },
+  footer: { tagline: 'Configured footer', copyright: 'Configured copyright' },
+  socials: {},
+};
+
+function json(data) {
+  return Promise.resolve(new Response(JSON.stringify(data), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  }));
+}
+
+function renderRoute(path) {
+  window.history.replaceState({}, '', path);
+  return render(
+    <BrowserRouter>
+      <I18nProvider>
+        <AuthProvider><App /></AuthProvider>
+      </I18nProvider>
+    </BrowserRouter>,
+  );
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  window.scrollTo = vi.fn();
+  vi.stubGlobal('fetch', vi.fn((input) => {
+    const url = String(input);
+    if (url.includes('/settings')) return json({ settings });
+    if (url.includes('/courses')) return json({ courses: [] });
+    if (url.includes('/categories')) return json({ categories: [] });
+    if (url.includes('/instructors')) return json({ instructors: [] });
+    return json({});
+  }));
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+it('renders configured Header, Home, and Footer content from one settings request', async () => {
+  renderRoute('/');
+
+  expect(await screen.findByText('Configured welcome')).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Configured hero' })).toBeVisible();
+  expect(screen.getByText('Configured metric')).toBeVisible();
+  expect(screen.getByText('Configured testimonials')).toBeVisible();
+  expect(screen.getByText('Configured footer')).toBeVisible();
+  expect(screen.getByText('Configured copyright')).toBeVisible();
+  expect(fetch.mock.calls.filter(([url]) => String(url).includes('/settings'))).toHaveLength(1);
+});
+
+it.each([
+  ['/about', 'Configured about', 'Configured about body'],
+  ['/business', 'Configured business', 'Configured business body'],
+  ['/contact', 'Configured contact', 'Configured contact body'],
+])('renders configured content at %s', async (path, title, body) => {
+  renderRoute(path);
+
+  expect(await screen.findByRole('heading', { name: title })).toBeVisible();
+  expect(screen.getByText(body)).toBeVisible();
+});

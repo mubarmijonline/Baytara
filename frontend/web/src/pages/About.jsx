@@ -2,7 +2,7 @@ import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
 import { stats } from '../data/mock.js';
-import { useSettings } from '../lib/api.js';
+import { useSiteSettings } from '../lib/site-settings.jsx';
 
 const values = [
   { icon: '🎯', title: 'رسالتنا', desc: 'إتاحة المعرفة البيطرية الاحترافية لكل طبيب وطالب ومربّي حيوان في العالم العربي بلغته الأم.' },
@@ -11,7 +11,7 @@ const values = [
 ];
 
 export default function About() {
-  const settings = useSettings();
+  const settings = useSiteSettings();
   const about = settings.about || {};
   return (
     <div>

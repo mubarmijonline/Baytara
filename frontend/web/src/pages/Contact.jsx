@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
-import { webapi, useSettings } from '../lib/api.js';
+import { webapi } from '../lib/api.js';
+import { useSiteSettings } from '../lib/site-settings.jsx';
 import { toast } from '../lib/toast.jsx';
 
 const inputStyle = {
@@ -16,7 +17,7 @@ const inputStyle = {
 };
 
 export default function Contact() {
-  const settings = useSettings();
+  const settings = useSiteSettings();
   const c = settings.contact || {};
   const channels = [
     { icon: '✉', title: 'البريد الإلكتروني', value: c.email },
@@ -47,8 +48,8 @@ export default function Contact() {
     <div>
       <PageHero
         breadcrumb="الرئيسية › تواصل معنا"
-        title="تواصل معنا"
-        subtitle="لديك سؤال أو اقتراح؟ فريقنا جاهز لمساعدتك. راسلنا وسنعود إليك في أقرب وقت."
+        title={c.title}
+        subtitle={c.subtitle}
       />
       <Container style={{ padding: '40px 24px 60px' }}>
         <div

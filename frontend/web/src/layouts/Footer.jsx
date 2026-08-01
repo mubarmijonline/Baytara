@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { colors, layout } from '../theme/tokens.js';
 import { footerCols, socials } from '../data/mock.js';
-import { useSettings } from '../lib/api.js';
+import { useSiteSettings } from '../lib/site-settings.jsx';
 
 export default function Footer() {
   const navigate = useNavigate();
-  const settings = useSettings();
+  const settings = useSiteSettings();
   const tagline = settings.footer?.tagline;
   return (
     <footer style={{ background: colors.footer, color: '#b6b6cc' }}>
@@ -85,7 +85,7 @@ export default function Footer() {
             gap: 12,
           }}
         >
-          <span>© 2026 بيطرة Baytara. جميع الحقوق محفوظة.</span>
+          <span>{settings.footer?.copyright || '© 2026 بيطرة Baytara. جميع الحقوق محفوظة.'}</span>
           <div style={{ display: 'flex', gap: 20 }}>
             <span style={{ cursor: 'pointer' }}>سياسة الخصوصية</span>
             <span style={{ cursor: 'pointer' }}>الشروط والأحكام</span>

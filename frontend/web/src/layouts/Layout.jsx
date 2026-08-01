@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import Header from './Header.jsx';
 import Footer from './Footer.jsx';
+import { SiteSettingsProvider } from '../lib/site-settings.jsx';
 
 // Shared shell: header + routed page + footer. Scrolls to top on route change.
 export default function Layout() {
@@ -11,12 +12,14 @@ export default function Layout() {
   }, [pathname]);
 
   return (
-    <div style={{ background: '#fff', color: '#1E2A5E', minHeight: '100vh', overflowX: 'hidden' }}>
-      <Header />
-      <main className="am-fade" key={pathname}>
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
+    <SiteSettingsProvider>
+      <div style={{ background: '#fff', color: '#1E2A5E', minHeight: '100vh', overflowX: 'hidden' }}>
+        <Header />
+        <main className="am-fade" key={pathname}>
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
+    </SiteSettingsProvider>
   );
 }

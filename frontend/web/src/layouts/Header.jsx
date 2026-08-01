@@ -4,6 +4,7 @@ import { colors, gradients, layout } from '../theme/tokens.js';
 import { auth } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
+import { useSiteSettings } from '../lib/site-settings.jsx';
 
 function UserMenu() {
   const navigate = useNavigate();
@@ -121,6 +122,8 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
   const { t, lang, switchLang } = useI18n();
+  const settings = useSiteSettings();
+  const header = settings.header || {};
   const [menuOpen, setMenuOpen] = useState(false);
   const langToggle = (extra = {}) => (
     <button
@@ -159,12 +162,12 @@ export default function Header() {
             justifyContent: 'space-between',
           }}
         >
-          <span>مرحباً بك في منصة التعلّم البيطري الأولى عربياً</span>
+          <span>{header.welcome}</span>
           <div className="hide-sm" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ cursor: 'pointer' }}>تحميل التطبيق</span>
+            <span style={{ cursor: 'pointer' }}>{header.app_label}</span>
             <span style={{ opacity: 0.4 }}>|</span>
             <span style={{ cursor: 'pointer' }} onClick={() => navigate('/contact')}>
-              المساعدة
+              {header.help_label}
             </span>
             <span style={{ opacity: 0.4 }}>|</span>
             {langToggle()}
