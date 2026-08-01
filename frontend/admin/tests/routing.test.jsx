@@ -45,6 +45,16 @@ function json(data, status = 200) {
   }));
 }
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 function renderAdmin(path) {
   window.history.replaceState({}, '', path);
   return render(
@@ -87,6 +97,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   setToken('');
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -159,6 +170,58 @@ describe('Admin routing', () => {
 });
 
 describe('Admin stats invalidation', () => {
+  it('keeps the newest stats when an older request resolves last', async () => {
+    const older = deferred();
+    const newer = deferred();
+    const statsSpy = vi.spyOn(api, 'stats')
+      .mockImplementationOnce(() => older.promise)
+      .mockImplementationOnce(() => newer.promise);
+    renderAdmin('/admin/videos');
+
+    await waitFor(() => expect(statsSpy).toHaveBeenCalledTimes(1));
+    act(() => window.dispatchEvent(new Event('baytara:admin-stats-changed')));
+    await waitFor(() => expect(statsSpy).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      newer.resolve(makeStats(8, 9));
+      await newer.promise;
+    });
+    expect(within(screen.getByRole('link', { name: /المعاملات|payments/i })).getByText('8')).toBeVisible();
+    expect(within(screen.getByRole('link', { name: /توثيق الأطباء|veterinarian verification/i })).getByText('9')).toBeVisible();
+
+    await act(async () => {
+      older.resolve(makeStats(1, 2));
+      await older.promise;
+    });
+    expect(within(screen.getByRole('link', { name: /المعاملات|payments/i })).getByText('8')).toBeVisible();
+    expect(within(screen.getByRole('link', { name: /توثيق الأطباء|veterinarian verification/i })).getByText('9')).toBeVisible();
+  });
+
+  it('ignores an unauthorized error from an older stats request', async () => {
+    const older = deferred();
+    const newer = deferred();
+    const statsSpy = vi.spyOn(api, 'stats')
+      .mockImplementationOnce(() => older.promise)
+      .mockImplementationOnce(() => newer.promise);
+    renderAdmin('/admin/videos');
+
+    await waitFor(() => expect(statsSpy).toHaveBeenCalledTimes(1));
+    act(() => window.dispatchEvent(new Event('baytara:admin-stats-changed')));
+    await waitFor(() => expect(statsSpy).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      newer.resolve(makeStats(3, 4));
+      await newer.promise;
+    });
+
+    const unauthorized = Object.assign(new Error('unauthorized'), { status: 401 });
+    await act(async () => {
+      older.reject(unauthorized);
+      await older.promise.catch(() => {});
+    });
+    expect(screen.getByRole('heading', { name: /الفيديوهات|videos/i })).toBeVisible();
+    expect(localStorage.getItem('baytara_admin_token')).toBe('test-token');
+  });
+
   it('refreshes badges on the named event and removes the listener on unmount', async () => {
     currentStats = makeStats(2, 3);
     const view = renderAdmin('/admin/videos');

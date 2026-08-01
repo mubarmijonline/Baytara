@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   BadgeCheck,
   BookOpen,
@@ -40,16 +40,18 @@ export default function Shell({ onLogout }) {
   const [baytPending, setBaytPending] = useState(0);
   const { language, setLanguage, t } = useAdminLanguage();
   const { pathname } = useLocation();
+  const statsRequestSequence = useRef(0);
 
   useEffect(() => {
     let active = true;
     function refreshStats() {
+      const requestSequence = ++statsRequestSequence.current;
       api.stats().then((stats) => {
-        if (!active) return;
+        if (!active || requestSequence !== statsRequestSequence.current) return;
         setPending(stats.payments.pending);
         setBaytPending(stats.baytarian?.pending || 0);
       }).catch((error) => {
-        if (active && error.status === 401) onLogout();
+        if (active && requestSequence === statsRequestSequence.current && error.status === 401) onLogout();
       });
     }
 
@@ -57,6 +59,7 @@ export default function Shell({ onLogout }) {
     window.addEventListener(ADMIN_STATS_CHANGED_EVENT, refreshStats);
     return () => {
       active = false;
+      statsRequestSequence.current += 1;
       window.removeEventListener(ADMIN_STATS_CHANGED_EVENT, refreshStats);
     };
   }, [pathname, onLogout]);
