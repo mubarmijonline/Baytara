@@ -94,6 +94,22 @@ SITE_SETTING_DEFAULTS = {
     },
 }
 
+VALIDATION_SCHEMAS = deepcopy(SITE_SETTING_DEFAULTS)
+VALIDATION_SCHEMAS["business"]["stats"] = [
+    {"num": "", "label": _text("", "")},
+]
+VALIDATION_SCHEMAS["business"]["features"] = [
+    {
+        "icon": "",
+        "title": _text("", ""),
+        "description": _text("", ""),
+        "desc": _text("", ""),
+    },
+]
+VALIDATION_SCHEMAS["business"]["logos"] = [
+    {"name": "", "url": ""},
+]
+
 LOCALIZED_KEYS = frozenset(("ar", "en"))
 
 
@@ -142,14 +158,29 @@ def localize(value, language):
 
 def public_settings(rows, language):
     """Merge defaults, remove credentials, and localize the public response."""
-    visible = {key: value for key, value in rows.items() if not key.startswith("secret_")}
+    visible = _without_secrets(rows)
     return localize(_merged_settings(visible), language if language in LOCALIZED_KEYS else "ar")
+
+
+def _without_secrets(value):
+    if isinstance(value, dict):
+        return {
+            key: _without_secrets(item)
+            for key, item in value.items()
+            if not key.startswith("secret_")
+        }
+    if isinstance(value, list):
+        return [_without_secrets(item) for item in value]
+    return deepcopy(value)
 
 
 def _validate_localized(value, path, errors):
     if isinstance(value, str):
         return
     if not isinstance(value, dict):
+        errors.append(f"invalid_{path}")
+        return
+    if not value or not set(value).issubset(LOCALIZED_KEYS):
         errors.append(f"invalid_{path}")
         return
     for language in LOCALIZED_KEYS:
@@ -161,13 +192,18 @@ def _validate_against(value, schema, path, errors):
     if isinstance(schema, dict) and set(schema) == LOCALIZED_KEYS:
         _validate_localized(value, path, errors)
         return
-    if isinstance(value, dict):
+    if isinstance(schema, dict):
+        if not isinstance(value, dict):
+            errors.append(f"invalid_{path}")
+            return
         for key, item in value.items():
-            if key in schema and isinstance(schema, dict):
+            if key not in schema:
+                errors.append(f"invalid_{path}_{key}")
+            else:
                 _validate_against(item, schema[key], f"{path}_{key}", errors)
         return
-    if isinstance(value, list):
-        if not isinstance(schema, list):
+    if isinstance(schema, list):
+        if not isinstance(value, list):
             errors.append(f"invalid_{path}")
             return
         item_schema = schema[0] if schema else None
@@ -175,10 +211,21 @@ def _validate_against(value, schema, path, errors):
             for index, item in enumerate(value):
                 _validate_against(item, item_schema, f"{path}_{index}", errors)
         return
-    if isinstance(schema, dict) or isinstance(schema, list):
+    if value is not None and not isinstance(value, type(schema)):
         errors.append(f"invalid_{path}")
-    elif value is not None and not isinstance(value, type(schema)):
-        errors.append(f"invalid_{path}")
+
+
+def _validate_nested_secrets(value, path, errors):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            child_path = f"{path}_{key}"
+            if key.startswith("secret_"):
+                errors.append(f"invalid_{child_path}")
+            else:
+                _validate_nested_secrets(item, child_path, errors)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            _validate_nested_secrets(item, f"{path}_{index}", errors)
 
 
 def validate_settings_payload(payload):
@@ -192,6 +239,7 @@ def validate_settings_payload(payload):
             continue
         if key.startswith("secret_") and value is not None and not isinstance(value, str):
             errors.append(f"invalid_{key}")
-        elif key in SITE_SETTING_DEFAULTS:
-            _validate_against(value, SITE_SETTING_DEFAULTS[key], key, errors)
-    return deepcopy(payload), errors
+        elif key in VALIDATION_SCHEMAS:
+            _validate_against(value, VALIDATION_SCHEMAS[key], key, errors)
+        _validate_nested_secrets(value, key, errors)
+    return deepcopy(payload), list(dict.fromkeys(errors))

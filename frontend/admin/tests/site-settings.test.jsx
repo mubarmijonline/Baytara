@@ -142,3 +142,12 @@ it('keeps unsaved draft content after a save failure', async () => {
   expect(await screen.findByText('Unable to save settings.')).toBeVisible();
   expect(screen.getByLabelText('English title')).toHaveValue('Unsaved title');
 });
+
+it('shows an Arabic loading state before settings arrive', () => {
+  localStorage.setItem('baytara_admin_language', 'ar');
+  fetch.mockImplementation(() => new Promise(() => {}));
+
+  renderSettings();
+
+  expect(screen.getByText('جارٍ التحميل…')).toBeVisible();
+});

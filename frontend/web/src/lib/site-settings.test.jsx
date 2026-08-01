@@ -79,3 +79,18 @@ it('uses the preview query language without changing the saved preference', () =
   expect(getLang()).toBe('en');
   expect(localStorage.getItem('baytara_lang')).toBe('ar');
 });
+
+it('does not let a delayed saved-settings response overwrite a preview draft', async () => {
+  let resolveRequest;
+  vi.spyOn(webapi, 'settings').mockReturnValue(new Promise((resolve) => { resolveRequest = resolve; }));
+  render(<SiteSettingsProvider><Probe name="Value" /></SiteSettingsProvider>);
+
+  act(() => window.dispatchEvent(new MessageEvent('message', {
+    origin: window.location.origin,
+    data: { type: 'baytara:site-settings-preview', settings: { hero: { title: 'Draft title' } } },
+  })));
+  expect(await screen.findByText('Value: Draft title')).toBeVisible();
+
+  await act(async () => resolveRequest({ settings: { hero: { title: 'Saved title' } } }));
+  expect(screen.getByText('Value: Draft title')).toBeVisible();
+});

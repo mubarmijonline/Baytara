@@ -64,6 +64,20 @@ def test_public_settings_merge_defaults_localize_and_hide_secrets(client, app):
     assert "secret_vdocipher" not in settings
 
 
+def test_public_settings_hide_nested_secrets_recursively(client, app):
+    with app.app_context():
+        db.session.add(Setting(key="hero", value={
+            "title": {"ar": "عنوان", "en": "Title"},
+            "nested": {"secret_token": "never-public", "visible": "kept"},
+        }))
+        db.session.commit()
+
+    settings = client.get("/api/v1/settings?lang=en").get_json()["settings"]
+
+    assert settings["hero"]["nested"] == {"visible": "kept"}
+    assert "never-public" not in str(settings)
+
+
 def test_public_settings_support_legacy_strings_and_unrelated_values(client, app):
     with app.app_context():
         db.session.add_all([
@@ -93,6 +107,19 @@ def test_admin_settings_reject_malformed_localized_values(admin_client):
 
     assert response.status_code == 422
     assert "invalid_hero_title_ar" in response.get_json()["errors"]
+
+
+@pytest.mark.parametrize("payload,error", [
+    ({"hero": {"title": {"bogus": "accepted"}}}, "invalid_hero_title"),
+    ({"contact": {"email": {"bogus": "accepted"}}}, "invalid_contact_email"),
+    ({"hero": {"secret_nested": "no"}}, "invalid_hero_secret_nested"),
+    ({"business": {"features": [{"title": {"ar": [], "en": "Feature"}}]}}, "invalid_business_features_0_title_ar"),
+])
+def test_admin_settings_reject_shape_changes_and_nested_secrets(admin_client, payload, error):
+    response = admin_client.put("/api/v1/admin/settings", json=payload)
+
+    assert response.status_code == 422
+    assert error in response.get_json()["errors"]
 
 
 def test_admin_settings_preserve_blank_secrets(admin_client, app):

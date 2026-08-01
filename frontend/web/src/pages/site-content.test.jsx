@@ -14,16 +14,16 @@ const settings = {
   home: { testimonials_title: 'Configured testimonials' },
   stats: [{ num: '321', label: 'Configured metric' }],
   testimonials: [{ name: 'Configured learner', role: 'Configured role', quote: 'Configured quote' }],
-  about: { title: 'Configured about', body: 'Configured about body' },
+  about: { title: 'Configured about', body: 'Configured about body', values: [{ title: 'Configured value', description: 'Configured value body' }] },
   business: {
     eyebrow: 'Configured business eyebrow', title: 'Configured business', body: 'Configured business body',
     primary_cta: 'Configured demo action', secondary_cta: 'Configured talk action',
     stats: [], features: [{ icon: '+', title: 'Configured feature', description: 'Configured feature body' }],
-    logos: [],
+    logos: [{ name: 'Configured customer', url: '/configured-logo.png' }],
   },
   contact: { title: 'Configured contact', subtitle: 'Configured contact body', email: 'configured@baytara.app' },
   footer: { tagline: 'Configured footer', copyright: 'Configured copyright' },
-  socials: {},
+  socials: { youtube: 'https://youtube.example/baytara' },
 };
 
 function json(data) {
@@ -94,4 +94,14 @@ it('renders every editable Business hero and feature field', async () => {
   expect(screen.getByRole('button', { name: 'Configured talk action' })).toBeVisible();
   expect(screen.getByText('Configured feature')).toBeVisible();
   expect(screen.getByText('Configured feature body')).toBeVisible();
+  expect(screen.getByRole('img', { name: 'Configured customer' })).toHaveAttribute('src', '/configured-logo.png');
+});
+
+it('renders configured About values and Footer social links', async () => {
+  const view = renderRoute('/about');
+
+  expect(await screen.findByText('Configured value')).toBeVisible();
+  expect(screen.getByText('Configured value body')).toBeVisible();
+  expect(screen.getByRole('link', { name: 'youtube' })).toHaveAttribute('href', 'https://youtube.example/baytara');
+  view.unmount();
 });

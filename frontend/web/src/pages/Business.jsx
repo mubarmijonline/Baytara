@@ -96,7 +96,9 @@ export default function Business() {
             {biz.trust && <div style={{ fontSize: 14, fontWeight: 700, color: colors.muted2, marginBottom: 24 }}>{biz.trust}</div>}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 40, flexWrap: 'wrap', opacity: 0.5 }}>
               {logos.map((l, i) => (
-                <div key={i} style={{ fontSize: 22, fontWeight: 900, color: colors.muted }}>{typeof l === 'string' ? l : (l.name || l.url)}</div>
+                typeof l === 'object' && l.url
+                  ? <img key={i} src={l.url} alt={l.name || ''} style={{ maxWidth: 150, maxHeight: 58, objectFit: 'contain' }} />
+                  : <div key={i} style={{ fontSize: 22, fontWeight: 900, color: colors.muted }}>{typeof l === 'string' ? l : l.name}</div>
               ))}
             </div>
           </Container>

@@ -86,7 +86,7 @@ export default function Settings() {
     }
   }
 
-  if (!draft) return <div className="empty">{error || 'Loading...'}</div>;
+  if (!draft) return <div className="empty">{error || copy.loading}</div>;
   const group = (name) => draft[name] || {};
   const field = (groupName, key, fieldLabel, multiline = false) => (
     <LocalizedField label={fieldLabel} value={group(groupName)[key]} multiline={multiline}

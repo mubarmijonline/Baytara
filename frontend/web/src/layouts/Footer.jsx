@@ -1,12 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { colors, layout } from '../theme/tokens.js';
-import { footerCols, socials } from '../data/mock.js';
+import { footerCols, socials as defaultSocials } from '../data/mock.js';
 import { useSiteSettings } from '../lib/site-settings.jsx';
 
 export default function Footer() {
   const navigate = useNavigate();
   const settings = useSiteSettings();
   const tagline = settings.footer?.tagline;
+  const configuredSocials = Object.entries(settings.socials || {})
+    .filter(([, url]) => typeof url === 'string' && /^https?:\/\//i.test(url));
   return (
     <footer style={{ background: colors.footer, color: '#b6b6cc' }}>
       <div style={{ maxWidth: layout.maxWidth, margin: '0 auto', padding: '56px 24px 30px' }}>
@@ -39,9 +41,13 @@ export default function Footer() {
                 'منصة التعلّم البيطري الأولى في العالم العربي — نُتيح المعرفة للأطباء والطلاب ومربّي الحيوان بمحتوى عربي أصيل من نخبة الخبراء.'}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
-              {socials.map((s) => (
-                <div
-                  key={s}
+              {(configuredSocials.length ? configuredSocials : defaultSocials.map((name) => [name, ''])).map(([name, url]) => (
+                <a
+                  key={name}
+                  aria-label={name}
+                  href={url || undefined}
+                  target={url ? '_blank' : undefined}
+                  rel={url ? 'noreferrer' : undefined}
                   style={{
                     width: 38,
                     height: 38,
@@ -54,10 +60,11 @@ export default function Footer() {
                     fontWeight: 800,
                     color: '#fff',
                     cursor: 'pointer',
+                    textDecoration: 'none',
                   }}
                 >
-                  {s}
-                </div>
+                  {name.slice(0, 2).toUpperCase()}
+                </a>
               ))}
             </div>
           </div>

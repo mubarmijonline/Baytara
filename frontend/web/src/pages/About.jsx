@@ -4,7 +4,7 @@ import { colors } from '../theme/tokens.js';
 import { stats } from '../data/mock.js';
 import { useSiteSettings } from '../lib/site-settings.jsx';
 
-const values = [
+const defaultValues = [
   { icon: '🎯', title: 'رسالتنا', desc: 'إتاحة المعرفة البيطرية الاحترافية لكل طبيب وطالب ومربّي حيوان في العالم العربي بلغته الأم.' },
   { icon: '👁', title: 'رؤيتنا', desc: 'أن نكون المرجع الأول للتعلّم والاستشارة البيطرية عربياً، ونرفع مستوى الرعاية الصحية الحيوانية في المنطقة.' },
   { icon: '🤝', title: 'قيمنا', desc: 'المصداقية العلمية، جودة المحتوى، سهولة الوصول، ودعم مجتمع بيطري متكامل.' },
@@ -13,6 +13,8 @@ const values = [
 export default function About() {
   const settings = useSiteSettings();
   const about = settings.about || {};
+  const values = Array.isArray(about.values) && about.values.length ? about.values : defaultValues;
+  const valueIcons = ['🎯', '👁', '🤝'];
   return (
     <div>
       <PageHero
@@ -25,11 +27,11 @@ export default function About() {
           className="grid-collapse-sm"
           style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22, marginBottom: 50 }}
         >
-          {values.map((v) => (
+          {values.map((v, index) => (
             <div key={v.title} style={{ border: `1px solid ${colors.line}`, borderRadius: 18, padding: 28 }}>
-              <div style={{ fontSize: 30, marginBottom: 14 }}>{v.icon}</div>
+              <div style={{ fontSize: 30, marginBottom: 14 }}>{v.icon || valueIcons[index % valueIcons.length]}</div>
               <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{v.title}</div>
-              <p style={{ fontSize: 15, color: colors.muted, lineHeight: 1.7, margin: 0 }}>{v.desc}</p>
+              <p style={{ fontSize: 15, color: colors.muted, lineHeight: 1.7, margin: 0 }}>{v.description || v.desc}</p>
             </div>
           ))}
         </div>

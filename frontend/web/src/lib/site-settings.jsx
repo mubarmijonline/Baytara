@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { webapi } from './api.js';
 
 export const PREVIEW_MESSAGE_TYPE = 'baytara:site-settings-preview';
@@ -51,13 +51,14 @@ function merge(base, value) {
 
 export function SiteSettingsProvider({ children }) {
   const [settings, setSettings] = useState(FALLBACK_SETTINGS);
+  const previewReceived = useRef(false);
 
   useEffect(() => {
     let active = true;
     webapi.settings()
       .then((response) => {
         const saved = response?.settings;
-        if (active && isPlainObject(saved) && !containsSecret(saved)) {
+        if (active && !previewReceived.current && isPlainObject(saved) && !containsSecret(saved)) {
           setSettings(merge(FALLBACK_SETTINGS, saved));
         }
       })
@@ -71,6 +72,7 @@ export function SiteSettingsProvider({ children }) {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type !== PREVIEW_MESSAGE_TYPE) return;
       if (!isPlainObject(event.data.settings) || containsSecret(event.data.settings)) return;
+      previewReceived.current = true;
       setSettings(merge(FALLBACK_SETTINGS, event.data.settings));
     };
     window.addEventListener('message', onMessage);
