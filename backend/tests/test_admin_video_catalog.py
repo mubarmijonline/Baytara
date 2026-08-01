@@ -105,6 +105,22 @@ def test_assign_same_video_to_two_courses_and_reorder(admin_client, catalog_data
     assert {course["id"] for course in payload["courses"]} == {first, second}
 
 
+def test_admin_course_search_matches_arabic_and_english_titles(admin_client, app, catalog_data):
+    first, second = catalog_data["courses"]
+    with app.app_context():
+        db.session.get(Course, first).title = "تشريح الخيول"
+        db.session.get(Course, first).title_en = "Equine anatomy"
+        db.session.get(Course, second).title = "رعاية الدواجن"
+        db.session.get(Course, second).title_en = "Poultry care"
+        db.session.commit()
+
+    english = admin_client.get("/api/v1/admin/courses?q=Equine").get_json()["courses"]
+    arabic = admin_client.get("/api/v1/admin/courses?q=الدواجن").get_json()["courses"]
+
+    assert [course["id"] for course in english] == [first]
+    assert [course["id"] for course in arabic] == [second]
+
+
 def test_video_catalog_validates_canonical_fields_and_provider_id(admin_client, catalog_data):
     category_id = catalog_data["category_id"]
     create_video(admin_client, vdocipher_video_id="provider-duplicate")

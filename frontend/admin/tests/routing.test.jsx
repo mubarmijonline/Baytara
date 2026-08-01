@@ -354,7 +354,7 @@ describe('Admin language', () => {
     renderAdmin('/admin/dashboard');
     expect(document.documentElement).toHaveAttribute('lang', 'en');
     expect(document.documentElement).toHaveAttribute('dir', 'ltr');
-    expect(screen.getByRole('button', { name: 'العربية' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Arabic' })).toBeVisible();
   });
 });
 

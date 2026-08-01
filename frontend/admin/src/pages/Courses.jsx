@@ -99,9 +99,10 @@ export function CourseEditor({ routeParams = {} }) {
       const nextInstructors = usersResult.users || [];
       setInstructors(nextInstructors);
       setCategories(orderedCategories(categoryResult.categories || []));
-      setForm(courseResult ? courseForm(courseResult.course) : {
-        ...emptyCourse, instructor_id: nextInstructors[0]?.id || '',
-      });
+      if (courseResult) setForm(courseForm(courseResult.course));
+      else setForm((current) => ({
+        ...current, instructor_id: current.instructor_id || nextInstructors[0]?.id || '',
+      }));
     }).catch(() => active && setError(c.loadError)).finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [courseId, editing]);

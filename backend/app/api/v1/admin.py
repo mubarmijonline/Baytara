@@ -215,7 +215,8 @@ def courses_list():
         q = q.filter_by(instructor_id=iid)
     search = request.args.get("q")
     if search:
-        q = q.filter(Course.title.ilike(f"%{search}%"))
+        like = f"%{search}%"
+        q = q.filter(db.or_(Course.title.ilike(like), Course.title_en.ilike(like)))
     page = max(request.args.get("page", 1, type=int), 1)
     per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
     pg = db.paginate(q.order_by(Course.created_at.desc()), page=page, per_page=per_page, error_out=False)

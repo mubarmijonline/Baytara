@@ -40,6 +40,7 @@ export default function Shell({ onLogout }) {
   const { language, setLanguage, t } = useAdminLanguage();
   const { pathname } = useLocation();
   const statsRequestSequence = useRef(0);
+  const targetLanguage = language === 'ar' ? 'English' : 'Arabic';
 
   useEffect(() => {
     let active = true;
@@ -80,9 +81,10 @@ export default function Shell({ onLogout }) {
           type="button"
           className="navitem nav-action"
           title={t('common.changeLanguage')}
+          aria-label={targetLanguage}
           onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
         >
-          <span className="navitem-label"><Languages size={18} aria-hidden="true" /><span>{language === 'ar' ? 'English' : 'العربية'}</span></span>
+          <span className="navitem-label"><Languages size={18} aria-hidden="true" /><span>{targetLanguage}</span></span>
         </button>
         <button type="button" className="navitem nav-action" onClick={onLogout}>
           <span className="navitem-label"><LogOut size={18} aria-hidden="true" /><span>{t('common.logout')}</span></span>

@@ -45,6 +45,31 @@ const emptyBundle = {
   currency: 'EGP', access_days: '', status: 'draft', course_ids: [], video_ids: [],
 };
 
+const MAX_OPTION_PAGES = 25;
+
+function mergeById(...groups) {
+  const merged = new Map();
+  groups.flat().forEach((item) => { if (item?.id != null) merged.set(item.id, item); });
+  return [...merged.values()];
+}
+
+async function loadAllPages(loadPage, itemKey) {
+  const first = await loadPage(1);
+  const pageCount = Math.min(Math.max(Number(first.pages) || 1, 1), MAX_OPTION_PAGES);
+  const remaining = await Promise.all(Array.from(
+    { length: pageCount - 1 }, (_, index) => loadPage(index + 2),
+  ));
+  return mergeById(first[itemKey] || [], ...remaining.map((result) => result[itemKey] || []));
+}
+
+function matchesEitherLanguage(item, field, query) {
+  const search = query.trim().toLocaleLowerCase();
+  if (!search) return true;
+  return [item?.[field], item?.[`${field}_en`]].some((value) => (
+    String(value || '').toLocaleLowerCase().includes(search)
+  ));
+}
+
 function bundleForm(bundle) {
   if (!bundle) return emptyBundle;
   return {
@@ -101,16 +126,19 @@ export function BundleEditor({ routeParams = {} }) {
   useEffect(() => {
     let active = true;
     Promise.all([
-      api.courses({ per_page: 100 }), api.catalogVideos({ per_page: 100 }),
+      loadAllPages((page) => api.courses({ page, per_page: 100 }), 'courses'),
+      loadAllPages((page) => api.catalogVideos({ page, per_page: 100 }), 'items'),
       editing ? api.bundleGet(bundleId) : Promise.resolve(null),
-    ]).then(([courseResult, videoResult, bundleResult]) => {
+    ]).then(([courseOptions, videoOptions, bundleResult]) => {
       if (!active) return;
-      setCourses(courseResult.courses || []);
-      setVideos(videoResult.items || videoResult.videos || []);
-      setForm(bundleResult ? bundleForm(bundleResult.bundle) : emptyBundle);
+      setCourses(mergeById(courseOptions, bundleResult?.bundle?.courses || []));
+      setVideos(mergeById(videoOptions, bundleResult?.bundle?.videos || []));
+      if (bundleResult) setForm(bundleForm(bundleResult.bundle));
     }).catch(() => active && setError(c.loadError)).finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [bundleId, editing, c.loadError]);
+    // Language changes update labels in place and must not replace editor state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundleId, editing]);
 
   const selectedCourses = useMemo(() => courses.filter((course) => form.course_ids.includes(course.id)), [courses, form.course_ids]);
   const selectedVideos = useMemo(() => videos.filter((video) => form.video_ids.includes(video.id)), [videos, form.video_ids]);
@@ -119,8 +147,8 @@ export function BundleEditor({ routeParams = {} }) {
     const covering = (video.courses || []).find((course) => form.course_ids.includes(course.id));
     return covering ? [{ video, course: selectedCourses.find((course) => course.id === covering.id) || covering }] : [];
   }), [selectedVideos, selectedCourses, form.course_ids]);
-  const filteredCourses = courses.filter((course) => localizedCatalogValue(course, 'title', language).toLowerCase().includes(courseQuery.toLowerCase()));
-  const filteredVideos = videos.filter((video) => localizedCatalogValue(video, 'title', language).toLowerCase().includes(videoQuery.toLowerCase()));
+  const filteredCourses = courses.filter((course) => matchesEitherLanguage(course, 'title', courseQuery));
+  const filteredVideos = videos.filter((video) => matchesEitherLanguage(video, 'title', videoQuery));
 
   async function save(event) {
     event.preventDefault();

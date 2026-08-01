@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
@@ -25,6 +25,16 @@ function response(data, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json' },
   }));
+}
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
 }
 
 function renderAdmin(path) {
@@ -95,7 +105,7 @@ it('creates a localized course with category and all catalog criteria on its ded
 
 it('assigns, uploads, removes, drags, and orders reusable videos only inside the routed course', async () => {
   const videos = [
-    { id: 1, title: 'First exam', courses: [{ id: 5 }], access_type: 'free', assignment_count: 1 },
+    { id: 1, title: 'First exam', courses: [{ id: 5 }], access_type: 'free', assignment_count: 1, duration_minutes: 2, poster: 'https://media.test/first.jpg' },
     { id: 2, title: 'Second exam', courses: [{ id: 5 }, { id: 9 }], access_type: 'free', assignment_count: 2 },
   ];
   const reusable = { id: 3, title: 'Reusable exam', courses: [{ id: 9 }], access_type: 'free', assignment_count: 1 };
@@ -114,7 +124,11 @@ it('assigns, uploads, removes, drags, and orders reusable videos only inside the
 
   expect(await screen.findByRole('heading', { name: 'Course content' })).toBeVisible();
   expect(screen.getByRole('link', { name: 'Upload and assign' })).toHaveAttribute('href', '/admin/videos/new?course=5');
-  expect(screen.getByText('First exam').closest('[draggable="true"]')).toBeTruthy();
+  const firstRow = screen.getByText('First exam').closest('[draggable="true"]');
+  expect(firstRow).toBeTruthy();
+  expect(firstRow.querySelector('img')).toHaveAttribute('src', 'https://media.test/first.jpg');
+  expect(within(firstRow).getByText(/2 min/)).toBeVisible();
+  expect(within(firstRow).getByText('Free for everyone')).toHaveClass('chip');
 
   await user.click(screen.getByRole('button', { name: 'Move First exam down' }));
   await waitFor(() => {
@@ -135,6 +149,148 @@ it('assigns, uploads, removes, drags, and orders reusable videos only inside the
   await waitFor(() => expect(fetch.mock.calls.some(([input, options]) => (
     String(input).endsWith('/admin/videos/1/courses/5') && options.method === 'DELETE'
   ))).toBe(true));
+});
+
+it('guards rapid order changes and reloads the authoritative order after a rejected write', async () => {
+  const initial = [
+    { id: 1, title: 'First exam', access_type: 'free' },
+    { id: 2, title: 'Second exam', access_type: 'free' },
+  ];
+  const orderWrite = deferred();
+  let courseLoads = 0;
+  const defaultFetch = fetch.getMockImplementation();
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.endsWith('/admin/courses/5')) {
+      courseLoads += 1;
+      return response({ course: { id: 5, title: 'Equine course', videos: initial } });
+    }
+    if (url.endsWith('/admin/courses/5/videos/order') && options.method === 'PUT') return orderWrite.promise;
+    if (url.includes('/admin/videos')) return response({ items: [], total: 0, page: 1 });
+    return defaultFetch(input, options);
+  });
+  renderAdmin('/admin/courses/5/content');
+
+  const moveDown = await screen.findByRole('button', { name: 'Move First exam down' });
+  fireEvent.click(moveDown);
+  fireEvent.click(moveDown);
+
+  expect(moveDown).toBeDisabled();
+  expect(fetch.mock.calls.filter(([input]) => String(input).endsWith('/admin/courses/5/videos/order'))).toHaveLength(1);
+  orderWrite.resolve(await response({ error: 'catalog_validation_failed', errors: ['video_order_membership_mismatch'] }, 409));
+
+  await waitFor(() => expect(courseLoads).toBe(2));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Move First exam down' })).toBeEnabled());
+  const rows = document.querySelectorAll('.ordered-video-row');
+  expect(within(rows[0]).getByText('First exam')).toBeVisible();
+  expect(screen.getByText('The course order changed in another session. Reload it and try again.')).toBeVisible();
+});
+
+it('preserves a new course typed while instructor and category options load', async () => {
+  const users = deferred();
+  const categories = deferred();
+  const defaultFetch = fetch.getMockImplementation();
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.endsWith('/admin/users?role=instructor')) return users.promise;
+    if (url.endsWith('/categories')) return categories.promise;
+    return defaultFetch(input, options);
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/courses/new');
+
+  await user.type(await screen.findByLabelText('Arabic title'), 'بيانات بطيئة');
+  users.resolve(await response({ users: [{ id: 8, name: 'Dr Sara' }] }));
+  categories.resolve(await response({ categories: fixedCategories }));
+
+  await waitFor(() => expect(screen.getByLabelText('Instructor')).toHaveValue('8'));
+  expect(screen.getByLabelText('Arabic title')).toHaveValue('بيانات بطيئة');
+});
+
+it('preserves a new bundle typed during slow loads and across a language change', async () => {
+  const courses = deferred();
+  const videos = deferred();
+  const defaultFetch = fetch.getMockImplementation();
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.includes('/admin/courses')) return courses.promise;
+    if (url.includes('/admin/videos')) return videos.promise;
+    return defaultFetch(input, options);
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/bundles/new');
+
+  await user.type(await screen.findByLabelText('Arabic title'), 'حزمة محفوظة');
+  courses.resolve(await response({ courses: [], page: 1, pages: 1 }));
+  videos.resolve(await response({ items: [], page: 1, pages: 1 }));
+  await waitFor(() => expect(screen.getByText('Total list price')).toBeVisible());
+  await user.click(screen.getByRole('button', { name: 'Arabic' }));
+
+  expect(screen.getByDisplayValue('حزمة محفوظة')).toBeVisible();
+});
+
+it('keeps selected videos across searches, submits all, and reloads after a partial assignment failure', async () => {
+  const first = { id: 3, title: 'First reusable', courses: [], access_type: 'free' };
+  const second = { id: 4, title: 'Second reusable', courses: [], access_type: 'free' };
+  let courseLoads = 0;
+  const defaultFetch = fetch.getMockImplementation();
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.endsWith('/admin/courses/5')) {
+      courseLoads += 1;
+      return response({ course: { id: 5, title: 'Equine course', videos: courseLoads > 1 ? [first] : [] } });
+    }
+    if (url.includes('/admin/videos?') && (!options.method || options.method === 'GET')) {
+      return response({ items: url.includes('q=Second') ? [second] : [first], total: 1, page: 1, pages: 1 });
+    }
+    if (url.endsWith('/admin/videos/3/courses')) return response({ video: first });
+    if (url.endsWith('/admin/videos/4/courses')) return response({ error: 'assignment_failed' }, 500);
+    return defaultFetch(input, options);
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/courses/5/content');
+
+  await user.click(await screen.findByRole('checkbox', { name: /First reusable/ }));
+  const search = screen.getByRole('searchbox', { name: 'Search reusable videos' });
+  await user.type(search, 'Second');
+  await user.click(await screen.findByRole('checkbox', { name: /Second reusable/ }));
+  await user.click(screen.getByRole('button', { name: 'Add selected videos' }));
+
+  await waitFor(() => expect(fetch.mock.calls.some(([input]) => String(input).endsWith('/admin/videos/3/courses'))).toBe(true));
+  expect(fetch.mock.calls.some(([input]) => String(input).endsWith('/admin/videos/4/courses'))).toBe(true);
+  await waitFor(() => expect(courseLoads).toBe(2));
+  expect(await screen.findByText('First reusable')).toBeVisible();
+  expect(screen.getByText('Unable to assign the selected videos.')).toBeVisible();
+});
+
+it('loads bounded second pages for bundle selectors and submits their English records', async () => {
+  const secondPageCourse = {
+    id: 101, title: 'دورة الصفحة الثانية', title_en: 'Second-page English course',
+    price: 200, currency: 'EGP', access_type: 'general',
+  };
+  const defaultFetch = fetch.getMockImplementation();
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.includes('/admin/courses')) {
+      return response(url.includes('page=2')
+        ? { courses: [secondPageCourse], page: 2, pages: 2 }
+        : { courses: [], page: 1, pages: 2 });
+    }
+    if (url.includes('/admin/videos')) return response({ items: [], page: 1, pages: 1 });
+    if (url.endsWith('/admin/bundles') && options.method === 'POST') return response({ bundle: { id: 1 } }, 201);
+    return defaultFetch(input, options);
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/bundles/new');
+
+  await user.type(await screen.findByLabelText('Arabic title'), 'حزمة كبيرة');
+  await user.click(await screen.findByRole('checkbox', { name: /Second-page English course/ }));
+  await user.clear(screen.getByLabelText('Package price'));
+  await user.type(screen.getByLabelText('Package price'), '100');
+  await user.click(screen.getByRole('button', { name: 'Save bundle' }));
+
+  const call = fetch.mock.calls.find(([input, options]) => String(input).endsWith('/admin/bundles') && options.method === 'POST');
+  expect(requestBody(call)).toMatchObject({ course_ids: [101] });
 });
 
 it('builds a mixed package, totals list prices, warns about duplicate coverage, and shows compatibility errors', async () => {
