@@ -105,6 +105,26 @@ def test_assign_same_video_to_two_courses_and_reorder(admin_client, catalog_data
     assert {course["id"] for course in payload["courses"]} == {first, second}
 
 
+def test_add_course_assignment_preserves_existing_memberships(admin_client, catalog_data):
+    video = create_video(admin_client)
+    first, second = catalog_data["courses"]
+    assert admin_client.post(
+        f"/api/v1/admin/videos/{video['id']}/courses", json={"course_ids": [first]},
+    ).status_code == 200
+
+    added = admin_client.post(
+        f"/api/v1/admin/videos/{video['id']}/courses/add", json={"course_ids": [second]},
+    )
+    assert added.status_code == 200
+    assert {course["id"] for course in added.get_json()["video"]["courses"]} == {first, second}
+
+    repeated = admin_client.post(
+        f"/api/v1/admin/videos/{video['id']}/courses/add", json={"course_ids": [second]},
+    )
+    assert repeated.status_code == 200
+    assert {course["id"] for course in repeated.get_json()["video"]["courses"]} == {first, second}
+
+
 def test_admin_course_search_matches_arabic_and_english_titles(admin_client, app, catalog_data):
     first, second = catalog_data["courses"]
     with app.app_context():
@@ -197,7 +217,7 @@ def test_catalog_lists_paginated_filtered_videos_and_protects_dependencies(admin
     )
     assert filtered.status_code == 200
     body = filtered.get_json()
-    assert set(body) >= {"items", "total", "page"}
+    assert set(body) >= {"items", "total", "page", "pages"}
     assert body["total"] == 1
     assert body["items"][0]["id"] == matching["id"]
 

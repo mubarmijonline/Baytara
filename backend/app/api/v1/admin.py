@@ -727,7 +727,7 @@ def videos_list():
     page = max(request.args.get("page", 1, type=int), 1)
     per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
     pg = db.paginate(q.order_by(Lesson.created_at.desc(), Lesson.id.desc()), page=page, per_page=per_page, error_out=False)
-    return jsonify(items=[_video_dict(l) for l in pg.items], total=pg.total, page=pg.page)
+    return jsonify(items=[_video_dict(l) for l in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
 
 
 VIDEO_PROVIDER_STATUSES = ("ready", "preparing", "queued", "failed")
@@ -959,6 +959,24 @@ def video_courses_set(vid):
         return jsonify(error="catalog_validation_failed", errors=["invalid_course_ids"]), 422
     try:
         set_video_courses(l, course_ids)
+    except CatalogValidationError as exc:
+        db.session.rollback()
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    db.session.commit()
+    return jsonify(video=_video_dict(l))
+
+
+@bp.post("/videos/<int:vid>/courses/add")
+@require_role("admin")
+def video_courses_add(vid):
+    l = db.session.get(Lesson, vid)
+    if not l:
+        return jsonify(error="not_found"), 404
+    course_ids = (request.get_json() or {}).get("course_ids")
+    if not isinstance(course_ids, list):
+        return jsonify(error="catalog_validation_failed", errors=["invalid_course_ids"]), 422
+    try:
+        add_video_courses(l, course_ids)
     except CatalogValidationError as exc:
         db.session.rollback()
         return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422

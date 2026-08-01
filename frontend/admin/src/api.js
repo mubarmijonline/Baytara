@@ -77,6 +77,7 @@ export const api = {
   videoUpdate: (id, body) => req(`/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   videoDelete: (id) => req(`/admin/videos/${id}`, { method: 'DELETE' }),
   videoCoursesSet: (id, course_ids) => req(`/admin/videos/${id}/courses`, { method: 'POST', body: JSON.stringify({ course_ids }) }),
+  videoCoursesAdd: (id, course_ids) => req(`/admin/videos/${id}/courses/add`, { method: 'POST', body: JSON.stringify({ course_ids }) }),
   videoCourseRemove: (id, courseId) => req(`/admin/videos/${id}/courses/${courseId}`, { method: 'DELETE' }),
   courseVideoOrder: (courseId, video_ids) => req(`/admin/courses/${courseId}/videos/order`, { method: 'PUT', body: JSON.stringify({ video_ids }) }),
   videosReorder: (courseId, order) => req(`/admin/courses/${courseId}/videos/reorder`, { method: 'POST', body: JSON.stringify({ order }) }),

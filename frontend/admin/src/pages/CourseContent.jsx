@@ -110,17 +110,17 @@ export default function CourseContent({ routeParams = {} }) {
     const selected = picked.filter((video) => !assigned.has(video.id));
     if (!selected.length) return;
     setBusy(true); setError('');
+    const results = await Promise.allSettled(
+      selected.map((video) => api.videoCoursesAdd(video.id, [courseId])),
+    );
     try {
-      await Promise.all(selected.map((video) => api.videoCoursesSet(video.id, [
-        ...new Set([...(video.courses || []).map((item) => item.id), courseId]),
-      ])));
-      setPicked([]);
-      await loadCourse();
-    } catch {
       await loadCourse({ clearError: false, showLoading: false });
-      setError(c.addError);
-    }
-    finally { setBusy(false); }
+      if (results.some((result) => result.status === 'rejected')) {
+        setError(c.addError);
+        return;
+      }
+      setPicked([]);
+    } finally { setBusy(false); }
   }
 
   async function remove(video) {

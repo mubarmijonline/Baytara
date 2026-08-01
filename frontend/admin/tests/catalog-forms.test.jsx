@@ -115,7 +115,7 @@ it('assigns, uploads, removes, drags, and orders reusable videos only inside the
     if (url.endsWith('/admin/courses/5')) return response({ course: { id: 5, title: 'Equine course', videos } });
     if (url.includes('/admin/videos') && (!options.method || options.method === 'GET')) return response({ items: [reusable], total: 1, page: 1 });
     if (url.endsWith('/admin/courses/5/videos/order')) return response({ ok: true });
-    if (url.endsWith('/admin/videos/3/courses')) return response({ video: reusable });
+    if (url.endsWith('/admin/videos/3/courses/add')) return response({ video: reusable });
     if (url.endsWith('/admin/videos/1/courses/5')) return response({ deleted: true });
     return defaultFetch(input, options);
   });
@@ -140,8 +140,8 @@ it('assigns, uploads, removes, drags, and orders reusable videos only inside the
   await user.click(await screen.findByRole('checkbox', { name: /Reusable exam/ }));
   await user.click(screen.getByRole('button', { name: 'Add selected videos' }));
   await waitFor(() => {
-    const call = fetch.mock.calls.find(([input]) => String(input).endsWith('/admin/videos/3/courses'));
-    expect(requestBody(call)).toEqual({ course_ids: [9, 5] });
+    const call = fetch.mock.calls.find(([input]) => String(input).endsWith('/admin/videos/3/courses/add'));
+    expect(requestBody(call)).toEqual({ course_ids: [5] });
   });
 
   await user.click(screen.getByRole('button', { name: 'Remove First exam from this course' }));
@@ -233,6 +233,7 @@ it('keeps selected videos across searches, submits all, and reloads after a part
   const first = { id: 3, title: 'First reusable', courses: [], access_type: 'free' };
   const second = { id: 4, title: 'Second reusable', courses: [], access_type: 'free' };
   let courseLoads = 0;
+  const slowAssignment = deferred();
   const defaultFetch = fetch.getMockImplementation();
   fetch.mockImplementation((input, options = {}) => {
     const url = String(input);
@@ -243,8 +244,8 @@ it('keeps selected videos across searches, submits all, and reloads after a part
     if (url.includes('/admin/videos?') && (!options.method || options.method === 'GET')) {
       return response({ items: url.includes('q=Second') ? [second] : [first], total: 1, page: 1, pages: 1 });
     }
-    if (url.endsWith('/admin/videos/3/courses')) return response({ video: first });
-    if (url.endsWith('/admin/videos/4/courses')) return response({ error: 'assignment_failed' }, 500);
+    if (url.endsWith('/admin/videos/3/courses/add')) return slowAssignment.promise;
+    if (url.endsWith('/admin/videos/4/courses/add')) return response({ error: 'assignment_failed' }, 500);
     return defaultFetch(input, options);
   });
   const user = userEvent.setup();
@@ -256,17 +257,22 @@ it('keeps selected videos across searches, submits all, and reloads after a part
   await user.click(await screen.findByRole('checkbox', { name: /Second reusable/ }));
   await user.click(screen.getByRole('button', { name: 'Add selected videos' }));
 
-  await waitFor(() => expect(fetch.mock.calls.some(([input]) => String(input).endsWith('/admin/videos/3/courses'))).toBe(true));
-  expect(fetch.mock.calls.some(([input]) => String(input).endsWith('/admin/videos/4/courses'))).toBe(true);
+  await waitFor(() => expect(fetch.mock.calls.some(([input]) => String(input).endsWith('/admin/videos/4/courses/add'))).toBe(true));
+  expect(courseLoads).toBe(1);
+  slowAssignment.resolve(await response({ video: first }));
   await waitFor(() => expect(courseLoads).toBe(2));
   expect(await screen.findByText('First reusable')).toBeVisible();
   expect(screen.getByText('Unable to assign the selected videos.')).toBeVisible();
 });
 
-it('loads bounded second pages for bundle selectors and submits their English records', async () => {
+it('loads bounded second pages for course and video bundle selectors and submits their English records', async () => {
   const secondPageCourse = {
     id: 101, title: 'دورة الصفحة الثانية', title_en: 'Second-page English course',
     price: 200, currency: 'EGP', access_type: 'general',
+  };
+  const secondPageVideo = {
+    id: 202, title: 'فيديو الصفحة الثانية', title_en: 'Second-page English video',
+    price: 50, currency: 'EGP', access_type: 'general', courses: [],
   };
   const defaultFetch = fetch.getMockImplementation();
   fetch.mockImplementation((input, options = {}) => {
@@ -276,7 +282,11 @@ it('loads bounded second pages for bundle selectors and submits their English re
         ? { courses: [secondPageCourse], page: 2, pages: 2 }
         : { courses: [], page: 1, pages: 2 });
     }
-    if (url.includes('/admin/videos')) return response({ items: [], page: 1, pages: 1 });
+    if (url.includes('/admin/videos')) {
+      return response(url.includes('page=2')
+        ? { items: [secondPageVideo], page: 2, pages: 2 }
+        : { items: [], page: 1, pages: 2 });
+    }
     if (url.endsWith('/admin/bundles') && options.method === 'POST') return response({ bundle: { id: 1 } }, 201);
     return defaultFetch(input, options);
   });
@@ -285,12 +295,13 @@ it('loads bounded second pages for bundle selectors and submits their English re
 
   await user.type(await screen.findByLabelText('Arabic title'), 'حزمة كبيرة');
   await user.click(await screen.findByRole('checkbox', { name: /Second-page English course/ }));
+  await user.click(await screen.findByRole('checkbox', { name: /Second-page English video/ }));
   await user.clear(screen.getByLabelText('Package price'));
   await user.type(screen.getByLabelText('Package price'), '100');
   await user.click(screen.getByRole('button', { name: 'Save bundle' }));
 
   const call = fetch.mock.calls.find(([input, options]) => String(input).endsWith('/admin/bundles') && options.method === 'POST');
-  expect(requestBody(call)).toMatchObject({ course_ids: [101] });
+  expect(requestBody(call)).toMatchObject({ course_ids: [101], video_ids: [202] });
 });
 
 it('builds a mixed package, totals list prices, warns about duplicate coverage, and shows compatibility errors', async () => {
