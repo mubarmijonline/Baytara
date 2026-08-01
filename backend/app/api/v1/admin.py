@@ -726,6 +726,96 @@ def videos_list():
     return jsonify(items=[_video_dict(l) for l in pg.items], total=pg.total, page=pg.page)
 
 
+def _positive_arg(name, default, maximum=None):
+    try:
+        value = int(request.args.get(name, default))
+    except (TypeError, ValueError):
+        value = default
+    value = max(value, 1)
+    return min(value, maximum) if maximum else value
+
+
+def _library_catalog_matches(catalog, category_id, access_type, publication, course_id, assignment, query):
+    if category_id and (catalog.get("category") or {}).get("id") != category_id:
+        return False
+    if access_type and catalog["access_type"] != access_type:
+        return False
+    if publication and catalog["status"] != publication:
+        return False
+    courses = catalog["courses"]
+    if course_id and not any(course["id"] == course_id for course in courses):
+        return False
+    if assignment == "assigned" and not courses:
+        return False
+    if assignment == "unassigned" and courses:
+        return False
+    if query:
+        query = query.lower()
+        return any(query in str(catalog.get(field) or "").lower() for field in (
+            "title", "title_en", "description", "description_en", "vdocipher_video_id",
+        ))
+    return True
+
+
+@bp.get("/video-library")
+@require_role("admin")
+def video_library():
+    """One normalized, exact-folder source for the Admin video-library screen."""
+    folder_id = request.args.get("folder_id") or "root"
+    query = (request.args.get("q") or "").strip()
+    provider_status = (request.args.get("status") or "").lower()
+    category_id = request.args.get("category_id", type=int)
+    access_type = request.args.get("access_type") or ""
+    publication = request.args.get("publication") or ""
+    course_id = request.args.get("course_id", type=int)
+    assignment = request.args.get("assignment") if request.args.get("assignment") in ("assigned", "unassigned") else ""
+    page = _positive_arg("page", 1)
+    per_page = _positive_arg("per_page", 20, 40)
+    try:
+        provider = vdocipher_admin.list_all_folder_videos(folder_id=folder_id, refresh=request.args.get("refresh") == "1")
+    except VdoCipherAdminError as exc:
+        return _vdocipher_error(exc)
+
+    catalog_by_provider = {
+        lesson.vdocipher_video_id: _video_dict(lesson)
+        for lesson in Lesson.query.filter(Lesson.vdocipher_video_id.isnot(None)).order_by(Lesson.id).all()
+    }
+    local_filters = bool(category_id or access_type or publication or course_id or assignment == "assigned")
+    normalized = []
+    for provider_video in provider["videos"]:
+        catalog = catalog_by_provider.get(provider_video["id"])
+        provider_match = not provider_status or str(provider_video.get("status") or "").lower() == provider_status
+        provider_search = not query or query.lower() in provider_video["id"].lower() or query.lower() in provider_video["title"].lower()
+        if not provider_match or not provider_search and not (catalog and _library_catalog_matches(catalog, category_id, access_type, publication, course_id, assignment, query)):
+            continue
+        if catalog:
+            if not _library_catalog_matches(catalog, category_id, access_type, publication, course_id, assignment, ""):
+                continue
+        elif local_filters or assignment == "assigned":
+            continue
+        item = {**provider_video, "provider_id": provider_video["id"]}
+        if catalog:
+            item["catalog"] = catalog
+        normalized.append(item)
+
+    if folder_id == "root" and not provider_status:
+        for lesson in Lesson.query.filter(Lesson.vdocipher_video_id.is_(None)).order_by(Lesson.id).all():
+            catalog = _video_dict(lesson)
+            if not _library_catalog_matches(catalog, category_id, access_type, publication, course_id, assignment, query):
+                continue
+            normalized.append({
+                "id": f"catalog-{lesson.id}", "provider_id": None, "title": catalog["title"],
+                "description": catalog["description"], "poster": "", "duration_seconds": None,
+                "status": None, "uploaded_at": None, "catalog": catalog,
+            })
+
+    total = len(normalized)
+    pages = max((total + per_page - 1) // per_page, 1)
+    page = min(page, pages)
+    start = (page - 1) * per_page
+    return jsonify(items=normalized[start:start + per_page], total=total, page=page, pages=pages, per_page=per_page)
+
+
 @bp.get("/videos/<int:vid>")
 @require_role("admin")
 def video_get(vid):

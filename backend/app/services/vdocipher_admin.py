@@ -285,6 +285,24 @@ def list_videos(q=None, folder_id=None, page=1, limit=20, refresh=False):
     return _cache_put(key, {"count": data.get("count", len(rows)), "videos": [normalize_video(row) for row in rows]})
 
 
+def list_all_folder_videos(folder_id="root", refresh=False):
+    """Read every provider page for one exact folder without persisting provider data."""
+    folder_id = validate_folder_id(folder_id)
+    key = ("all-videos", folder_id)
+    cached = _cache_get(key, refresh)
+    if cached is not None:
+        return cached
+    first = list_videos(folder_id=folder_id, page=1, limit=40, refresh=refresh)
+    try:
+        count = max(int(first["count"]), 0)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise VdoCipherAdminError("vdocipher_bad_response") from exc
+    videos = list(first["videos"])
+    for page in range(2, max((count + 39) // 40, 1) + 1):
+        videos.extend(list_videos(folder_id=folder_id, page=page, limit=40, refresh=refresh)["videos"])
+    return _cache_put(key, {"count": count, "videos": videos})
+
+
 def list_folder(folder_id, refresh=False):
     folder_id = validate_folder_id(folder_id)
     key = ("folder", folder_id)

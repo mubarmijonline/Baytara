@@ -201,6 +201,8 @@ body {
 .video-list-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 76px; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
 .video-list-row .video-poster { height: 60px; }
 .video-list-row > div { min-width: 0; display: grid; gap: 4px; }
+.video-table-scroll { overflow-x: auto; }
+.video-table { min-width: 980px; }
 .video-table td { vertical-align: middle; }
 .video-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 14px; color: var(--muted); font-size: 13px; }
 .video-error { margin: 0 0 12px; }

@@ -41,6 +41,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn((input) => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/admin/video-library')) return json({ items: [], total: 0, page: 1, pages: 1, per_page: 40 });
     if (url.includes('/admin/videos')) return json({ items: [], total: 0, page: 1 });
     if (url.includes('/admin/vdocipher/videos')) return json({ videos: [] });
     if (url.includes('/admin/vdocipher/folders/')) return json({ folders: [] });
@@ -70,16 +71,16 @@ it('keeps folder, filters, and view in the URL', async () => {
 });
 
 it('ignores stale library results after a URL filter changes', async () => {
-  const oldProvider = deferred();
-  const oldCatalog = deferred();
+  const oldLibrary = deferred();
   fetch.mockImplementation((input) => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
     if (url.endsWith('/categories')) return json({ categories: [] });
-    if (url.includes('/vdocipher/videos') && url.includes('q=old')) return oldProvider.promise;
-    if (url.includes('/admin/videos') && url.includes('q=old')) return oldCatalog.promise;
-    if (url.includes('/vdocipher/videos') && url.includes('q=new')) return json({ videos: [{ id: 'new-video', title: 'New result' }] });
-    if (url.includes('/admin/videos') && url.includes('q=new')) return json({ items: [] });
+    if (url.includes('/admin/video-library') && url.includes('q=old')) return oldLibrary.promise;
+    if (url.includes('/admin/video-library') && url.includes('q=new')) return json({
+      items: [{ id: 'new-video', provider_id: 'new-video', title: 'New result', status: 'ready' }],
+      total: 1, page: 1, pages: 1, per_page: 40,
+    });
     if (url.includes('/folders/')) return json({ folders: [] });
     return json({});
   });
@@ -89,8 +90,10 @@ it('ignores stale library results after a URL filter changes', async () => {
   fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'new' } });
   expect(await screen.findByText('New result')).toBeVisible();
 
-  oldProvider.resolve(new Response(JSON.stringify({ videos: [{ id: 'old-video', title: 'Old result' }] }), { headers: { 'Content-Type': 'application/json' } }));
-  oldCatalog.resolve(new Response(JSON.stringify({ items: [] }), { headers: { 'Content-Type': 'application/json' } }));
+  oldLibrary.resolve(new Response(JSON.stringify({
+    items: [{ id: 'old-video', provider_id: 'old-video', title: 'Old result', status: 'ready' }],
+    total: 1, page: 1, pages: 1, per_page: 40,
+  }), { headers: { 'Content-Type': 'application/json' } }));
   await waitFor(() => expect(screen.queryByText('Old result')).toBeNull());
   expect(screen.getByText('New result')).toBeVisible();
 });
@@ -399,8 +402,13 @@ it('keeps root canonical records beyond the current provider page and exposes pa
   fetch.mockImplementation((input) => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
-    if (url.includes('/vdocipher/videos')) return json({ count: 80, videos: [{ id: 'page-two', title: 'Page two provider', status: 'ready' }] });
-    if (url.includes('/admin/videos')) return json({ items: [{ id: 9, title: 'Canonical beyond provider page', vdocipher_video_id: 'canonical-missing', category: { name: 'Equine' }, access_type: 'general', courses: [] }] });
+    if (url.includes('/admin/video-library')) return json({
+      total: 80, page: 2, pages: 2, per_page: 40,
+      items: [
+        { id: 'page-two', provider_id: 'page-two', title: 'Page two provider', status: 'ready' },
+        { id: 'canonical-missing', provider_id: 'canonical-missing', title: 'Canonical beyond provider page', status: 'ready', catalog: { id: 9, category: { name: 'Equine' }, access_type: 'general', status: 'draft', courses: [] } },
+      ],
+    });
     if (url.endsWith('/categories')) return json({ categories: [] });
     if (url.includes('/admin/courses')) return json({ courses: [] });
     if (url.includes('/folders/')) return json({ folders: [] });
@@ -412,15 +420,17 @@ it('keeps root canonical records beyond the current provider page and exposes pa
   expect(screen.getByRole('button', { name: /previous page/i })).toBeEnabled();
   await user.click(screen.getByRole('button', { name: /previous page/i }));
   expect(window.location.search).not.toContain('page=2');
-  expect(fetch.mock.calls.some(([input]) => String(input).includes('page=2') && String(input).includes('limit=40'))).toBe(true);
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/video-library') && String(input).includes('page=2') && String(input).includes('per_page=40'))).toBe(true);
 });
 
 it('separates provider encoding status from local publication and assignment filters', async () => {
   fetch.mockImplementation((input) => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
-    if (url.includes('/vdocipher/videos')) return json({ count: 2, videos: [{ id: 'ready-v', title: 'Ready provider', status: 'ready' }, { id: 'encoding-v', title: 'Encoding provider', status: 'preparing' }] });
-    if (url.includes('/admin/videos')) return json({ items: [{ id: 1, title: 'Ready local', vdocipher_video_id: 'ready-v', status: 'published', category: { name: 'Equine' }, access_type: 'general', courses: [{ id: 4, title: 'Dawara' }] }, { id: 2, title: 'Encoding local', vdocipher_video_id: 'encoding-v', status: 'published', category: { name: 'Equine' }, access_type: 'general', courses: [] }] });
+    if (url.includes('/admin/video-library')) return json({
+      total: 1, page: 1, pages: 1, per_page: 40,
+      items: [{ id: 'ready-v', provider_id: 'ready-v', title: 'Ready provider', status: 'ready', catalog: { id: 1, title: 'Ready local', status: 'published', category: { name: 'Equine' }, access_type: 'general', courses: [{ id: 4, title: 'Dawara' }] } }],
+    });
     if (url.includes('/admin/courses')) return json({ courses: [{ id: 4, title: 'Dawara' }] });
     if (url.endsWith('/categories')) return json({ categories: [] });
     if (url.includes('/folders/')) return json({ folders: [] });
@@ -430,7 +440,7 @@ it('separates provider encoding status from local publication and assignment fil
   renderAdmin('/admin/videos?status=ready&publication=published&course=4&assignment=assigned');
   expect(await screen.findByText('Ready provider')).toBeVisible();
   expect(screen.queryByText('Encoding provider')).toBeNull();
-  expect(fetch.mock.calls.some(([input]) => String(input).includes('course_id=4') && String(input).includes('status=published'))).toBe(true);
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/video-library') && String(input).includes('course_id=4') && String(input).includes('status=ready') && String(input).includes('publication=published'))).toBe(true);
   await user.click(screen.getByRole('button', { name: /table/i }));
   expect(window.location.search).toContain('status=ready');
   expect(window.location.search).toContain('publication=published');
@@ -465,4 +475,71 @@ it('does not render a file input when importing a provider-only video', async ()
   renderAdmin('/admin/videos/v1');
   await screen.findByRole('button', { name: /^import$/i });
   expect(screen.queryByLabelText('Video file')).toBeNull();
+});
+
+it('uses the composite library endpoint with URL filters and server pagination', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/admin/video-library')) return json({ items: [{ id: 'provider-2', provider_id: 'provider-2', title: 'Second page', status: 'ready', catalog: { id: 2, category: { name: 'Equine' }, access_type: 'general', status: 'published', courses: [{ id: 4, title: 'Dawara' }] } }], total: 80, page: 2, pages: 2, per_page: 40 });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/admin/courses')) return json({ courses: [{ id: 4, title: 'Dawara' }] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  renderAdmin('/admin/videos?folder=f1&q=exam&status=ready&publication=published&course=4&assignment=assigned&page=2');
+  expect(await screen.findByText('Second page')).toBeVisible();
+  expect(fetch.mock.calls.some(([input]) => {
+    const url = String(input);
+    return url.includes('/admin/video-library') && url.includes('folder_id=f1') && url.includes('q=exam') && url.includes('status=ready') && url.includes('publication=published') && url.includes('course_id=4') && url.includes('assignment=assigned') && url.includes('page=2') && url.includes('per_page=40');
+  })).toBe(true);
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/vdocipher/videos'))).toBe(false);
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/videos?'))).toBe(false);
+});
+
+it('normalizes malformed library page URLs before requesting page one', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/admin/video-library')) return json({ items: [], total: 0, page: 1, pages: 1, per_page: 40 });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  renderAdmin('/admin/videos?page=banana');
+  await screen.findByTestId('video-grid');
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/video-library') && String(input).includes('page=1'))).toBe(true);
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('page=NaN'))).toBe(false);
+});
+
+it('renders composite local-only records only on the page returned by the server', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/admin/video-library') && url.includes('page=2')) return json({ items: [{ id: 'provider-2', provider_id: 'provider-2', title: 'Provider two', status: 'ready' }], total: 41, page: 2, pages: 2, per_page: 40 });
+    if (url.includes('/admin/video-library')) return json({ items: [{ id: 'catalog-9', provider_id: null, title: 'Local only once', status: null, catalog: { id: 9, access_type: 'free', status: 'draft', courses: [] } }], total: 41, page: 1, pages: 2, per_page: 40 });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/videos');
+  expect(await screen.findByText('Local only once')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: /next page/i }));
+  expect(await screen.findByText('Provider two')).toBeVisible();
+  expect(screen.queryByText('Local only once')).toBeNull();
+});
+
+it('renders distinct provider and publication chips in every view', () => {
+  const video = { id: 'provider-1', provider_id: 'provider-1', title: 'Exam', status: 'ready', catalog: { status: 'published', access_type: 'general', courses: [] } };
+  const { rerender } = render(<MemoryRouter><LanguageProvider><VideoViews view="grid" videos={[video]} /></LanguageProvider></MemoryRouter>);
+  expect(screen.getByText('Ready')).toBeVisible();
+  expect(screen.getByText('Published')).toBeVisible();
+  rerender(<MemoryRouter><LanguageProvider><VideoViews view="list" videos={[video]} /></LanguageProvider></MemoryRouter>);
+  expect(screen.getByTestId('video-list')).toHaveTextContent('Published');
+  rerender(<MemoryRouter><LanguageProvider><VideoViews view="table" videos={[video]} /></LanguageProvider></MemoryRouter>);
+  expect(screen.getByTestId('video-table')).toHaveTextContent('Published');
+  expect(screen.getByTestId('video-table-scroll')).toBeVisible();
 });
