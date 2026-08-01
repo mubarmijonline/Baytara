@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Field, ErrText } from '../ui.jsx';
 import ListEditor from '../listeditor.jsx';
+import { useAdminLanguage } from '../i18n.jsx';
+import { pageCopy } from '../page-copy.js';
 
 // plain text fields grouped by settings key -> [subkey, label]
 const GROUPS = [
@@ -18,12 +20,15 @@ const FEATURE_FIELDS = [{ key: 'icon', label: 'أيقونة (إيموجي)' }, {
 const LOGO_FIELDS = [{ key: 'name', label: 'اسم / نص الشعار' }];
 
 export default function Settings() {
+  const { language } = useAdminLanguage();
+  const copy = pageCopy('settings', language);
+  const common = pageCopy('common', language);
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    api.settingsGet().then((r) => setS(r.settings || {})).catch(() => setErr('تعذّر التحميل.'));
+    api.settingsGet().then((r) => setS(r.settings || {})).catch(() => setErr(common.loadError));
   }, []);
 
   const setField = (grp, sub) => (e) => setS({ ...s, [grp]: { ...(s[grp] || {}), [sub]: e.target.value } });
@@ -32,8 +37,8 @@ export default function Settings() {
 
   async function save() {
     setErr(''); setMsg('');
-    try { await api.settingsPut(s); setMsg('تم الحفظ ✓'); setTimeout(() => setMsg(''), 2500); }
-    catch { setErr('تعذّر الحفظ.'); }
+    try { await api.settingsPut(s); setMsg(copy.saved); setTimeout(() => setMsg(''), 2500); }
+    catch { setErr(copy.saveError); }
   }
   async function testVdoCipher() {
     setErr(''); setMsg('');
@@ -52,12 +57,12 @@ export default function Settings() {
     } catch (e) { setErr(e.message || 'تعذّر تجهيز المجلدات.'); }
   }
 
-  if (!s) return <div className="empty">جارٍ التحميل…</div>;
+  if (!s) return <div className="empty">{common.loading}</div>;
   const biz = s.business || {};
   return (
     <>
-      <h2>إعدادات الموقع</h2>
-      <p style={{ color: 'var(--muted)', marginTop: -8 }}>محتوى الموقع الرئيسي — يظهر مباشرةً على الصفحة العامة بعد الحفظ.</p>
+      <h2>{copy.heading}</h2>
+      <p style={{ color: 'var(--muted)', marginTop: -8 }}>{copy.subtitle}</p>
 
       {GROUPS.map(([grp, label, fields]) => (
         <div key={grp} className="card">
@@ -138,7 +143,7 @@ export default function Settings() {
 
       <ErrText>{err}</ErrText>
       <div className="row" style={{ marginTop: 8, position: 'sticky', bottom: 0, background: 'var(--bg)', padding: '10px 0' }}>
-        <button className="btn btn-filled" onClick={save}>حفظ الإعدادات</button>
+        <button className="btn btn-filled" onClick={save}>{copy.save}</button>
         {msg && <span style={{ color: 'var(--success)', fontWeight: 700 }}>{msg}</span>}
       </div>
     </>

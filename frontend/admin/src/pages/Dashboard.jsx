@@ -1,4 +1,6 @@
 import { useOutletContext } from 'react-router-dom';
+import { useAdminLanguage } from '../i18n.jsx';
+import { pageCopy } from '../page-copy.js';
 
 function Stat({ num, lbl }) {
   return (
@@ -11,17 +13,20 @@ function Stat({ num, lbl }) {
 
 export default function Dashboard() {
   const { stats: s } = useOutletContext();
-  if (!s) return <div className="empty">جارٍ التحميل…</div>;
+  const { language } = useAdminLanguage();
+  const copy = pageCopy('dashboard', language);
+  const common = pageCopy('common', language);
+  if (!s) return <div className="empty">{common.loading}</div>;
   return (
     <>
-      <h2>لوحة القيادة</h2>
+      <h2>{copy.heading}</h2>
       <div className="stat-grid">
-        <Stat num={s.payments.pending} lbl="مدفوعات بانتظار المراجعة" />
-        <Stat num={s.courses.published} lbl={`دورات منشورة (من ${s.courses.total})`} />
-        <Stat num={s.enrollments} lbl="اشتراكات نشطة" />
-        <Stat num={s.users.students} lbl="طلاب" />
-        <Stat num={s.users.instructors} lbl="مدرّبون" />
-        <Stat num={s.users.total} lbl="إجمالي المستخدمين" />
+        <Stat num={s.payments.pending} lbl={copy.pendingPayments} />
+        <Stat num={s.courses.published} lbl={copy.publishedCourses(s.courses.published, s.courses.total)} />
+        <Stat num={s.enrollments} lbl={copy.activeEnrollments} />
+        <Stat num={s.users.students} lbl={copy.students} />
+        <Stat num={s.users.instructors} lbl={copy.instructors} />
+        <Stat num={s.users.total} lbl={copy.users} />
       </div>
     </>
   );

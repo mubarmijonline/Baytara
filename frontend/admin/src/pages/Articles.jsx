@@ -3,11 +3,13 @@ import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
-
-const TYPES = [['', 'الكل'], ['blog', 'مدوّنة'], ['content', 'محتوى مجاني']];
-const typeLabel = (t) => ({ blog: 'مدوّنة', content: 'محتوى مجاني' }[t] || t);
+import { useAdminLanguage } from '../i18n.jsx';
+import { pageCopy } from '../page-copy.js';
 
 function ArticleForm({ article, onClose, onSaved }) {
+  const { language } = useAdminLanguage();
+  const copy = pageCopy('articles', language);
+  const common = pageCopy('common', language);
   const editing = !!article;
   const [f, setF] = useState({
     type: article?.type || 'blog', title: article?.title || '', title_en: article?.title_en || '',
@@ -28,42 +30,42 @@ function ArticleForm({ article, onClose, onSaved }) {
     try {
       if (editing) await api.articleUpdate(article.id, f); else await api.articleCreate(f);
       onSaved();
-    } catch (e) { setErr(apiError(e)); }
+    } catch (e) { setErr(apiError(e, common.loadError)); }
   }
 
   return (
-    <Modal title={editing ? 'تعديل مقال' : 'مقال جديد'} onClose={onClose}>
-      {!loaded ? <div className="empty">جارٍ التحميل…</div> : (
+    <Modal title={editing ? copy.edit : copy.new} onClose={onClose}>
+      {!loaded ? <div className="empty">{common.loading}</div> : (
         <>
-          <Field label="النوع">
+          <Field label={copy.type}>
             <select value={f.type} onChange={set('type')}>
-              <option value="blog">مدوّنة</option>
-              <option value="content">محتوى مجاني</option>
+              <option value="blog">{copy.types.blog}</option>
+              <option value="content">{copy.types.content}</option>
             </select>
           </Field>
-          <Field label="العنوان (عربي)"><input value={f.title} onChange={set('title')} /></Field>
-          <Field label="Title (English)"><input dir="ltr" value={f.title_en} onChange={set('title_en')} /></Field>
-          <Field label="مقتطف (عربي)"><input value={f.excerpt} onChange={set('excerpt')} /></Field>
-          <Field label="Excerpt (English)"><input dir="ltr" value={f.excerpt_en} onChange={set('excerpt_en')} /></Field>
-          <Field label="رابط صورة الغلاف"><input value={f.cover} onChange={set('cover')} dir="ltr" /></Field>
-          <Field label="المحتوى (عربي)">
+          <Field label={copy.titleAr}><input value={f.title} onChange={set('title')} /></Field>
+          <Field label={copy.titleEn}><input dir="ltr" value={f.title_en} onChange={set('title_en')} /></Field>
+          <Field label={copy.excerptAr}><input value={f.excerpt} onChange={set('excerpt')} /></Field>
+          <Field label={copy.excerptEn}><input dir="ltr" value={f.excerpt_en} onChange={set('excerpt_en')} /></Field>
+          <Field label={copy.cover}><input value={f.cover} onChange={set('cover')} dir="ltr" /></Field>
+          <Field label={copy.contentAr}>
             <textarea value={f.body} onChange={set('body')} rows={8}
               style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12, font: 'inherit', resize: 'vertical' }} />
           </Field>
-          <Field label="Content (English)">
+          <Field label={copy.contentEn}>
             <textarea dir="ltr" value={f.body_en} onChange={set('body_en')} rows={8}
               style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12, font: 'inherit', resize: 'vertical' }} />
           </Field>
-          <Field label="الحالة">
+          <Field label={copy.status}>
             <select value={f.status} onChange={set('status')}>
-              <option value="draft">مسودة</option>
-              <option value="published">منشور</option>
+              <option value="draft">{copy.draft}</option>
+              <option value="published">{copy.published}</option>
             </select>
           </Field>
           <ErrText>{err}</ErrText>
           <div className="row">
-            <button className="btn btn-filled" onClick={save}>حفظ</button>
-            <button className="btn btn-text" onClick={onClose}>إلغاء</button>
+            <button className="btn btn-filled" onClick={save}>{common.save}</button>
+            <button className="btn btn-text" onClick={onClose}>{common.cancel}</button>
           </div>
         </>
       )}
@@ -72,6 +74,9 @@ function ArticleForm({ article, onClose, onSaved }) {
 }
 
 export default function Articles() {
+  const { language } = useAdminLanguage();
+  const copy = pageCopy('articles', language);
+  const common = pageCopy('common', language);
   const [rows, setRows] = useState(null);
   const [type, setType] = useState('');
   const [form, setForm] = useState(undefined);
@@ -80,46 +85,46 @@ export default function Articles() {
   async function load() {
     setErr('');
     try { setRows((await api.articlesAdmin({ type })).articles); }
-    catch { setErr('تعذّر التحميل.'); }
+    catch { setErr(common.loadError); }
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [type]);
 
   async function togglePublish(a) {
     try { await api.articleUpdate(a.id, { status: a.status === 'published' ? 'draft' : 'published' }); load(); }
-    catch (e) { toast.error(apiError(e)); }
+    catch (e) { toast.error(apiError(e, common.loadError)); }
   }
   async function del(a) {
-    if (!await confirmDialog(`حذف «${a.title}»؟`)) return;
-    try { await api.articleDelete(a.id); load(); } catch (e) { toast.error(apiError(e)); }
+    if (!await confirmDialog(copy.deleteConfirm(a.title))) return;
+    try { await api.articleDelete(a.id); load(); } catch (e) { toast.error(apiError(e, common.loadError)); }
   }
 
   return (
     <>
-      <h2>المحتوى والمدوّنة</h2>
+      <h2>{copy.heading}</h2>
       <div className="toolbar">
         <select value={type} onChange={(e) => setType(e.target.value)}>
-          {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          {copy.filters.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <button className="btn btn-filled btn-sm" onClick={() => setForm(null)}>+ مقال</button>
+        <button className="btn btn-filled btn-sm" onClick={() => setForm(null)}>{copy.add}</button>
       </div>
       <ErrText>{err}</ErrText>
-      {!rows ? <div className="empty">جارٍ التحميل…</div> : (
+      {!rows ? <div className="empty">{common.loading}</div> : (
         <table className="table">
-          <thead><tr><th>العنوان</th><th>النوع</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+          <thead><tr><th>{copy.title}</th><th>{copy.type}</th><th>{copy.status}</th><th>{copy.actions}</th></tr></thead>
           <tbody>
             {rows.map((a) => (
               <tr key={a.id}>
                 <td>{a.title}</td>
-                <td><span className="chip chip-role">{typeLabel(a.type)}</span></td>
-                <td><span className={`chip chip-${a.status === 'published' ? 'published' : 'draft'}`}>{a.status === 'published' ? 'منشور' : 'مسودة'}</span></td>
+                <td><span className="chip chip-role">{copy.types[a.type] || a.type}</span></td>
+                <td><span className={`chip chip-${a.status === 'published' ? 'published' : 'draft'}`}>{a.status === 'published' ? copy.published : copy.draft}</span></td>
                 <td className="actions">
-                  <button className="btn btn-tonal btn-sm" onClick={() => setForm(a)}>تعديل</button>
-                  <button className="btn btn-tonal btn-sm" onClick={() => togglePublish(a)}>{a.status === 'published' ? 'إخفاء' : 'نشر'}</button>
-                  <button className="btn btn-error btn-sm" onClick={() => del(a)}>حذف</button>
+                  <button className="btn btn-tonal btn-sm" onClick={() => setForm(a)}>{common.edit}</button>
+                  <button className="btn btn-tonal btn-sm" onClick={() => togglePublish(a)}>{a.status === 'published' ? copy.hide : copy.publish}</button>
+                  <button className="btn btn-error btn-sm" onClick={() => del(a)}>{common.delete}</button>
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan="4" className="empty">لا مقالات.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan="4" className="empty">{copy.empty}</td></tr>}
           </tbody>
         </table>
       )}

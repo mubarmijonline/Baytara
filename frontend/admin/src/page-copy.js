@@ -1,0 +1,124 @@
+const COPY = {
+  ar: {
+    common: {
+      loading: 'جارٍ التحميل…', loadError: 'تعذّر التحميل.', empty: 'لا نتائج.', actions: 'إجراءات',
+      save: 'حفظ', cancel: 'إلغاء', edit: 'تعديل', delete: 'حذف', all: 'الكل', status: 'الحالة',
+    },
+    dashboard: {
+      heading: 'لوحة القيادة', pendingPayments: 'مدفوعات بانتظار المراجعة',
+      publishedCourses: (published, total) => `دورات منشورة (${published} من ${total})`,
+      activeEnrollments: 'اشتراكات نشطة', students: 'طلاب', instructors: 'مدرّبون', users: 'إجمالي المستخدمين',
+    },
+    payments: {
+      heading: 'المعاملات', provider: 'فواتيرك', paidCount: 'عملية مدفوعة', revenue: 'ج.م إيرادات',
+      tabs: [['', 'الكل'], ['paid', 'مدفوعة'], ['pending', 'قيد الدفع'], ['failed', 'فاشلة'], ['expired', 'منتهية'], ['refunded', 'مستردة']],
+      kinds: { enroll: 'اشتراك', renewal: 'تجديد', bundle: 'حزمة', video: 'فيديو' },
+      statuses: { paid: 'مدفوعة', pending: 'قيد الدفع', failed: 'فاشلة', expired: 'منتهية', refunded: 'مستردة' },
+      columns: ['#', 'النوع', 'الهدف', 'المبلغ', 'الطريقة', 'المرجع', 'الحالة', 'التاريخ'],
+      course: 'دورة', bundle: 'حزمة', empty: 'لا معاملات.',
+    },
+    baytarian: {
+      heading: 'توثيق الأطباء', filters: [['pending', 'قيد المراجعة'], ['approved', 'موثّق'], ['rejected', 'مرفوض'], ['', 'الكل']],
+      statuses: { pending: 'قيد المراجعة', approved: 'موثّق', rejected: 'مرفوض' },
+      columns: ['الطبيب', 'الحالة', 'ملاحظة', 'المستندات', 'التاريخ', 'إجراءات'], document: 'مستند',
+      verify: 'توثيق', reject: 'رفض', verified: 'تم التوثيق', empty: 'لا طلبات.', openError: 'تعذّر فتح المستند',
+      confirm: (name) => `توثيق ${name} كطبيب بيطري؟`, rejectReason: 'سبب الرفض (اختياري)',
+    },
+    hierarchy: {
+      heading: 'الهيكلة', subtitle: 'المدرّبون ← الدورات ← الوحدات ← الدروس',
+      description: 'عرض شجري لكل مدرّب ومحتواه. استخدم صفحة الدورات لإدارة المحتوى.',
+      enrolled: 'مسجّل', noModules: 'لا وحدات', noLessons: 'لا دروس', video: 'فيديو', noVideo: 'بدون فيديو',
+      noCourses: 'لا دورات لهذا المدرّب.', empty: 'لا مدرّبين بعد — أضِف مدرّباً من المستخدمين.',
+      courseError: 'تعذّر تحميل الدورة', coursesError: 'تعذّر تحميل الدورات',
+    },
+    articles: {
+      heading: 'المحتوى والمقالات', new: 'مقال جديد', edit: 'تعديل مقال', add: 'مقال جديد',
+      filters: [['', 'الكل'], ['blog', 'مدوّنة'], ['content', 'محتوى مجاني']], types: { blog: 'مدوّنة', content: 'محتوى مجاني' },
+      title: 'العنوان', type: 'النوع', status: 'الحالة', actions: 'إجراءات', draft: 'مسودة', published: 'منشور',
+      publish: 'نشر', hide: 'إخفاء', empty: 'لا مقالات.', deleteConfirm: (title) => `حذف «${title}»؟`,
+      titleAr: 'العنوان (عربي)', titleEn: 'العنوان (إنجليزي)', excerptAr: 'المقتطف (عربي)', excerptEn: 'المقتطف (إنجليزي)',
+      cover: 'رابط صورة الغلاف', contentAr: 'المحتوى (عربي)', contentEn: 'المحتوى (إنجليزي)',
+    },
+    users: {
+      heading: 'المستخدمون', new: 'مستخدم جديد', edit: 'تعديل مستخدم',
+      filters: [['', 'كل الأدوار'], ['student', 'طالب'], ['instructor', 'مدرّب'], ['admin', 'مسؤول']],
+      roles: { student: 'طالب', instructor: 'مدرّب', admin: 'مسؤول' }, searchPlaceholder: 'بحث بالاسم/البريد', search: 'بحث',
+      name: 'الاسم', email: 'البريد', password: 'كلمة المرور', newPassword: 'كلمة مرور جديدة (اختياري)', role: 'الدور',
+      activeAccount: 'الحساب مفعّل', headline: 'المسمّى المهني (يظهر بالموقع)', bio: 'نبذة', expertise: 'مجالات الخبرة (افصل بفاصلة)',
+      active: 'مفعّل', inactive: 'معطّل', activate: 'تفعيل', deactivate: 'تعطيل', empty: 'لا نتائج.',
+      deleteConfirm: (name) => `حذف ${name}؟`, columns: ['الاسم', 'البريد', 'الدور', 'الحالة', 'إجراءات'],
+    },
+    messages: {
+      heading: 'الرسائل', unread: 'غير مقروءة', empty: 'لا رسائل.', noSubject: '(بدون موضوع)',
+      markRead: 'وضع كمقروءة', markUnread: 'وضع كغير مقروءة', reply: 'رد بالبريد', deleteConfirm: 'حذف الرسالة؟',
+    },
+    settings: {
+      heading: 'إعدادات الموقع', subtitle: 'محتوى الموقع الرئيسي — يظهر مباشرةً على الصفحة العامة بعد الحفظ.',
+      saved: 'تم الحفظ', saveError: 'تعذّر الحفظ.', save: 'حفظ الإعدادات',
+    },
+    list: { add: '+ إضافة', empty: 'لا عناصر بعد.', order: 'ترتيب', actions: 'إجراءات', edit: 'تعديل', delete: 'حذف', addTitle: 'إضافة عنصر', editTitle: 'تعديل عنصر', save: 'حفظ', cancel: 'إلغاء' },
+  },
+  en: {
+    common: {
+      loading: 'Loading…', loadError: 'Unable to load.', empty: 'No results.', actions: 'Actions',
+      save: 'Save', cancel: 'Cancel', edit: 'Edit', delete: 'Delete', all: 'All', status: 'Status',
+    },
+    dashboard: {
+      heading: 'Dashboard', pendingPayments: 'Payments awaiting review',
+      publishedCourses: (published, total) => `Published courses (${published} of ${total})`,
+      activeEnrollments: 'Active enrollments', students: 'Students', instructors: 'Instructors', users: 'Total users',
+    },
+    payments: {
+      heading: 'Payments', provider: 'Fawaterak', paidCount: 'paid payments', revenue: 'EGP revenue',
+      tabs: [['', 'All'], ['paid', 'Paid'], ['pending', 'Pending'], ['failed', 'Failed'], ['expired', 'Expired'], ['refunded', 'Refunded']],
+      kinds: { enroll: 'Enrollment', renewal: 'Renewal', bundle: 'Bundle', video: 'Video' },
+      statuses: { paid: 'Paid', pending: 'Pending', failed: 'Failed', expired: 'Expired', refunded: 'Refunded' },
+      columns: ['#', 'Type', 'Target', 'Amount', 'Method', 'Reference', 'Status', 'Date'],
+      course: 'Course', bundle: 'Bundle', empty: 'No payments.',
+    },
+    baytarian: {
+      heading: 'Veterinarian verification', filters: [['pending', 'Pending review'], ['approved', 'Verified'], ['rejected', 'Rejected'], ['', 'All']],
+      statuses: { pending: 'Pending review', approved: 'Verified', rejected: 'Rejected' },
+      columns: ['Veterinarian', 'Status', 'Note', 'Documents', 'Date', 'Actions'], document: 'Document',
+      verify: 'Verify', reject: 'Reject', verified: 'Veterinarian verified', empty: 'No requests.', openError: 'Unable to open document',
+      confirm: (name) => `Verify ${name} as a veterinarian?`, rejectReason: 'Rejection reason (optional)',
+    },
+    hierarchy: {
+      heading: 'Hierarchy', subtitle: 'Instructors → courses → modules → lessons',
+      description: 'Browse each instructor and their content. Use Courses to manage content.',
+      enrolled: 'enrolled', noModules: 'No modules', noLessons: 'No lessons', video: 'Video', noVideo: 'No video',
+      noCourses: 'No courses for this instructor.', empty: 'No instructors yet — add one from Users.',
+      courseError: 'Unable to load course', coursesError: 'Unable to load courses',
+    },
+    articles: {
+      heading: 'Content and articles', new: 'New article', edit: 'Edit article', add: 'New article',
+      filters: [['', 'All'], ['blog', 'Blog'], ['content', 'Free content']], types: { blog: 'Blog', content: 'Free content' },
+      title: 'Title', type: 'Type', status: 'Status', actions: 'Actions', draft: 'Draft', published: 'Published',
+      publish: 'Publish', hide: 'Unpublish', empty: 'No articles.', deleteConfirm: (title) => `Delete “${title}”?`,
+      titleAr: 'Arabic title', titleEn: 'English title', excerptAr: 'Arabic excerpt', excerptEn: 'English excerpt',
+      cover: 'Cover image URL', contentAr: 'Arabic content', contentEn: 'English content',
+    },
+    users: {
+      heading: 'Users', new: 'New user', edit: 'Edit user',
+      filters: [['', 'All roles'], ['student', 'Student'], ['instructor', 'Instructor'], ['admin', 'Administrator']],
+      roles: { student: 'Student', instructor: 'Instructor', admin: 'Administrator' }, searchPlaceholder: 'Search name or email', search: 'Search',
+      name: 'Name', email: 'Email', password: 'Password', newPassword: 'New password (optional)', role: 'Role',
+      activeAccount: 'Account is active', headline: 'Professional title (shown publicly)', bio: 'Bio', expertise: 'Expertise (comma separated)',
+      active: 'Active', inactive: 'Inactive', activate: 'Activate', deactivate: 'Deactivate', empty: 'No results.',
+      deleteConfirm: (name) => `Delete ${name}?`, columns: ['Name', 'Email', 'Role', 'Status', 'Actions'],
+    },
+    messages: {
+      heading: 'Messages', unread: 'unread', empty: 'No messages.', noSubject: '(No subject)',
+      markRead: 'Mark as read', markUnread: 'Mark as unread', reply: 'Reply by email', deleteConfirm: 'Delete this message?',
+    },
+    settings: {
+      heading: 'Site settings', subtitle: 'Public website content updates immediately after you save.',
+      saved: 'Saved', saveError: 'Unable to save.', save: 'Save settings',
+    },
+    list: { add: '+ Add', empty: 'No items yet.', order: 'Order', actions: 'Actions', edit: 'Edit', delete: 'Delete', addTitle: 'Add item', editTitle: 'Edit item', save: 'Save', cancel: 'Cancel' },
+  },
+};
+
+export function pageCopy(page, language = 'ar') {
+  return COPY[language]?.[page] || COPY.ar[page] || {};
+}

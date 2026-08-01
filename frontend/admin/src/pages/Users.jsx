@@ -3,11 +3,13 @@ import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
-
-const ROLES = [['', 'كل الأدوار'], ['student', 'طالب'], ['instructor', 'مدرّب'], ['admin', 'مسؤول']];
-const roleLabel = (r) => ({ student: 'طالب', instructor: 'مدرّب', admin: 'مسؤول' }[r] || r);
+import { useAdminLanguage } from '../i18n.jsx';
+import { pageCopy } from '../page-copy.js';
 
 function UserForm({ user, onClose, onSaved }) {
+  const { language } = useAdminLanguage();
+  const copy = pageCopy('users', language);
+  const common = pageCopy('common', language);
   const editing = !!user;
   const [f, setF] = useState({
     name: user?.name || '', email: user?.email || '', password: '',
@@ -32,46 +34,49 @@ function UserForm({ user, onClose, onSaved }) {
         await api.userCreate({ name: f.name, email: f.email, password: f.password, role: f.role });
       }
       onSaved();
-    } catch (e) { setErr(apiError(e)); setBusy(false); }
+    } catch (e) { setErr(apiError(e, common.loadError)); setBusy(false); }
   }
 
   return (
-    <Modal title={editing ? 'تعديل مستخدم' : 'مستخدم جديد'} onClose={onClose}>
-      <Field label="الاسم"><input value={f.name} onChange={set('name')} /></Field>
-      {!editing && <Field label="البريد"><input type="email" value={f.email} onChange={set('email')} /></Field>}
-      <Field label={editing ? 'كلمة مرور جديدة (اختياري)' : 'كلمة المرور'}>
+    <Modal title={editing ? copy.edit : copy.new} onClose={onClose}>
+      <Field label={copy.name}><input value={f.name} onChange={set('name')} /></Field>
+      {!editing && <Field label={copy.email}><input type="email" value={f.email} onChange={set('email')} /></Field>}
+      <Field label={editing ? copy.newPassword : copy.password}>
         <input type="password" value={f.password} onChange={set('password')} />
       </Field>
-      <Field label="الدور">
+      <Field label={copy.role}>
         <select value={f.role} onChange={set('role')}>
-          <option value="student">طالب</option>
-          <option value="instructor">مدرّب</option>
-          <option value="admin">مسؤول</option>
+          <option value="student">{copy.roles.student}</option>
+          <option value="instructor">{copy.roles.instructor}</option>
+          <option value="admin">{copy.roles.admin}</option>
         </select>
       </Field>
       {editing && (
         <label style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <input type="checkbox" checked={f.is_active} onChange={set('is_active')} /> الحساب مفعّل
+          <input type="checkbox" checked={f.is_active} onChange={set('is_active')} /> {copy.activeAccount}
         </label>
       )}
       {editing && f.role === 'instructor' && (
         <>
-          <Field label="المسمّى المهني (يظهر بالموقع)"><input value={f.headline} onChange={set('headline')} /></Field>
-          <Field label="نبذة"><textarea value={f.bio} onChange={set('bio')} rows={3}
+          <Field label={copy.headline}><input value={f.headline} onChange={set('headline')} /></Field>
+          <Field label={copy.bio}><textarea value={f.bio} onChange={set('bio')} rows={3}
             style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10, font: 'inherit', resize: 'vertical' }} /></Field>
-          <Field label="مجالات الخبرة (افصل بفاصلة)"><input value={f.expertise} onChange={set('expertise')} /></Field>
+          <Field label={copy.expertise}><input value={f.expertise} onChange={set('expertise')} /></Field>
         </>
       )}
       <ErrText>{err}</ErrText>
       <div className="row">
-        <button className="btn btn-filled" disabled={busy} onClick={save}>حفظ</button>
-        <button className="btn btn-text" onClick={onClose}>إلغاء</button>
+        <button className="btn btn-filled" disabled={busy} onClick={save}>{common.save}</button>
+        <button className="btn btn-text" onClick={onClose}>{common.cancel}</button>
       </div>
     </Modal>
   );
 }
 
 export default function Users() {
+  const { language } = useAdminLanguage();
+  const copy = pageCopy('users', language);
+  const common = pageCopy('common', language);
   const [rows, setRows] = useState(null);
   const [role, setRole] = useState('');
   const [q, setQ] = useState('');
@@ -81,51 +86,51 @@ export default function Users() {
   async function load() {
     setErr('');
     try { setRows((await api.users({ role, q })).users); }
-    catch { setErr('تعذّر التحميل.'); }
+    catch { setErr(common.loadError); }
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [role]);
 
   async function toggleActive(u) {
     try { await api.userUpdate(u.id, { is_active: !u.is_active }); load(); }
-    catch (e) { toast.error(apiError(e)); }
+    catch (e) { toast.error(apiError(e, common.loadError)); }
   }
   async function del(u) {
-    if (!await confirmDialog(`حذف ${u.name}؟`)) return;
+    if (!await confirmDialog(copy.deleteConfirm(u.name))) return;
     try { await api.userDelete(u.id); load(); }
-    catch (e) { toast.error(apiError(e)); }
+    catch (e) { toast.error(apiError(e, common.loadError)); }
   }
 
   return (
     <>
-      <h2>المستخدمون</h2>
+      <h2>{copy.heading}</h2>
       <div className="toolbar">
         <select value={role} onChange={(e) => setRole(e.target.value)}>
-          {ROLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          {copy.filters.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <input placeholder="بحث بالاسم/البريد" value={q} onChange={(e) => setQ(e.target.value)}
+        <input placeholder={copy.searchPlaceholder} value={q} onChange={(e) => setQ(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && load()} />
-        <button className="btn btn-tonal btn-sm" onClick={load}>بحث</button>
-        <button className="btn btn-filled btn-sm" onClick={() => setEditing(null)}>+ مستخدم</button>
+        <button className="btn btn-tonal btn-sm" onClick={load}>{copy.search}</button>
+        <button className="btn btn-filled btn-sm" onClick={() => setEditing(null)}>{copy.new}</button>
       </div>
       <ErrText>{err}</ErrText>
-      {!rows ? <div className="empty">جارٍ التحميل…</div> : (
+      {!rows ? <div className="empty">{common.loading}</div> : (
         <table className="table">
-          <thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+          <thead><tr>{copy.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
           <tbody>
             {rows.map((u) => (
               <tr key={u.id}>
                 <td>{u.name}</td>
                 <td>{u.email}</td>
-                <td><span className="chip chip-role">{roleLabel(u.role)}</span></td>
-                <td><span className={`chip ${u.is_active ? 'chip-on' : 'chip-off'}`}>{u.is_active ? 'مفعّل' : 'معطّل'}</span></td>
+                <td><span className="chip chip-role">{copy.roles[u.role] || u.role}</span></td>
+                <td><span className={`chip ${u.is_active ? 'chip-on' : 'chip-off'}`}>{u.is_active ? copy.active : copy.inactive}</span></td>
                 <td className="actions">
-                  <button className="btn btn-tonal btn-sm" onClick={() => setEditing(u)}>تعديل</button>
-                  <button className="btn btn-tonal btn-sm" onClick={() => toggleActive(u)}>{u.is_active ? 'تعطيل' : 'تفعيل'}</button>
-                  <button className="btn btn-error btn-sm" onClick={() => del(u)}>حذف</button>
+                  <button className="btn btn-tonal btn-sm" onClick={() => setEditing(u)}>{common.edit}</button>
+                  <button className="btn btn-tonal btn-sm" onClick={() => toggleActive(u)}>{u.is_active ? copy.deactivate : copy.activate}</button>
+                  <button className="btn btn-error btn-sm" onClick={() => del(u)}>{common.delete}</button>
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan="5" className="empty">لا نتائج.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan="5" className="empty">{copy.empty}</td></tr>}
           </tbody>
         </table>
       )}

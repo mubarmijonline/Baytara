@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { Modal, Field } from './ui.jsx';
+import { useAdminLanguage } from './i18n.jsx';
+import { pageCopy } from './page-copy.js';
 
 // Non-technical editor for an array of objects: table + add/edit modal + delete + reorder.
 // fields: [{ key, label, type? ('text'|'textarea'|'number') }]
-export default function ListEditor({ title, items, fields, onChange, addLabel = '+ إضافة' }) {
+export default function ListEditor({ title, items, fields, onChange, addLabel }) {
+  const { language } = useAdminLanguage();
+  const copy = pageCopy('list', language);
   const list = Array.isArray(items) ? items : [];
   const [form, setForm] = useState(undefined); // undefined=closed, {index, data}
 
@@ -31,11 +35,11 @@ export default function ListEditor({ title, items, fields, onChange, addLabel = 
     <div className="card">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <h3 style={{ margin: 0 }}>{title}</h3>
-        <button className="btn btn-filled btn-sm" onClick={openNew}>{addLabel}</button>
+        <button className="btn btn-filled btn-sm" onClick={openNew}>{addLabel || copy.add}</button>
       </div>
-      {list.length === 0 ? <div className="empty" style={{ padding: 14 }}>لا عناصر بعد.</div> : (
+      {list.length === 0 ? <div className="empty" style={{ padding: 14 }}>{copy.empty}</div> : (
         <table className="table" style={{ marginTop: 10 }}>
-          <thead><tr>{cols.map((f) => <th key={f.key}>{f.label}</th>)}<th>ترتيب</th><th>إجراءات</th></tr></thead>
+          <thead><tr>{cols.map((f) => <th key={f.key}>{f.label}</th>)}<th>{copy.order}</th><th>{copy.actions}</th></tr></thead>
           <tbody>
             {list.map((row, i) => (
               <tr key={i}>
@@ -45,8 +49,8 @@ export default function ListEditor({ title, items, fields, onChange, addLabel = 
                   <button className="btn btn-tonal btn-sm" disabled={i === list.length - 1} onClick={() => move(i, 1)}>↓</button>
                 </td>
                 <td className="actions">
-                  <button className="btn btn-tonal btn-sm" onClick={() => openEdit(i)}>تعديل</button>
-                  <button className="btn btn-error btn-sm" onClick={() => del(i)}>حذف</button>
+                  <button className="btn btn-tonal btn-sm" onClick={() => openEdit(i)}>{copy.edit}</button>
+                  <button className="btn btn-error btn-sm" onClick={() => del(i)}>{copy.delete}</button>
                 </td>
               </tr>
             ))}
@@ -54,7 +58,7 @@ export default function ListEditor({ title, items, fields, onChange, addLabel = 
         </table>
       )}
       {form !== undefined && (
-        <Modal title={form.index === -1 ? 'إضافة عنصر' : 'تعديل عنصر'} onClose={() => setForm(undefined)}>
+        <Modal title={form.index === -1 ? copy.addTitle : copy.editTitle} onClose={() => setForm(undefined)}>
           {fields.map((f) => (
             <Field key={f.key} label={f.label}>
               {f.type === 'textarea'
@@ -65,7 +69,7 @@ export default function ListEditor({ title, items, fields, onChange, addLabel = 
                     onChange={(e) => setForm({ ...form, data: { ...form.data, [f.key]: e.target.value } })} />}
             </Field>
           ))}
-          <div className="row"><button className="btn btn-filled" onClick={save}>حفظ</button><button className="btn btn-text" onClick={() => setForm(undefined)}>إلغاء</button></div>
+          <div className="row"><button className="btn btn-filled" onClick={save}>{copy.save}</button><button className="btn btn-text" onClick={() => setForm(undefined)}>{copy.cancel}</button></div>
         </Modal>
       )}
     </div>

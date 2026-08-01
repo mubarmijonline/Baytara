@@ -35,7 +35,7 @@ function CategoryEditor({ category, onClose, onSaved }) {
     if (!name.trim()) return;
     setSaving(true); setError('');
     try { await api.categoryUpdate(category.id, { name: name.trim(), name_en: nameEn.trim() || null }); onSaved(); }
-    catch (requestError) { setError(apiError(requestError)); }
+    catch (requestError) { setError(apiError(requestError, c.loadError)); }
     finally { setSaving(false); }
   }
   return <Modal title={c.edit} onClose={onClose}>
@@ -67,13 +67,13 @@ export default function Categories() {
     try {
       await api.categoryCreate({ name: name.trim(), name_en: nameEn.trim() || null });
       setName(''); setNameEn(''); await load();
-    } catch (requestError) { toast.error(apiError(requestError)); }
+    } catch (requestError) { toast.error(apiError(requestError, c.loadError)); }
   }
   async function remove(category) {
     if (!await confirmDialog(c.deleteConfirm)) return;
     try { await api.categoryDelete(category.id); await load(); }
     catch (requestError) {
-      const code = apiError(requestError);
+      const code = apiError(requestError, c.loadError);
       toast.error(code === 'category_in_use' ? c.inUse : code === 'fixed_category' ? c.fixedError : code);
     }
   }
