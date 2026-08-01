@@ -1270,27 +1270,33 @@ def vdocipher_import():
 
 # ------------------------------ site settings ------------------------------
 
+from ...site_settings import admin_settings, validate_settings_payload
+
 @bp.get("/settings")
 @require_role("admin")
 def settings_get():
-    return jsonify(settings={s.key: s.value for s in Setting.query.all()})
+    rows = {setting.key: setting.value for setting in Setting.query.all()}
+    return jsonify(settings=admin_settings(rows))
 
 
 @bp.put("/settings")
 @require_role("admin")
 def settings_put():
     """Bulk upsert: body is a flat {key: value} map."""
-    data = request.get_json() or {}
-    if not isinstance(data, dict):
-        return jsonify(error="object_required"), 422
+    data, errors = validate_settings_payload(request.get_json(silent=True))
+    if errors:
+        return jsonify(error="validation", errors=errors), 422
     for key, value in data.items():
+        if key.startswith("secret_") and value == "":
+            continue
         s = db.session.get(Setting, key)
         if s:
             s.value = value
         else:
             db.session.add(Setting(key=key, value=value))
     db.session.commit()
-    return jsonify(settings={s.key: s.value for s in Setting.query.all()})
+    rows = {setting.key: setting.value for setting in Setting.query.all()}
+    return jsonify(settings=admin_settings(rows))
 
 
 # ------------------------------ articles (blog + free content) ------------------------------

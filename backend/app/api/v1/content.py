@@ -3,6 +3,7 @@ from marshmallow import Schema, ValidationError, fields, validate
 
 from ...extensions import db
 from ...models import Setting, Article, ContactMessage
+from ...site_settings import public_settings
 from ...utils import req_lang
 
 bp = Blueprint("content", __name__)
@@ -11,7 +12,8 @@ bp = Blueprint("content", __name__)
 @bp.get("/settings")
 def settings():
     """Public site config. Keys prefixed 'secret_' are admin-only and never exposed."""
-    return jsonify(settings={s.key: s.value for s in Setting.query.all() if not s.key.startswith("secret_")})
+    rows = {setting.key: setting.value for setting in Setting.query.all()}
+    return jsonify(settings=public_settings(rows, req_lang()))
 
 
 @bp.get("/articles")
