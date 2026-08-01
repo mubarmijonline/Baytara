@@ -120,25 +120,25 @@ def _query_error(error):
 @require_role("admin")
 def summary():
     query, now = _prepare_query()
-    rows = query.all()
-    successful = [row for row in rows if row.status in SUCCESS_STATUSES]
     active_cutoff = now - timedelta(seconds=60)
-    active = sum(
-        row.status in OPEN_SESSION_STATUSES
-        and row.last_event_at
-        and (row.last_event_at if row.last_event_at.tzinfo else row.last_event_at.replace(tzinfo=timezone.utc)) >= active_cutoff
-        for row in rows
-    )
-    completed = sum(row.status == "completed" for row in successful)
+    successful = query.filter(VideoPlaybackSession.status.in_(SUCCESS_STATUSES)).count()
+    completed = query.filter(VideoPlaybackSession.status == "completed").count()
     return jsonify(
-        attempts=len(rows),
-        successful=len(successful),
-        active=active,
-        unique_viewers=len({row.user_id for row in rows if row.user_id is not None}),
-        watch_seconds=sum(row.watched_seconds or 0 for row in rows),
-        completion_rate=round(completed / len(successful) * 100) if successful else 0,
-        denied=sum(row.status == "denied" for row in rows),
-        failures=sum(row.status in {"provider_failed", "error"} for row in rows),
+        attempts=query.count(),
+        successful=successful,
+        active=query.filter(
+            VideoPlaybackSession.status.in_(OPEN_SESSION_STATUSES),
+            VideoPlaybackSession.last_event_at >= active_cutoff,
+        ).count(),
+        unique_viewers=query.with_entities(
+            db.func.count(db.func.distinct(VideoPlaybackSession.user_id))
+        ).scalar() or 0,
+        watch_seconds=query.with_entities(
+            db.func.coalesce(db.func.sum(VideoPlaybackSession.watched_seconds), 0)
+        ).scalar() or 0,
+        completion_rate=round(completed / successful * 100) if successful else 0,
+        denied=query.filter(VideoPlaybackSession.status == "denied").count(),
+        failures=query.filter(VideoPlaybackSession.status.in_({"provider_failed", "error"})).count(),
     )
 
 

@@ -184,19 +184,23 @@ def record_playback_event(session, user, device_id, payload, now=None):
         raise PlaybackEventError("invalid_event_measurement")
 
     now = now or _now()
-    previous_at = _aware(locked.last_event_at or locked.started_at)
-    elapsed = max((now - previous_at).total_seconds(), 0)
-    allowed_growth = ceil(elapsed * 2.5) + 5
-    locked.duration_seconds = duration
-    locked.watched_seconds = min(
-        max(locked.watched_seconds, watched),
-        locked.watched_seconds + allowed_growth,
+    duration = max(
         duration,
+        locked.duration_seconds or 0,
+        locked.watched_seconds,
+        locked.covered_seconds,
+        locked.max_position_seconds,
     )
-    locked.covered_seconds = min(
-        max(locked.covered_seconds, covered),
-        locked.covered_seconds + allowed_growth,
-        duration,
+    elapsed = max((now - _aware(locked.started_at)).total_seconds(), 0)
+    allowed_total = ceil(elapsed * 2.5) + 5
+    locked.duration_seconds = duration
+    locked.watched_seconds = max(
+        locked.watched_seconds,
+        min(watched, allowed_total, duration),
+    )
+    locked.covered_seconds = max(
+        locked.covered_seconds,
+        min(covered, allowed_total, duration),
     )
     locked.current_position_seconds = min(position, duration)
     locked.max_position_seconds = max(locked.max_position_seconds, locked.current_position_seconds)
@@ -210,9 +214,12 @@ def record_playback_event(session, user, device_id, payload, now=None):
     elif event_type == "pause":
         locked.status = "paused"
     elif event_type == "ended":
-        locked.status = "completed"
-        locked.completion_percent = 100
-        locked.completed_at = now
+        if locked.completion_percent >= 90:
+            locked.status = "completed"
+            locked.completed_at = now
+        else:
+            locked.status = "abandoned"
+            locked.reason = "insufficient_coverage"
         locked.ended_at = now
     elif event_type == "player_error":
         locked.status = "error"
@@ -243,7 +250,7 @@ def mark_stale_sessions_abandoned(now=None, idle_seconds=60):
         session.status = "abandoned"
         session.reason = "heartbeat_timeout"
         session.ended_at = now
-        append_playback_event(session, "player_error", reason="heartbeat_timeout")
+        append_playback_event(session, "abandoned", reason="heartbeat_timeout")
     if rows:
         db.session.commit()
     return len(rows)

@@ -23,6 +23,7 @@ PLAYBACK_EVENT_TYPES = (
     "heartbeat",
     "ended",
     "player_error",
+    "abandoned",
 )
 
 

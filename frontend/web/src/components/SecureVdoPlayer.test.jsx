@@ -110,3 +110,24 @@ it('retries a failed event with the same client event id', async () => {
   await waitFor(() => expect(requests).toBe(2));
   expect(bodies[0].event_id).toBe(bodies[1].event_id);
 });
+
+it('uses a backend-valid UUID when randomUUID is unavailable', async () => {
+  const { player, listeners } = fakePlayer();
+  window.VdoPlayer = { getInstance: vi.fn(() => player) };
+  vi.stubGlobal('crypto', {
+    getRandomValues: (bytes) => {
+      bytes.fill(7);
+      return bytes;
+    },
+  });
+  let body;
+  vi.stubGlobal('fetch', vi.fn((input, options = {}) => {
+    if (String(input).includes('/events')) body = JSON.parse(options.body);
+    return json({ session: { status: 'playing' } });
+  }));
+
+  render(<SecureVdoPlayer playback={playback} title="Introduction" />);
+  await waitFor(() => expect(window.VdoPlayer.getInstance).toHaveBeenCalled());
+  await act(async () => listeners.get('play')());
+  expect(body.event_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+});

@@ -225,6 +225,7 @@ def test_player_events_are_device_bound_idempotent_and_server_capped(monitoring_
 
     with monitoring_app.app_context():
         session = VideoPlaybackSession.query.filter_by(public_id=session_id).one()
+        session.started_at = datetime.now(timezone.utc) - timedelta(seconds=10)
         session.last_event_at = datetime.now(timezone.utc) - timedelta(seconds=10)
         db.session.commit()
 
@@ -256,12 +257,59 @@ def test_player_events_are_device_bound_idempotent_and_server_capped(monitoring_
     assert wrong_device.get_json() == {"error": "device_mismatch"}
 
 
+def test_rapid_events_cannot_stack_the_server_grace_allowance(monitoring_app, monkeypatch):
+    email, session_id = _event_session(monitoring_app)
+    client = monitoring_app.test_client()
+    headers = _event_headers(client, email)
+    fixed_now = datetime(2026, 8, 1, 17, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr("app.services.video_monitoring._now", lambda: fixed_now)
+    with monitoring_app.app_context():
+        session = VideoPlaybackSession.query.filter_by(public_id=session_id).one()
+        session.started_at = fixed_now
+        session.last_event_at = fixed_now
+        db.session.commit()
+
+    for event_id in (
+        "12121212-1212-4212-8212-121212121212",
+        "13131313-1313-4313-8313-131313131313",
+        "14141414-1414-4414-8414-141414141414",
+    ):
+        response = _post_event(
+            client, session_id, headers, event_id, "heartbeat",
+            position=120, watched=120, covered=120,
+        )
+        assert response.status_code == 200
+
+    aggregate = response.get_json()["session"]
+    assert aggregate["watched_seconds"] <= 5
+    assert aggregate["covered_seconds"] <= 5
+
+
+def test_early_ended_event_does_not_forge_completion(monitoring_app):
+    email, session_id = _event_session(monitoring_app)
+    client = monitoring_app.test_client()
+    headers = _event_headers(client, email)
+
+    ended = _post_event(
+        client, session_id, headers,
+        "15151515-1515-4515-8515-151515151515", "ended",
+        position=120, watched=120, covered=120,
+    )
+    assert ended.status_code == 200
+    assert ended.get_json()["session"]["status"] == "abandoned"
+    assert ended.get_json()["session"]["completion_percent"] < 90
+    with monitoring_app.app_context():
+        session = VideoPlaybackSession.query.filter_by(public_id=session_id).one()
+        assert session.reason == "insufficient_coverage"
+
+
 def test_ended_event_completes_session_and_closed_sessions_reject_updates(monitoring_app):
     email, session_id = _event_session(monitoring_app)
     client = monitoring_app.test_client()
     headers = _event_headers(client, email)
     with monitoring_app.app_context():
         session = VideoPlaybackSession.query.filter_by(public_id=session_id).one()
+        session.started_at = datetime.now(timezone.utc) - timedelta(seconds=60)
         session.last_event_at = datetime.now(timezone.utc) - timedelta(seconds=60)
         db.session.commit()
 
