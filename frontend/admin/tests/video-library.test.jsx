@@ -245,6 +245,31 @@ it('loads nested folders when an administrator expands a folder', async () => {
   expect(await screen.findByRole('button', { name: 'Cases' })).toBeVisible();
 });
 
+it('shows a single folder error and retries when the folder is reopened', async () => {
+  let folderCalls = 0;
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/folders/root')) return json({ folders: [{ id: 'f1', name: 'Equine' }] });
+    if (url.endsWith('/folders/f1')) {
+      folderCalls += 1;
+      return folderCalls === 1 ? json({ error: 'load_failed' }, 503) : json({ folders: [{ id: 'f2', name: 'Cases' }] });
+    }
+    return json({});
+  });
+  const user = userEvent.setup();
+  render(<LanguageProvider><VideoFolderTree selectedId="root" onSelect={() => {}} /></LanguageProvider>);
+
+  expect(await screen.findByRole('button', { name: 'Equine' })).toBeVisible();
+  await user.click(screen.getByRole('button', { name: /expand folder/i }));
+  expect(await screen.findByText('Unable to load.')).toBeVisible();
+  expect(screen.queryByText('Loading…')).toBeNull();
+
+  await user.click(screen.getAllByRole('button', { name: /collapse folder/i })[1]);
+  await user.click(screen.getByRole('button', { name: /expand folder/i }));
+  expect(await screen.findByRole('button', { name: 'Cases' })).toBeVisible();
+  expect(screen.queryByText('Unable to load.')).toBeNull();
+});
+
 it('selects a nested folder from the reusable folder picker', async () => {
   fetch.mockImplementation((input) => {
     const url = String(input);

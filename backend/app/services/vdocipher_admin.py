@@ -303,6 +303,11 @@ def _provider_parent_id(parent):
 
 
 def _normalize_folder_path(folder_path):
+    if isinstance(folder_path, str):
+        try:
+            folder_path = json.loads(folder_path)
+        except json.JSONDecodeError as exc:
+            raise VdoCipherAdminError("vdocipher_bad_response") from exc
     if not isinstance(folder_path, list):
         raise VdoCipherAdminError("vdocipher_bad_response")
     normalized = []

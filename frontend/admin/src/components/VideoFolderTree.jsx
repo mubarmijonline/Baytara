@@ -9,12 +9,15 @@ function Node({ folder, depth, selectedId, onSelect, revision }) {
   const [expanded, setExpanded] = useState(folder.id === 'root');
   const [children, setChildren] = useState(null);
   const [error, setError] = useState(false);
-  useEffect(() => { setChildren(null); }, [revision]);
+  useEffect(() => { setChildren(null); setError(false); }, [revision]);
   useEffect(() => {
     if (!expanded || children !== null) return;
-    api.vdocipherFolder(folder.id).then((data) => setChildren(data.folders || [])).catch(() => setError(true));
+    setError(false);
+    api.vdocipherFolder(folder.id)
+      .then((data) => { setChildren(data.folders || []); setError(false); })
+      .catch(() => setError(true));
   }, [children, expanded, folder.id]);
-  return <li><div className={`video-folder-row ${selectedId === folder.id ? 'selected' : ''}`} style={{ paddingInlineStart: depth * 14 }}><button className="icon-button" type="button" aria-label={expanded ? t('video.collapseFolder') : t('video.expandFolder')} onClick={() => { setExpanded((value) => !value); onSelect(folder.id); }}>{expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button><button className="video-folder-select" type="button" onClick={() => onSelect(folder.id)}>{expanded ? <FolderOpen size={16} /> : <Folder size={16} />} {folder.name || t('video.libraryRoot')}</button></div>{expanded && <ul className="video-folder-children">{children === null && <li className="video-folder-loading">{t('common.loading')}</li>}{error && <li className="error-text">{t('errors.load')}</li>}{(children || []).map((child) => <Node key={child.id} folder={child} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} revision={revision} />)}</ul>}</li>;
+  return <li><div className={`video-folder-row ${selectedId === folder.id ? 'selected' : ''}`} style={{ paddingInlineStart: depth * 14 }}><button className="icon-button" type="button" aria-label={expanded ? t('video.collapseFolder') : t('video.expandFolder')} onClick={() => { setExpanded((value) => !value); onSelect(folder.id); }}>{expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button><button className="video-folder-select" type="button" onClick={() => onSelect(folder.id)}>{expanded ? <FolderOpen size={16} /> : <Folder size={16} />} {folder.name || t('video.libraryRoot')}</button></div>{expanded && <ul className="video-folder-children">{children === null && !error && <li className="video-folder-loading">{t('common.loading')}</li>}{error && <li className="error-text">{t('errors.load')}</li>}{(children || []).map((child) => <Node key={child.id} folder={child} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} revision={revision} />)}</ul>}</li>;
 }
 
 export default function VideoFolderTree({ selectedId = 'root', onSelect, picker = false }) {

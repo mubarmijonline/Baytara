@@ -274,6 +274,31 @@ def test_list_folder_normalizes_root_and_null_parent_values(monkeypatch):
     }
 
 
+def test_list_folder_accepts_provider_json_encoded_folder_paths(monkeypatch):
+    response = {
+        "folderList": [{"id": "standalone", "name": "Standalone", "parent": "baytara"}],
+        "current": {
+            "id": "baytara", "name": "Baytara", "parent": None,
+            "folderPath": "[]",
+        },
+        "parent": {
+            "id": "root", "name": "Library", "parent": None,
+            "folderPath": '[{"id":"root","name":"Library"}]',
+        },
+    }
+    fake = type("FolderProvider", (), {"list_folder": lambda self, *args: response})()
+    monkeypatch.setattr(va, "client", fake)
+
+    assert va.list_folder("baytara", refresh=True) == {
+        "folders": [{"id": "standalone", "name": "Standalone", "parent": "baytara"}],
+        "current": {"id": "baytara", "name": "Baytara", "parent": None, "folderPath": []},
+        "parent": {
+            "id": "root", "name": "Library", "parent": None,
+            "folderPath": [{"id": "root", "name": "Library"}],
+        },
+    }
+
+
 @pytest.mark.parametrize("folder", [
     {"id": "bad.id", "name": "Course", "parent": "root"},
     {"id": "course", "name": "Course", "parent": "bad.id"},
