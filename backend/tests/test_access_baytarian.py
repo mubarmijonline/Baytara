@@ -26,7 +26,9 @@ def _mk(tag, access_type, price=0):
 
 
 def _reg(c, email, role=None, app=None):
-    c.post("/api/v1/auth/register", json={"name": "U", "email": email, "password": "secret12"})
+    c.post("/api/v1/auth/register", json={
+        "name": "U", "email": email, "phone": "+201000000000", "password": "secret12",
+    })
     if role:
         with app.app_context():
             u = User.query.filter_by(email=email).first(); u.role = role; db.session.commit()

@@ -6,6 +6,7 @@ from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     jwt_required,
+    get_jwt,
     get_jwt_identity,
 )
 
@@ -37,13 +38,18 @@ def _register_device(user, device_id, label):
     return True
 
 
+def _nonblank_phone(value):
+    if not value.strip():
+        raise ValidationError("phone_required")
+
+
 class RegisterSchema(Schema):
     class Meta:
         unknown = EXCLUDE  # ignore extra fields like device_id (read from raw body)
 
     name = fields.Str(required=True, validate=validate.Length(min=1, max=120))
     email = fields.Email(required=True)
-    phone = fields.Str(required=False, load_default=None, validate=validate.Length(max=40))
+    phone = fields.Str(required=True, validate=validate.And(validate.Length(max=40), _nonblank_phone))
     password = fields.Str(required=True, validate=validate.Length(min=8, max=128))
 
 
@@ -55,8 +61,10 @@ class LoginSchema(Schema):
     password = fields.Str(required=True)
 
 
-def _tokens(user: User):
+def _tokens(user: User, device_id=None):
     claims = {"role": user.role}
+    if device_id:
+        claims["device_id"] = device_id
     ident = str(user.id)
     return {
         "access_token": create_access_token(identity=ident, additional_claims=claims),
@@ -80,13 +88,14 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify(error="email_taken"), 409
 
-    user = User(name=data["name"], email=email, phone=data.get("phone"),
+    user = User(name=data["name"], email=email, phone=data["phone"].strip(),
                 password_hash=hash_password(data["password"]), role="student")
     db.session.add(user)
     db.session.commit()
     body = request.get_json() or {}
     _register_device(user, body.get("device_id"), request.headers.get("User-Agent"))
-    return jsonify(user=_user_json(user), **_tokens(user)), 201
+    device_id = body.get("device_id")
+    return jsonify(user=_user_json(user), **_tokens(user, device_id)), 201
 
 
 @bp.post("/login")
@@ -107,7 +116,7 @@ def login():
         devices = UserDevice.query.filter_by(user_id=user.id).order_by(UserDevice.last_seen).all()
         return jsonify(error="device_limit_reached", max_devices=UserDevice.MAX_DEVICES,
                        devices=[d.to_dict() for d in devices]), 403
-    return jsonify(user=_user_json(user), **_tokens(user))
+    return jsonify(user=_user_json(user), **_tokens(user, body.get("device_id")))
 
 
 @bp.post("/refresh")
@@ -116,7 +125,16 @@ def refresh():
     user = db.session.get(User, int(get_jwt_identity()))
     if not user or not user.is_active:
         return jsonify(error="invalid_user"), 401
-    return jsonify(access_token=create_access_token(identity=str(user.id), additional_claims={"role": user.role}))
+    device_id = get_jwt().get("device_id")
+    claims = {"role": user.role}
+    if device_id:
+        device = UserDevice.query.filter_by(user_id=user.id, device_id=device_id).first()
+        if not device:
+            return jsonify(error="device_not_registered"), 403
+        device.last_seen = datetime.now(timezone.utc)
+        claims["device_id"] = device_id
+        db.session.commit()
+    return jsonify(access_token=create_access_token(identity=str(user.id), additional_claims=claims))
 
 
 @bp.get("/me")
@@ -125,6 +143,20 @@ def me():
     user = db.session.get(User, int(get_jwt_identity()))
     if not user:
         return jsonify(error="not_found"), 404
+    return jsonify(user=_user_json(user))
+
+
+@bp.patch("/profile")
+@jwt_required()
+def update_profile():
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not user.is_active:
+        return jsonify(error="invalid_user"), 401
+    phone = (request.get_json(silent=True) or {}).get("phone")
+    if not isinstance(phone, str) or not phone.strip() or len(phone.strip()) > 40:
+        return jsonify(error="validation", messages={"phone": ["phone_required"]}), 422
+    user.phone = phone.strip()
+    db.session.commit()
     return jsonify(user=_user_json(user))
 
 

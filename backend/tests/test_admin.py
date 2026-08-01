@@ -28,7 +28,9 @@ def demo():
     h = _admin_headers(c, app, tag)
 
     # non-admin blocked
-    c.post("/api/v1/auth/register", json={"name": "S", "email": f"s_{tag}@t.test", "password": "secret12"})
+    c.post("/api/v1/auth/register", json={
+        "name": "S", "email": f"s_{tag}@t.test", "phone": "+201000000000", "password": "secret12",
+    })
     sh = {"Authorization": f"Bearer {c.post('/api/v1/auth/login', json={'email': f's_{tag}@t.test', 'password': 'secret12'}).get_json()['access_token']}"}
     assert c.get("/api/v1/admin/stats", headers=sh).status_code == 403
 

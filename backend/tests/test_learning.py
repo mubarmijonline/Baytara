@@ -119,7 +119,9 @@ def _seed(tag, price=0):
 
 def _auth(c, tag):
     email = f"s_{tag}@t.test"
-    c.post("/api/v1/auth/register", json={"name": "S", "email": email, "password": "secret12"})
+    c.post("/api/v1/auth/register", json={
+        "name": "S", "email": email, "phone": "+201000000000", "password": "secret12",
+    })
     tok = c.post("/api/v1/auth/login", json={"email": email, "password": "secret12"}).get_json()["access_token"]
     return {"Authorization": f"Bearer {tok}"}
 

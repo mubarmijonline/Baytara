@@ -95,7 +95,7 @@ def payment_app(tmp_path, monkeypatch):
 
 def _student_headers(client, email="payment-student@example.test"):
     client.post("/api/v1/auth/register", json={
-        "name": "Student", "email": email, "password": "secret12",
+        "name": "Student", "email": email, "phone": "+201000000000", "password": "secret12",
     })
     login = client.post("/api/v1/auth/login", json={"email": email, "password": "secret12"})
     return {"Authorization": f"Bearer {login.get_json()['access_token']}"}
@@ -264,7 +264,9 @@ def _mk_course(tag, access_type="general", price=200, access_days=None):
 
 
 def _tok(c, email, app):
-    c.post("/api/v1/auth/register", json={"name": "U", "email": email, "password": "secret12"})
+    c.post("/api/v1/auth/register", json={
+        "name": "U", "email": email, "phone": "+201000000000", "password": "secret12",
+    })
     return c.post("/api/v1/auth/login", json={"email": email, "password": "secret12"}).get_json()["access_token"]
 
 

@@ -135,7 +135,9 @@ def demo():
 
     c = app.test_client()
     email = f"vs_{tag}@t.test"
-    c.post("/api/v1/auth/register", json={"name": "S", "email": email, "password": "secret12"})
+    c.post("/api/v1/auth/register", json={
+        "name": "S", "email": email, "phone": "+201000000000", "password": "secret12",
+    })
     tok = c.post("/api/v1/auth/login", json={"email": email, "password": "secret12"}).get_json()["access_token"]
     h = {"Authorization": f"Bearer {tok}"}
 

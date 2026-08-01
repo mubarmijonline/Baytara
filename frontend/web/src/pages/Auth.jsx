@@ -8,7 +8,8 @@ import { useI18n } from '../lib/i18n.jsx';
 export default function Auth() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const next = params.get('next') || '/dashboard';
+  const requestedNext = params.get('next') || '/dashboard';
+  const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/dashboard';
   const { login, register } = useAuth();
   const { t } = useI18n();
   const [mode, setMode] = useState('login');
@@ -147,7 +148,7 @@ export default function Auth() {
           {field('البريد الإلكتروني', <input placeholder="you@email.com" style={inputStyle} value={f.email} onChange={set('email')} />)}
           {isSignup && field(t('auth.phone'),
             <>
-              <input placeholder="+2010xxxxxxxx" style={inputStyle} value={f.phone} onChange={set('phone')} />
+              <input required placeholder="+2010xxxxxxxx" style={inputStyle} value={f.phone} onChange={set('phone')} />
               <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{t('auth.phoneHint')}</div>
             </>)}
           {field('كلمة المرور', <input type="password" placeholder="••••••••" style={inputStyle} value={f.password} onChange={set('password')} onKeyDown={(e) => e.key === 'Enter' && submit()} />)}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { dashNav, dashStats, rawCourses } from '../data/mock.js';
@@ -14,11 +14,16 @@ function daysLeft(iso) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, logout, loading } = useAuth();
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const { user, updateProfile, logout, loading } = useAuth();
   const { t } = useI18n();
   const [enrollments, setEnrollments] = useState(null);
   const [recs, setRecs] = useState([]);
   const [devices, setDevices] = useState([]);
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileError, setProfileError] = useState('');
 
   const loadDevices = () => auth.devices().then((r) => setDevices(r.devices)).catch(() => {});
   useEffect(() => {
@@ -29,8 +34,25 @@ export default function Dashboard() {
     loadDevices();
   }, [user, loading, navigate]);
 
+  useEffect(() => setProfilePhone(user?.phone || ''), [user?.phone]);
+
   async function removeDevice(id) {
     try { await auth.removeDevice(id); loadDevices(); } catch { /* noop */ }
+  }
+
+  async function savePhone(event) {
+    event.preventDefault();
+    setProfileBusy(true);
+    setProfileError('');
+    try {
+      await updateProfile(profilePhone);
+      const requestedNext = searchParams.get('next') || '/dashboard';
+      navigate(requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/dashboard');
+    } catch {
+      setProfileError(t('profile.phoneError'));
+    } finally {
+      setProfileBusy(false);
+    }
   }
 
   const name = user?.name || '';
@@ -113,6 +135,18 @@ export default function Dashboard() {
         </aside>
 
         <div>
+          {pathname === '/dashboard/profile' && (
+            <form onSubmit={savePhone} style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 8, padding: 22, marginBottom: 28, maxWidth: 620 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 8px' }}>{t('profile.phoneTitle')}</h1>
+              <p style={{ color: colors.muted, lineHeight: 1.7, margin: '0 0 18px' }}>{t('profile.phoneDescription')}</p>
+              <label htmlFor="profile-phone" style={{ display: 'block', fontSize: 14, fontWeight: 800, marginBottom: 7 }}>{t('auth.phone')}</label>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <input id="profile-phone" required value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} placeholder="+2010xxxxxxxx" style={{ flex: '1 1 260px', height: 44, border: `1px solid ${colors.line}`, borderRadius: 6, padding: '0 13px', fontSize: 15 }} />
+                <button type="submit" disabled={profileBusy} style={{ border: 0, borderRadius: 6, background: colors.accent, color: '#fff', padding: '0 18px', minHeight: 44, fontWeight: 800, cursor: 'pointer' }}>{profileBusy ? t('common.loading') : t('profile.phoneSave')}</button>
+              </div>
+              {profileError && <p role="alert" style={{ color: '#9b2626', marginBottom: 0 }}>{profileError}</p>}
+            </form>
+          )}
           <h1 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 6px' }}>أهلاً بعودتك، {name || ''} 👋</h1>
           <p style={{ color: colors.muted, fontSize: 16, margin: '0 0 26px' }}>
             {myCourses.length ? `لديك ${myCourses.length} دورة. واصل من حيث توقّفت.` : 'لم تسجّل في أي دورة بعد.'}

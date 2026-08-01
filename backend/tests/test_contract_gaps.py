@@ -153,7 +153,8 @@ def _mk_course(tag, price=200, access_days=None, title_en=None):
 
 def _token(c, email, role=None, app=None, device_id=None):
     c.post("/api/v1/auth/register",
-           json={"name": "U", "email": email, "password": "secret12", "device_id": device_id})
+           json={"name": "U", "email": email, "phone": "+201000000000",
+                 "password": "secret12", "device_id": device_id})
     if role:
         with app.app_context():
             u = User.query.filter_by(email=email).first()
@@ -222,7 +223,9 @@ def demo():
 
     # ---- device limit: 2 devices ok, 3rd blocked, remove one -> ok ----
     dm = f"dl_{tag}@t.test"
-    c.post("/api/v1/auth/register", json={"name": "D", "email": dm, "password": "secret12", "device_id": "d1"})
+    c.post("/api/v1/auth/register", json={
+        "name": "D", "email": dm, "phone": "+201000000000", "password": "secret12", "device_id": "d1",
+    })
     assert c.post("/api/v1/auth/login", json={"email": dm, "password": "secret12", "device_id": "d2"}).status_code == 200
     blocked = c.post("/api/v1/auth/login", json={"email": dm, "password": "secret12", "device_id": "d3"})
     assert blocked.status_code == 403 and blocked.get_json()["error"] == "device_limit_reached", blocked.get_json()

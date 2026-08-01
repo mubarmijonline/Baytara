@@ -28,6 +28,11 @@ export function AuthProvider({ children }) {
     setUser(res.user);
     return res.user;
   }
+  async function updateProfile(phone) {
+    const res = await auth.profile({ phone });
+    setUser(res.user);
+    return res.user;
+  }
   function logout() {
     auth.logoutServer();
     setToken('');
@@ -35,7 +40,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, loading, login, register, logout }}>
+    <AuthCtx.Provider value={{ user, loading, login, register, updateProfile, logout }}>
       {children}
     </AuthCtx.Provider>
   );

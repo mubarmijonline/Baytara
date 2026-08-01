@@ -59,6 +59,7 @@ async function authFetch(path, opts = {}) {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
+      'X-Baytara-Device-ID': getDeviceId(),
       ...(opts.headers || {}),
       ...(t ? { Authorization: `Bearer ${t}` } : {}),
     },
@@ -74,6 +75,7 @@ export const auth = {
   login: (b) => authFetch('/auth/login', { method: 'POST', body: JSON.stringify({ ...b, device_id: getDeviceId() }) }),
   logoutServer: () => authFetch('/auth/logout', { method: 'POST', body: JSON.stringify({ device_id: getDeviceId() }) }).catch(() => {}),
   me: () => authFetch('/auth/me'),
+  profile: (body) => authFetch('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
   devices: () => authFetch('/auth/devices'),
   removeDevice: (id) => authFetch(`/auth/devices/${id}`, { method: 'DELETE' }),
   enrollments: () => authFetch('/enrollments'),
