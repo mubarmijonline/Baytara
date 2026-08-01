@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import { useOutletContext } from 'react-router-dom';
 
 function Stat({ num, lbl }) {
   return (
@@ -10,22 +9,8 @@ function Stat({ num, lbl }) {
   );
 }
 
-export default function Dashboard({ onLogout }) {
-  const [s, setS] = useState(null);
-  const [err, setErr] = useState('');
-  useEffect(() => {
-    let active = true;
-    api.stats().then((stats) => {
-      if (active) setS(stats);
-    }).catch((error) => {
-      if (!active) return;
-      if (error.status === 401) return onLogout();
-      setErr('تعذّر تحميل الإحصاءات.');
-    });
-    return () => { active = false; };
-  }, [onLogout]);
-
-  if (err) return <div className="error-text">{err}</div>;
+export default function Dashboard() {
+  const { stats: s } = useOutletContext();
   if (!s) return <div className="empty">جارٍ التحميل…</div>;
   return (
     <>

@@ -36,8 +36,7 @@ const NAV = [
 ];
 
 export default function Shell({ onLogout }) {
-  const [pending, setPending] = useState(0);
-  const [baytPending, setBaytPending] = useState(0);
+  const [stats, setStats] = useState(null);
   const { language, setLanguage, t } = useAdminLanguage();
   const { pathname } = useLocation();
   const statsRequestSequence = useRef(0);
@@ -48,8 +47,7 @@ export default function Shell({ onLogout }) {
       const requestSequence = ++statsRequestSequence.current;
       api.stats({ deferUnauthorized: true }).then((stats) => {
         if (!active || requestSequence !== statsRequestSequence.current) return;
-        setPending(stats.payments.pending);
-        setBaytPending(stats.baytarian?.pending || 0);
+        setStats(stats);
       }).catch((error) => {
         if (active && requestSequence === statsRequestSequence.current && error.status === 401) onLogout();
       });
@@ -72,8 +70,8 @@ export default function Shell({ onLogout }) {
           {NAV.map(([path, labelKey, Icon]) => (
             <NavLink key={path} to={`/${path}`} className="navitem">
               <span className="navitem-label"><Icon size={18} aria-hidden="true" /><span>{t(labelKey)}</span></span>
-              {path === 'payments' && pending ? <span className="count">{pending}</span> : null}
-              {path === 'baytarian' && baytPending ? <span className="count">{baytPending}</span> : null}
+              {path === 'payments' && stats?.payments?.pending ? <span className="count">{stats.payments.pending}</span> : null}
+              {path === 'baytarian' && stats?.baytarian?.pending ? <span className="count">{stats.baytarian.pending}</span> : null}
             </NavLink>
           ))}
         </nav>
@@ -91,7 +89,7 @@ export default function Shell({ onLogout }) {
         </button>
       </aside>
       <main className="content">
-        <Outlet />
+        <Outlet context={{ stats }} />
       </main>
     </div>
   );

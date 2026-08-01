@@ -263,35 +263,14 @@ describe('Admin stats invalidation', () => {
     expect(localStorage.getItem('baytara_admin_token')).toBeNull();
   });
 
-  it('logs out through App on a Dashboard-only stats 401 and preserves the route for re-login', async () => {
+  it('renders Dashboard from the Shell-owned stats request', async () => {
     const statsSpy = vi.spyOn(api, 'stats');
-    const defaultFetch = fetch.getMockImplementation();
-    fetch.mockImplementation((input, options) => {
-      if (String(input).endsWith('/admin/stats')) {
-        statsFetches += 1;
-        return statsFetches === 1
-          ? json({ error: 'unauthorized' }, 401)
-          : json(currentStats);
-      }
-      return defaultFetch(input, options);
-    });
     renderAdmin('/admin/dashboard?view=summary');
 
-    expect(await screen.findByRole('heading', { name: /تسجيل دخول الإدارة|admin sign in/i })).toBeVisible();
-    expect(statsSpy).toHaveBeenNthCalledWith(1);
-    expect(statsSpy).toHaveBeenNthCalledWith(2, { deferUnauthorized: true });
-    expect(localStorage.getItem('baytara_admin_token')).toBeNull();
-    expect(screen.queryByText('تعذّر تحميل الإحصاءات.')).not.toBeInTheDocument();
-    expect(window.location.pathname).toBe('/admin/dashboard');
-    expect(window.location.search).toBe('?view=summary');
-
-    const user = userEvent.setup();
-    await user.type(screen.getByLabelText(/البريد الإلكتروني|email/i), 'admin@baytara.app');
-    await user.type(screen.getByLabelText(/كلمة المرور|password/i), 'secret');
-    await user.click(screen.getByRole('button', { name: /دخول|sign in/i }));
-
     expect(await screen.findByRole('heading', { name: /لوحة القيادة|dashboard/i })).toBeVisible();
-    expect(localStorage.getItem('baytara_admin_token')).toBe('fresh-token');
+    expect(statsSpy).toHaveBeenCalledTimes(1);
+    expect(statsSpy).toHaveBeenCalledWith({ deferUnauthorized: true });
+    expect(localStorage.getItem('baytara_admin_token')).toBe('test-token');
     expect(window.location.pathname).toBe('/admin/dashboard');
     expect(window.location.search).toBe('?view=summary');
   });
