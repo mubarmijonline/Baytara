@@ -189,6 +189,108 @@ def test_provider_video_id_must_be_safe():
         va.normalize_video({"id": "bad.id"})
 
 
+@pytest.mark.parametrize("folder", [
+    {"id": "bad.id", "name": "Child", "parent": "root"},
+    {"id": "child", "name": "Child", "parent": "bad.id"},
+])
+def test_list_folder_rejects_malformed_child_identifiers(monkeypatch, folder):
+    fake = type("MalformedFolderProvider", (), {
+        "list_folder": lambda self, *args: {
+            "folderList": [folder], "current": {"id": "root", "parent": None}, "parent": None,
+        },
+    })()
+    monkeypatch.setattr(va, "client", fake)
+
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+        va.list_folder("root", refresh=True)
+
+
+@pytest.mark.parametrize("response", [
+    {"folderList": [], "current": {"id": "bad.id", "parent": None}, "parent": None},
+    {"folderList": [], "current": {"id": "root", "parent": "bad.id"}, "parent": None},
+    {"folderList": [], "current": {"id": "child", "parent": "root"},
+     "parent": {"id": "bad.id", "parent": None}},
+    {"folderList": [], "current": {"id": "child", "parent": "root"},
+     "parent": {"id": "root", "parent": "bad.id"}},
+])
+def test_list_folder_rejects_malformed_current_and_parent_identifiers(monkeypatch, response):
+    fake = type("MalformedFolderProvider", (), {"list_folder": lambda self, *args: response})()
+    monkeypatch.setattr(va, "client", fake)
+
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+        va.list_folder("root", refresh=True)
+
+
+def test_list_folder_normalizes_root_and_null_parent_values(monkeypatch):
+    response = {
+        "folderList": [{"id": "child", "name": "Child", "parent": "root", "ignored": "value"}],
+        "current": {"id": "root", "name": "Library", "parent": None, "ignored": "value"},
+        "parent": None,
+    }
+    fake = type("FolderProvider", (), {"list_folder": lambda self, *args: response})()
+    monkeypatch.setattr(va, "client", fake)
+
+    assert va.list_folder("root", refresh=True) == {
+        "folders": [{"id": "child", "name": "Child", "parent": "root"}],
+        "current": {"id": "root", "name": "Library", "parent": None},
+        "parent": None,
+    }
+
+
+@pytest.mark.parametrize("folder", [
+    {"id": "bad.id", "name": "Course", "parent": "root"},
+    {"id": "course", "name": "Course", "parent": "bad.id"},
+    {"id": "course", "name": "Course", "parent": "root", "path": ["root", "bad.id"]},
+])
+def test_ensure_folder_rejects_malformed_search_identifiers(monkeypatch, folder):
+    calls = []
+
+    class SearchProvider:
+        def search_folders(self, name):
+            return {"folders": [folder]}
+
+        def create_folder(self, name, parent):
+            calls.append((name, parent))
+            return {"id": "created", "name": name, "parent": parent}
+
+    monkeypatch.setattr(va, "client", SearchProvider())
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+        va.ensure_folder("Course")
+    assert calls == []
+
+
+def test_ensure_folder_accepts_root_and_null_parent_search_results(monkeypatch):
+    fake = type("SearchProvider", (), {
+        "search_folders": lambda self, name: {
+            "folders": [{"id": "course", "name": name, "parent": None, "path": ["root", "course"]}],
+        },
+    })()
+    monkeypatch.setattr(va, "client", fake)
+
+    assert va.ensure_folder("Course") == "course"
+
+
+@pytest.mark.parametrize("response", [
+    {"id": "bad.id", "name": "Child", "parent": "root"},
+    {"id": "child", "name": "Child", "parent": "bad.id"},
+])
+def test_create_folder_rejects_malformed_provider_identifiers(monkeypatch, response):
+    fake = type("CreateProvider", (), {"create_folder": lambda self, *args: response})()
+    monkeypatch.setattr(va, "client", fake)
+
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+        va.create_folder("Child", "root")
+
+
+def test_create_folder_normalizes_provider_response(monkeypatch):
+    fake = type("CreateProvider", (), {
+        "create_folder": lambda self, *args: {"id": "child", "name": "Child", "parent": None, "secret": "drop"},
+    })()
+    monkeypatch.setattr(va, "client", fake)
+
+    assert va.create_folder("Child", "root") == {"id": "child", "name": "Child", "parent": None}
+
+
 class FakeProvider:
     def __init__(self):
         self.calls = []
@@ -200,7 +302,11 @@ class FakeProvider:
 
     def list_folder(self, folder_id):
         self.calls.append(("list_folder", folder_id))
-        return {"folderList": [{"id": "child", "name": "Child"}], "current": {"id": folder_id}}
+        return {
+            "folderList": [{"id": "child", "name": "Child", "parent": folder_id}],
+            "current": {"id": folder_id, "parent": None},
+            "parent": None,
+        }
 
     def create_folder(self, name, parent="root"):
         self.calls.append(("create_folder", name, parent))
@@ -260,7 +366,7 @@ def test_admin_management_endpoints_normalize_cache_and_invalidate(admin_client,
 
     folder = admin_client.get("/api/v1/admin/vdocipher/folders/root")
     assert folder.status_code == 200
-    assert folder.get_json()["folders"] == [{"id": "child", "name": "Child"}]
+    assert folder.get_json()["folders"] == [{"id": "child", "name": "Child", "parent": "root"}]
     assert admin_client.post("/api/v1/admin/vdocipher/folders", json={"name": "New", "parent_id": "root"}).status_code == 201
     assert admin_client.get("/api/v1/admin/vdocipher/folders/root").status_code == 200
     assert [call[0] for call in provider.calls].count("list_folder") == 2

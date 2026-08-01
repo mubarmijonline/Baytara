@@ -88,7 +88,7 @@ def _mutation_response(value):
     value = _response_object(value)
     if not isinstance(value.get("message"), str):
         raise VdoCipherAdminError("vdocipher_bad_response")
-    return value
+    return {"message": value["message"]}
 
 
 def _provider_error(status):
@@ -223,7 +223,49 @@ client = VdoCipherAdminClient()
 
 def _folder_id(row):
     row = _response_object(row)
-    return row.get("id") or row.get("folderId") or row.get("_id")
+    values = [row[key] for key in ("id", "folderId", "_id") if key in row]
+    if not values:
+        return None
+    folder_id = _provider_folder_id(values[0])
+    for value in values[1:]:
+        if _provider_folder_id(value) != folder_id:
+            raise VdoCipherAdminError("vdocipher_bad_response")
+    return folder_id
+
+
+def _provider_parent_id(parent):
+    if parent is None:
+        return None
+    return _provider_folder_id(parent)
+
+
+def _validate_folder_path(path):
+    if path is None:
+        return
+    if not isinstance(path, list):
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    for item in path:
+        if isinstance(item, str):
+            _provider_folder_id(item)
+        elif isinstance(item, dict):
+            if _folder_id(item) is None:
+                raise VdoCipherAdminError("vdocipher_bad_response")
+            _provider_parent_id(item.get("parent"))
+        else:
+            raise VdoCipherAdminError("vdocipher_bad_response")
+
+
+def _normalize_folder(row):
+    row = _response_object(row)
+    folder_id = _folder_id(row)
+    if folder_id is None:
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    name = row.get("name")
+    if name is not None and not isinstance(name, str):
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    if "path" in row:
+        _validate_folder_path(row["path"])
+    return {"id": folder_id, "name": name or "", "parent": _provider_parent_id(row.get("parent"))}
 
 
 def list_videos(q=None, folder_id=None, page=1, limit=20, refresh=False):
@@ -252,13 +294,18 @@ def list_folder(folder_id, refresh=False):
     folders = data.get("folderList", data.get("folders"))
     if not isinstance(folders, list):
         raise VdoCipherAdminError("vdocipher_bad_response")
-    return _cache_put(key, {"folders": folders, "current": data.get("current"), "parent": data.get("parent")})
+    current = data.get("current")
+    parent = data.get("parent")
+    return _cache_put(key, {
+        "folders": [_normalize_folder(folder) for folder in folders],
+        "current": _normalize_folder(current) if current is not None else None,
+        "parent": _normalize_folder(parent) if parent is not None else None,
+    })
 
 
 def create_folder(name, parent_id="root"):
     parent_id = validate_folder_id(parent_id)
-    created = _response_object(client.create_folder(name, parent_id))
-    _provider_folder_id(_folder_id(created))
+    created = _normalize_folder(client.create_folder(name, parent_id))
     clear_cache()
     return created
 
@@ -302,15 +349,15 @@ def preview(video_id):
 
 
 def ensure_folder(name, parent="root"):
+    parent = validate_folder_id(parent)
     found = _response_object(client.search_folders(name)).get("folders", [])
     if not isinstance(found, list):
         raise VdoCipherAdminError("vdocipher_bad_response")
-    for folder in found:
-        folder = _response_object(folder)
-        if folder.get("name") == name and _folder_id(folder):
-            return _folder_id(folder)
+    for folder in [_normalize_folder(folder) for folder in found]:
+        if folder["name"] == name:
+            return folder["id"]
     created = create_folder(name, parent)
-    return _folder_id(created)
+    return created["id"]
 
 
 def _course_folder_name(course):
