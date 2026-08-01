@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAdminLanguage } from './i18n.jsx';
 
 let resolver = null;
 let listeners = [];
@@ -9,6 +10,7 @@ export function confirmDialog(message) { return open({ type: 'confirm', message 
 export function promptDialog(message, def = '') { return open({ type: 'prompt', message, def }); }
 
 export function DialogHost() {
+  const { t } = useAdminLanguage();
   const [req, setReq] = useState(null);
   const [val, setVal] = useState('');
   useEffect(() => {
@@ -29,8 +31,8 @@ export function DialogHost() {
             style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 10, padding: 12, marginBottom: 16, font: 'inherit' }} />
         )}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn btn-text" onClick={cancel}>إلغاء</button>
-          <button className="btn btn-filled" onClick={() => done(req.type === 'prompt' ? val : true)}>تأكيد</button>
+          <button className="btn btn-text" onClick={cancel}>{t('common.cancel')}</button>
+          <button className="btn btn-filled" onClick={() => done(req.type === 'prompt' ? val : true)}>{t('common.confirm')}</button>
         </div>
       </div>
     </div>

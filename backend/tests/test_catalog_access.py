@@ -355,6 +355,7 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
             "title": "Video",
             "title_en": "Video",
             "description": "",
+            "description_en": None,
             "position": 0,
             "duration_minutes": 45,
             "price": 125.0,

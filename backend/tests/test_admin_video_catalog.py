@@ -68,6 +68,30 @@ def create_video(client, **overrides):
     return response.get_json()["video"]
 
 
+def test_video_description_en_round_trips_through_admin_writes(admin_client, catalog_data, monkeypatch):
+    from app.api.v1 import admin as admin_api
+
+    created = create_video(
+        admin_client, description="وصف عربي", description_en="English description",
+    )
+    assert created["description"] == "وصف عربي"
+    assert created["description_en"] == "English description"
+
+    updated = admin_client.patch(f"/api/v1/admin/videos/{created['id']}", json={
+        "description_en": "Updated English description",
+    })
+    assert updated.status_code == 200
+    assert updated.get_json()["video"]["description_en"] == "Updated English description"
+
+    monkeypatch.setattr(admin_api.vdocipher_admin, "ensure_platform_folders", lambda *_: {"standalone": "root"})
+    imported = admin_client.post("/api/v1/admin/vdocipher/import", json={
+        "video_id": "provider-description-en", "title": "Imported", "description": "Arabic",
+        "description_en": "Imported English",
+    })
+    assert imported.status_code == 201
+    assert imported.get_json()["video"]["description_en"] == "Imported English"
+
+
 def test_assign_same_video_to_two_courses_and_reorder(admin_client, catalog_data):
     video = create_video(admin_client)
     first, second = catalog_data["courses"]

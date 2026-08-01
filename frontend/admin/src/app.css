@@ -169,6 +169,12 @@ body {
 .video-library-layout { display: grid; grid-template-columns: minmax(180px, 230px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .video-folder-tree { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-height: 280px; }
 .video-folder-tree h3 { font-size: 14px; margin: 0 0 10px; }
+.video-folder-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.video-folder-heading h3 { margin: 0; }
+.folder-actions { display: flex; gap: 4px; }
+.folder-actions .icon-button { width: 28px; height: 28px; }
+.video-folder-picker { margin-bottom: 14px; }
+.video-recovery { margin-top: 14px; padding: 12px; border: 1px solid var(--gold); border-radius: 6px; background: #fff9e8; }
 .video-folder-tree ul { list-style: none; margin: 0; padding: 0; }
 .video-folder-row { display: flex; align-items: center; min-height: 34px; }
 .video-folder-row .icon-button { width: 26px; height: 26px; border-color: transparent; background: transparent; }

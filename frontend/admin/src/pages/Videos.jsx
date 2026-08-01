@@ -1,5 +1,5 @@
-import { Plus, Upload } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Upload } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { ACCESS_TYPES, CATEGORY_KEYS, VIDEO_VIEWS } from '../catalog.js';
@@ -29,6 +29,7 @@ export default function Videos({ searchParams, setSearchParams }) {
   const [catalogVideos, setCatalogVideos] = useState([]);
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState('');
+  const requestSequence = useRef(0);
 
   const categorySlug = searchParams.get('category') || '';
   const categoryId = categories.find((category) => category.slug === categorySlug)?.id;
@@ -44,6 +45,7 @@ export default function Videos({ searchParams, setSearchParams }) {
     updateQuery({ view: nextView });
   };
   const load = async () => {
+    const sequence = ++requestSequence.current;
     setError('');
     try {
       const [provider, catalog] = await Promise.all([
@@ -56,9 +58,11 @@ export default function Videos({ searchParams, setSearchParams }) {
           per_page: 100,
         }),
       ]);
+      if (sequence !== requestSequence.current) return;
       setProviderVideos(provider.videos || []);
       setCatalogVideos(catalog.items || catalog.videos || []);
     } catch (caught) {
+      if (sequence !== requestSequence.current) return;
       setError(caught.message === 'no_api_key' ? 'no_api_key' : 'load');
       setProviderVideos([]);
       setCatalogVideos([]);
@@ -70,12 +74,13 @@ export default function Videos({ searchParams, setSearchParams }) {
 
   const videos = useMemo(() => {
     const byProviderId = new Map(catalogVideos.filter((video) => video.vdocipher_video_id).map((video) => [video.vdocipher_video_id, video]));
-    const provider = (providerVideos || []).map((video) => ({ ...video, catalog: byProviderId.get(video.id) }));
+    const hasLocalFilters = Boolean(categorySlug || searchParams.get('access') || searchParams.get('status'));
+    const provider = (providerVideos || []).map((video) => ({ ...video, catalog: byProviderId.get(video.id) })).filter((video) => !hasLocalFilters || video.catalog);
     const localOnly = catalogVideos.filter((video) => !video.vdocipher_video_id).map((video) => ({
       id: `catalog-${video.id}`, title: video.title, status: video.status, catalog: video,
     }));
     return [...provider, ...localOnly];
-  }, [catalogVideos, providerVideos]);
+  }, [catalogVideos, providerVideos, categorySlug, searchParams]);
 
   return <section className="video-library">
     <header className="video-library-header">
@@ -83,7 +88,6 @@ export default function Videos({ searchParams, setSearchParams }) {
       <div className="video-library-actions">
         <button className="btn btn-tonal btn-sm" type="button" onClick={load}>{t('common.refresh')}</button>
         <button className="btn btn-filled btn-sm" type="button" onClick={() => navigate('/videos/new')}><Upload size={16} /> {t('video.uploadVideo')}</button>
-        <Link className="btn btn-filled btn-sm" to="/videos/new"><Plus size={16} /> {t('video.newVideo')}</Link>
       </div>
     </header>
     <div className="video-library-layout">

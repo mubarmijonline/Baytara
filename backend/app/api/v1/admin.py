@@ -597,6 +597,7 @@ def bundle_delete(bid):
 def _video_dict(l):
     d = l.to_dict()
     d["title_en"] = l.title_en
+    d["description_en"] = l.description_en
     d["vdocipher_video_id"] = l.vdocipher_video_id
     d["courses"] = [
         {"id": row.course.id, "title": row.course.title, "position": row.position}
@@ -752,7 +753,7 @@ def video_create():
     l = Lesson(
         course_id=None, module_id=None,
         title=d["title"], title_en=d.get("title_en"),
-        description=d.get("description", ""),
+        description=d.get("description", ""), description_en=d.get("description_en"),
         category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
@@ -789,7 +790,7 @@ def video_update(vid):
         duplicate = Lesson.query.filter(Lesson.vdocipher_video_id == provider_id, Lesson.id != l.id).first() if provider_id else None
         if duplicate:
             return jsonify(error="duplicate_video"), 409
-    for f in ("title", "title_en", "description", "duration_minutes", "vdocipher_video_id", "is_protected"):
+    for f in ("title", "title_en", "description", "description_en", "duration_minutes", "vdocipher_video_id", "is_protected"):
         if f in d:
             setattr(l, f, (d[f] or None) if f == "vdocipher_video_id" else d[f])
     for f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
@@ -1070,6 +1071,9 @@ def vdocipher_import():
             validate_video_bundle_compatibility(existing, access_type=catalog["access_type"])
             for field in ("category_id", "price", "currency", "access_days", "access_type", "status"):
                 setattr(existing, field, catalog[field])
+            for field in ("title", "title_en", "description", "description_en", "duration_minutes"):
+                if field in d:
+                    setattr(existing, field, d[field])
             add_video_courses(existing, course_ids)
         except CatalogValidationError as exc:
             db.session.rollback()
@@ -1094,7 +1098,7 @@ def vdocipher_import():
         module_id=None,
         title=d.get("title") or d["video_id"],
         title_en=d.get("title_en"),
-        description=d.get("description", ""),
+        description=d.get("description", ""), description_en=d.get("description_en"),
         category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),

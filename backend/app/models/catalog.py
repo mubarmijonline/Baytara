@@ -187,6 +187,7 @@ class Lesson(db.Model):
     title = db.Column(db.String(200), nullable=False)
     title_en = db.Column(db.String(200))
     description = db.Column(db.Text, nullable=False, default="")
+    description_en = db.Column(db.Text)
     category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), index=True)
     price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     currency = db.Column(db.String(3), nullable=False, default="EGP")
@@ -222,7 +223,8 @@ class Lesson(db.Model):
             "id": self.id,
             "title": loc(self.title, self.title_en, lang),
             "title_en": self.title_en,
-            "description": self.description,
+            "description": loc(self.description, self.description_en, lang),
+            "description_en": self.description_en,
             "position": self.position,
             "duration_minutes": self.duration_minutes,
             "price": float(self.price),
