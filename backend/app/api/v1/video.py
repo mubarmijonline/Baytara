@@ -2,11 +2,14 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 
 from ...extensions import db
-from ...models import Category, Lesson, User, UserDevice
+from ...models import Category, Lesson, User, UserDevice, VideoPlaybackSession
 from ...services.catalog_access import audience_error, video_access
 from ...services.video_provider import provider, watermark_for, VideoProviderError
 from ...services.video_monitoring import (
+    PlaybackEventError,
     append_playback_event,
+    playback_session_state,
+    record_playback_event,
     resolve_course_context,
     start_playback_attempt,
     trusted_request_ip,
@@ -155,3 +158,33 @@ def playback():
     append_playback_event(session, "otp_issued")
     db.session.commit()
     return jsonify(otp=res["otp"], playbackInfo=res["playbackInfo"], session_id=session.public_id)
+
+
+@bp.post("/video/playback-sessions/<session_id>/events")
+@jwt_required()
+def playback_event(session_id):
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not user.is_active:
+        return jsonify(error="invalid_user"), 401
+    token_device = get_jwt().get("device_id")
+    device_id = request.headers.get("X-Baytara-Device-ID")
+    if not token_device or not device_id:
+        return jsonify(error="device_required"), 403
+    if token_device != device_id:
+        return jsonify(error="device_mismatch"), 403
+    device = UserDevice.query.filter_by(user_id=user.id, device_id=device_id).first()
+    if not device:
+        return jsonify(error="device_not_registered"), 403
+    session = VideoPlaybackSession.query.filter_by(public_id=session_id).first()
+    if not session or session.user_id != user.id:
+        return jsonify(error="session_not_found"), 404
+    try:
+        session = record_playback_event(
+            session, user, device_id, request.get_json(silent=True) or {},
+        )
+    except PlaybackEventError as exc:
+        db.session.rollback()
+        return jsonify(error=exc.code), exc.status
+    device.last_seen = session.last_event_at
+    db.session.commit()
+    return jsonify(session=playback_session_state(session))

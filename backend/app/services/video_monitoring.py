@@ -1,12 +1,28 @@
-from datetime import datetime, timezone
-from uuid import uuid4
+from datetime import datetime, timedelta, timezone
+from math import ceil, isfinite
+from uuid import UUID, uuid4
 
 from ..extensions import db
 from ..models import Course, CourseVideo, VideoPlaybackEvent, VideoPlaybackSession
 
 
+OPEN_SESSION_STATUSES = {"issued", "playing", "paused"}
+CLIENT_EVENT_TYPES = {"play", "pause", "resume", "heartbeat", "ended", "player_error"}
+
+
+class PlaybackEventError(ValueError):
+    def __init__(self, code, status=422):
+        self.code = code
+        self.status = status
+        super().__init__(code)
+
+
 def _now():
     return datetime.now(timezone.utc)
+
+
+def _aware(value):
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 def trusted_request_ip(req):
@@ -86,3 +102,148 @@ def start_playback_attempt(
     if status in {"denied", "provider_failed"}:
         append_playback_event(session, status, reason=reason)
     return session
+
+
+def playback_session_state(session):
+    return {
+        "session_id": session.public_id,
+        "status": session.status,
+        "current_position_seconds": session.current_position_seconds,
+        "max_position_seconds": session.max_position_seconds,
+        "watched_seconds": session.watched_seconds,
+        "covered_seconds": session.covered_seconds,
+        "duration_seconds": session.duration_seconds,
+        "completion_percent": session.completion_percent,
+    }
+
+
+def _uuid(value):
+    if not isinstance(value, str) or len(value) > 36:
+        raise PlaybackEventError("invalid_event_id")
+    try:
+        return str(UUID(value))
+    except (ValueError, AttributeError, TypeError) as exc:
+        raise PlaybackEventError("invalid_event_id") from exc
+
+
+def _seconds(payload, key, default=0):
+    value = payload.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value):
+        raise PlaybackEventError("invalid_event_measurement")
+    value = int(value)
+    if value < 0 or value > 86400:
+        raise PlaybackEventError("invalid_event_measurement")
+    return value
+
+
+def _event_details(payload):
+    raw = payload.get("metadata") or {}
+    if not isinstance(raw, dict) or set(raw) - {"error_code", "message"}:
+        raise PlaybackEventError("invalid_event_metadata")
+    details = {}
+    for key, value in raw.items():
+        if not isinstance(value, str) or len(value) > 200:
+            raise PlaybackEventError("invalid_event_metadata")
+        details[key] = value
+    return details or None
+
+
+def record_playback_event(session, user, device_id, payload, now=None):
+    if not isinstance(payload, dict):
+        raise PlaybackEventError("invalid_event")
+    event_id = _uuid(payload.get("event_id"))
+    event_type = payload.get("type")
+    if event_type not in CLIENT_EVENT_TYPES:
+        raise PlaybackEventError("invalid_event_type")
+
+    locked = db.session.execute(
+        db.select(VideoPlaybackSession).where(
+            VideoPlaybackSession.id == session.id
+        ).with_for_update()
+    ).scalar_one_or_none()
+    if not locked:
+        raise PlaybackEventError("session_not_found", 404)
+    if locked.user_id != user.id:
+        raise PlaybackEventError("session_not_found", 404)
+    if locked.device_id != device_id:
+        raise PlaybackEventError("device_mismatch", 403)
+
+    duplicate = VideoPlaybackEvent.query.filter_by(client_event_id=event_id).first()
+    if duplicate:
+        if duplicate.session_id != locked.id:
+            raise PlaybackEventError("event_id_conflict", 409)
+        return locked
+    if locked.status not in OPEN_SESSION_STATUSES:
+        raise PlaybackEventError("session_closed", 409)
+
+    position = _seconds(payload, "position_seconds")
+    watched = _seconds(payload, "watched_seconds")
+    covered = _seconds(payload, "covered_seconds")
+    duration = _seconds(payload, "duration_seconds", locked.duration_seconds or 0)
+    if duration <= 0:
+        raise PlaybackEventError("invalid_event_measurement")
+
+    now = now or _now()
+    previous_at = _aware(locked.last_event_at or locked.started_at)
+    elapsed = max((now - previous_at).total_seconds(), 0)
+    allowed_growth = ceil(elapsed * 2.5) + 5
+    locked.duration_seconds = duration
+    locked.watched_seconds = min(
+        max(locked.watched_seconds, watched),
+        locked.watched_seconds + allowed_growth,
+        duration,
+    )
+    locked.covered_seconds = min(
+        max(locked.covered_seconds, covered),
+        locked.covered_seconds + allowed_growth,
+        duration,
+    )
+    locked.current_position_seconds = min(position, duration)
+    locked.max_position_seconds = max(locked.max_position_seconds, locked.current_position_seconds)
+    locked.completion_percent = min(round(locked.covered_seconds / duration * 100), 100)
+    locked.last_event_at = now
+
+    if event_type in {"play", "resume", "heartbeat"}:
+        locked.status = "playing"
+        if not locked.first_played_at:
+            locked.first_played_at = now
+    elif event_type == "pause":
+        locked.status = "paused"
+    elif event_type == "ended":
+        locked.status = "completed"
+        locked.completion_percent = 100
+        locked.completed_at = now
+        locked.ended_at = now
+    elif event_type == "player_error":
+        locked.status = "error"
+        locked.reason = "player_error"
+        locked.ended_at = now
+
+    db.session.add(VideoPlaybackEvent(
+        session=locked,
+        client_event_id=event_id,
+        event_type=event_type,
+        position_seconds=locked.current_position_seconds,
+        watched_seconds=locked.watched_seconds,
+        covered_seconds=locked.covered_seconds,
+        details=_event_details(payload),
+        created_at=now,
+    ))
+    return locked
+
+
+def mark_stale_sessions_abandoned(now=None, idle_seconds=60):
+    now = now or _now()
+    cutoff = now - timedelta(seconds=idle_seconds)
+    rows = VideoPlaybackSession.query.filter(
+        VideoPlaybackSession.status.in_(OPEN_SESSION_STATUSES),
+        VideoPlaybackSession.last_event_at < cutoff,
+    ).all()
+    for session in rows:
+        session.status = "abandoned"
+        session.reason = "heartbeat_timeout"
+        session.ended_at = now
+        append_playback_event(session, "player_error", reason="heartbeat_timeout")
+    if rows:
+        db.session.commit()
+    return len(rows)
