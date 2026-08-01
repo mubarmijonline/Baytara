@@ -39,7 +39,7 @@ export const api = {
   login: (email, password) => req('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me: () => req('/auth/me'),
 
-  stats: () => req('/admin/stats', { clearTokenOn401: false }),
+  stats: ({ deferUnauthorized = false } = {}) => req('/admin/stats', { clearTokenOn401: !deferUnauthorized }),
 
   // users
   users: (params) => req('/admin/users' + qs(params)),

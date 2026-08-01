@@ -46,7 +46,7 @@ export default function Shell({ onLogout }) {
     let active = true;
     function refreshStats() {
       const requestSequence = ++statsRequestSequence.current;
-      api.stats().then((stats) => {
+      api.stats({ deferUnauthorized: true }).then((stats) => {
         if (!active || requestSequence !== statsRequestSequence.current) return;
         setPending(stats.payments.pending);
         setBaytPending(stats.baytarian?.pending || 0);

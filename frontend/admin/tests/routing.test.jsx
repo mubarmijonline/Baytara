@@ -8,6 +8,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from '../src/App.jsx';
 import { LanguageProvider } from '../src/i18n.jsx';
 import { api, setToken } from '../src/api.js';
+import Dashboard from '../src/pages/Dashboard.jsx';
 import { Modal } from '../src/ui.jsx';
 
 function makeStats(paymentPending = 0, baytarianPending = 0) {
@@ -234,7 +235,10 @@ describe('Admin stats invalidation', () => {
     expect(localStorage.getItem('baytara_admin_token')).toBe('test-token');
     const statsCalls = fetch.mock.calls.filter(([input]) => String(input).endsWith('/admin/stats'));
     expect(statsCalls).toHaveLength(2);
-    statsCalls.forEach(([, options]) => expect(options).not.toHaveProperty('clearTokenOn401'));
+    statsCalls.forEach(([, options]) => {
+      expect(options).not.toHaveProperty('deferUnauthorized');
+      expect(options).not.toHaveProperty('clearTokenOn401');
+    });
   });
 
   it('clears the token and logs out when the latest stats response is unauthorized', async () => {
@@ -258,6 +262,18 @@ describe('Admin stats invalidation', () => {
 
     expect(await screen.findByRole('heading', { name: /تسجيل دخول الإدارة|admin sign in/i })).toBeVisible();
     expect(localStorage.getItem('baytara_admin_token')).toBeNull();
+  });
+
+  it('clears the token when Dashboard receives an unauthorized default stats response', async () => {
+    fetch.mockImplementationOnce(() => json({ error: 'unauthorized' }, 401));
+
+    render(<Dashboard />);
+
+    expect(await screen.findByText('تعذّر تحميل الإحصاءات.')).toBeVisible();
+    expect(localStorage.getItem('baytara_admin_token')).toBeNull();
+    const [, options] = fetch.mock.calls[0];
+    expect(options).not.toHaveProperty('deferUnauthorized');
+    expect(options).not.toHaveProperty('clearTokenOn401');
   });
 
   it('retains automatic token clearing for other unauthorized API requests', async () => {
