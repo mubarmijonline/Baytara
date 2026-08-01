@@ -13,6 +13,7 @@ import Payments from './pages/Payments.jsx';
 import Settings from './pages/Settings.jsx';
 import Users from './pages/Users.jsx';
 import Videos from './pages/Videos.jsx';
+import VideoEditor from './pages/VideoEditor.jsx';
 
 const sectionRoutes = [
   ['dashboard', Dashboard],
@@ -25,8 +26,8 @@ const sectionRoutes = [
   ['courses/:courseId/edit', Courses],
   ['courses/:courseId/content', Courses],
   ['videos', Videos],
-  ['videos/new', Videos],
-  ['videos/:videoId', Videos],
+  ['videos/new', VideoEditor],
+  ['videos/:videoId', VideoEditor],
   ['bundles', Bundles],
   ['bundles/new', Bundles],
   ['bundles/:bundleId/edit', Bundles],

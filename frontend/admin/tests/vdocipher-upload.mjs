@@ -32,4 +32,16 @@ await assert.rejects(
   /upload_failed/,
 );
 
+class FailedXhr extends FakeXhr {
+  send(body) {
+    this.body = body;
+    this.onerror();
+  }
+}
+
+await assert.rejects(
+  uploadForm('https://upload.test', {}, undefined, () => new FailedXhr(0)),
+  /upload_failed/,
+);
+
 console.log('vdocipher browser upload self-check OK');
