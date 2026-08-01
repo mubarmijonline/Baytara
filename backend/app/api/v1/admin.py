@@ -369,6 +369,7 @@ def lesson_create(mid):
         title_en=d.get("title_en"),
         position=d.get("position", 0),
         duration_minutes=d.get("duration_minutes"),
+        poster=d.get("poster") or None,
         vdocipher_video_id=d.get("vdocipher_video_id"),
         is_protected=d.get("is_protected", True),
     )
@@ -384,7 +385,7 @@ def lesson_update(lid):
     if not l:
         return jsonify(error="not_found"), 404
     d = request.get_json() or {}
-    for f in ("title", "title_en", "position", "duration_minutes", "vdocipher_video_id", "is_protected"):
+    for f in ("title", "title_en", "position", "duration_minutes", "poster", "vdocipher_video_id", "is_protected"):
         if f in d:
             setattr(l, f, d[f])
     db.session.commit()
@@ -891,6 +892,7 @@ def video_create():
         category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
+        poster=d.get("poster") or None,
         vdocipher_video_id=provider_id,
         is_protected=d.get("is_protected", True),
     )
@@ -924,7 +926,7 @@ def video_update(vid):
         duplicate = Lesson.query.filter(Lesson.vdocipher_video_id == provider_id, Lesson.id != l.id).first() if provider_id else None
         if duplicate:
             return jsonify(error="duplicate_video"), 409
-    for f in ("title", "title_en", "description", "description_en", "duration_minutes", "vdocipher_video_id", "is_protected"):
+    for f in ("title", "title_en", "description", "description_en", "duration_minutes", "poster", "vdocipher_video_id", "is_protected"):
         if f in d:
             setattr(l, f, (d[f] or None) if f == "vdocipher_video_id" else d[f])
     for f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
@@ -1207,6 +1209,14 @@ def vdocipher_import():
         d["video_id"] = vdocipher_admin.validate_video_id(d["video_id"])
     except VdoCipherAdminError as e:
         return _vdocipher_error(e)
+    if d.get("sync_provider_metadata") is True:
+        try:
+            provider_video = vdocipher_admin.get_video(d["video_id"])
+        except VdoCipherAdminError as e:
+            return _vdocipher_error(e)
+        d["poster"] = provider_video.get("poster") or d.get("poster") or None
+        if d.get("duration_minutes") is None and provider_video.get("duration_seconds"):
+            d["duration_minutes"] = max(1, round(provider_video["duration_seconds"] / 60))
     course_ids = d.get("course_ids")
     if course_ids is None:
         course_ids = [d["course_id"]] if d.get("course_id") else []
@@ -1223,7 +1233,7 @@ def vdocipher_import():
             validate_video_bundle_compatibility(existing, access_type=catalog["access_type"])
             for field in ("category_id", "price", "currency", "access_days", "access_type", "status"):
                 setattr(existing, field, catalog[field])
-            for field in ("title", "title_en", "description", "description_en", "duration_minutes"):
+            for field in ("title", "title_en", "description", "description_en", "duration_minutes", "poster"):
                 if field in d:
                     setattr(existing, field, d[field])
             add_video_courses(existing, course_ids)
@@ -1254,6 +1264,7 @@ def vdocipher_import():
         category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
+        poster=d.get("poster") or None,
         vdocipher_video_id=d["video_id"],
         is_protected=True,
     )

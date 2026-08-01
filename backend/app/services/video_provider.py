@@ -64,6 +64,11 @@ provider = VdoCipherProvider()
 def watermark_for(user):
     """Dynamic watermark annotation carrying viewer identity (anti-piracy).
     Contract البند2: email + phone floating over the video."""
+    if user is None:
+        return [
+            {"type": "rtext", "text": "Baytara", "alpha": "0.45",
+             "color": "0xFFFFFF", "size": "15", "interval": "6000"},
+        ]
     contact = user.email + (f" · {user.phone}" if user.phone else "")
     return [
         {"type": "rtext", "text": f"{user.name} · {contact}", "alpha": "0.55",

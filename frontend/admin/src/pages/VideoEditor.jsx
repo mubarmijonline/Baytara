@@ -25,6 +25,18 @@ function payload(form, includeCourses = false) {
   };
 }
 
+function payloadWithProvider(form, provider, includeCourses = false) {
+  const catalogPayload = payload(form, includeCourses);
+  return {
+    ...catalogPayload,
+    sync_provider_metadata: true,
+    poster: provider?.poster || form.poster || '',
+    duration_minutes: form.duration_minutes === '' && provider?.duration_seconds
+      ? Math.max(1, Math.round(provider.duration_seconds / 60))
+      : catalogPayload.duration_minutes,
+  };
+}
+
 function previewUrl(preview) {
   return `https://player.vdocipher.com/v2/?otp=${encodeURIComponent(preview.otp)}&playbackInfo=${encodeURIComponent(preview.playbackInfo)}`;
 }
@@ -87,11 +99,15 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     if (!videoId) return;
     let active = true;
     const set = (fn) => active && fn();
-    const loadProvider = async (id) => {
+    const loadProvider = async (id, catalogVideo) => {
       try {
         const result = await api.vdocipherVideo(id);
         const video = result.video || result;
         set(() => { setProvider(video); setProviderTitle(video.title || ''); setProviderDescription(video.description || ''); });
+        const metadata = {};
+        if (!catalogVideo.poster && video.poster) metadata.poster = video.poster;
+        if (!catalogVideo.duration_minutes && video.duration_seconds) metadata.duration_minutes = Math.max(1, Math.round(video.duration_seconds / 60));
+        if (Object.keys(metadata).length) await api.videoUpdate(videoId, metadata);
       } catch (error) { set(() => setProviderError(error.message)); }
     };
     (async () => {
@@ -99,7 +115,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
         const result = await api.video(videoId);
         const video = result.video;
         set(() => setForm({ ...emptyForm, ...video, category_id: video.category?.id || '', price: String(video.price ?? 0), access_days: video.access_days ?? '', duration_minutes: video.duration_minutes ?? '', course_ids: (video.courses || []).map((course) => course.id) }));
-        if (video.vdocipher_video_id) await loadProvider(video.vdocipher_video_id);
+        if (video.vdocipher_video_id) await loadProvider(video.vdocipher_video_id, video);
       } catch (error) {
         if (error.status !== 404) { set(() => setLocalError(error.message)); return; }
         try {
@@ -150,7 +166,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     setPhase('storage');
     try { await uploadForm(credentials.upload_link, formData, setProgress); }
     catch (error) { setLocalError('upload'); setPhase('idle'); return; }
-    const savedRecovery = { providerId: credentials.video_id, providerPayload: { title: form.title.trim(), description: form.description }, importPayload: { ...payload(form, true), video_id: credentials.video_id }, step: 'provider' };
+    const savedRecovery = { providerId: credentials.video_id, providerPayload: { title: form.title.trim(), description: form.description }, importPayload: { ...payloadWithProvider(form, provider, true), video_id: credentials.video_id }, step: 'provider' };
     setRecovery(savedRecovery);
     await updateProviderThenImport(savedRecovery);
   };
@@ -160,9 +176,9 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     setPhase('local'); setLocalError('');
     try {
       if (providerOnly) {
-        const result = await api.vdocipherImport({ ...payload(form, true), video_id: providerId });
+        const result = await api.vdocipherImport({ ...payloadWithProvider(form, provider, true), video_id: providerId });
         navigate(`/videos/${result.video.id}`);
-      } else { await api.videoUpdate(videoId, payload(form)); await api.videoCoursesSet(videoId, form.course_ids); }
+      } else { await api.videoUpdate(videoId, payloadWithProvider(form, provider)); await api.videoCoursesSet(videoId, form.course_ids); }
     } catch (error) { setLocalError(error.message); } finally { setPhase('idle'); }
   };
   const saveProvider = async () => {

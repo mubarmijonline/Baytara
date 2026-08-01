@@ -37,4 +37,10 @@ npm run build
 sudo rsync -a --delete --chmod=D755,F644 dist/ /var/www/baytara-instructor/
 sudo chown -R www-data:www-data /var/www/baytara-instructor
 
+echo "==> install + validate Nginx configuration"
+sudo install -m 644 "$ROOT/deploy/nginx-rate-limits.conf" /etc/nginx/conf.d/baytara-rate-limits.conf
+sudo install -m 644 "$ROOT/deploy/nginx-baytara.conf" /etc/nginx/sites-available/baytara
+sudo nginx -t
+sudo systemctl reload nginx
+
 echo "==> deploy done: $(date)"

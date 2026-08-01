@@ -18,6 +18,8 @@ import Learn from './pages/Learn.jsx';
 import Buy from './pages/Buy.jsx';
 import PaymentCallback from './pages/PaymentCallback.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Videos from './pages/Videos.jsx';
+import VideoDetail from './pages/VideoDetail.jsx';
 
 export default function App() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:slug" element={<CourseDetail />} />
+        <Route path="/videos" element={<Videos />} />
+        <Route path="/videos/:id" element={<VideoDetail />} />
         <Route path="/bundles" element={<Bundles />} />
         <Route path="/buy/:slug" element={<Buy />} />
         <Route path="/payment/callback" element={<PaymentCallback />} />

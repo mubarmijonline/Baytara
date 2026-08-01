@@ -372,6 +372,7 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
             "description_en": None,
             "position": 0,
             "duration_minutes": 45,
+            "poster": None,
             "price": 125.0,
             "currency": "EGP",
             "access_days": 30,

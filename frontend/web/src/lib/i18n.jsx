@@ -5,7 +5,7 @@ import { getLang, setLang } from './api.js';
 // server-side via ?lang; this dict covers the static shell (nav, buttons, labels).
 const DICT = {
   ar: {
-    'nav.home': 'الرئيسية', 'nav.courses': 'الكورسات', 'nav.bundles': 'الحزم',
+    'nav.home': 'الرئيسية', 'nav.courses': 'الكورسات', 'nav.videos': 'الفيديوهات', 'nav.bundles': 'الحزم',
     'nav.instructors': 'المحاضرون', 'nav.pricing': 'العضوية', 'nav.business': 'للشركات',
     'nav.blog': 'المدونة', 'nav.content': 'محتوى مجاني', 'nav.about': 'من نحن',
     'nav.contact': 'تواصل معنا', 'nav.dashboard': 'حسابي', 'nav.login': 'دخول',
@@ -36,9 +36,18 @@ const DICT = {
     'membership.approved': 'حسابك موثّق كطبيب بيطري ✅', 'membership.rejected': 'رُفض الطلب',
     'membership.loginFirst': 'سجّل الدخول أولاً لتقديم طلب التوثيق.',
     'membership.verify': 'وثّق حسابك',
+    'video.libraryTitle': 'مكتبة الفيديو', 'video.librarySubtitle': 'تصفّح الفيديوهات البيطرية حسب التخصص وشاهد المحتوى المتاح لك.',
+    'video.searchPlaceholder': 'ابحث في الفيديوهات...', 'video.search': 'بحث', 'video.categories': 'فئات الفيديو',
+    'video.allCategories': 'كل التخصصات', 'video.empty': 'لا توجد فيديوهات في هذا التخصص حالياً.',
+    'video.loadError': 'تعذر تحميل الفيديوهات.', 'video.open': 'فتح الفيديو', 'video.watch': 'شاهد الفيديو',
+    'video.back': 'العودة إلى مكتبة الفيديو', 'video.notFound': 'الفيديو غير موجود', 'video.playError': 'تعذر تشغيل الفيديو الآن.',
+    'video.freeForAll': 'مجاني ومتاح للجميع', 'video.homeTitle': 'فيديوهات مجانية للجميع',
+    'video.homeSubtitle': 'شاهد أحدث المحتوى البيطري المجاني مباشرة.',
+    'video.pagination': 'صفحات الفيديو', 'video.previous': 'السابق', 'video.next': 'التالي', 'video.page': 'صفحة',
+    'video.signIn': 'سجّل الدخول للمشاهدة', 'video.accessRequired': 'الوصول مطلوب',
   },
   en: {
-    'nav.home': 'Home', 'nav.courses': 'Courses', 'nav.bundles': 'Bundles',
+    'nav.home': 'Home', 'nav.courses': 'Courses', 'nav.videos': 'Videos', 'nav.bundles': 'Bundles',
     'nav.instructors': 'Instructors', 'nav.pricing': 'Membership', 'nav.business': 'Business',
     'nav.blog': 'Blog', 'nav.content': 'Free content', 'nav.about': 'About',
     'nav.contact': 'Contact', 'nav.dashboard': 'My account', 'nav.login': 'Sign in',
@@ -69,6 +78,15 @@ const DICT = {
     'membership.approved': 'Your account is a verified vet ✅', 'membership.rejected': 'Request rejected',
     'membership.loginFirst': 'Sign in first to submit a verification request.',
     'membership.verify': 'Verify your account',
+    'video.libraryTitle': 'Video library', 'video.librarySubtitle': 'Browse veterinary videos by specialty and watch the content available to you.',
+    'video.searchPlaceholder': 'Search videos...', 'video.search': 'Search', 'video.categories': 'Video categories',
+    'video.allCategories': 'All specialties', 'video.empty': 'No videos are available in this specialty yet.',
+    'video.loadError': 'Videos could not be loaded.', 'video.open': 'Open video', 'video.watch': 'Watch video',
+    'video.back': 'Back to video library', 'video.notFound': 'Video not found', 'video.playError': 'The video cannot be played right now.',
+    'video.freeForAll': 'Free for everyone', 'video.homeTitle': 'Free videos for everyone',
+    'video.homeSubtitle': 'Watch the latest free veterinary content now.',
+    'video.pagination': 'Video pages', 'video.previous': 'Previous', 'video.next': 'Next', 'video.page': 'Page',
+    'video.signIn': 'Sign in to watch', 'video.accessRequired': 'Access required',
   },
 };
 

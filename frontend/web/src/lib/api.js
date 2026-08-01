@@ -31,8 +31,17 @@ const qs = (p) => {
 };
 // Append the active language so the API returns localized content.
 const withLang = (path) => path + (path.includes('?') ? '&' : '?') + 'lang=' + getLang();
-async function get(path) {
-  const r = await fetch(BASE + withLang(path), { headers: { 'Accept-Language': getLang() } });
+async function get(path, includeAuth = false) {
+  const token = includeAuth ? getToken() : '';
+  const url = BASE + withLang(path);
+  let r = await fetch(url, { headers: {
+    'Accept-Language': getLang(),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  } });
+  if (includeAuth && token && r.status === 401) {
+    setToken('');
+    r = await fetch(url, { headers: { 'Accept-Language': getLang() } });
+  }
   if (!r.ok) throw Object.assign(new Error('http'), { status: r.status });
   return r.json();
 }
@@ -100,6 +109,8 @@ export const auth = {
 export const webapi = {
   courses: (params) => get('/courses' + qs(params)),
   course: (slug) => get('/courses/' + slug),
+  videos: (params) => get('/videos' + qs(params), true),
+  video: (id) => get('/videos/' + id, true),
   categories: () => get('/categories'),
   bundles: () => get('/bundles'),
   bundle: (slug) => get('/bundles/' + slug),

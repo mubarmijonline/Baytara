@@ -84,12 +84,17 @@ def test_video_description_en_round_trips_through_admin_writes(admin_client, cat
     assert updated.get_json()["video"]["description_en"] == "Updated English description"
 
     monkeypatch.setattr(admin_api.vdocipher_admin, "ensure_platform_folders", lambda *_: {"standalone": "root"})
+    monkeypatch.setattr(admin_api.vdocipher_admin, "get_video", lambda *_: {
+        "poster": "https://cdn.example.test/provider.jpg", "duration_seconds": 83,
+    })
     imported = admin_client.post("/api/v1/admin/vdocipher/import", json={
         "video_id": "provider-description-en", "title": "Imported", "description": "Arabic",
-        "description_en": "Imported English",
+        "description_en": "Imported English", "sync_provider_metadata": True,
     })
     assert imported.status_code == 201
     assert imported.get_json()["video"]["description_en"] == "Imported English"
+    assert imported.get_json()["video"]["poster"] == "https://cdn.example.test/provider.jpg"
+    assert imported.get_json()["video"]["duration_minutes"] == 1
 
 
 def test_assign_same_video_to_two_courses_and_reorder(admin_client, catalog_data):

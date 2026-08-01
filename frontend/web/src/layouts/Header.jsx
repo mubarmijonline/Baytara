@@ -111,6 +111,7 @@ function SearchIcon() {
 
 const NAV = [
   ['/courses', 'nav.courses'],
+  ['/videos', 'nav.videos'],
   ['/bundles', 'nav.bundles'],
   ['/pricing', 'nav.pricing'],
   ['/business', 'nav.business'],

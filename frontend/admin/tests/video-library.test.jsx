@@ -463,7 +463,9 @@ it('retries a failed import from the stored upload payload without new credentia
     fetch.mock.calls.findIndex(([input]) => String(input).endsWith('/vdocipher/import')),
   );
   const importCalls = fetch.mock.calls.filter(([input]) => String(input).endsWith('/vdocipher/import'));
-  expect(JSON.parse(importCalls[1][1].body)).toMatchObject({ video_id: 'retry-123', description_en: 'English notes' });
+  expect(JSON.parse(importCalls[1][1].body)).toMatchObject({
+    video_id: 'retry-123', description_en: 'English notes', sync_provider_metadata: true,
+  });
 });
 
 it('keeps local metadata visible when the provider request fails', async () => {
@@ -484,6 +486,23 @@ it('keeps local metadata visible when the provider request fails', async () => {
       name: /site settings/i,
     }),
   ).toBeVisible();
+});
+
+it('backfills canonical poster and duration when provider processing finishes', async () => {
+  let synced = null;
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.endsWith('/admin/videos/7') && (!options.method || options.method === 'GET')) return json({ video: { id: 7, title: 'Exam', description: 'Notes', category: { id: 1 }, vdocipher_video_id: 'v1', access_type: 'free', status: 'published', courses: [] } });
+    if (url.endsWith('/admin/videos/7') && options.method === 'PATCH') { synced = JSON.parse(options.body); return json({ video: { id: 7 } }); }
+    if (url.endsWith('/admin/vdocipher/videos/v1')) return json({ video: { id: 'v1', title: 'Exam', description: 'Notes', status: 'ready', poster: 'https://cdn.test/exam.jpg', duration_seconds: 83 } });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.endsWith('/categories')) return json({ categories: [{ id: 1, slug: 'equine', name: 'Equine' }] });
+    return json({});
+  });
+  renderAdmin('/admin/videos/7');
+
+  await waitFor(() => expect(synced).toEqual({ poster: 'https://cdn.test/exam.jpg', duration_minutes: 1 }));
 });
 
 it('retries provider metadata after upload without issuing new credentials', async () => {

@@ -196,6 +196,7 @@ class Lesson(db.Model):
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     position = db.Column(db.Integer, nullable=False, default=0)
     duration_minutes = db.Column(db.Integer)
+    poster = db.Column(db.String(1000))
     vdocipher_video_id = db.Column(db.String(120))
     is_protected = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
@@ -227,6 +228,7 @@ class Lesson(db.Model):
             "description_en": self.description_en,
             "position": self.position,
             "duration_minutes": self.duration_minutes,
+            "poster": self.poster,
             "price": float(self.price),
             "currency": self.currency,
             "access_days": self.access_days,

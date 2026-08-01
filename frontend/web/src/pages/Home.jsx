@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, SectionHeading } from '../components/Primitives.jsx';
 import CourseCard from '../components/CourseCard.jsx';
+import VideoCard from '../components/VideoCard.jsx';
 import { colors, gradients, layout } from '../theme/tokens.js';
 import {
   stats,
@@ -13,6 +14,7 @@ import {
 } from '../data/mock.js';
 import { webapi, mapCourse, useFetch } from '../lib/api.js';
 import { useSiteSettings } from '../lib/site-settings.jsx';
+import { useI18n } from '../lib/i18n.jsx';
 
 function Hero() {
   const navigate = useNavigate();
@@ -607,6 +609,26 @@ function CategoriesSection() {
   );
 }
 
+function FreeVideosSection() {
+  const navigate = useNavigate();
+  const { t } = useI18n();
+  const { data } = useFetch(() => webapi.videos({ access_type: 'free', per_page: 6 }), []);
+  const videos = data?.videos || [];
+  if (!videos.length) return null;
+  return (
+    <section style={{ background: colors.surfaceMuted, marginTop: 36 }}>
+      <Container style={{ padding: '54px 24px 60px' }}>
+        <SectionHeading
+          title={t('video.homeTitle')}
+          subtitle={t('video.homeSubtitle')}
+          action={<button type="button" onClick={() => navigate('/videos')} style={{ border: 0, background: 'transparent', color: colors.accent, fontWeight: 800, cursor: 'pointer' }}>{t('common.viewAll')}</button>}
+        />
+        <div className="video-grid">{videos.map((video) => <VideoCard key={video.id} video={video} />)}</div>
+      </Container>
+    </section>
+  );
+}
+
 export default function Home() {
   const { data } = useFetch(() => webapi.courses({ per_page: 12 }), []);
   const apiCourses = data?.courses?.length ? data.courses.map(mapCourse) : null;
@@ -617,6 +639,7 @@ export default function Home() {
       <Hero />
       <StatsBand />
       <CategoriesSection />
+      <FreeVideosSection />
       {trending.length > 0 && <Carousel title="الأكثر رواجاً هذا الأسبوع" badge="🔥 رائج" courses={trending} />}
       <BusinessBanner />
       {recent.length > 0 && <Carousel title="أضيفت حديثاً" courses={recent} markNew />}
