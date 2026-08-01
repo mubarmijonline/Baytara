@@ -70,6 +70,7 @@ export const api = {
 
   // videos (directly under a course, ordered; or standalone)
   videos: (params) => req('/admin/videos' + qs(params)),
+  catalogVideos: (params) => req('/admin/videos' + qs(params)),
   videoLibrary: (params, { signal } = {}) => req('/admin/video-library' + qs(params), { signal }),
   video: (id) => req(`/admin/videos/${id}`),
   videoCreate: (body) => req('/admin/videos', { method: 'POST', body: JSON.stringify(body) }),

@@ -46,7 +46,13 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const navigate = useNavigate();
   const videoId = routeParams.videoId;
   const creating = !videoId;
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => {
+    const courseId = Number(searchParams.get('course'));
+    return {
+      ...emptyForm,
+      course_ids: Number.isInteger(courseId) && courseId > 0 ? [courseId] : [],
+    };
+  });
   const [categories, setCategories] = useState([]);
   const [courses, setCourses] = useState([]);
   const [provider, setProvider] = useState(null);

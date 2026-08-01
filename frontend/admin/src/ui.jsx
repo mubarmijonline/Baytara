@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { cloneElement, isValidElement, useId } from 'react';
 
 export function Modal({ title, onClose, children }) {
   const titleId = useId();
@@ -13,10 +13,13 @@ export function Modal({ title, onClose, children }) {
 }
 
 export function Field({ label, children }) {
+  const fieldId = useId();
+  const controlId = isValidElement(children) ? children.props.id || fieldId : fieldId;
+  const control = isValidElement(children) ? cloneElement(children, { id: controlId }) : children;
   return (
     <div className="field">
-      <label>{label}</label>
-      {children}
+      <label htmlFor={controlId}>{label}</label>
+      {control}
     </div>
   );
 }

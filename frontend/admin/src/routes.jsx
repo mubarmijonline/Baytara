@@ -6,6 +6,7 @@ import Baytarian from './pages/Baytarian.jsx';
 import Bundles from './pages/Bundles.jsx';
 import Categories from './pages/Categories.jsx';
 import Courses from './pages/Courses.jsx';
+import CourseContent from './pages/CourseContent.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Hierarchy from './pages/Hierarchy.jsx';
 import Messages from './pages/Messages.jsx';
@@ -24,7 +25,7 @@ const sectionRoutes = [
   ['courses', Courses],
   ['courses/new', Courses],
   ['courses/:courseId/edit', Courses],
-  ['courses/:courseId/content', Courses],
+  ['courses/:courseId/content', CourseContent],
   ['videos', Videos],
   ['videos/new', VideoEditor],
   ['videos/:videoId', VideoEditor],
