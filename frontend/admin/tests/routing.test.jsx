@@ -38,11 +38,15 @@ const NAV_DESTINATIONS = [
 let currentStats;
 let statsFetches;
 
-function json(data, status = 200) {
-  return Promise.resolve(new Response(JSON.stringify(data), {
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
     status,
     headers: { 'Content-Type': 'application/json' },
-  }));
+  });
+}
+
+function json(data, status = 200) {
+  return Promise.resolve(jsonResponse(data, status));
 }
 
 function deferred() {
@@ -197,29 +201,71 @@ describe('Admin stats invalidation', () => {
     expect(within(screen.getByRole('link', { name: /توثيق الأطباء|veterinarian verification/i })).getByText('9')).toBeVisible();
   });
 
-  it('ignores an unauthorized error from an older stats request', async () => {
+  it('keeps the token and mounted Shell when an older real stats response is unauthorized', async () => {
     const older = deferred();
     const newer = deferred();
-    const statsSpy = vi.spyOn(api, 'stats')
-      .mockImplementationOnce(() => older.promise)
-      .mockImplementationOnce(() => newer.promise);
+    const defaultFetch = fetch.getMockImplementation();
+    const statsResponses = [older, newer];
+    fetch.mockImplementation((input, options) => {
+      if (String(input).endsWith('/admin/stats')) {
+        statsFetches += 1;
+        return statsResponses.shift().promise;
+      }
+      return defaultFetch(input, options);
+    });
     renderAdmin('/admin/videos');
 
-    await waitFor(() => expect(statsSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(statsFetches).toBe(1));
     act(() => window.dispatchEvent(new Event('baytara:admin-stats-changed')));
-    await waitFor(() => expect(statsSpy).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(statsFetches).toBe(2));
     await act(async () => {
-      newer.resolve(makeStats(3, 4));
+      newer.resolve(jsonResponse(makeStats(3, 4)));
       await newer.promise;
     });
+    expect(await within(screen.getByRole('link', { name: /المعاملات|payments/i })).findByText('3')).toBeVisible();
+    expect(within(screen.getByRole('link', { name: /توثيق الأطباء|veterinarian verification/i })).getByText('4')).toBeVisible();
 
-    const unauthorized = Object.assign(new Error('unauthorized'), { status: 401 });
     await act(async () => {
-      older.reject(unauthorized);
-      await older.promise.catch(() => {});
+      older.resolve(jsonResponse({ error: 'unauthorized' }, 401));
+      await older.promise;
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(screen.getByRole('heading', { name: /الفيديوهات|videos/i })).toBeVisible();
     expect(localStorage.getItem('baytara_admin_token')).toBe('test-token');
+    const statsCalls = fetch.mock.calls.filter(([input]) => String(input).endsWith('/admin/stats'));
+    expect(statsCalls).toHaveLength(2);
+    statsCalls.forEach(([, options]) => expect(options).not.toHaveProperty('clearTokenOn401'));
+  });
+
+  it('clears the token and logs out when the latest stats response is unauthorized', async () => {
+    const latest = deferred();
+    const defaultFetch = fetch.getMockImplementation();
+    fetch.mockImplementation((input, options) => {
+      if (String(input).endsWith('/admin/stats')) {
+        statsFetches += 1;
+        return latest.promise;
+      }
+      return defaultFetch(input, options);
+    });
+    renderAdmin('/admin/videos');
+
+    expect(await screen.findByRole('heading', { name: /الفيديوهات|videos/i })).toBeVisible();
+    await waitFor(() => expect(statsFetches).toBe(1));
+    await act(async () => {
+      latest.resolve(jsonResponse({ error: 'unauthorized' }, 401));
+      await latest.promise;
+    });
+
+    expect(await screen.findByRole('heading', { name: /تسجيل دخول الإدارة|admin sign in/i })).toBeVisible();
+    expect(localStorage.getItem('baytara_admin_token')).toBeNull();
+  });
+
+  it('retains automatic token clearing for other unauthorized API requests', async () => {
+    fetch.mockImplementationOnce(() => json({ error: 'unauthorized' }, 401));
+
+    await expect(api.users()).rejects.toMatchObject({ status: 401 });
+
+    expect(localStorage.getItem('baytara_admin_token')).toBeNull();
   });
 
   it('refreshes badges on the named event and removes the listener on unmount', async () => {

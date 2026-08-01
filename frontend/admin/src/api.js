@@ -11,18 +11,19 @@ export function setToken(t) {
 }
 
 async function req(path, opts = {}) {
+  const { clearTokenOn401 = true, ...fetchOptions } = opts;
   const r = await fetch(BASE + path, {
-    ...opts,
+    ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',
-      ...(opts.headers || {}),
+      ...(fetchOptions.headers || {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
   const isJson = (r.headers.get('content-type') || '').includes('json');
   const data = isJson ? await r.json() : null;
   if (r.status === 401) {
-    setToken('');
+    if (clearTokenOn401) setToken('');
     throw Object.assign(new Error('unauthorized'), { status: 401 });
   }
   if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
@@ -38,7 +39,7 @@ export const api = {
   login: (email, password) => req('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me: () => req('/auth/me'),
 
-  stats: () => req('/admin/stats'),
+  stats: () => req('/admin/stats', { clearTokenOn401: false }),
 
   // users
   users: (params) => req('/admin/users' + qs(params)),
