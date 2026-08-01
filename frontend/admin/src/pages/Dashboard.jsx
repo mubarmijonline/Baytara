@@ -10,12 +10,20 @@ function Stat({ num, lbl }) {
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ onLogout }) {
   const [s, setS] = useState(null);
   const [err, setErr] = useState('');
   useEffect(() => {
-    api.stats().then(setS).catch(() => setErr('تعذّر تحميل الإحصاءات.'));
-  }, []);
+    let active = true;
+    api.stats().then((stats) => {
+      if (active) setS(stats);
+    }).catch((error) => {
+      if (!active) return;
+      if (error.status === 401) return onLogout();
+      setErr('تعذّر تحميل الإحصاءات.');
+    });
+    return () => { active = false; };
+  }, [onLogout]);
 
   if (err) return <div className="error-text">{err}</div>;
   if (!s) return <div className="empty">جارٍ التحميل…</div>;

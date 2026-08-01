@@ -8,7 +8,6 @@ import { BrowserRouter } from 'react-router-dom';
 import App from '../src/App.jsx';
 import { LanguageProvider } from '../src/i18n.jsx';
 import { api, setToken } from '../src/api.js';
-import Dashboard from '../src/pages/Dashboard.jsx';
 import { Modal } from '../src/ui.jsx';
 
 function makeStats(paymentPending = 0, baytarianPending = 0) {
@@ -264,16 +263,37 @@ describe('Admin stats invalidation', () => {
     expect(localStorage.getItem('baytara_admin_token')).toBeNull();
   });
 
-  it('clears the token when Dashboard receives an unauthorized default stats response', async () => {
-    fetch.mockImplementationOnce(() => json({ error: 'unauthorized' }, 401));
+  it('logs out through App on a Dashboard-only stats 401 and preserves the route for re-login', async () => {
+    const statsSpy = vi.spyOn(api, 'stats');
+    const defaultFetch = fetch.getMockImplementation();
+    fetch.mockImplementation((input, options) => {
+      if (String(input).endsWith('/admin/stats')) {
+        statsFetches += 1;
+        return statsFetches === 1
+          ? json({ error: 'unauthorized' }, 401)
+          : json(currentStats);
+      }
+      return defaultFetch(input, options);
+    });
+    renderAdmin('/admin/dashboard?view=summary');
 
-    render(<Dashboard />);
-
-    expect(await screen.findByText('تعذّر تحميل الإحصاءات.')).toBeVisible();
+    expect(await screen.findByRole('heading', { name: /تسجيل دخول الإدارة|admin sign in/i })).toBeVisible();
+    expect(statsSpy).toHaveBeenNthCalledWith(1);
+    expect(statsSpy).toHaveBeenNthCalledWith(2, { deferUnauthorized: true });
     expect(localStorage.getItem('baytara_admin_token')).toBeNull();
-    const [, options] = fetch.mock.calls[0];
-    expect(options).not.toHaveProperty('deferUnauthorized');
-    expect(options).not.toHaveProperty('clearTokenOn401');
+    expect(screen.queryByText('تعذّر تحميل الإحصاءات.')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/admin/dashboard');
+    expect(window.location.search).toBe('?view=summary');
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/البريد الإلكتروني|email/i), 'admin@baytara.app');
+    await user.type(screen.getByLabelText(/كلمة المرور|password/i), 'secret');
+    await user.click(screen.getByRole('button', { name: /دخول|sign in/i }));
+
+    expect(await screen.findByRole('heading', { name: /لوحة القيادة|dashboard/i })).toBeVisible();
+    expect(localStorage.getItem('baytara_admin_token')).toBe('fresh-token');
+    expect(window.location.pathname).toBe('/admin/dashboard');
+    expect(window.location.search).toBe('?view=summary');
   });
 
   it('retains automatic token clearing for other unauthorized API requests', async () => {
