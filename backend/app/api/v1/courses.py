@@ -18,7 +18,7 @@ def _current_user():
 @bp.get("/categories")
 def list_categories():
     lang = req_lang()
-    cats = Category.query.order_by(Category.name).all()
+    cats = Category.query.order_by(Category.sort_order, Category.id).all()
     return jsonify(categories=[c.to_dict(lang) for c in cats])
 
 

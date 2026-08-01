@@ -113,6 +113,20 @@ def catalog_app(tmp_path):
         db.drop_all()
 
 
+def test_public_categories_follow_configured_taxonomy_order(catalog_app):
+    with catalog_app.app_context():
+        db.session.add_all([
+            Category(name="Alpha", slug="last", sort_order=5),
+            Category(name="Zulu", slug="first", sort_order=0),
+            Category(name="Middle", slug="middle", sort_order=2),
+        ])
+        db.session.commit()
+
+    response = catalog_app.test_client().get("/api/v1/categories")
+    assert response.status_code == 200
+    assert [row["slug"] for row in response.get_json()["categories"]] == ["first", "middle", "last"]
+
+
 def test_video_access_honors_audience_entitlements_enrollment_and_assignment(catalog_app):
     with catalog_app.app_context():
         category = Category(name="Equine", slug="equine-access")
