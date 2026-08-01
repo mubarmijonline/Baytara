@@ -15,6 +15,7 @@ import Settings from './pages/Settings.jsx';
 import Users from './pages/Users.jsx';
 import Videos from './pages/Videos.jsx';
 import VideoEditor from './pages/VideoEditor.jsx';
+import VideoReports from './pages/VideoReports.jsx';
 
 const sectionRoutes = [
   ['dashboard', Dashboard],
@@ -29,6 +30,8 @@ const sectionRoutes = [
   ['videos', Videos],
   ['videos/new', VideoEditor],
   ['videos/:videoId', VideoEditor],
+  ['video-reports', VideoReports],
+  ['video-reports/:sessionId', VideoReports],
   ['bundles', Bundles],
   ['bundles/new', Bundles],
   ['bundles/:bundleId/edit', Bundles],

@@ -26,6 +26,7 @@ const NAV_DESTINATIONS = [
   { path: '/admin/baytarian', link: /توثيق الأطباء|veterinarian verification/i, heading: /توثيق الأطباء|veterinarian verification/i },
   { path: '/admin/courses', link: /الدورات|courses/i, heading: /الدورات|courses/i },
   { path: '/admin/videos', link: /الفيديوهات|videos/i, heading: /الفيديوهات|videos/i },
+  { path: '/admin/video-reports', link: /مراقبة الفيديو|video monitoring/i, heading: /مراقبة الفيديو|video monitoring/i },
   { path: '/admin/bundles', link: /الحزم|bundles/i, heading: /الحزم|bundles/i },
   { path: '/admin/hierarchy', link: /الهيكلة|hierarchy/i, heading: /الهيكلة|hierarchy/i },
   { path: '/admin/categories', link: /الفئات|categories/i, heading: /الفئات|categories/i },
@@ -97,6 +98,8 @@ beforeEach(() => {
     if (url.includes('/admin/payments')) return json({ payments: [], paid_count: 0, revenue: 0 });
     if (url.includes('/admin/baytarian-requests')) return json({ requests: [] });
     if (url.includes('/admin/videos')) return json({ videos: [] });
+    if (url.includes('/admin/video-reports/summary')) return json({ attempts: 0, successful: 0, active: 0, unique_viewers: 0, watch_seconds: 0, completion_rate: 0, denied: 0, failures: 0 });
+    if (url.includes('/admin/video-reports/sessions')) return json({ sessions: [], total: 0, page: 1, per_page: 25, pages: 0 });
     if (url.includes('/admin/courses')) return json({ courses: [] });
     if (url.includes('/admin/users')) return json({ users: [] });
     if (url.endsWith('/categories')) return json({ categories: [] });

@@ -39,6 +39,8 @@ beforeEach(() => {
     if (url.includes('/admin/payments')) return json({ payments: [], paid_count: 0, revenue: 0 });
     if (url.includes('/admin/baytarian-requests')) return json({ requests: [] });
     if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/admin/video-reports/summary')) return json({ attempts: 0, successful: 0, active: 0, unique_viewers: 0, watch_seconds: 0, completion_rate: 0, denied: 0, failures: 0 });
+    if (url.includes('/admin/video-reports/sessions')) return json({ sessions: [], total: 0, page: 1, per_page: 25, pages: 0 });
     if (url.includes('/admin/users')) return json({ users: [] });
     if (url.includes('/admin/articles')) return json({ articles: [] });
     if (url.includes('/admin/messages')) return json({ messages: [], unread: 0 });
@@ -59,6 +61,7 @@ it.each([
   ['/admin/payments', 'Payments'],
   ['/admin/baytarian', 'Veterinarian verification'],
   ['/admin/hierarchy', 'Hierarchy'],
+  ['/admin/video-reports', 'Video monitoring'],
   ['/admin/articles', 'Content and articles'],
   ['/admin/users', 'Users'],
   ['/admin/messages', 'Messages'],

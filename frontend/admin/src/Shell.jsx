@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   BadgeCheck,
+  BarChart3,
   BookOpen,
   Boxes,
   CircleUserRound,
@@ -26,6 +27,7 @@ const NAV = [
   ['baytarian', 'nav.baytarian', BadgeCheck],
   ['courses', 'nav.courses', BookOpen],
   ['videos', 'nav.videos', Library],
+  ['video-reports', 'nav.videoReports', BarChart3],
   ['bundles', 'nav.bundles', Boxes],
   ['hierarchy', 'nav.hierarchy', FolderTree],
   ['categories', 'nav.categories', Tags],

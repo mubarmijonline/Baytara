@@ -35,6 +35,18 @@ const qs = (params) => {
   return s ? `?${s}` : '';
 };
 
+async function blobReq(path) {
+  const response = await fetch(BASE + path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status === 401) {
+    setToken('');
+    throw Object.assign(new Error('unauthorized'), { status: 401 });
+  }
+  if (!response.ok) throw Object.assign(new Error('download_failed'), { status: response.status });
+  return response.blob();
+}
+
 export const api = {
   login: (email, password) => req('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me: () => req('/auth/me'),
@@ -94,6 +106,12 @@ export const api = {
   vdocipherMove: (body) => req('/admin/vdocipher/move', { method: 'POST', body: JSON.stringify(body) }),
   vdocipherUploadCredentials: (body) => req('/admin/vdocipher/upload-credentials', { method: 'POST', body: JSON.stringify(body) }),
   vdocipherImport: (body) => req('/admin/vdocipher/import', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Baytara-owned playback security and viewing reports
+  videoReportSummary: (params) => req('/admin/video-reports/summary' + qs(params)),
+  videoReportSessions: (params) => req('/admin/video-reports/sessions' + qs(params)),
+  videoReportSession: (id) => req(`/admin/video-reports/sessions/${id}`),
+  downloadVideoReport: (params) => blobReq('/admin/video-reports/export.csv' + qs(params)),
 
   // baytarian verification requests
   baytarianRequests: (status) => req('/admin/baytarian-requests' + (status ? `?status=${status}` : '')),
