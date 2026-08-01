@@ -109,6 +109,14 @@ def test_admin_settings_reject_malformed_localized_values(admin_client):
     assert "invalid_hero_title_ar" in response.get_json()["errors"]
 
 
+def test_admin_settings_accept_legacy_hero_cta(admin_client):
+    response = admin_client.put("/api/v1/admin/settings", json={
+        "hero": {"cta": "ابدأ الآن"},
+    })
+
+    assert response.status_code == 200
+
+
 @pytest.mark.parametrize("payload,error", [
     ({"hero": {"title": {"bogus": "accepted"}}}, "invalid_hero_title"),
     ({"contact": {"email": {"bogus": "accepted"}}}, "invalid_contact_email"),

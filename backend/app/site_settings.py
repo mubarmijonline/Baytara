@@ -95,6 +95,7 @@ SITE_SETTING_DEFAULTS = {
 }
 
 VALIDATION_SCHEMAS = deepcopy(SITE_SETTING_DEFAULTS)
+VALIDATION_SCHEMAS["hero"]["cta"] = _text("", "")
 VALIDATION_SCHEMAS["business"]["stats"] = [
     {"num": "", "label": _text("", "")},
 ]
