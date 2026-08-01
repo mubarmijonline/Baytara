@@ -15,7 +15,8 @@ import {
   Settings,
   Tags,
 } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { ADMIN_STATS_CHANGED_EVENT } from './admin-stats.js';
 import { api } from './api.js';
 import { useAdminLanguage } from './i18n.jsx';
 
@@ -38,15 +39,27 @@ export default function Shell({ onLogout }) {
   const [pending, setPending] = useState(0);
   const [baytPending, setBaytPending] = useState(0);
   const { language, setLanguage, t } = useAdminLanguage();
+  const { pathname } = useLocation();
 
   useEffect(() => {
-    api.stats().then((stats) => {
-      setPending(stats.payments.pending);
-      setBaytPending(stats.baytarian?.pending || 0);
-    }).catch((error) => {
-      if (error.status === 401) onLogout();
-    });
-  }, [onLogout]);
+    let active = true;
+    function refreshStats() {
+      api.stats().then((stats) => {
+        if (!active) return;
+        setPending(stats.payments.pending);
+        setBaytPending(stats.baytarian?.pending || 0);
+      }).catch((error) => {
+        if (active && error.status === 401) onLogout();
+      });
+    }
+
+    refreshStats();
+    window.addEventListener(ADMIN_STATS_CHANGED_EVENT, refreshStats);
+    return () => {
+      active = false;
+      window.removeEventListener(ADMIN_STATS_CHANGED_EVENT, refreshStats);
+    };
+  }, [pathname, onLogout]);
 
   return (
     <div className="shell">

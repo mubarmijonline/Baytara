@@ -1,3 +1,5 @@
+import { withAdminStatsInvalidation } from './admin-stats.js';
+
 const BASE = '/api/v1';
 let token = localStorage.getItem('baytara_admin_token') || '';
 
@@ -79,8 +81,12 @@ export const api = {
 
   // baytarian verification requests
   baytarianRequests: (status) => req('/admin/baytarian-requests' + (status ? `?status=${status}` : '')),
-  baytarianApprove: (id) => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST' }),
-  baytarianReject: (id, reason) => req(`/admin/baytarian-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  baytarianApprove: (id) => withAdminStatsInvalidation(
+    () => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST' }),
+  ),
+  baytarianReject: (id, reason) => withAdminStatsInvalidation(
+    () => req(`/admin/baytarian-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  ),
 
   // bundles (course bundling)
   bundles: () => req('/admin/bundles'),
@@ -91,8 +97,12 @@ export const api = {
 
   // payments
   payments: (status) => req('/admin/payments' + (status ? `?status=${status}` : '')),
-  approve: (id) => req(`/admin/payments/${id}/approve`, { method: 'POST' }),
-  reject: (id, reason) => req(`/admin/payments/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  approve: (id) => withAdminStatsInvalidation(
+    () => req(`/admin/payments/${id}/approve`, { method: 'POST' }),
+  ),
+  reject: (id, reason) => withAdminStatsInvalidation(
+    () => req(`/admin/payments/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  ),
 
   // instapay accounts
   accounts: () => req('/admin/instapay-accounts'),
