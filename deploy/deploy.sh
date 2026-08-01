@@ -39,6 +39,7 @@ sudo chown -R www-data:www-data /var/www/baytara-instructor
 
 echo "==> install + validate Nginx configuration"
 sudo install -m 644 "$ROOT/deploy/nginx-rate-limits.conf" /etc/nginx/conf.d/baytara-rate-limits.conf
+sudo install -m 644 "$ROOT/deploy/nginx-security-headers.conf" /etc/nginx/snippets/baytara-security.conf
 sudo install -m 644 "$ROOT/deploy/nginx-baytara.conf" /etc/nginx/sites-available/baytara
 sudo nginx -t
 sudo systemctl reload nginx

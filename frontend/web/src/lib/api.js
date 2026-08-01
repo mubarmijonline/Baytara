@@ -96,7 +96,12 @@ export const auth = {
   },
   progress: (b) => authFetch('/progress', { method: 'POST', body: JSON.stringify(b) }),
   progressGet: (slug) => authFetch('/progress?course=' + encodeURIComponent(slug)),
-  playback: (lesson_id) => authFetch('/video/playback', { method: 'POST', body: JSON.stringify({ lesson_id }) }),
+  playback: (lesson_id, course_id) => authFetch('/video/playback', {
+    method: 'POST', body: JSON.stringify({ lesson_id, ...(course_id ? { course_id } : {}) }),
+  }),
+  playbackEvent: (sessionId, event) => authFetch(`/video/playback-sessions/${sessionId}/events`, {
+    method: 'POST', body: JSON.stringify(event),
+  }),
   notifications: () => authFetch('/notifications'),
   notifRead: (id) => authFetch(`/notifications/${id}/read`, { method: 'POST' }),
   notifReadAll: () => authFetch('/notifications/read-all', { method: 'POST' }),

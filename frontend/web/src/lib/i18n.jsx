@@ -47,6 +47,7 @@ const DICT = {
     'video.homeSubtitle': 'شاهد أحدث المحتوى البيطري المجاني مباشرة.',
     'video.pagination': 'صفحات الفيديو', 'video.previous': 'السابق', 'video.next': 'التالي', 'video.page': 'صفحة',
     'video.signIn': 'سجّل الدخول للمشاهدة', 'video.accessRequired': 'الوصول مطلوب',
+    'video.addPhone': 'أضف رقم الهاتف للمشاهدة',
   },
   en: {
     'nav.home': 'Home', 'nav.courses': 'Courses', 'nav.videos': 'Videos', 'nav.bundles': 'Bundles',
@@ -91,6 +92,7 @@ const DICT = {
     'video.homeSubtitle': 'Watch the latest free veterinary content now.',
     'video.pagination': 'Video pages', 'video.previous': 'Previous', 'video.next': 'Next', 'video.page': 'Page',
     'video.signIn': 'Sign in to watch', 'video.accessRequired': 'Access required',
+    'video.addPhone': 'Add phone number to watch',
   },
 };
 

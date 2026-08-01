@@ -4,15 +4,14 @@ import { Container } from '../components/Primitives.jsx';
 import { auth, isAuthed, useFetch, webapi } from '../lib/api.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { colors } from '../theme/tokens.js';
-
-function playerUrl(playback) {
-  return `https://player.vdocipher.com/v2/?otp=${encodeURIComponent(playback.otp)}&playbackInfo=${encodeURIComponent(playback.playbackInfo)}`;
-}
+import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
+import { useAuth } from '../lib/auth.jsx';
 
 export default function VideoDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { user } = useAuth();
   const { data, loading, error } = useFetch(() => webapi.video(id), [id]);
   const [playback, setPlayback] = useState(null);
   const [playError, setPlayError] = useState('');
@@ -27,6 +26,12 @@ export default function VideoDetail() {
     finally { setStarting(false); }
   };
 
+  const openRequiredAccess = () => {
+    if (!isAuthed() || video.requires_auth) navigate(`/auth?next=${encodeURIComponent(`/videos/${id}`)}`);
+    else if (video.requires_phone || !user?.phone) navigate(`/dashboard/profile?next=${encodeURIComponent(`/videos/${id}`)}`);
+    else navigate('/dashboard');
+  };
+
   if (loading) return <Container style={{ padding: '64px 24px' }}>{t('common.loading')}</Container>;
   if (error || !video) return <Container style={{ padding: '64px 24px' }}><h1>{t('video.notFound')}</h1></Container>;
 
@@ -37,12 +42,12 @@ export default function VideoDetail() {
         <div className="video-detail-grid">
           <section>
             <div style={{ aspectRatio: '16 / 9', background: '#10152c', overflow: 'hidden', borderRadius: 8, position: 'relative' }}>
-              {playback ? <iframe title={video.title} src={playerUrl(playback)} allow="encrypted-media; autoplay" allowFullScreen style={{ width: '100%', height: '100%', border: 0 }} /> : <>
+              {playback ? <SecureVdoPlayer playback={playback} title={video.title} onSecurityError={() => setPlayError('security')} /> : <>
                 {video.poster && <img src={video.poster} alt={video.title} style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />}
                 {video.can_play ? (
                   <button type="button" onClick={play} disabled={starting} style={{ position: 'absolute', insetInlineStart: '50%', top: '50%', transform: 'translate(-50%, -50%)', border: 0, borderRadius: 6, background: colors.accent, color: '#fff', minHeight: 48, padding: '0 24px', fontWeight: 900, fontSize: 16, cursor: 'pointer' }}>{starting ? t('common.loading') : t('video.watch')}</button>
                 ) : (
-                  <button type="button" onClick={() => navigate(isAuthed() ? '/dashboard' : '/auth')} style={{ position: 'absolute', insetInlineStart: '50%', top: '50%', transform: 'translate(-50%, -50%)', border: 0, borderRadius: 6, background: '#fff', color: colors.ink, minHeight: 48, padding: '0 24px', fontWeight: 900, fontSize: 16, cursor: 'pointer' }}>{isAuthed() ? t('video.accessRequired') : t('video.signIn')}</button>
+                  <button type="button" onClick={openRequiredAccess} style={{ position: 'absolute', insetInlineStart: '50%', top: '50%', transform: 'translate(-50%, -50%)', border: 0, borderRadius: 6, background: '#fff', color: colors.ink, minHeight: 48, padding: '0 24px', fontWeight: 900, fontSize: 16, cursor: 'pointer' }}>{video.requires_phone || (isAuthed() && !user?.phone) ? t('video.addPhone') : (!isAuthed() || video.requires_auth ? t('video.signIn') : t('video.accessRequired'))}</button>
                 )}
               </>}
             </div>

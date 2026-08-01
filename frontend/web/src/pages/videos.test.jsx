@@ -15,7 +15,9 @@ const video = {
   poster: 'https://cdn.example.test/introduction.jpg',
   duration_minutes: 2,
   access_type: 'free',
-  can_play: true,
+  can_play: false,
+  requires_auth: true,
+  requires_phone: false,
   status: 'published',
   category: { id: 1, name: 'Large animals - Cattle & Sheep', slug: 'large-animals' },
 };
@@ -57,6 +59,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  delete window.VdoPlayer;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -79,13 +82,44 @@ it('shows free catalog videos on the main website', async () => {
   expect(screen.getByRole('heading', { name: 'Introduction' })).toBeVisible();
 });
 
-it('plays a free video without requiring sign in', async () => {
+it('requires sign in before playing a free video and preserves the return route', async () => {
+  renderRoute('/videos/2');
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Sign in to watch' }));
+  expect(window.location.pathname).toBe('/auth');
+  expect(new URLSearchParams(window.location.search).get('next')).toBe('/videos/2');
+  expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
+});
+
+it('plays a free video for a phone-complete authenticated viewer', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  window.VdoPlayer = { getInstance: vi.fn(() => ({
+    video: { currentTime: 0, duration: 120, addEventListener: vi.fn(), removeEventListener: vi.fn() },
+    api: { getTotalPlayed: vi.fn(() => Promise.resolve(0)), getTotalCovered: vi.fn(() => Promise.resolve(0)) },
+  })) };
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.includes('/settings')) return json({ settings: {} });
+    if (url.includes('/auth/me')) return json({ user: { id: 9, name: 'Viewer', phone: '+201000000000' } });
+    if (url.includes('/videos/2')) return json({ video: { ...video, can_play: true, requires_auth: false } });
+    if (url.includes('/video/playback') && options.method === 'POST') {
+      return json({
+        otp: 'viewer-otp',
+        playbackInfo: 'viewer-playback',
+        session_id: '11111111-1111-4111-8111-111111111111',
+      });
+    }
+    return json({});
+  });
   renderRoute('/videos/2');
 
   fireEvent.click(await screen.findByRole('button', { name: 'Watch video' }));
   const player = await screen.findByTitle('Introduction');
-  expect(player).toHaveAttribute('src', expect.stringContaining('otp=public-otp'));
-  expect(fetch).toHaveBeenCalledWith('/api/v1/video/playback', expect.objectContaining({ method: 'POST' }));
+  expect(player).toHaveAttribute('src', expect.stringContaining('otp=viewer-otp'));
+  expect(fetch).toHaveBeenCalledWith('/api/v1/video/playback', expect.objectContaining({
+    method: 'POST',
+    headers: expect.objectContaining({ Authorization: 'Bearer viewer-token' }),
+  }));
 });
 
 it('loads the next public video page', async () => {

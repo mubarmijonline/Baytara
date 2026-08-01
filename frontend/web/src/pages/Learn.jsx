@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { colors, layout } from '../theme/tokens.js';
 import { rawCourses, curriculum } from '../data/mock.js';
 import { webapi, mapCourse, auth, isAuthed } from '../lib/api.js';
+import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
 
 // Video lesson watch page. Real course content + progress tracking.
 // In Phase 5 the placeholder player is replaced by the VdoCipher DRM player:
@@ -53,7 +54,7 @@ export default function Learn() {
     setVideo(null); setVideoErr('');
     if (!useApi || !isAuthed() || !activeLesson.id || !activeLesson.has_video) return;
     let alive = true;
-    auth.playback(activeLesson.id)
+    auth.playback(activeLesson.id, apiCourse?.id)
       .then((r) => alive && setVideo(r))
       .catch((e) => {
         if (!alive) return;
@@ -67,10 +68,14 @@ export default function Learn() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, useApi]);
 
-  async function completeAndNext() {
+  async function completeCurrent() {
     if (useApi && activeLesson.id && isAuthed()) {
       try { await auth.progress({ lesson_id: activeLesson.id, completed: true }); setDoneIds((d) => ({ ...d, [activeLesson.id]: true })); } catch { /* ignore */ }
     }
+  }
+
+  async function completeAndNext() {
+    await completeCurrent();
     const i = safeFlat.findIndex((l) => l.key === activeKey);
     const next = safeFlat[i + 1];
     if (next) { setActive(next.key); navigate(`/learn/${courseId}/${next.key}`); }
@@ -93,15 +98,8 @@ export default function Learn() {
         {/* Player + info */}
         <div>
           {video ? (
-            // VdoCipher DRM player — OTP is short-lived; watermark is baked in server-side
             <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
-              <iframe
-                title="مشغّل الفيديو"
-                src={`https://player.vdocipher.com/v2/?otp=${encodeURIComponent(video.otp)}&playbackInfo=${encodeURIComponent(video.playbackInfo)}`}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
-                allow="encrypted-media; fullscreen"
-                allowFullScreen
-              />
+              <SecureVdoPlayer playback={video} title="مشغّل الفيديو" onEnded={completeCurrent} onSecurityError={() => setVideoErr('تعذّر التحقق من جلسة المشاهدة.')} />
             </div>
           ) : (
             <div
