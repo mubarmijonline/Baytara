@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Field } from './ui.jsx';
 import { useAdminLanguage } from './i18n.jsx';
 import { pageCopy } from './page-copy.js';
+import LocalizedField from './components/LocalizedField.jsx';
 
 // Non-technical editor for an array of objects: table + add/edit modal + delete + reorder.
 // fields: [{ key, label, type? ('text'|'textarea'|'number') }]
@@ -11,7 +12,10 @@ export default function ListEditor({ title, items, fields, onChange, addLabel })
   const list = Array.isArray(items) ? items : [];
   const [form, setForm] = useState(undefined); // undefined=closed, {index, data}
 
-  const openNew = () => setForm({ index: -1, data: Object.fromEntries(fields.map((f) => [f.key, ''])) });
+  const openNew = () => setForm({
+    index: -1,
+    data: Object.fromEntries(fields.map((field) => [field.key, field.localized ? { ar: '', en: '' } : ''])),
+  });
   const openEdit = (i) => setForm({ index: i, data: { ...list[i] } });
 
   function save() {
@@ -31,22 +35,31 @@ export default function ListEditor({ title, items, fields, onChange, addLabel })
   }
 
   const cols = fields.slice(0, 3); // show first few in the table
+  const translatedLabel = (field) => typeof field.label === 'string' ? field.label : field.label?.[language] || field.label?.ar || '';
+  const display = (value) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value[language] || value.ar || value.en || '';
+    return String(value ?? '');
+  };
+  const rowName = (row, index) => {
+    const namedField = fields.find((field) => field.localized) || fields[0];
+    return display(row[namedField?.key]) || String(index + 1);
+  };
   return (
-    <div className="card">
+    <div className="settings-list-editor">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <h3 style={{ margin: 0 }}>{title}</h3>
         <button className="btn btn-filled btn-sm" onClick={openNew}>{addLabel || copy.add}</button>
       </div>
       {list.length === 0 ? <div className="empty" style={{ padding: 14 }}>{copy.empty}</div> : (
         <table className="table" style={{ marginTop: 10 }}>
-          <thead><tr>{cols.map((f) => <th key={f.key}>{f.label}</th>)}<th>{copy.order}</th><th>{copy.actions}</th></tr></thead>
+          <thead><tr>{cols.map((f) => <th key={f.key}>{translatedLabel(f)}</th>)}<th>{copy.order}</th><th>{copy.actions}</th></tr></thead>
           <tbody>
             {list.map((row, i) => (
               <tr key={i}>
-                {cols.map((f) => <td key={f.key} style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(row[f.key] ?? '')}</td>)}
+                {cols.map((f) => <td key={f.key} style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{display(row[f.key])}</td>)}
                 <td className="actions">
-                  <button className="btn btn-tonal btn-sm" disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
-                  <button className="btn btn-tonal btn-sm" disabled={i === list.length - 1} onClick={() => move(i, 1)}>↓</button>
+                  <button aria-label={copy.moveUp(rowName(row, i))} className="btn btn-tonal btn-sm" disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
+                  <button aria-label={copy.moveDown(rowName(row, i))} className="btn btn-tonal btn-sm" disabled={i === list.length - 1} onClick={() => move(i, 1)}>↓</button>
                 </td>
                 <td className="actions">
                   <button className="btn btn-tonal btn-sm" onClick={() => openEdit(i)}>{copy.edit}</button>
@@ -60,14 +73,19 @@ export default function ListEditor({ title, items, fields, onChange, addLabel })
       {form !== undefined && (
         <Modal title={form.index === -1 ? copy.addTitle : copy.editTitle} onClose={() => setForm(undefined)}>
           {fields.map((f) => (
-            <Field key={f.key} label={f.label}>
-              {f.type === 'textarea'
-                ? <textarea rows={4} value={form.data[f.key] ?? ''}
-                    onChange={(e) => setForm({ ...form, data: { ...form.data, [f.key]: e.target.value } })}
-                    style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10, font: 'inherit', resize: 'vertical' }} />
-                : <input type={f.type === 'number' ? 'number' : 'text'} value={form.data[f.key] ?? ''}
-                    onChange={(e) => setForm({ ...form, data: { ...form.data, [f.key]: e.target.value } })} />}
-            </Field>
+            f.localized ? (
+              <LocalizedField key={f.key} label={f.label} value={form.data[f.key]}
+                multiline={f.type === 'textarea'}
+                onChange={(value) => setForm({ ...form, data: { ...form.data, [f.key]: value } })} />
+            ) : (
+              <Field key={f.key} label={translatedLabel(f)}>
+                {f.type === 'textarea'
+                  ? <textarea rows={4} value={form.data[f.key] ?? ''}
+                      onChange={(e) => setForm({ ...form, data: { ...form.data, [f.key]: e.target.value } })} />
+                  : <input type={f.type === 'number' ? 'number' : 'text'} value={form.data[f.key] ?? ''}
+                      onChange={(e) => setForm({ ...form, data: { ...form.data, [f.key]: e.target.value } })} />}
+              </Field>
+            )
           ))}
           <div className="row"><button className="btn btn-filled" onClick={save}>{copy.save}</button><button className="btn btn-text" onClick={() => setForm(undefined)}>{copy.cancel}</button></div>
         </Modal>

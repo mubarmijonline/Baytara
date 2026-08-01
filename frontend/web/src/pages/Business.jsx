@@ -19,7 +19,7 @@ export default function Business() {
         >
           <div>
             <div style={{ fontSize: 13, fontWeight: 800, color: colors.accent, letterSpacing: 1, marginBottom: 14 }}>
-              BAYTARA FOR BUSINESS
+              {biz.eyebrow || 'BAYTARA FOR BUSINESS'}
             </div>
             <h1 style={{ fontSize: 44, fontWeight: 900, margin: '0 0 16px', lineHeight: 1.2 }}>{biz.title}</h1>
             <p style={{ fontSize: 18, color: '#c9c9dc', lineHeight: 1.7, margin: '0 0 28px', maxWidth: 500 }}>
@@ -38,7 +38,7 @@ export default function Business() {
                   cursor: 'pointer',
                 }}
               >
-                اطلب عرضاً تجريبياً
+                {biz.primary_cta || 'اطلب عرضاً تجريبياً'}
               </button>
               <button
                 style={{
@@ -52,7 +52,7 @@ export default function Business() {
                   cursor: 'pointer',
                 }}
               >
-                تحدث مع مختص
+                {biz.secondary_cta || 'تحدث مع مختص'}
               </button>
             </div>
           </div>
@@ -83,7 +83,7 @@ export default function Business() {
                   {f.icon || '★'}
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>{f.title}</div>
-                <p style={{ fontSize: 15, color: colors.muted, lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
+                <p style={{ fontSize: 15, color: colors.muted, lineHeight: 1.6, margin: 0 }}>{f.description || f.desc}</p>
               </div>
             ))}
           </div>

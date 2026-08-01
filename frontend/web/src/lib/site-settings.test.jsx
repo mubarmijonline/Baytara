@@ -3,7 +3,7 @@
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { webapi } from './api.js';
+import { getLang, webapi } from './api.js';
 import { SiteSettingsProvider, useSiteSettings } from './site-settings.jsx';
 
 function Probe({ name }) {
@@ -70,4 +70,12 @@ it('does not accept preview messages outside preview mode', async () => {
   })));
 
   expect(screen.getByText('Value: Saved title')).toBeVisible();
+});
+
+it('uses the preview query language without changing the saved preference', () => {
+  localStorage.setItem('baytara_lang', 'ar');
+  window.history.replaceState({}, '', '/about?preview=1&lang=en');
+
+  expect(getLang()).toBe('en');
+  expect(localStorage.getItem('baytara_lang')).toBe('ar');
 });

@@ -15,7 +15,12 @@ const settings = {
   stats: [{ num: '321', label: 'Configured metric' }],
   testimonials: [{ name: 'Configured learner', role: 'Configured role', quote: 'Configured quote' }],
   about: { title: 'Configured about', body: 'Configured about body' },
-  business: { title: 'Configured business', body: 'Configured business body', stats: [], features: [], logos: [] },
+  business: {
+    eyebrow: 'Configured business eyebrow', title: 'Configured business', body: 'Configured business body',
+    primary_cta: 'Configured demo action', secondary_cta: 'Configured talk action',
+    stats: [], features: [{ icon: '+', title: 'Configured feature', description: 'Configured feature body' }],
+    logos: [],
+  },
   contact: { title: 'Configured contact', subtitle: 'Configured contact body', email: 'configured@baytara.app' },
   footer: { tagline: 'Configured footer', copyright: 'Configured copyright' },
   socials: {},
@@ -79,4 +84,14 @@ it.each([
 
   expect(await screen.findByRole('heading', { name: title })).toBeVisible();
   expect(screen.getByText(body)).toBeVisible();
+});
+
+it('renders every editable Business hero and feature field', async () => {
+  renderRoute('/business');
+
+  expect(await screen.findByText('Configured business eyebrow')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Configured demo action' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Configured talk action' })).toBeVisible();
+  expect(screen.getByText('Configured feature')).toBeVisible();
+  expect(screen.getByText('Configured feature body')).toBeVisible();
 });

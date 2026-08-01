@@ -6,7 +6,12 @@ const BASE = '/api/v1';
 
 // ---- language (contract البند1: AR default, EN toggle) ----
 const LANG_KEY = 'baytara_lang';
-export const getLang = () => localStorage.getItem(LANG_KEY) || 'ar';
+export const getLang = () => {
+  const params = new URLSearchParams(window.location.search);
+  const previewLanguage = params.get('preview') === '1' ? params.get('lang') : '';
+  if (previewLanguage === 'ar' || previewLanguage === 'en') return previewLanguage;
+  return localStorage.getItem(LANG_KEY) || 'ar';
+};
 export const setLang = (l) => { localStorage.setItem(LANG_KEY, l === 'en' ? 'en' : 'ar'); };
 
 // ---- stable device id (contract البند2: 2-device limit) ----

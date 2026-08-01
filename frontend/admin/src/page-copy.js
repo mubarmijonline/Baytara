@@ -56,7 +56,11 @@ const COPY = {
       heading: 'إعدادات الموقع', subtitle: 'محتوى الموقع الرئيسي — يظهر مباشرةً على الصفحة العامة بعد الحفظ.',
       saved: 'تم الحفظ', saveError: 'تعذّر الحفظ.', save: 'حفظ الإعدادات',
     },
-    list: { add: '+ إضافة', empty: 'لا عناصر بعد.', order: 'ترتيب', actions: 'إجراءات', edit: 'تعديل', delete: 'حذف', addTitle: 'إضافة عنصر', editTitle: 'تعديل عنصر', save: 'حفظ', cancel: 'إلغاء' },
+    list: {
+      add: '+ إضافة', empty: 'لا عناصر بعد.', order: 'ترتيب', actions: 'إجراءات', edit: 'تعديل', delete: 'حذف',
+      addTitle: 'إضافة عنصر', editTitle: 'تعديل عنصر', save: 'حفظ', cancel: 'إلغاء',
+      moveUp: (name) => `نقل ${name} لأعلى`, moveDown: (name) => `نقل ${name} لأسفل`,
+    },
   },
   en: {
     common: {
@@ -115,7 +119,11 @@ const COPY = {
       heading: 'Site settings', subtitle: 'Public website content updates immediately after you save.',
       saved: 'Saved', saveError: 'Unable to save.', save: 'Save settings',
     },
-    list: { add: '+ Add', empty: 'No items yet.', order: 'Order', actions: 'Actions', edit: 'Edit', delete: 'Delete', addTitle: 'Add item', editTitle: 'Edit item', save: 'Save', cancel: 'Cancel' },
+    list: {
+      add: '+ Add', empty: 'No items yet.', order: 'Order', actions: 'Actions', edit: 'Edit', delete: 'Delete',
+      addTitle: 'Add item', editTitle: 'Edit item', save: 'Save', cancel: 'Cancel',
+      moveUp: (name) => `Move ${name} up`, moveDown: (name) => `Move ${name} down`,
+    },
   },
 };
 
