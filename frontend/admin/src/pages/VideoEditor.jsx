@@ -118,6 +118,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     setPhase('import');
     try {
       const result = await api.vdocipherImport(savedRecovery.importPayload);
+      setRecovery(null);
       navigate(`/videos/${result.video.id}`);
     } catch (error) { setRecovery({ ...savedRecovery, step: 'import' }); setLocalError(error.message); }
     finally { setPhase('idle'); }
@@ -182,7 +183,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
 
   return <section className="video-editor"><Link className="back-link" to="/videos"><ArrowLeft size={16} /> {t('common.back')}</Link><h2>{creating ? t('pages.videoNew') : t('pages.videoDetails')}</h2><ErrText>{message(localError)}</ErrText>
     <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} courses={courses} t={t} />
-      {(creating || providerOnly) && <><h3>{t('video.folder')}</h3><VideoFolderTree selectedId={folderId} onSelect={selectFolder} picker /><Field label={t('video.file')}><input type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} /></Field></>}
+      {(creating || providerOnly) && <><h3>{t('video.folder')}</h3><VideoFolderTree selectedId={folderId} onSelect={selectFolder} picker />{creating && <Field label={t('video.file')}><input type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} /></Field>}</>}
       {creating && busy && <progress max="100" value={progress} />}
       <button className="btn btn-filled" type="button" disabled={busy} onClick={creating ? upload : saveCatalog}>{creating ? <><Upload size={16} /> {t('video.uploadVideo')}</> : providerOnly ? t('common.import') : <><Save size={16} /> {t('common.save')}</>}</button>
       {recovery && <div className="video-recovery"><p>{t('video.storageComplete')} <strong dir="ltr">{recovery.providerId}</strong></p><button className="btn btn-tonal" type="button" disabled={busy} onClick={() => recovery.step === 'provider' ? updateProviderThenImport(recovery) : retryImport(recovery)}>{recovery.step === 'provider' ? t('video.retryProvider') : t('video.retryImport')}</button></div>}

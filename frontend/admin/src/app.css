@@ -182,7 +182,7 @@ body {
 .video-folder-select { flex: 1; display: flex; gap: 6px; align-items: center; border: 0; padding: 5px; background: transparent; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
 .video-folder-loading { padding: 5px 8px; color: var(--muted); font-size: 12px; }
 .video-library-main { min-width: 0; }
-.video-library-toolbar { margin-bottom: 14px; }
+.video-library-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .video-library-toolbar input, .video-library-toolbar select { min-height: 36px; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font: inherit; color: var(--text); background: var(--surface); }
 .video-library-toolbar input { flex: 1 1 190px; }
 .view-switcher { display: flex; gap: 4px; margin-inline-start: auto; }
@@ -194,11 +194,15 @@ body {
 .video-card-body { padding: 10px; display: grid; gap: 6px; }
 .video-card-body strong, .video-list-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .video-card-body small, .video-list-row small { color: var(--muted); font-size: 12px; }
+.video-metadata { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; color: var(--muted); font-size: 12px; }
+.video-metadata .chip { font-size: 11px; }
+.video-metadata.compact { margin-top: 2px; }
 .video-list { display: grid; gap: 8px; }
 .video-list-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 76px; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
 .video-list-row .video-poster { height: 60px; }
 .video-list-row > div { min-width: 0; display: grid; gap: 4px; }
 .video-table td { vertical-align: middle; }
+.video-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 14px; color: var(--muted); font-size: 13px; }
 .video-error { margin: 0 0 12px; }
 .video-skeletons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .video-skeletons span { min-height: 160px; border-radius: 8px; background: var(--surface-container-high); animation: videoPulse 1.2s ease-in-out infinite alternate; }

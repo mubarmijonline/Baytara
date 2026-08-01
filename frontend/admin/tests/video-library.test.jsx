@@ -331,3 +331,138 @@ it('keeps local metadata visible when the provider request fails', async () => {
     }),
   ).toBeVisible();
 });
+
+it('retries provider metadata after upload without issuing new credentials', async () => {
+  class SuccessfulXhr { constructor() { this.status = 201; this.upload = {}; } open() {} send() { this.onload(); } }
+  vi.stubGlobal('XMLHttpRequest', SuccessfulXhr);
+  let providerUpdates = 0;
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.endsWith('/upload-credentials')) return json({ video_id: 'retry-provider', upload_link: 'https://upload.test', fields: {} });
+    if (url.endsWith('/vdocipher/videos/retry-provider')) { providerUpdates += 1; return providerUpdates === 1 ? json({ error: 'provider_failed' }, 503) : json({ video: { id: 'retry-provider' } }); }
+    if (url.endsWith('/vdocipher/import')) return json({ video: { id: 8 } });
+    if (url.endsWith('/admin/videos/8')) return json({ video: { id: 8, title: 'Exam', description: 'Notes', category: { id: 1 }, vdocipher_video_id: 'retry-provider', access_type: 'general', status: 'draft', courses: [] } });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.endsWith('/categories')) return json({ categories: [{ id: 1, slug: 'equine', name: 'Equine' }] });
+    return json({});
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/videos/new');
+  await screen.findByText(/catalog metadata/i);
+  await user.type(screen.getAllByRole('textbox')[0], 'Exam');
+  await user.type(screen.getAllByRole('textbox')[2], 'Notes');
+  await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
+  await user.upload(document.querySelector('input[type="file"]'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
+  await user.click(screen.getByRole('button', { name: /upload video/i }));
+  await user.click(await screen.findByRole('button', { name: /retry provider metadata/i }));
+  await waitFor(() => expect(screen.queryByRole('button', { name: /retry provider metadata/i })).toBeNull());
+  expect(providerUpdates).toBe(2);
+  expect(fetch.mock.calls.filter(([input]) => String(input).endsWith('/upload-credentials'))).toHaveLength(1);
+});
+
+it('renames the selected folder through the shared dialog', async () => {
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.endsWith('/folders/root')) return json({ folders: [{ id: 'f1', name: 'Equine' }] });
+    if (url.endsWith('/folders/f1') && options.method === 'PATCH') return json({ folder: { id: 'f1', name: 'Cases' } });
+    return json({});
+  });
+  const user = userEvent.setup();
+  render(<LanguageProvider><DialogHost /><VideoFolderTree selectedId="f1" onSelect={() => {}} /></LanguageProvider>);
+
+  await user.click(screen.getByRole('button', { name: /rename folder/i }));
+  await user.type(screen.getByRole('textbox'), 'Cases');
+  await user.click(screen.getByRole('button', { name: 'Confirm' }));
+  await waitFor(() => expect(fetch.mock.calls.some(([input, options]) => String(input).endsWith('/folders/f1') && options.method === 'PATCH' && JSON.parse(options.body).name === 'Cases')).toBe(true));
+});
+
+it('moves a provider video to the URL-selected folder', async () => {
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.endsWith('/admin/videos/7')) return json({ video: { id: 7, title: 'Exam', description: 'Notes', category: { id: 1 }, vdocipher_video_id: 'v1', access_type: 'general', status: 'draft', courses: [] } });
+    if (url.endsWith('/admin/vdocipher/videos/v1')) return json({ video: { id: 'v1', title: 'Exam', description: 'Notes', status: 'ready' } });
+    if (url.endsWith('/admin/vdocipher/move') && options.method === 'POST') return json({ ok: true });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.endsWith('/categories')) return json({ categories: [{ id: 1, slug: 'equine', name: 'Equine' }] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/videos/7?folder=f2');
+  await user.click(await screen.findByRole('button', { name: /move to this folder/i }));
+  await waitFor(() => expect(fetch.mock.calls.some(([input, options]) => String(input).endsWith('/admin/vdocipher/move') && JSON.parse(options.body).folder_id === 'f2' && JSON.parse(options.body).video_ids[0] === 'v1')).toBe(true));
+});
+
+it('keeps root canonical records beyond the current provider page and exposes page controls', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/vdocipher/videos')) return json({ count: 80, videos: [{ id: 'page-two', title: 'Page two provider', status: 'ready' }] });
+    if (url.includes('/admin/videos')) return json({ items: [{ id: 9, title: 'Canonical beyond provider page', vdocipher_video_id: 'canonical-missing', category: { name: 'Equine' }, access_type: 'general', courses: [] }] });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/videos?page=2');
+  expect(await screen.findByText('Canonical beyond provider page')).toBeVisible();
+  expect(screen.getByRole('button', { name: /previous page/i })).toBeEnabled();
+  await user.click(screen.getByRole('button', { name: /previous page/i }));
+  expect(window.location.search).not.toContain('page=2');
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('page=2') && String(input).includes('limit=40'))).toBe(true);
+});
+
+it('separates provider encoding status from local publication and assignment filters', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/vdocipher/videos')) return json({ count: 2, videos: [{ id: 'ready-v', title: 'Ready provider', status: 'ready' }, { id: 'encoding-v', title: 'Encoding provider', status: 'preparing' }] });
+    if (url.includes('/admin/videos')) return json({ items: [{ id: 1, title: 'Ready local', vdocipher_video_id: 'ready-v', status: 'published', category: { name: 'Equine' }, access_type: 'general', courses: [{ id: 4, title: 'Dawara' }] }, { id: 2, title: 'Encoding local', vdocipher_video_id: 'encoding-v', status: 'published', category: { name: 'Equine' }, access_type: 'general', courses: [] }] });
+    if (url.includes('/admin/courses')) return json({ courses: [{ id: 4, title: 'Dawara' }] });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/videos?status=ready&publication=published&course=4&assignment=assigned');
+  expect(await screen.findByText('Ready provider')).toBeVisible();
+  expect(screen.queryByText('Encoding provider')).toBeNull();
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('course_id=4') && String(input).includes('status=published'))).toBe(true);
+  await user.click(screen.getByRole('button', { name: /table/i }));
+  expect(window.location.search).toContain('status=ready');
+  expect(window.location.search).toContain('publication=published');
+  expect(window.location.search).toContain('course=4');
+  expect(window.location.search).toContain('assignment=assigned');
+});
+
+it('renders operational metadata in every library view', () => {
+  const video = { id: 'provider-1', title: 'Exam', status: 'ready', duration_seconds: 120, uploaded_at: '2026-08-01', catalog: { category: { name: 'Equine' }, access_type: 'general', courses: [{ id: 1, title: 'Dawara One' }] } };
+  const { rerender } = render(<MemoryRouter><LanguageProvider><VideoViews view="grid" videos={[video]} /></LanguageProvider></MemoryRouter>);
+  expect(screen.getByText('Equine')).toBeVisible();
+  expect(screen.getByText(/paid for non-veterinarians/i)).toBeVisible();
+  expect(screen.getByText(/1 course/i)).toBeVisible();
+  rerender(<MemoryRouter><LanguageProvider><VideoViews view="list" videos={[video]} /></LanguageProvider></MemoryRouter>);
+  expect(screen.getByTestId('video-list')).toHaveTextContent('Equine');
+  rerender(<MemoryRouter><LanguageProvider><VideoViews view="table" videos={[video]} /></LanguageProvider></MemoryRouter>);
+  expect(screen.getByTestId('video-table')).toHaveTextContent('2026-08-01');
+  expect(screen.getByTestId('video-table')).toHaveTextContent('Dawara One');
+});
+
+it('does not render a file input when importing a provider-only video', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.endsWith('/admin/videos/v1')) return json({ error: 'not_found' }, 404);
+    if (url.endsWith('/admin/vdocipher/videos/v1')) return json({ video: { id: 'v1', title: 'Provider exam', description: 'Notes', status: 'ready' } });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.endsWith('/categories')) return json({ categories: [{ id: 1, slug: 'equine', name: 'Equine' }] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  renderAdmin('/admin/videos/v1');
+  await screen.findByRole('button', { name: /^import$/i });
+  expect(screen.queryByLabelText('Video file')).toBeNull();
+});
