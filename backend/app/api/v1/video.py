@@ -1,10 +1,16 @@
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 
 from ...extensions import db
-from ...models import Category, Lesson, User
+from ...models import Category, Lesson, User, UserDevice
 from ...services.catalog_access import audience_error, video_access
 from ...services.video_provider import provider, watermark_for, VideoProviderError
+from ...services.video_monitoring import (
+    append_playback_event,
+    resolve_course_context,
+    start_playback_attempt,
+    trusted_request_ip,
+)
 from ...utils import req_lang
 
 bp = Blueprint("video", __name__)
@@ -17,7 +23,11 @@ def _current_user():
 
 def _public_video_dict(video, user, lang):
     data = video.to_dict(lang=lang, user=user)
-    data["can_play"] = video_access(user, video)[0]
+    allowed = video_access(user, video)[0]
+    has_phone = bool(user and (user.phone or "").strip())
+    data["requires_auth"] = user is None
+    data["requires_phone"] = user is not None and not has_phone
+    data["can_play"] = bool(user and has_phone and allowed)
     return data
 
 
@@ -76,29 +86,72 @@ def video_detail(video_id):
 def playback():
     """Validate enrollment for the lesson's course, then mint a short-lived, watermarked
     VdoCipher OTP. Access is granted here and only here — no public URLs."""
+    body = request.get_json(silent=True) or {}
     identity = get_jwt_identity()
-    lesson_id = (request.get_json() or {}).get("lesson_id")
+    lesson_id = body.get("lesson_id")
     lesson = db.session.get(Lesson, lesson_id) if lesson_id else None
-    if not lesson:
-        return jsonify(error="lesson_not_found"), 404
-    if not lesson.vdocipher_video_id:
-        return jsonify(error="no_video"), 409
-
     user = db.session.get(User, int(identity)) if identity else None
+    requested_course = resolve_course_context(lesson, body.get("course_id"))
+    device_id = request.headers.get("X-Baytara-Device-ID")
+    ip_address = trusted_request_ip(request)
+    user_agent = request.headers.get("User-Agent")
+
+    def deny(reason, status_code):
+        session = start_playback_attempt(
+            user, lesson, requested_course, device_id, ip_address, user_agent,
+            status="denied", reason=reason,
+        )
+        db.session.commit()
+        return jsonify(error=reason), status_code
+
+    if not user:
+        return deny("authentication_required", 401)
+    if not user.is_active:
+        return deny("account_disabled", 403)
+    if not (user.phone or "").strip():
+        return deny("phone_required", 403)
+
+    token_device = get_jwt().get("device_id")
+    if not token_device or not device_id:
+        return deny("device_required", 403)
+    if token_device != device_id:
+        return deny("device_mismatch", 403)
+    device = UserDevice.query.filter_by(user_id=user.id, device_id=device_id).first()
+    if not device:
+        return deny("device_not_registered", 403)
+    if UserDevice.query.filter_by(user_id=user.id).count() > UserDevice.MAX_DEVICES:
+        return deny("device_limit_reached", 403)
+
+    if not lesson:
+        return deny("lesson_not_found", 404)
+    if body.get("course_id") and not requested_course:
+        return deny("invalid_course_context", 422)
+    if not lesson.vdocipher_video_id:
+        return deny("no_video", 409)
+
     privileged = user is not None and user.role == "admin"
     if lesson.status != "published" and not privileged:
-        return jsonify(error="not_entitled"), 403
-    if user is None and lesson.access_type != "free":
-        return jsonify(error="not_entitled"), 403
+        return deny("not_entitled", 403)
     allowed, reason = video_access(user, lesson)
     if not allowed:
-        return jsonify(error=reason), 403
+        return deny(reason, 403)
+
+    session = start_playback_attempt(
+        user, lesson, requested_course, device_id, ip_address, user_agent,
+    )
     try:
-        res = provider.issue_otp(lesson.vdocipher_video_id, annotate=watermark_for(user))
+        res = provider.issue_otp(
+            lesson.vdocipher_video_id,
+            annotate=watermark_for(user, ip_address, session.public_id),
+        )
     except VideoProviderError as e:
-        # no_api_key / vdocipher_* / unreachable — playback unavailable, access still gated
+        session.status = "provider_failed"
+        session.reason = str(e)[:80]
+        append_playback_event(session, "provider_failed", reason=session.reason)
+        db.session.commit()
         return jsonify(error=str(e)), 503
 
-    # ponytail: watch-log to MongoDB is Phase 8 (Mongo not provisioned yet); OTP issuance is the
-    # access event that matters and it's already gated above.
-    return jsonify(otp=res["otp"], playbackInfo=res["playbackInfo"])
+    device.last_seen = session.started_at
+    append_playback_event(session, "otp_issued")
+    db.session.commit()
+    return jsonify(otp=res["otp"], playbackInfo=res["playbackInfo"], session_id=session.public_id)

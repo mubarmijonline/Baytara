@@ -61,7 +61,7 @@ class VdoCipherProvider:
 provider = VdoCipherProvider()
 
 
-def watermark_for(user):
+def watermark_for(user, ip_address="", session_ref=""):
     """Dynamic watermark annotation carrying viewer identity (anti-piracy).
     Contract البند2: email + phone floating over the video."""
     if user is None:
@@ -69,10 +69,10 @@ def watermark_for(user):
             {"type": "rtext", "text": "Baytara", "alpha": "0.45",
              "color": "0xFFFFFF", "size": "15", "interval": "6000"},
         ]
-    contact = user.email + (f" · {user.phone}" if user.phone else "")
+    session_label = session_ref[:8] if session_ref else "-"
     return [
-        {"type": "rtext", "text": f"{user.name} · {contact}", "alpha": "0.55",
+        {"type": "rtext", "text": f"{user.name} · {user.email}", "alpha": "0.58",
          "color": "0xFFFFFF", "size": "15", "interval": "5000"},
-        {"type": "rtext", "text": f"ID {user.id}", "alpha": "0.45",
-         "color": "0xFFFFFF", "size": "12", "interval": "8000"},
+        {"type": "rtext", "text": f"{user.phone} · {ip_address} · Session {session_label}", "alpha": "0.52",
+         "color": "0xFFFFFF", "size": "13", "interval": "7000"},
     ]

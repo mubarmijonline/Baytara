@@ -5,7 +5,7 @@ import pytest
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
-from app.models import Category, Lesson, User
+from app.models import Category, Lesson, User, UserDevice, VideoPlaybackSession
 from app.security import hash_password
 
 
@@ -17,8 +17,12 @@ def public_video_app(tmp_path, monkeypatch):
     })
     app = create_app(config)
 
+    captured = {}
+
     class FakeProvider:
         def issue_otp(self, video_id, annotate=None, ttl=300):
+            captured["video_id"] = video_id
+            captured["annotate"] = annotate
             return {
                 "otp": f"otp-{video_id}",
                 "playbackInfo": "public-playback-info",
@@ -31,7 +35,7 @@ def public_video_app(tmp_path, monkeypatch):
         db.create_all()
         student = User(
             name="Student", email="public-video-student@example.test",
-            password_hash=hash_password("secret12"), role="student",
+            phone="+201000000002", password_hash=hash_password("secret12"), role="student",
         )
         large = Category(
             name="الحيوانات الكبيرة - الأبقار والأغنام",
@@ -64,6 +68,7 @@ def public_video_app(tmp_path, monkeypatch):
         db.session.add_all(rows)
         db.session.commit()
         ids = {row.title_en or row.title: row.id for row in rows}
+        app.config["PLAYBACK_CAPTURED"] = captured
         yield app, ids
         db.session.remove()
         db.drop_all()
@@ -102,7 +107,8 @@ def test_anonymous_video_detail_hides_restricted_and_draft_rows(public_video_app
     visible = client.get(f"/api/v1/videos/{ids['Introduction']}?lang=en")
     assert visible.status_code == 200
     assert visible.get_json()["video"]["title"] == "Introduction"
-    assert visible.get_json()["video"]["can_play"] is True
+    assert visible.get_json()["video"]["can_play"] is False
+    assert visible.get_json()["video"]["requires_auth"] is True
     paid = client.get(f"/api/v1/videos/{ids['مدفوع']}")
     assert paid.status_code == 200
     assert paid.get_json()["video"]["can_play"] is False
@@ -110,36 +116,106 @@ def test_anonymous_video_detail_hides_restricted_and_draft_rows(public_video_app
     assert client.get(f"/api/v1/videos/{ids['مسودة']}").status_code == 404
 
 
-def test_anonymous_playback_allows_only_published_free_video(public_video_app):
+def test_anonymous_free_playback_is_denied_and_audited(public_video_app):
     app, ids = public_video_app
     client = app.test_client()
 
     response = client.post(
         "/api/v1/video/playback", json={"lesson_id": ids["Introduction"]},
     )
-    assert response.status_code == 200
-    assert response.get_json() == {
-        "otp": "otp-public-introduction",
-        "playbackInfo": "public-playback-info",
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "authentication_required"}
+    with app.app_context():
+        session = VideoPlaybackSession.query.one()
+        assert session.video_id == ids["Introduction"]
+        assert session.status == "denied"
+        assert session.reason == "authentication_required"
+        assert session.user_id is None
+        assert session.events[0].event_type == "denied"
+
+
+def _viewer_headers(client, device_id="public-browser-1"):
+    login = client.post("/api/v1/auth/login", json={
+        "email": "public-video-student@example.test", "password": "secret12", "device_id": device_id,
+    })
+    assert login.status_code == 200
+    return {
+        "Authorization": f"Bearer {login.get_json()['access_token']}",
+        "X-Baytara-Device-ID": device_id,
+        "X-Real-IP": "203.0.113.9",
     }
 
-    assert client.post(
-        "/api/v1/video/playback", json={"lesson_id": ids["خاص بالأطباء"]},
-    ).status_code == 403
-    assert client.post(
-        "/api/v1/video/playback", json={"lesson_id": ids["مسودة"]},
-    ).status_code == 403
+
+def test_signed_in_free_playback_uses_identity_device_watermark_and_session(public_video_app):
+    app, ids = public_video_app
+    client = app.test_client()
+    response = client.post(
+        "/api/v1/video/playback", headers=_viewer_headers(client),
+        json={"lesson_id": ids["Introduction"]},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["otp"] == "otp-public-introduction"
+    assert response.get_json()["playbackInfo"] == "public-playback-info"
+    assert response.get_json()["session_id"]
+
+    with app.app_context():
+        session = VideoPlaybackSession.query.filter_by(public_id=response.get_json()["session_id"]).one()
+        assert session.status == "issued"
+        assert session.device_id == "public-browser-1"
+        assert session.ip_address == "203.0.113.9"
+        assert session.events[0].event_type == "otp_issued"
+        watermark_text = " ".join(row["text"] for row in app.config["PLAYBACK_CAPTURED"]["annotate"])
+        assert "public-video-student@example.test" in watermark_text
+        assert "+201000000002" in watermark_text
+        assert "203.0.113.9" in watermark_text
+        assert session.public_id[:8] in watermark_text
+
+
+def test_playback_rejects_missing_phone_and_mismatched_or_removed_device(public_video_app):
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "security-browser")
+
+    mismatched = client.post(
+        "/api/v1/video/playback", headers={**headers, "X-Baytara-Device-ID": "different-browser"},
+        json={"lesson_id": ids["Introduction"]},
+    )
+    assert mismatched.status_code == 403
+    assert mismatched.get_json() == {"error": "device_mismatch"}
+
+    with app.app_context():
+        UserDevice.query.filter_by(device_id="security-browser").delete()
+        db.session.commit()
+    removed = client.post(
+        "/api/v1/video/playback", headers=headers, json={"lesson_id": ids["Introduction"]},
+    )
+    assert removed.status_code == 403
+    assert removed.get_json() == {"error": "device_not_registered"}
+
+    with app.app_context():
+        student = User.query.filter_by(email="public-video-student@example.test").one()
+        student.phone = None
+        db.session.add(UserDevice(user_id=student.id, device_id="security-browser"))
+        db.session.commit()
+    no_phone = client.post(
+        "/api/v1/video/playback", headers=headers, json={"lesson_id": ids["Introduction"]},
+    )
+    assert no_phone.status_code == 403
+    assert no_phone.get_json() == {"error": "phone_required"}
 
 
 def test_signed_in_student_cannot_play_an_unpublished_free_video(public_video_app):
     app, ids = public_video_app
     client = app.test_client()
     login = client.post("/api/v1/auth/login", json={
-        "email": "public-video-student@example.test", "password": "secret12",
+        "email": "public-video-student@example.test", "password": "secret12", "device_id": "draft-browser",
     })
     response = client.post(
         "/api/v1/video/playback",
-        headers={"Authorization": f"Bearer {login.get_json()['access_token']}"},
+        headers={
+            "Authorization": f"Bearer {login.get_json()['access_token']}",
+            "X-Baytara-Device-ID": "draft-browser",
+        },
         json={"lesson_id": ids["مسودة"]},
     )
     assert response.status_code == 403

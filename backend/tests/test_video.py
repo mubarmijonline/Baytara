@@ -36,11 +36,11 @@ def playback_app(tmp_path, monkeypatch):
         db.create_all()
         instructor = User(
             name="Instructor", email="playback-instructor@example.test",
-            password_hash=hash_password("secret12"), role="instructor",
+            phone="+201000000010", password_hash=hash_password("secret12"), role="instructor",
         )
         student = User(
             name="Student", email="playback-student@example.test",
-            password_hash=hash_password("secret12"), role="student",
+            phone="+201000000011", password_hash=hash_password("secret12"), role="student",
         )
         category = Category(name="Playback category", slug="playback-category")
         db.session.add_all([instructor, student, category])
@@ -75,8 +75,14 @@ def playback_app(tmp_path, monkeypatch):
 
 
 def _playback_headers(client, email):
-    login = client.post("/api/v1/auth/login", json={"email": email, "password": "secret12"})
-    return {"Authorization": f"Bearer {login.get_json()['access_token']}"}
+    device_id = "device-" + email.split("@", 1)[0]
+    login = client.post("/api/v1/auth/login", json={
+        "email": email, "password": "secret12", "device_id": device_id,
+    })
+    return {
+        "Authorization": f"Bearer {login.get_json()['access_token']}",
+        "X-Baytara-Device-ID": device_id,
+    }
 
 
 def test_playback_accepts_active_course_assignment_and_assigned_instructor(playback_app):
