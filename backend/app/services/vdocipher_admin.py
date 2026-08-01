@@ -140,10 +140,22 @@ def _duration(raw):
     return values.get("length", values.get("duration"))
 
 
+def _uploaded_at(raw):
+    value = raw.get("uploaded_at") if "uploaded_at" in raw else raw.get("upload_time")
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    try:
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(value))
+    except (OverflowError, OSError, ValueError) as exc:
+        raise VdoCipherAdminError("vdocipher_bad_response") from exc
+
+
 def normalize_video(raw):
     raw = _response_object(raw)
-    uploaded_at = _nullable_string(raw.get("uploaded_at"))
-    upload_time = _nullable_string(raw.get("upload_time"))
     return {
         "id": _provider_video_id(raw.get("id")),
         "title": _nullable_string(raw.get("title"), ""),
@@ -151,7 +163,7 @@ def normalize_video(raw):
         "poster": _poster(raw),
         "duration_seconds": _duration(raw),
         "status": _nullable_string(raw.get("status")),
-        "uploaded_at": uploaded_at if "uploaded_at" in raw else upload_time,
+        "uploaded_at": _uploaded_at(raw),
     }
 
 
@@ -371,10 +383,12 @@ def _read_all_folder_videos(folder_id, refresh, generation):
 def list_all_folder_videos(folder_id="root", refresh=False):
     """Read every provider page for one exact folder without persisting provider data."""
     folder_id = validate_folder_id(folder_id)
+    if refresh:
+        clear_cache()
     key = ("all-videos", folder_id)
     while True:
         generation = _current_cache_generation()
-        cached = _cache_get(key, refresh, generation)
+        cached = _cache_get(key, False, generation)
         if cached is not None:
             return cached
 
@@ -383,15 +397,10 @@ def list_all_folder_videos(folder_id="root", refresh=False):
                 continue
             flight_key = (key, generation)
             flight = _ALL_VIDEO_FLIGHTS.get(flight_key)
-            if refresh and (flight is None or not flight["refresh"]):
-                clear_cache()
-                generation = _CACHE_GENERATION
-                flight_key = (key, generation)
-            flight = _ALL_VIDEO_FLIGHTS.get(flight_key)
             if flight is None:
                 flight = {
                     "event": threading.Event(), "value": None, "error": None,
-                    "stale": False, "refresh": bool(refresh),
+                    "stale": False,
                 }
                 _ALL_VIDEO_FLIGHTS[flight_key] = flight
                 leader = True
@@ -407,7 +416,7 @@ def list_all_folder_videos(folder_id="root", refresh=False):
             return copy.deepcopy(flight["value"])
 
         try:
-            result = _read_all_folder_videos(folder_id, refresh, generation)
+            result = _read_all_folder_videos(folder_id, False, generation)
             with _CACHE_LOCK:
                 if generation != _CACHE_GENERATION:
                     flight["stale"] = True

@@ -52,6 +52,11 @@ def test_normalize_video_prefers_poster_and_keeps_description():
     }
 
 
+def test_normalize_video_converts_provider_unix_upload_time():
+    raw = {"id": "v1", "title": "Exam", "description": "Details", "upload_time": 1704067200}
+    assert va.normalize_video(raw)["uploaded_at"] == "2024-01-01T00:00:00Z"
+
+
 @pytest.mark.parametrize(("field", "value"), [
     ("title", 7),
     ("description", []),
@@ -64,6 +69,8 @@ def test_normalize_video_prefers_poster_and_keeps_description():
     ("status", 3),
     ("uploaded_at", {}),
     ("upload_time", []),
+    ("upload_time", True),
+    ("upload_time", float("inf")),
     ("length", True),
     ("length", "90"),
     ("length", float("nan")),

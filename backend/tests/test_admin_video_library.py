@@ -161,12 +161,38 @@ def test_all_folder_videos_coalesces_concurrent_cache_fills(monkeypatch):
     monkeypatch.setattr(va, "client", FakeProvider())
     va.clear_cache()
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(va.list_all_folder_videos, "root", True)
+        first = pool.submit(va.list_all_folder_videos, "root")
         assert entered.wait(timeout=2)
-        second = pool.submit(va.list_all_folder_videos, "root", True)
+        second = pool.submit(va.list_all_folder_videos, "root")
         release.set()
         assert first.result(timeout=2) == second.result(timeout=2)
     assert calls == [1]
+
+
+def test_concurrent_refreshes_for_different_folders_converge(monkeypatch):
+    calls = []
+    lock = threading.Lock()
+    first_calls = threading.Barrier(2)
+
+    class FakeProvider:
+        def list_videos(self, **params):
+            with lock:
+                calls.append(params["folderId"])
+                ordinal = len(calls)
+            if ordinal <= 2:
+                first_calls.wait(timeout=2)
+            folder_id = params["folderId"]
+            return {"count": 1, "rows": [provider_video(f"{folder_id}-video", folder_id)]}
+
+    monkeypatch.setattr(va, "client", FakeProvider())
+    va.clear_cache()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        root = pool.submit(va.list_all_folder_videos, "root", True)
+        child = pool.submit(va.list_all_folder_videos, "child", True)
+        assert [video["id"] for video in root.result(timeout=3)["videos"]] == ["root-video"]
+        assert [video["id"] for video in child.result(timeout=3)["videos"]] == ["child-video"]
+
+    assert 2 <= len(calls) <= 3
 
 
 def test_clear_cache_during_flight_discards_stale_result_and_retries(monkeypatch):
@@ -261,6 +287,41 @@ def test_malformed_flight_fails_all_waiters_and_allows_retry(monkeypatch):
 
     assert [video["id"] for video in va.list_all_folder_videos("root")["videos"]] == ["fresh"]
     assert calls == [1, 1]
+
+
+def test_unexpected_flight_failure_fails_all_waiters_and_allows_retry(monkeypatch):
+    entered = threading.Event()
+    release = threading.Event()
+
+    class FailingProvider:
+        def list_videos(self, **params):
+            entered.set()
+            assert release.wait(timeout=2)
+            raise RuntimeError("provider implementation failed")
+
+    def read_library():
+        try:
+            va.list_all_folder_videos("root")
+        except Exception as exc:  # noqa: BLE001 - assert the public failure contract
+            return type(exc), str(exc)
+        return None
+
+    monkeypatch.setattr(va, "client", FailingProvider())
+    va.clear_cache()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        leader = pool.submit(read_library)
+        assert entered.wait(timeout=2)
+        follower = pool.submit(read_library)
+        release.set()
+        assert leader.result(timeout=2) == (va.VdoCipherAdminError, "vdocipher_bad_response")
+        assert follower.result(timeout=2) == (va.VdoCipherAdminError, "vdocipher_bad_response")
+
+    class RecoveringProvider:
+        def list_videos(self, **params):
+            return {"count": 1, "rows": [provider_video("fresh", "Fresh video")]}
+
+    monkeypatch.setattr(va, "client", RecoveringProvider())
+    assert [video["id"] for video in va.list_all_folder_videos("root")["videos"]] == ["fresh"]
 
 
 def test_video_library_uses_exact_folder_membership_and_root_local_only(admin_client, app, monkeypatch):
