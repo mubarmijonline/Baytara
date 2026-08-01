@@ -45,6 +45,7 @@ body {
   background: var(--surface-container);
   color: var(--text);
 }
+[lang="en"] body { font-family: 'Stolzl', 'Thmanyah', system-ui, sans-serif; }
 
 .appbar {
   background: var(--primary);
@@ -120,10 +121,15 @@ body {
 .sidebar { background: var(--primary); color: var(--on-primary); padding: 18px 12px; display: flex; flex-direction: column; gap: 4px; }
 .sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 8px 12px 18px; font-weight: 800; }
 .sidebar .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); }
-.navitem { padding: 11px 14px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; color: #dbe3f2; display: flex; justify-content: space-between; align-items: center; }
+.sidebar-nav { display: contents; }
+.navitem { width: 100%; border: 0; padding: 11px 14px; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700; font-size: 14px; color: #dbe3f2; background: transparent; text-decoration: none; display: flex; gap: 10px; justify-content: space-between; align-items: center; text-align: start; }
+.navitem-label { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.navitem-label svg { flex: 0 0 18px; }
 .navitem:hover { background: rgba(255,255,255,0.08); }
 .navitem.active { background: rgba(255,255,255,0.16); color: #fff; }
+.navitem:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .navitem .count { background: var(--gold); color: #1a1300; border-radius: 10px; padding: 0 8px; font-size: 12px; }
+.nav-action { flex: 0 0 auto; }
 .sidebar .spacer { flex: 1; }
 .content { padding: 24px; overflow-x: auto; }
 .content h2 { margin: 0 0 18px; font-size: 22px; }
@@ -131,12 +137,13 @@ body {
   .shell { grid-template-columns: 1fr; }
   .sidebar { flex-direction: row; flex-wrap: wrap; padding: 10px; }
   .sidebar .brand { width: 100%; padding: 6px 10px; }
+  .navitem { width: auto; }
   .sidebar .spacer { display: none; }
 }
 
 /* ---- table ---- */
 .table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.table th, .table td { text-align: right; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+.table th, .table td { text-align: start; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
 .table th { background: var(--surface-container-high); color: var(--on-primary-container); font-weight: 800; }
 .table tr:last-child td { border-bottom: none; }
 .table .actions { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -158,8 +165,9 @@ body {
 .stat .lbl { color: var(--muted); font-size: 13px; margin-top: 4px; }
 
 /* ---- modal ---- */
-.modal-bg { position: fixed; inset: 0; background: rgba(20,30,66,0.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
-.modal { background: var(--surface); border-radius: 18px; padding: 22px; width: min(1200px, calc(100vw - 40px)); max-height: calc(100vh - 40px); overflow-y: auto; }
+.modal-bg { position: fixed; inset: 0; background: rgba(20,30,66,0.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 100; }
+.modal, .modal-sm, .modal-md, .modal-lg, .modal-xl { width: min(1200px, calc(100vw - 32px)); }
+.modal { background: var(--surface); border-radius: 18px; padding: 22px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; }
 .modal h3 { margin: 0 0 16px; }
 
 /* ---- toast notifications ---- */
@@ -182,8 +190,9 @@ body {
 select { appearance: none; -webkit-appearance: none; background-color: var(--surface);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233048A0' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
   background-repeat: no-repeat; background-position: left 12px center;
-  border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; padding-inline-start: 34px;
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; padding-inline-end: 34px;
   font: inherit; font-weight: 700; color: var(--text); cursor: pointer; min-width: 130px; transition: border-color .15s; }
 select:hover { border-color: var(--primary); }
 select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-container); }
 select option { font-weight: 600; }
+[dir="ltr"] select { background-position: right 12px center; }

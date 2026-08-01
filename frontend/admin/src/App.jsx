@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { getToken, setToken } from './api.js';
 import Login from './Login.jsx';
-import Shell from './Shell.jsx';
+import { AdminRoutes } from './routes.jsx';
 import { Toaster } from './toast.jsx';
 import { DialogHost } from './dialog.jsx';
 
@@ -15,7 +15,7 @@ export default function App() {
     <>
       <Toaster />
       <DialogHost />
-      {authed ? <Shell onLogout={logout} /> : <Login onLogin={() => setAuthed(true)} />}
+      {authed ? <AdminRoutes onLogout={logout} /> : <Login onLogin={() => setAuthed(true)} />}
     </>
   );
 }

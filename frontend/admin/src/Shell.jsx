@@ -1,62 +1,81 @@
 import { useEffect, useState } from 'react';
+import {
+  BadgeCheck,
+  BookOpen,
+  Boxes,
+  CircleUserRound,
+  ClipboardList,
+  FolderTree,
+  Gauge,
+  Languages,
+  Library,
+  LogOut,
+  Mail,
+  Newspaper,
+  Settings,
+  Tags,
+} from 'lucide-react';
+import { NavLink, Outlet } from 'react-router-dom';
 import { api } from './api.js';
-import Dashboard from './pages/Dashboard.jsx';
-import Payments from './pages/Payments.jsx';
-import Courses from './pages/Courses.jsx';
-import Bundles from './pages/Bundles.jsx';
-import Videos from './pages/Videos.jsx';
-import Baytarian from './pages/Baytarian.jsx';
-import Users from './pages/Users.jsx';
-import Categories from './pages/Categories.jsx';
-import Articles from './pages/Articles.jsx';
-import Messages from './pages/Messages.jsx';
-import Settings from './pages/Settings.jsx';
-import Hierarchy from './pages/Hierarchy.jsx';
+import { useAdminLanguage } from './i18n.jsx';
 
 const NAV = [
-  ['dashboard', 'لوحة القيادة'],
-  ['payments', 'المعاملات'],
-  ['baytarian', 'توثيق الأطباء'],
-  ['courses', 'الدورات'],
-  ['videos', 'الفيديوهات'],
-  ['bundles', 'الحزم'],
-  ['hierarchy', 'الهيكلة'],
-  ['categories', 'الفئات'],
-  ['articles', 'المحتوى والمدوّنة'],
-  ['users', 'المستخدمون'],
-  ['messages', 'الرسائل'],
-  ['settings', 'إعدادات الموقع'],
+  ['dashboard', 'nav.dashboard', Gauge],
+  ['payments', 'nav.payments', ClipboardList],
+  ['baytarian', 'nav.baytarian', BadgeCheck],
+  ['courses', 'nav.courses', BookOpen],
+  ['videos', 'nav.videos', Library],
+  ['bundles', 'nav.bundles', Boxes],
+  ['hierarchy', 'nav.hierarchy', FolderTree],
+  ['categories', 'nav.categories', Tags],
+  ['articles', 'nav.articles', Newspaper],
+  ['users', 'nav.users', CircleUserRound],
+  ['messages', 'nav.messages', Mail],
+  ['settings', 'nav.settings', Settings],
 ];
-const PAGES = { dashboard: Dashboard, payments: Payments, baytarian: Baytarian, courses: Courses, videos: Videos, bundles: Bundles, hierarchy: Hierarchy, categories: Categories, articles: Articles, users: Users, messages: Messages, settings: Settings };
 
 export default function Shell({ onLogout }) {
-  const [page, setPage] = useState('dashboard');
   const [pending, setPending] = useState(0);
   const [baytPending, setBaytPending] = useState(0);
+  const { language, setLanguage, t } = useAdminLanguage();
 
   useEffect(() => {
-    api.stats().then((s) => { setPending(s.payments.pending); setBaytPending(s.baytarian?.pending || 0); }).catch((e) => {
-      if (e.status === 401) onLogout();
+    api.stats().then((stats) => {
+      setPending(stats.payments.pending);
+      setBaytPending(stats.baytarian?.pending || 0);
+    }).catch((error) => {
+      if (error.status === 401) onLogout();
     });
-  }, [page, onLogout]);
+  }, [onLogout]);
 
-  const Page = PAGES[page];
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand"><span className="dot" />بيطرة · الإدارة</div>
-        {NAV.map(([k, label]) => (
-          <div key={k} className={`navitem ${page === k ? 'active' : ''}`} onClick={() => setPage(k)}>
-            <span>{label}</span>
-            {k === 'payments' && pending ? <span className="count">{pending}</span> : null}
-            {k === 'baytarian' && baytPending ? <span className="count">{baytPending}</span> : null}
-          </div>
-        ))}
+        <div className="brand"><span className="dot" />{t('admin.brand')}</div>
+        <nav className="sidebar-nav" aria-label={t('admin.navigation')}>
+          {NAV.map(([path, labelKey, Icon]) => (
+            <NavLink key={path} to={`/${path}`} className="navitem">
+              <span className="navitem-label"><Icon size={18} aria-hidden="true" /><span>{t(labelKey)}</span></span>
+              {path === 'payments' && pending ? <span className="count">{pending}</span> : null}
+              {path === 'baytarian' && baytPending ? <span className="count">{baytPending}</span> : null}
+            </NavLink>
+          ))}
+        </nav>
         <div className="spacer" />
-        <div className="navitem" onClick={onLogout}>تسجيل الخروج</div>
+        <button
+          type="button"
+          className="navitem nav-action"
+          title={t('common.changeLanguage')}
+          onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+        >
+          <span className="navitem-label"><Languages size={18} aria-hidden="true" /><span>{language === 'ar' ? 'English' : 'العربية'}</span></span>
+        </button>
+        <button type="button" className="navitem nav-action" onClick={onLogout}>
+          <span className="navitem-label"><LogOut size={18} aria-hidden="true" /><span>{t('common.logout')}</span></span>
+        </button>
       </aside>
       <main className="content">
-        <Page onLogout={onLogout} />
+        <Outlet />
       </main>
     </div>
   );
