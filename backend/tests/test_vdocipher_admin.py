@@ -223,7 +223,10 @@ def test_list_folder_rejects_malformed_current_and_parent_identifiers(monkeypatc
 
 def test_list_folder_normalizes_root_and_null_parent_values(monkeypatch):
     response = {
-        "folderList": [{"id": "child", "name": "Child", "parent": "root", "ignored": "value"}],
+        "folderList": [{
+            "id": "child", "name": "Child", "parent": "root", "ignored": "value",
+            "folderPath": [{"id": "root", "name": "Library"}, {"id": "child", "name": "Child"}],
+        }],
         "current": {"id": "root", "name": "Library", "parent": None, "ignored": "value"},
         "parent": None,
     }
@@ -231,7 +234,10 @@ def test_list_folder_normalizes_root_and_null_parent_values(monkeypatch):
     monkeypatch.setattr(va, "client", fake)
 
     assert va.list_folder("root", refresh=True) == {
-        "folders": [{"id": "child", "name": "Child", "parent": "root"}],
+        "folders": [{
+            "id": "child", "name": "Child", "parent": "root",
+            "folderPath": [{"id": "root", "name": "Library"}, {"id": "child", "name": "Child"}],
+        }],
         "current": {"id": "root", "name": "Library", "parent": None},
         "parent": None,
     }
@@ -240,7 +246,7 @@ def test_list_folder_normalizes_root_and_null_parent_values(monkeypatch):
 @pytest.mark.parametrize("folder", [
     {"id": "bad.id", "name": "Course", "parent": "root"},
     {"id": "course", "name": "Course", "parent": "bad.id"},
-    {"id": "course", "name": "Course", "parent": "root", "path": ["root", "bad.id"]},
+    {"id": "course", "name": "Course", "parent": "root", "folderPath": [{"id": "bad.id"}]},
 ])
 def test_ensure_folder_rejects_malformed_search_identifiers(monkeypatch, folder):
     calls = []
@@ -262,7 +268,10 @@ def test_ensure_folder_rejects_malformed_search_identifiers(monkeypatch, folder)
 def test_ensure_folder_accepts_root_and_null_parent_search_results(monkeypatch):
     fake = type("SearchProvider", (), {
         "search_folders": lambda self, name: {
-            "folders": [{"id": "course", "name": name, "parent": None, "path": ["root", "course"]}],
+            "folders": [{
+                "id": "course", "name": name, "parent": None,
+                "folderPath": [{"id": "root", "name": "Library"}, {"id": "course", "name": name}],
+            }],
         },
     })()
     monkeypatch.setattr(va, "client", fake)

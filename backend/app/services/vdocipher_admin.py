@@ -239,20 +239,20 @@ def _provider_parent_id(parent):
     return _provider_folder_id(parent)
 
 
-def _validate_folder_path(path):
-    if path is None:
-        return
-    if not isinstance(path, list):
+def _normalize_folder_path(folder_path):
+    if not isinstance(folder_path, list):
         raise VdoCipherAdminError("vdocipher_bad_response")
-    for item in path:
-        if isinstance(item, str):
-            _provider_folder_id(item)
-        elif isinstance(item, dict):
-            if _folder_id(item) is None:
-                raise VdoCipherAdminError("vdocipher_bad_response")
-            _provider_parent_id(item.get("parent"))
-        else:
+    normalized = []
+    for item in folder_path:
+        item = _response_object(item)
+        folder_id = _folder_id(item)
+        if folder_id is None:
             raise VdoCipherAdminError("vdocipher_bad_response")
+        name = item.get("name")
+        if name is not None and not isinstance(name, str):
+            raise VdoCipherAdminError("vdocipher_bad_response")
+        normalized.append({"id": folder_id, "name": name or ""})
+    return normalized
 
 
 def _normalize_folder(row):
@@ -263,9 +263,10 @@ def _normalize_folder(row):
     name = row.get("name")
     if name is not None and not isinstance(name, str):
         raise VdoCipherAdminError("vdocipher_bad_response")
-    if "path" in row:
-        _validate_folder_path(row["path"])
-    return {"id": folder_id, "name": name or "", "parent": _provider_parent_id(row.get("parent"))}
+    normalized = {"id": folder_id, "name": name or "", "parent": _provider_parent_id(row.get("parent"))}
+    if "folderPath" in row:
+        normalized["folderPath"] = _normalize_folder_path(row["folderPath"])
+    return normalized
 
 
 def list_videos(q=None, folder_id=None, page=1, limit=20, refresh=False):
