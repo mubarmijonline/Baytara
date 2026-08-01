@@ -3,6 +3,7 @@ import copy
 import json
 import os
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -12,8 +13,12 @@ BASE = "https://dev.vdocipher.com/api"
 ROOT_NAME = "Baytara"
 STANDALONE_NAME = "Standalone"
 CACHE_SECONDS = 30
+MAX_PROVIDER_VIDEO_COUNT = 100_000
+MAX_PROVIDER_VIDEO_PAGES = 2_500
 _ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
 _CACHE = {}
+_CACHE_LOCK = threading.RLock()
+_ALL_VIDEO_FLIGHTS = {}
 
 
 class VdoCipherAdminError(Exception):
@@ -124,22 +129,33 @@ def normalize_video(raw):
 
 
 def _cache_get(key, refresh):
-    if refresh:
+    with _CACHE_LOCK:
+        if refresh:
+            return None
+        cached = _CACHE.get(key)
+        if cached and cached[0] > time.monotonic():
+            return copy.deepcopy(cached[1])
+        _CACHE.pop(key, None)
         return None
-    cached = _CACHE.get(key)
-    if cached and cached[0] > time.monotonic():
-        return copy.deepcopy(cached[1])
-    _CACHE.pop(key, None)
-    return None
 
 
 def _cache_put(key, value):
-    _CACHE[key] = (time.monotonic() + CACHE_SECONDS, copy.deepcopy(value))
+    with _CACHE_LOCK:
+        _CACHE[key] = (time.monotonic() + CACHE_SECONDS, copy.deepcopy(value))
     return value
 
 
 def clear_cache():
-    _CACHE.clear()
+    with _CACHE_LOCK:
+        _CACHE.clear()
+
+
+def _provider_count(value):
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    if value < 0 or value > MAX_PROVIDER_VIDEO_COUNT:
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    return value
 
 
 class VdoCipherAdminClient:
@@ -280,9 +296,38 @@ def list_videos(q=None, folder_id=None, page=1, limit=20, refresh=False):
         return cached
     data = _response_object(client.list_videos(**params))
     rows = data["rows"] if "rows" in data else data.get("videos")
-    if not isinstance(rows, list):
+    if not isinstance(rows, list) or len(rows) > params["limit"]:
         raise VdoCipherAdminError("vdocipher_bad_response")
-    return _cache_put(key, {"count": data.get("count", len(rows)), "videos": [normalize_video(row) for row in rows]})
+    count = _provider_count(data.get("count"))
+    if count < len(rows):
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    return _cache_put(key, {"count": count, "videos": [normalize_video(row) for row in rows]})
+
+
+def _read_all_folder_videos(folder_id, refresh):
+    first = list_videos(folder_id=folder_id, page=1, limit=40, refresh=refresh)
+    count = _provider_count(first["count"])
+    page_count = max((count + 39) // 40, 1)
+    if page_count > MAX_PROVIDER_VIDEO_PAGES:
+        raise VdoCipherAdminError("vdocipher_bad_response")
+
+    videos = []
+    seen = set()
+    page_result = first
+    for page in range(1, page_count + 1):
+        if page > 1:
+            page_result = list_videos(folder_id=folder_id, page=page, limit=40, refresh=refresh)
+        rows = page_result["videos"]
+        added = 0
+        for video in rows:
+            if video["id"] in seen:
+                continue
+            seen.add(video["id"])
+            videos.append(video)
+            added += 1
+        if not rows or len(rows) < 40 or added == 0 or len(videos) >= count:
+            break
+    return {"count": len(videos), "videos": videos}
 
 
 def list_all_folder_videos(folder_id="root", refresh=False):
@@ -292,15 +337,33 @@ def list_all_folder_videos(folder_id="root", refresh=False):
     cached = _cache_get(key, refresh)
     if cached is not None:
         return cached
-    first = list_videos(folder_id=folder_id, page=1, limit=40, refresh=refresh)
+
+    with _CACHE_LOCK:
+        flight = _ALL_VIDEO_FLIGHTS.get(key)
+        if flight is None:
+            flight = {"event": threading.Event(), "value": None, "error": None}
+            _ALL_VIDEO_FLIGHTS[key] = flight
+            leader = True
+        else:
+            leader = False
+    if not leader:
+        flight["event"].wait()
+        if flight["error"] is not None:
+            raise VdoCipherAdminError(flight["error"])
+        return copy.deepcopy(flight["value"])
+
     try:
-        count = max(int(first["count"]), 0)
-    except (KeyError, TypeError, ValueError) as exc:
-        raise VdoCipherAdminError("vdocipher_bad_response") from exc
-    videos = list(first["videos"])
-    for page in range(2, max((count + 39) // 40, 1) + 1):
-        videos.extend(list_videos(folder_id=folder_id, page=page, limit=40, refresh=refresh)["videos"])
-    return _cache_put(key, {"count": count, "videos": videos})
+        result = _read_all_folder_videos(folder_id, refresh)
+        _cache_put(key, result)
+        flight["value"] = copy.deepcopy(result)
+        return result
+    except VdoCipherAdminError as exc:
+        flight["error"] = str(exc)
+        raise
+    finally:
+        with _CACHE_LOCK:
+            _ALL_VIDEO_FLIGHTS.pop(key, None)
+            flight["event"].set()
 
 
 def list_folder(folder_id, refresh=False):

@@ -600,7 +600,10 @@ def _video_dict(l):
     d["description_en"] = l.description_en
     d["vdocipher_video_id"] = l.vdocipher_video_id
     d["courses"] = [
-        {"id": row.course.id, "title": row.course.title, "position": row.position}
+        {
+            "id": row.course.id, "title": row.course.title, "title_en": row.course.title_en,
+            "position": row.position,
+        }
         for row in l.course_assignments
     ]
     return d
@@ -726,13 +729,40 @@ def videos_list():
     return jsonify(items=[_video_dict(l) for l in pg.items], total=pg.total, page=pg.page)
 
 
-def _positive_arg(name, default, maximum=None):
+VIDEO_PROVIDER_STATUSES = ("ready", "preparing", "queued", "failed")
+VIDEO_PUBLICATION_STATUSES = ("draft", "published", "unpublished")
+VIDEO_ASSIGNMENTS = ("assigned", "unassigned")
+
+
+class _InvalidVideoLibraryQuery(ValueError):
+    pass
+
+
+def _video_library_positive_arg(name, default, maximum=None):
+    raw = request.args.get(name)
+    if raw is None or raw == "":
+        return default
     try:
-        value = int(request.args.get(name, default))
+        value = int(raw)
     except (TypeError, ValueError):
-        value = default
-    value = max(value, 1)
-    return min(value, maximum) if maximum else value
+        raise _InvalidVideoLibraryQuery from None
+    if value <= 0 or maximum is not None and value > maximum:
+        raise _InvalidVideoLibraryQuery
+    return value
+
+
+def _video_library_id_arg(name):
+    raw = request.args.get(name)
+    if raw is None or raw == "":
+        return None
+    return _video_library_positive_arg(name, None)
+
+
+def _video_library_enum_arg(name, allowed):
+    raw = (request.args.get(name) or "").lower()
+    if raw and raw not in allowed:
+        raise _InvalidVideoLibraryQuery
+    return raw
 
 
 def _library_catalog_matches(catalog, category_id, access_type, publication, course_id, assignment, query):
@@ -761,16 +791,19 @@ def _library_catalog_matches(catalog, category_id, access_type, publication, cou
 @require_role("admin")
 def video_library():
     """One normalized, exact-folder source for the Admin video-library screen."""
-    folder_id = request.args.get("folder_id") or "root"
-    query = (request.args.get("q") or "").strip()
-    provider_status = (request.args.get("status") or "").lower()
-    category_id = request.args.get("category_id", type=int)
-    access_type = request.args.get("access_type") or ""
-    publication = request.args.get("publication") or ""
-    course_id = request.args.get("course_id", type=int)
-    assignment = request.args.get("assignment") if request.args.get("assignment") in ("assigned", "unassigned") else ""
-    page = _positive_arg("page", 1)
-    per_page = _positive_arg("per_page", 20, 40)
+    try:
+        folder_id = vdocipher_admin.validate_folder_id(request.args.get("folder_id") or "root")
+        query = (request.args.get("q") or "").strip()
+        provider_status = _video_library_enum_arg("status", VIDEO_PROVIDER_STATUSES)
+        category_id = _video_library_id_arg("category_id")
+        access_type = _video_library_enum_arg("access_type", ACCESS_TYPES)
+        publication = _video_library_enum_arg("publication", VIDEO_PUBLICATION_STATUSES)
+        course_id = _video_library_id_arg("course_id")
+        assignment = _video_library_enum_arg("assignment", VIDEO_ASSIGNMENTS)
+        page = _video_library_positive_arg("page", 1)
+        per_page = _video_library_positive_arg("per_page", 20, 40)
+    except (_InvalidVideoLibraryQuery, VdoCipherAdminError):
+        return jsonify(error="invalid_video_library_query"), 422
     try:
         provider = vdocipher_admin.list_all_folder_videos(folder_id=folder_id, refresh=request.args.get("refresh") == "1")
     except VdoCipherAdminError as exc:

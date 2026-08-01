@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from '../src/App.jsx';
 import { LanguageProvider } from '../src/i18n.jsx';
-import { setToken } from '../src/api.js';
+import { api, setToken } from '../src/api.js';
 import VideoFolderTree from '../src/components/VideoFolderTree.jsx';
 import VideoViews from '../src/components/VideoViews.jsx';
 import { DialogHost } from '../src/dialog.jsx';
@@ -59,6 +59,15 @@ afterEach(() => {
 });
 
 it('keeps folder, filters, and view in the URL', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/admin/video-library')) return json({ items: [], total: 0, page: 1, pages: 1, per_page: 40 });
+    if (url.endsWith('/categories')) return json({ categories: [{ id: 1, slug: 'equine', name: 'الخيول', name_en: 'Equine' }] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
   const user = userEvent.setup();
   renderAdmin('/admin/videos?folder=f1&view=table&category=equine');
 
@@ -96,6 +105,88 @@ it('ignores stale library results after a URL filter changes', async () => {
   }), { headers: { 'Content-Type': 'application/json' } }));
   await waitFor(() => expect(screen.queryByText('Old result')).toBeNull());
   expect(screen.getByText('New result')).toBeVisible();
+});
+
+it('passes an AbortSignal through the API client without dropping authorization', async () => {
+  const controller = new AbortController();
+  await api.videoLibrary({ page: 1 }, { signal: controller.signal });
+  const [, options] = fetch.mock.calls.find(([input]) => String(input).includes('/admin/video-library'));
+  expect(options.signal).toBe(controller.signal);
+  expect(options.headers.Authorization).toBe('Bearer test-token');
+});
+
+it('debounces search, aborts the superseded load, and keeps visible results on AbortError', async () => {
+  let oldSignal;
+  fetch.mockImplementation((input, options = {}) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    if (url.includes('/admin/video-library') && url.includes('q=old')) {
+      oldSignal = options.signal;
+      return new Promise((resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+      });
+    }
+    if (url.includes('/admin/video-library') && url.includes('q=new')) return json({
+      items: [{ id: 'new-video', provider_id: 'new-video', title: 'New result', status: 'ready' }],
+      total: 1, page: 1, pages: 1, per_page: 40,
+    });
+    if (url.includes('/admin/video-library')) return json({
+      items: [{ id: 'visible-video', provider_id: 'visible-video', title: 'Visible result', status: 'ready' }],
+      total: 1, page: 1, pages: 1, per_page: 40,
+    });
+    return json({});
+  });
+  renderAdmin('/admin/videos');
+  expect(await screen.findByText('Visible result')).toBeVisible();
+
+  fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'old' } });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('q=old'))).toBe(false);
+  await waitFor(() => expect(oldSignal).toBeInstanceOf(AbortSignal));
+
+  fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'new' } });
+  await waitFor(() => expect(oldSignal.aborted).toBe(true));
+  expect(screen.getByText('Visible result')).toBeVisible();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('q=new'))).toBe(false);
+  expect(await screen.findByText('New result')).toBeVisible();
+});
+
+it('disables refresh while loading and coalesces repeated refresh clicks', async () => {
+  const refreshResult = deferred();
+  let refreshCalls = 0;
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    if (url.includes('/admin/video-library') && url.includes('refresh=1')) {
+      refreshCalls += 1;
+      return refreshResult.promise;
+    }
+    if (url.includes('/admin/video-library')) return json({
+      items: [{ id: 'visible-video', provider_id: 'visible-video', title: 'Visible result', status: 'ready' }],
+      total: 1, page: 1, pages: 1, per_page: 40,
+    });
+    return json({});
+  });
+  renderAdmin('/admin/videos');
+  expect(await screen.findByText('Visible result')).toBeVisible();
+  const refresh = screen.getByRole('button', { name: 'Refresh' });
+  fireEvent.click(refresh);
+  fireEvent.click(refresh);
+  expect(refresh).toBeDisabled();
+  expect(refreshCalls).toBe(1);
+  refreshResult.resolve(new Response(JSON.stringify({
+    items: [{ id: 'fresh-video', provider_id: 'fresh-video', title: 'Fresh result', status: 'ready' }],
+    total: 1, page: 1, pages: 1, per_page: 40,
+  }), { headers: { 'Content-Type': 'application/json' } }));
+  expect(await screen.findByText('Fresh result')).toBeVisible();
+  expect(refresh).toBeEnabled();
 });
 
 it('uses the branded fallback when a provider poster is absent', () => {
@@ -402,12 +493,16 @@ it('keeps root canonical records beyond the current provider page and exposes pa
   fetch.mockImplementation((input) => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
-    if (url.includes('/admin/video-library')) return json({
+    if (url.includes('/admin/video-library') && url.includes('page=2')) return json({
       total: 80, page: 2, pages: 2, per_page: 40,
       items: [
         { id: 'page-two', provider_id: 'page-two', title: 'Page two provider', status: 'ready' },
         { id: 'canonical-missing', provider_id: 'canonical-missing', title: 'Canonical beyond provider page', status: 'ready', catalog: { id: 9, category: { name: 'Equine' }, access_type: 'general', status: 'draft', courses: [] } },
       ],
+    });
+    if (url.includes('/admin/video-library')) return json({
+      total: 80, page: 1, pages: 2, per_page: 40,
+      items: [{ id: 'page-one', provider_id: 'page-one', title: 'Page one provider', status: 'ready' }],
     });
     if (url.endsWith('/categories')) return json({ categories: [] });
     if (url.includes('/admin/courses')) return json({ courses: [] });
@@ -438,7 +533,8 @@ it('separates provider encoding status from local publication and assignment fil
   });
   const user = userEvent.setup();
   renderAdmin('/admin/videos?status=ready&publication=published&course=4&assignment=assigned');
-  expect(await screen.findByText('Ready provider')).toBeVisible();
+  expect(await screen.findByText('Ready local')).toBeVisible();
+  expect(screen.queryByText('Ready provider')).toBeNull();
   expect(screen.queryByText('Encoding provider')).toBeNull();
   expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/video-library') && String(input).includes('course_id=4') && String(input).includes('status=ready') && String(input).includes('publication=published'))).toBe(true);
   await user.click(screen.getByRole('button', { name: /table/i }));
@@ -513,6 +609,36 @@ it('normalizes malformed library page URLs before requesting page one', async ()
   expect(fetch.mock.calls.some(([input]) => String(input).includes('page=NaN'))).toBe(false);
 });
 
+it('synchronizes a server-clamped page back to the URL', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/admin/video-library')) return json({ items: [], total: 41, page: 2, pages: 2, per_page: 40 });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  renderAdmin('/admin/videos?page=999');
+  await screen.findByTestId('video-grid');
+  await waitFor(() => expect(window.location.search).toContain('page=2'));
+  expect(window.location.search).not.toContain('page=999');
+});
+
+it('removes an unknown category slug after categories load', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/admin/video-library')) return json({ items: [], total: 0, page: 1, pages: 1, per_page: 40 });
+    if (url.endsWith('/categories')) return json({ categories: [{ id: 1, slug: 'equine', name: 'الخيول', name_en: 'Equine' }] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  renderAdmin('/admin/videos?category=unknown');
+  await waitFor(() => expect(window.location.search).not.toContain('category=unknown'));
+});
+
 it('renders composite local-only records only on the page returned by the server', async () => {
   fetch.mockImplementation((input) => {
     const url = String(input);
@@ -536,10 +662,41 @@ it('renders distinct provider and publication chips in every view', () => {
   const video = { id: 'provider-1', provider_id: 'provider-1', title: 'Exam', status: 'ready', catalog: { status: 'published', access_type: 'general', courses: [] } };
   const { rerender } = render(<MemoryRouter><LanguageProvider><VideoViews view="grid" videos={[video]} /></LanguageProvider></MemoryRouter>);
   expect(screen.getByText('Ready')).toBeVisible();
-  expect(screen.getByText('Published')).toBeVisible();
+  expect(screen.getByText('Published')).toHaveClass('chip-published');
   rerender(<MemoryRouter><LanguageProvider><VideoViews view="list" videos={[video]} /></LanguageProvider></MemoryRouter>);
   expect(screen.getByTestId('video-list')).toHaveTextContent('Published');
   rerender(<MemoryRouter><LanguageProvider><VideoViews view="table" videos={[video]} /></LanguageProvider></MemoryRouter>);
   expect(screen.getByTestId('video-table')).toHaveTextContent('Published');
   expect(screen.getByTestId('video-table-scroll')).toBeVisible();
+});
+
+it('uses canonical bilingual catalog metadata and provider-only fallbacks', () => {
+  const canonical = {
+    id: 'provider-1', provider_id: 'provider-1', title: 'Provider title', status: 'ready',
+    catalog: {
+      id: 7, title: 'فحص الخيول', title_en: 'Equine exam', status: 'published', access_type: 'general',
+      category: { name: 'الخيول', name_en: 'Equine' },
+      courses: [{ id: 1, title: 'دورة الخيول', title_en: 'Equine course' }],
+    },
+  };
+  const providerOnly = {
+    id: 'provider-2', provider_id: 'provider-2', title: 'Provider-only title', status: 'ready',
+  };
+
+  const english = render(
+    <MemoryRouter><LanguageProvider><VideoViews view="table" videos={[canonical, providerOnly]} /></LanguageProvider></MemoryRouter>,
+  );
+  expect(screen.getByText('Equine exam')).toBeVisible();
+  expect(screen.getByText('Equine')).toBeVisible();
+  expect(screen.getByText('Equine course')).toBeVisible();
+  expect(screen.getByText('Provider-only title')).toBeVisible();
+  expect(screen.queryByText('Provider title')).toBeNull();
+  english.unmount();
+
+  localStorage.setItem('baytara_admin_language', 'ar');
+  render(<MemoryRouter><LanguageProvider><VideoViews view="table" videos={[canonical]} /></LanguageProvider></MemoryRouter>);
+  expect(screen.getByText('فحص الخيول')).toBeVisible();
+  expect(screen.getByText('الخيول')).toBeVisible();
+  expect(screen.getByText('دورة الخيول')).toBeVisible();
+  expect(screen.queryByText('Equine exam')).toBeNull();
 });

@@ -18,7 +18,20 @@ function ProviderState({ video }) {
 function Publication({ video }) {
   const { t } = useAdminLanguage();
   const status = video.catalog?.status;
-  return <span className={`chip chip-publication-${status || 'unknown'}`}>{status ? t(`catalog.status.${status}`) : t('video.notAvailable')}</span>;
+  return <span className={`chip chip-${status || 'publication-unknown'}`}>{status ? t(`catalog.status.${status}`) : t('video.notAvailable')}</span>;
+}
+
+function localized(entity, base, english, language) {
+  if (!entity) return '';
+  return language === 'en' ? entity[english] || entity[base] : entity[base] || entity[english];
+}
+
+function titleFor(video, language) {
+  return localized(video.catalog, 'title', 'title_en', language) || video.title || video.id;
+}
+
+function categoryFor(video, language) {
+  return localized(video.catalog?.category, 'name', 'name_en', language);
 }
 
 function Duration({ video }) {
@@ -28,9 +41,9 @@ function Duration({ video }) {
 }
 
 function Assignments({ video, names = false }) {
-  const { t } = useAdminLanguage();
+  const { language, t } = useAdminLanguage();
   const courses = video.catalog?.courses || [];
-  if (names) return courses.length ? courses.map((course) => course.title).join(', ') : t('video.assignment.unassigned');
+  if (names) return courses.length ? courses.map((course) => localized(course, 'title', 'title_en', language)).join(', ') : t('video.assignment.unassigned');
   return `${courses.length} ${courses.length === 1 ? t('video.courseCount') : t('video.courseCountPlural')}`;
 }
 
@@ -41,8 +54,8 @@ function ProviderId({ video }) {
 }
 
 function Metadata({ video, compact = false }) {
-  const { t } = useAdminLanguage();
-  const category = video.catalog?.category?.name || t('video.notAvailable');
+  const { language, t } = useAdminLanguage();
+  const category = categoryFor(video, language) || t('video.notAvailable');
   const access = video.catalog?.access_type ? t(`catalog.access.${video.catalog.access_type}`) : t('video.notAvailable');
   return <div className={`video-metadata ${compact ? 'compact' : ''}`}><Publication video={video} /><span>{category}</span><span className="chip">{access}</span><Duration video={video} /><Assignments video={video} /></div>;
 }
@@ -58,8 +71,8 @@ export function VideoViewSwitcher({ view, onChange }) {
 }
 
 export default function VideoViews({ view, videos }) {
-  const { t } = useAdminLanguage();
-  if (view === 'table') return <div className="video-table-scroll" data-testid="video-table-scroll"><table className="table video-table" data-testid="video-table"><thead><tr><th>{t('video.title')}</th><th>{t('video.providerId')}</th><th>{t('video.uploadDate')}</th><th>{t('video.providerState')}</th><th>{t('video.publication')}</th><th>{t('video.duration')}</th><th>{t('catalog.category')}</th><th>{t('catalog.accessType')}</th><th>{t('video.assignments')}</th></tr></thead><tbody>{videos.map((video) => <tr key={video.id}><td><VideoLink video={video}>{video.title || video.id}</VideoLink></td><td dir="ltr"><ProviderId video={video} /></td><td>{video.uploaded_at || t('video.notAvailable')}</td><td><ProviderState video={video} /></td><td><Publication video={video} /></td><td><Duration video={video} /></td><td>{video.catalog?.category?.name || t('video.notAvailable')}</td><td>{video.catalog?.access_type ? t(`catalog.access.${video.catalog.access_type}`) : t('video.notAvailable')}</td><td><Assignments video={video} names /></td></tr>)}{!videos.length && <tr><td colSpan="9" className="empty">{t('video.empty')}</td></tr>}</tbody></table></div>;
-  if (view === 'list') return <div className="video-list" data-testid="video-list">{videos.map((video) => <VideoLink key={video.id} video={video}><article className="video-list-row"><Poster video={video} /><div><strong>{video.title || video.id}</strong><small dir="ltr"><ProviderId video={video} /></small><Metadata video={video} compact /></div><ProviderState video={video} /></article></VideoLink>)}{!videos.length && <div className="empty">{t('video.empty')}</div>}</div>;
-  return <div className="video-grid" data-testid="video-grid">{videos.map((video) => <VideoLink key={video.id} video={video}><article className="video-card"><Poster video={video} /><div className="video-card-body"><strong>{video.title || video.id}</strong><small dir="ltr"><ProviderId video={video} /></small><ProviderState video={video} /><Metadata video={video} /></div></article></VideoLink>)}{!videos.length && <div className="empty">{t('video.empty')}</div>}</div>;
+  const { language, t } = useAdminLanguage();
+  if (view === 'table') return <div className="video-table-scroll" data-testid="video-table-scroll"><table className="table video-table" data-testid="video-table"><thead><tr><th>{t('video.title')}</th><th>{t('video.providerId')}</th><th>{t('video.uploadDate')}</th><th>{t('video.providerState')}</th><th>{t('video.publication')}</th><th>{t('video.duration')}</th><th>{t('catalog.category')}</th><th>{t('catalog.accessType')}</th><th>{t('video.assignments')}</th></tr></thead><tbody>{videos.map((video) => <tr key={video.id}><td><VideoLink video={video}>{titleFor(video, language)}</VideoLink></td><td dir="ltr"><ProviderId video={video} /></td><td>{video.uploaded_at || t('video.notAvailable')}</td><td><ProviderState video={video} /></td><td><Publication video={video} /></td><td><Duration video={video} /></td><td>{categoryFor(video, language) || t('video.notAvailable')}</td><td>{video.catalog?.access_type ? t(`catalog.access.${video.catalog.access_type}`) : t('video.notAvailable')}</td><td><Assignments video={video} names /></td></tr>)}{!videos.length && <tr><td colSpan="9" className="empty">{t('video.empty')}</td></tr>}</tbody></table></div>;
+  if (view === 'list') return <div className="video-list" data-testid="video-list">{videos.map((video) => <VideoLink key={video.id} video={video}><article className="video-list-row"><Poster video={video} /><div><strong>{titleFor(video, language)}</strong><small dir="ltr"><ProviderId video={video} /></small><Metadata video={video} compact /></div><ProviderState video={video} /></article></VideoLink>)}{!videos.length && <div className="empty">{t('video.empty')}</div>}</div>;
+  return <div className="video-grid" data-testid="video-grid">{videos.map((video) => <VideoLink key={video.id} video={video}><article className="video-card"><Poster video={video} /><div className="video-card-body"><strong>{titleFor(video, language)}</strong><small dir="ltr"><ProviderId video={video} /></small><ProviderState video={video} /><Metadata video={video} /></div></article></VideoLink>)}{!videos.length && <div className="empty">{t('video.empty')}</div>}</div>;
 }
