@@ -59,6 +59,16 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+async function navigateHistory(action) {
+  await act(async () => {
+    const changed = new Promise((resolve) => {
+      window.addEventListener('popstate', resolve, { once: true });
+    });
+    action();
+    await changed;
+  });
+}
+
 function renderAdmin(path) {
   window.history.replaceState({}, '', path);
   return render(
@@ -156,11 +166,11 @@ describe('Admin routing', () => {
     await user.click(screen.getByRole('link', { name: /إعدادات الموقع|site settings/i }));
     await waitFor(() => expect(window.location.pathname).toBe('/admin/settings'));
 
-    act(() => window.history.back());
+    await navigateHistory(() => window.history.back());
     await waitFor(() => expect(window.location.pathname).toBe('/admin/videos'));
     expect(await screen.findByRole('heading', { name: /الفيديوهات|videos/i })).toBeVisible();
 
-    act(() => window.history.forward());
+    await navigateHistory(() => window.history.forward());
     await waitFor(() => expect(window.location.pathname).toBe('/admin/settings'));
     expect(await screen.findByRole('heading', { name: /إعدادات الموقع|site settings/i })).toBeVisible();
   });
