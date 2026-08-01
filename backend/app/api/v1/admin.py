@@ -882,6 +882,7 @@ def _vdocipher_error(e):
         "vdocipher_not_found": 404,
         "vdocipher_rate_limited": 429,
         "vdocipher_invalid_folder": 422,
+        "vdocipher_invalid_video": 422,
     }
     return jsonify(error=code), statuses.get(code, 503)
 
@@ -1049,6 +1050,10 @@ def vdocipher_import():
     d = request.get_json() or {}
     if not d.get("video_id"):
         return jsonify(error="video_id_required"), 422
+    try:
+        d["video_id"] = vdocipher_admin.validate_video_id(d["video_id"])
+    except VdoCipherAdminError as e:
+        return _vdocipher_error(e)
     course_ids = d.get("course_ids")
     if course_ids is None:
         course_ids = [d["course_id"]] if d.get("course_id") else []

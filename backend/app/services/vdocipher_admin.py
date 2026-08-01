@@ -50,16 +50,45 @@ def configured():
     return bool(_secret())
 
 
-def _require_folder_id(folder_id):
-    if not isinstance(folder_id, str) or not _ID_RE.fullmatch(folder_id):
-        raise VdoCipherAdminError("vdocipher_invalid_folder")
-    return folder_id
+def _validate_id(value, error):
+    if not isinstance(value, str) or not _ID_RE.fullmatch(value):
+        raise VdoCipherAdminError(error)
+    return value
 
 
-def _require_video_id(video_id):
-    if not isinstance(video_id, str) or not _ID_RE.fullmatch(video_id):
+def validate_folder_id(folder_id):
+    return _validate_id(folder_id, "vdocipher_invalid_folder")
+
+
+def validate_video_id(video_id):
+    return _validate_id(video_id, "vdocipher_invalid_video")
+
+
+def _provider_folder_id(folder_id):
+    return _validate_id(folder_id, "vdocipher_bad_response")
+
+
+def _provider_video_id(video_id):
+    return _validate_id(video_id, "vdocipher_bad_response")
+
+
+def _id_list(values, validate, error):
+    if not isinstance(values, list):
+        raise VdoCipherAdminError(error)
+    return [validate(value) for value in values]
+
+
+def _response_object(value):
+    if not isinstance(value, dict):
         raise VdoCipherAdminError("vdocipher_bad_response")
-    return video_id
+    return value
+
+
+def _mutation_response(value):
+    value = _response_object(value)
+    if not isinstance(value.get("message"), str):
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    return value
 
 
 def _provider_error(status):
@@ -82,10 +111,9 @@ def _poster(raw):
 
 
 def normalize_video(raw):
-    if not isinstance(raw, dict) or not raw.get("id"):
-        raise VdoCipherAdminError("vdocipher_bad_response")
+    raw = _response_object(raw)
     return {
-        "id": raw["id"],
+        "id": _provider_video_id(raw.get("id")),
         "title": raw.get("title") or "",
         "description": raw.get("description") or "",
         "poster": _poster(raw),
@@ -145,80 +173,82 @@ class VdoCipherAdminClient:
         return self._request("GET", "/videos", params=params)
 
     def list_folder(self, folder_id):
-        folder_id = _require_folder_id(folder_id)
+        folder_id = validate_folder_id(folder_id)
         return self._request("GET", f"/videos/folders/{folder_id}")
 
     def search_folders(self, name):
         return self._request("POST", "/videos/folders/search", body={"name": name, "searchExact": True})
 
     def create_folder(self, name, parent="root"):
-        return self._request("POST", "/videos/folders", body={"name": name, "parent": _require_folder_id(parent)})
+        return self._request("POST", "/videos/folders", body={"name": name, "parent": validate_folder_id(parent)})
 
     def rename_folder(self, folder_id, name):
-        folder_id = _require_folder_id(folder_id)
+        folder_id = validate_folder_id(folder_id)
         return self._request("PUT", f"/videos/folders/{folder_id}", body={"name": name})
 
     def move_items(self, folder_id, video_ids, folder_ids):
-        folder_id = _require_folder_id(folder_id)
+        folder_id = validate_folder_id(folder_id)
         return self._request(
-            "POST", f"/videos/folders/{folder_id}/move",
-            body={"videos": [_require_video_id(video_id) for video_id in video_ids],
-                  "folders": [_require_folder_id(item_id) for item_id in folder_ids]},
+            "POST", "/videos/move-videos-and-folders",
+            body={"folderId": folder_id,
+                  "videos": _id_list(video_ids, validate_video_id, "vdocipher_invalid_video"),
+                  "folders": _id_list(folder_ids, validate_folder_id, "vdocipher_invalid_folder")},
         )
 
     def delete_folder(self, folder_id):
-        folder_id = _require_folder_id(folder_id)
+        folder_id = validate_folder_id(folder_id)
         return self._request("DELETE", f"/videos/folders/{folder_id}")
 
     def get_video(self, video_id):
-        video_id = _require_video_id(video_id)
+        video_id = validate_video_id(video_id)
         return self._request("GET", f"/videos/{video_id}")
 
     def update_video(self, video_id, title, description):
-        video_id = _require_video_id(video_id)
+        video_id = validate_video_id(video_id)
         return self._request("POST", f"/videos/{video_id}", body={"title": title, "description": description})
 
     def preview(self, video_id):
-        video_id = _require_video_id(video_id)
-        data = self._request("POST", f"/videos/{video_id}/otp", body={"ttl": 300})
+        video_id = validate_video_id(video_id)
+        data = _response_object(self._request("POST", f"/videos/{video_id}/otp", body={"ttl": 300}))
         if not data.get("otp") or not data.get("playbackInfo"):
             raise VdoCipherAdminError("vdocipher_bad_response")
         return {"otp": data["otp"], "playbackInfo": data["playbackInfo"]}
 
     def create_upload(self, title, folder_id):
-        return self._request("PUT", "/videos", params={"title": title, "folderId": _require_folder_id(folder_id)})
+        return self._request("PUT", "/videos", params={"title": title, "folderId": validate_folder_id(folder_id)})
 
 
 client = VdoCipherAdminClient()
 
 
 def _folder_id(row):
+    row = _response_object(row)
     return row.get("id") or row.get("folderId") or row.get("_id")
 
 
 def list_videos(q=None, folder_id=None, page=1, limit=20, refresh=False):
     if folder_id is not None:
-        _require_folder_id(folder_id)
+        validate_folder_id(folder_id)
     params = {"q": q, "folderId": folder_id, "page": max(int(page or 1), 1),
               "limit": min(max(int(limit or 20), 1), 40)}
     key = ("videos", tuple(sorted(params.items())))
     cached = _cache_get(key, refresh)
     if cached is not None:
         return cached
-    data = client.list_videos(**params)
-    rows = data.get("rows") or data.get("videos")
+    data = _response_object(client.list_videos(**params))
+    rows = data["rows"] if "rows" in data else data.get("videos")
     if not isinstance(rows, list):
         raise VdoCipherAdminError("vdocipher_bad_response")
     return _cache_put(key, {"count": data.get("count", len(rows)), "videos": [normalize_video(row) for row in rows]})
 
 
 def list_folder(folder_id, refresh=False):
-    folder_id = _require_folder_id(folder_id)
+    folder_id = validate_folder_id(folder_id)
     key = ("folder", folder_id)
     cached = _cache_get(key, refresh)
     if cached is not None:
         return cached
-    data = client.list_folder(folder_id)
+    data = _response_object(client.list_folder(folder_id))
     folders = data.get("folderList", data.get("folders"))
     if not isinstance(folders, list):
         raise VdoCipherAdminError("vdocipher_bad_response")
@@ -226,48 +256,57 @@ def list_folder(folder_id, refresh=False):
 
 
 def create_folder(name, parent_id="root"):
-    created = client.create_folder(name, parent_id)
-    if not _folder_id(created):
-        raise VdoCipherAdminError("vdocipher_bad_response")
+    parent_id = validate_folder_id(parent_id)
+    created = _response_object(client.create_folder(name, parent_id))
+    _provider_folder_id(_folder_id(created))
     clear_cache()
     return created
 
 
 def rename_folder(folder_id, name):
-    result = client.rename_folder(folder_id, name)
+    result = _mutation_response(client.rename_folder(validate_folder_id(folder_id), name))
     clear_cache()
     return result
 
 
 def move_items(folder_id, video_ids, folder_ids):
-    result = client.move_items(folder_id, video_ids, folder_ids)
+    folder_id = validate_folder_id(folder_id)
+    video_ids = _id_list(video_ids, validate_video_id, "vdocipher_invalid_video")
+    folder_ids = _id_list(folder_ids, validate_folder_id, "vdocipher_invalid_folder")
+    result = _mutation_response(client.move_items(folder_id, video_ids, folder_ids))
     clear_cache()
     return result
 
 
 def delete_folder(folder_id):
-    result = client.delete_folder(folder_id)
+    result = _mutation_response(client.delete_folder(validate_folder_id(folder_id)))
     clear_cache()
     return result
 
 
 def get_video(video_id):
-    return normalize_video(client.get_video(video_id))
+    return normalize_video(client.get_video(validate_video_id(video_id)))
 
 
 def update_video(video_id, title, description):
-    result = client.update_video(video_id, title, description)
+    result = _mutation_response(client.update_video(validate_video_id(video_id), title, description))
     clear_cache()
     return result
 
 
 def preview(video_id):
-    return client.preview(video_id)
+    data = _response_object(client.preview(validate_video_id(video_id)))
+    if not data.get("otp") or not data.get("playbackInfo"):
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    return {"otp": data["otp"], "playbackInfo": data["playbackInfo"]}
 
 
 def ensure_folder(name, parent="root"):
-    found = client.search_folders(name).get("folders", [])
+    found = _response_object(client.search_folders(name)).get("folders", [])
+    if not isinstance(found, list):
+        raise VdoCipherAdminError("vdocipher_bad_response")
     for folder in found:
+        folder = _response_object(folder)
         if folder.get("name") == name and _folder_id(folder):
             return _folder_id(folder)
     created = create_folder(name, parent)
@@ -306,12 +345,15 @@ def ensure_course_folder(course):
 
 
 def create_upload(title, folder_id):
-    folder_id = _require_folder_id(folder_id)
-    data = client.create_upload(title, folder_id)
-    payload = dict(data.get("clientPayload") or {})
+    folder_id = validate_folder_id(folder_id)
+    data = _response_object(client.create_upload(title, folder_id))
+    payload = data.get("clientPayload")
+    if not isinstance(payload, dict):
+        raise VdoCipherAdminError("vdocipher_bad_response")
+    payload = dict(payload)
     upload_link = payload.pop("uploadLink", None)
-    video_id = data.get("videoId")
-    if not video_id or not upload_link:
+    video_id = _provider_video_id(data.get("videoId"))
+    if not isinstance(upload_link, str) or not upload_link:
         raise VdoCipherAdminError("vdocipher_bad_response")
     clear_cache()
     return {"video_id": video_id, "upload_link": upload_link, "fields": payload}

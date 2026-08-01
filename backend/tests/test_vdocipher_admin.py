@@ -8,7 +8,7 @@ import pytest
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
-from app.models import User
+from app.models import Lesson, User
 from app.security import hash_password
 from app.services import vdocipher_admin as va
 
@@ -78,12 +78,27 @@ def test_client_uses_approved_provider_methods_paths_and_payloads(monkeypatch):
         ("GET", "/videos/folders/folder-1", None, None),
         ("POST", "/videos/folders", {"name": "Child", "parent": "folder-1"}, None),
         ("PUT", "/videos/folders/folder-1", {"name": "Renamed"}, None),
-        ("POST", "/videos/folders/folder-2/move", {"videos": ["v1"], "folders": ["folder-1"]}, None),
+        ("POST", "/videos/move-videos-and-folders", {"folderId": "folder-2", "videos": ["v1"], "folders": ["folder-1"]}, None),
         ("DELETE", "/videos/folders/folder-1", None, None),
         ("GET", "/videos/v1", None, None),
         ("POST", "/videos/v1", {"title": "Updated", "description": "Description"}, None),
         ("POST", "/videos/v1/otp", {"ttl": 300}, None),
     ]
+
+
+def test_client_preview_rejects_non_object_provider_response(monkeypatch):
+    provider = va.VdoCipherAdminClient()
+    monkeypatch.setattr(provider, "_request", lambda *args, **kwargs: [])
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+        provider.preview("v1")
+
+
+def test_move_requires_typed_id_arrays():
+    provider = va.VdoCipherAdminClient()
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_invalid_video$"):
+        provider.move_items("root", "v1", [])
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_invalid_folder$"):
+        provider.move_items("root", ["v1"], "folder-1")
 
 
 @pytest.mark.parametrize(("status", "code"), [
@@ -124,6 +139,54 @@ def test_request_has_stable_missing_key_and_unreachable_errors(monkeypatch):
     monkeypatch.setattr(va.urllib.request, "urlopen", lambda *args, **kwargs: BadResponse())
     with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
         provider._request("GET", "/videos")
+
+
+@pytest.mark.parametrize("response", [[], None, "not an object"])
+def test_service_rejects_malformed_provider_response_shapes(monkeypatch, response):
+    cases = [
+        ("list_videos", lambda: va.list_videos(refresh=True)),
+        ("list_folder", lambda: va.list_folder("root", refresh=True)),
+        ("create_folder", lambda: va.create_folder("Child", "root")),
+        ("get_video", lambda: va.get_video("v1")),
+        ("update_video", lambda: va.update_video("v1", "Title", "Description")),
+        ("preview", lambda: va.preview("v1")),
+    ]
+    for method, call in cases:
+        fake = type("MalformedProvider", (), {method: lambda self, *args, **kwargs: response})()
+        monkeypatch.setattr(va, "client", fake)
+        va.clear_cache()
+        with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+            call()
+
+
+def test_upload_rejects_malformed_provider_payload_and_id(monkeypatch):
+    for response in ([], None, "not an object", {"videoId": "bad.id", "clientPayload": {"uploadLink": "https://upload.test"}}):
+        fake = type("MalformedUploadProvider", (), {"create_upload": lambda self, *args, **kwargs: response})()
+        monkeypatch.setattr(va, "client", fake)
+        with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+            va.create_upload("Title", "root")
+
+
+def test_service_rejects_provider_objects_missing_required_fields(monkeypatch):
+    cases = [
+        ("list_videos", {}, lambda: va.list_videos(refresh=True)),
+        ("list_folder", {}, lambda: va.list_folder("root", refresh=True)),
+        ("create_folder", {}, lambda: va.create_folder("Child", "root")),
+        ("get_video", {}, lambda: va.get_video("v1")),
+        ("update_video", {}, lambda: va.update_video("v1", "Title", "Description")),
+        ("preview", {"otp": "otp"}, lambda: va.preview("v1")),
+    ]
+    for method, response, call in cases:
+        fake = type("WrongShapeProvider", (), {method: lambda self, *args, **kwargs: response})()
+        monkeypatch.setattr(va, "client", fake)
+        va.clear_cache()
+        with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+            call()
+
+
+def test_provider_video_id_must_be_safe():
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+        va.normalize_video({"id": "bad.id"})
 
 
 class FakeProvider:
@@ -223,6 +286,20 @@ def test_admin_management_endpoints_validate_input_and_map_errors(admin_client, 
     assert admin_client.post("/api/v1/admin/vdocipher/folders", json={"name": ""}).get_json()["error"] == "name_required"
     assert admin_client.post("/api/v1/admin/vdocipher/move", json={"folder_id": "root"}).get_json()["error"] == "move_items_required"
     assert admin_client.patch("/api/v1/admin/vdocipher/videos/v1", json={"title": ""}).get_json()["error"] == "title_required"
+
+    bad_video = admin_client.get("/api/v1/admin/vdocipher/videos/bad.id")
+    assert bad_video.status_code == 422
+    assert bad_video.get_json() == {"error": "vdocipher_invalid_video"}
+    bad_move = admin_client.post("/api/v1/admin/vdocipher/move", json={
+        "folder_id": "root", "video_ids": ["bad.id"], "folder_ids": [],
+    })
+    assert bad_move.status_code == 422
+    assert bad_move.get_json() == {"error": "vdocipher_invalid_video"}
+    bad_import = admin_client.post("/api/v1/admin/vdocipher/import", json={"video_id": "bad.id"})
+    assert bad_import.status_code == 422
+    assert bad_import.get_json() == {"error": "vdocipher_invalid_video"}
+    with admin_client.application.app_context():
+        assert Lesson.query.filter_by(vdocipher_video_id="bad.id").count() == 0
 
     monkeypatch.setattr(va, "list_videos", lambda **kwargs: (_ for _ in ()).throw(va.VdoCipherAdminError("vdocipher_rate_limited")))
     rate_limited = admin_client.get("/api/v1/admin/vdocipher/videos?refresh=1")
