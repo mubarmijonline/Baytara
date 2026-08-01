@@ -52,6 +52,30 @@ def test_normalize_video_prefers_poster_and_keeps_description():
     }
 
 
+@pytest.mark.parametrize(("field", "value"), [
+    ("title", 7),
+    ("description", []),
+    ("poster", {}),
+    ("posters", None),
+    ("posters", 7),
+    ("posters", [None]),
+    ("posters", [{"posterUrl": 7}]),
+    ("thumbUrl", []),
+    ("status", 3),
+    ("uploaded_at", {}),
+    ("upload_time", []),
+    ("length", True),
+    ("length", "90"),
+    ("length", float("nan")),
+    ("length", float("inf")),
+])
+def test_normalize_video_rejects_malformed_admin_fields(field, value):
+    raw = {"id": "v1", "title": "Exam", "description": "Details", "length": 90}
+    raw[field] = value
+    with pytest.raises(va.VdoCipherAdminError, match="^vdocipher_bad_response$"):
+        va.normalize_video(raw)
+
+
 def test_client_uses_approved_provider_methods_paths_and_payloads(monkeypatch):
     provider = va.VdoCipherAdminClient()
     calls = []

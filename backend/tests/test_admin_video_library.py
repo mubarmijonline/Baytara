@@ -169,6 +169,100 @@ def test_all_folder_videos_coalesces_concurrent_cache_fills(monkeypatch):
     assert calls == [1]
 
 
+def test_clear_cache_during_flight_discards_stale_result_and_retries(monkeypatch):
+    calls = []
+    entered = threading.Event()
+    release = threading.Event()
+
+    class MutatingProvider:
+        def list_videos(self, **params):
+            calls.append(params["page"])
+            if len(calls) == 1:
+                entered.set()
+                assert release.wait(timeout=2)
+                return {"count": 1, "rows": [provider_video("stale", "Stale video")]}
+            return {"count": 1, "rows": [provider_video("fresh", "Fresh video")]}
+
+    monkeypatch.setattr(va, "client", MutatingProvider())
+    va.clear_cache()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        result = pool.submit(va.list_all_folder_videos, "root")
+        assert entered.wait(timeout=2)
+        va.clear_cache()
+        release.set()
+        assert [video["id"] for video in result.result(timeout=2)["videos"]] == ["fresh"]
+    assert calls == [1, 1]
+    assert [video["id"] for video in va.list_all_folder_videos("root")["videos"]] == ["fresh"]
+    assert calls == [1, 1]
+
+
+def test_refresh_does_not_join_an_older_non_refresh_flight(monkeypatch):
+    calls = []
+    ordinary_entered = threading.Event()
+    refresh_entered = threading.Event()
+    release_ordinary = threading.Event()
+    release_refresh = threading.Event()
+
+    class RefreshProvider:
+        def list_videos(self, **params):
+            calls.append(params["page"])
+            if len(calls) == 1:
+                ordinary_entered.set()
+                assert release_ordinary.wait(timeout=2)
+                return {"count": 1, "rows": [provider_video("stale", "Stale video")]}
+            refresh_entered.set()
+            assert release_refresh.wait(timeout=2)
+            return {"count": 1, "rows": [provider_video("fresh", "Fresh video")]}
+
+    monkeypatch.setattr(va, "client", RefreshProvider())
+    va.clear_cache()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        ordinary = pool.submit(va.list_all_folder_videos, "root")
+        assert ordinary_entered.wait(timeout=2)
+        refreshed = pool.submit(va.list_all_folder_videos, "root", True)
+        assert refresh_entered.wait(timeout=2)
+        release_ordinary.set()
+        release_refresh.set()
+        assert [video["id"] for video in refreshed.result(timeout=2)["videos"]] == ["fresh"]
+        assert [video["id"] for video in ordinary.result(timeout=2)["videos"]] == ["fresh"]
+    assert calls == [1, 1]
+
+
+def test_malformed_flight_fails_all_waiters_and_allows_retry(monkeypatch):
+    calls = []
+    entered = threading.Event()
+    release = threading.Event()
+
+    class RecoveringProvider:
+        def list_videos(self, **params):
+            calls.append(params["page"])
+            if len(calls) == 1:
+                entered.set()
+                assert release.wait(timeout=2)
+                return {"count": 1, "rows": [{"id": "bad", "posters": 7}]}
+            return {"count": 1, "rows": [provider_video("fresh", "Fresh video")]}
+
+    def read_library():
+        try:
+            va.list_all_folder_videos("root")
+        except Exception as exc:  # noqa: BLE001 - assert the public failure contract
+            return type(exc), str(exc)
+        return None
+
+    monkeypatch.setattr(va, "client", RecoveringProvider())
+    va.clear_cache()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        leader = pool.submit(read_library)
+        assert entered.wait(timeout=2)
+        follower = pool.submit(read_library)
+        release.set()
+        assert leader.result(timeout=2) == (va.VdoCipherAdminError, "vdocipher_bad_response")
+        assert follower.result(timeout=2) == (va.VdoCipherAdminError, "vdocipher_bad_response")
+
+    assert [video["id"] for video in va.list_all_folder_videos("root")["videos"]] == ["fresh"]
+    assert calls == [1, 1]
+
+
 def test_video_library_uses_exact_folder_membership_and_root_local_only(admin_client, app, monkeypatch):
     from app.api.v1 import admin as admin_api
 
@@ -279,6 +373,7 @@ def test_video_library_requires_admin_and_maps_provider_errors(admin_client, app
     "status=unknown", "publication=unknown", "access_type=unknown", "assignment=unknown",
     "folder_id=../root", "page=bad", "page=0", "page=-1",
     "per_page=bad", "per_page=0", "per_page=-1", "per_page=41",
+    "refresh=0", "refresh=true", "refresh=2",
 ])
 def test_video_library_rejects_invalid_query_values_with_stable_error(admin_client, monkeypatch, query):
     from app.api.v1 import admin as admin_api

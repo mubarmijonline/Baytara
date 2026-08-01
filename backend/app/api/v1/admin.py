@@ -765,6 +765,15 @@ def _video_library_enum_arg(name, allowed):
     return raw
 
 
+def _video_library_refresh_arg():
+    raw = request.args.get("refresh")
+    if raw is None or raw == "":
+        return False
+    if raw != "1":
+        raise _InvalidVideoLibraryQuery
+    return True
+
+
 def _library_catalog_matches(catalog, category_id, access_type, publication, course_id, assignment, query):
     if category_id and (catalog.get("category") or {}).get("id") != category_id:
         return False
@@ -802,10 +811,11 @@ def video_library():
         assignment = _video_library_enum_arg("assignment", VIDEO_ASSIGNMENTS)
         page = _video_library_positive_arg("page", 1)
         per_page = _video_library_positive_arg("per_page", 20, 40)
+        refresh = _video_library_refresh_arg()
     except (_InvalidVideoLibraryQuery, VdoCipherAdminError):
         return jsonify(error="invalid_video_library_query"), 422
     try:
-        provider = vdocipher_admin.list_all_folder_videos(folder_id=folder_id, refresh=request.args.get("refresh") == "1")
+        provider = vdocipher_admin.list_all_folder_videos(folder_id=folder_id, refresh=refresh)
     except VdoCipherAdminError as exc:
         return _vdocipher_error(exc)
 

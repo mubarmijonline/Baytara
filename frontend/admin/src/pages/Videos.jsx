@@ -46,16 +46,15 @@ export default function Videos({ searchParams, setSearchParams }) {
   const [courses, setCourses] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [searchPending, setSearchPending] = useState(false);
   const requestSequence = useRef(0);
   const requestController = useRef(null);
   const loadingRef = useRef(false);
-  const previousQuery = useRef(searchParams.get('q') || '');
   const categorySlug = searchParams.get('category') || '';
-  const categoryId = categories.find((category) => category.slug === categorySlug)?.id;
+  const fixedCategory = CATEGORY_KEYS.includes(categorySlug);
+  const categoryId = fixedCategory ? categories.find((category) => category.slug === categorySlug)?.id : undefined;
   const query = searchParams.get('q') || '';
   const [debouncedQuery, setDebouncedQuery] = useState(query);
-  const [searchRevision, setSearchRevision] = useState(0);
+  const searchPending = query !== debouncedQuery;
   const access = searchParams.get('access') || '';
 
   const updateQuery = (updates, resetPage = true) => {
@@ -69,9 +68,15 @@ export default function Videos({ searchParams, setSearchParams }) {
     setRemembered(nextView);
     updateQuery({ view: nextView }, false);
   };
+  const abortRequest = (controller = requestController.current) => {
+    if (!controller || requestController.current !== controller || controller.signal.aborted) return;
+    requestController.current = null;
+    controller.abort();
+  };
   const load = (refresh = false) => {
+    if (searchPending) return null;
     if (refresh && (loadingRef.current || searchPending)) return null;
-    requestController.current?.abort();
+    abortRequest();
     const controller = new AbortController();
     requestController.current = controller;
     const sequence = ++requestSequence.current;
@@ -97,6 +102,7 @@ export default function Videos({ searchParams, setSearchParams }) {
           loadingRef.current = false;
           setLoading(false);
         }
+        if (requestController.current === controller) requestController.current = null;
       }
     })();
     return controller;
@@ -113,29 +119,25 @@ export default function Videos({ searchParams, setSearchParams }) {
     if (rawPage && String(page) !== rawPage) updateQuery({ page: page === 1 ? '' : String(page) }, false);
   }, [page, rawPage]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (categoriesLoaded && categorySlug && !categoryId) updateQuery({ category: '' });
-  }, [categoriesLoaded, categorySlug, categoryId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (categoriesLoaded && categorySlug && (!fixedCategory || !categoryId)) updateQuery({ category: '' });
+  }, [categoriesLoaded, categorySlug, fixedCategory, categoryId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (query === previousQuery.current) return undefined;
-    previousQuery.current = query;
-    requestController.current?.abort();
+    if (query === debouncedQuery) return undefined;
+    abortRequest();
     requestSequence.current += 1;
     loadingRef.current = false;
     setLoading(false);
-    setSearchPending(true);
     const timeout = setTimeout(() => {
       setDebouncedQuery(query);
-      setSearchRevision((revision) => revision + 1);
-      setSearchPending(false);
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
-  }, [query]);
+  }, [query, debouncedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!categoriesLoaded || (categorySlug && !categoryId)) return undefined;
+    if (searchPending || !categoriesLoaded || (categorySlug && (!fixedCategory || !categoryId))) return undefined;
     const controller = load();
-    return () => controller?.abort();
+    return () => abortRequest(controller);
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [folder, page, providerStatus, categoryId, access, publication, courseId, assignment, debouncedQuery, searchRevision, categoriesLoaded]);
+  }, [folder, page, providerStatus, categoryId, access, publication, courseId, assignment, query, debouncedQuery, categoriesLoaded]);
 
   const currentPage = library?.page || page;
   const pageCount = library?.pages || 1;

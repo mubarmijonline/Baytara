@@ -155,6 +155,41 @@ it('debounces search, aborts the superseded load, and keeps visible results on A
   expect(await screen.findByText('New result')).toBeVisible();
 });
 
+it('waits for search debounce before loading once with the newest filters', async () => {
+  const libraryUrls = [];
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.endsWith('/categories')) return json({ categories: [] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    if (url.includes('/admin/video-library')) {
+      libraryUrls.push(url);
+      const searched = url.includes('q=newest');
+      return json({
+        items: [{ id: searched ? 'new' : 'old', provider_id: searched ? 'new' : 'old', title: searched ? 'Newest result' : 'Visible result', status: 'ready' }],
+        total: 1, page: 1, pages: 1, per_page: 40,
+      });
+    }
+    return json({});
+  });
+  renderAdmin('/admin/videos');
+  expect(await screen.findByText('Visible result')).toBeVisible();
+  const callsBeforeSearch = libraryUrls.length;
+
+  fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'newest' } });
+  fireEvent.change(screen.getByLabelText('Access type'), { target: { value: 'general' } });
+
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(libraryUrls).toHaveLength(callsBeforeSearch);
+  expect(screen.getByText('Visible result')).toBeVisible();
+  expect(await screen.findByText('Newest result')).toBeVisible();
+  expect(libraryUrls.slice(callsBeforeSearch)).toHaveLength(1);
+  expect(libraryUrls.at(-1)).toContain('q=newest');
+  expect(libraryUrls.at(-1)).toContain('access_type=general');
+  expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled();
+});
+
 it('disables refresh while loading and coalesces repeated refresh clicks', async () => {
   const refreshResult = deferred();
   let refreshCalls = 0;
@@ -637,6 +672,21 @@ it('removes an unknown category slug after categories load', async () => {
   });
   renderAdmin('/admin/videos?category=unknown');
   await waitFor(() => expect(window.location.search).not.toContain('category=unknown'));
+});
+
+it('removes a returned category slug that is outside the fixed catalog', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.includes('/admin/video-library')) return json({ items: [], total: 0, page: 1, pages: 1, per_page: 40 });
+    if (url.endsWith('/categories')) return json({ categories: [{ id: 9, slug: 'legacy-equine', name: 'Legacy' }] });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.includes('/folders/')) return json({ folders: [] });
+    return json({});
+  });
+  renderAdmin('/admin/videos?category=legacy-equine');
+  await waitFor(() => expect(window.location.search).not.toContain('category=legacy-equine'));
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/video-library') && String(input).includes('category_id=9'))).toBe(false);
 });
 
 it('renders composite local-only records only on the page returned by the server', async () => {
