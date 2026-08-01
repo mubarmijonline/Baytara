@@ -27,6 +27,7 @@ def create_app(config=None):
     from .api.v1.learning import bp as learning_bp
     from .api.v1.payment import bp as payment_bp
     from .api.v1.admin import bp as admin_bp
+    from .api.v1.admin_video_reports import bp as admin_video_reports_bp
     from .api.v1.content import bp as content_bp
     from .api.v1.video import bp as video_bp
     from .api.v1.instructor import bp as instructor_bp
@@ -43,5 +44,6 @@ def create_app(config=None):
     app.register_blueprint(notifications_bp, url_prefix="/api/v1")
     app.register_blueprint(baytarian_bp, url_prefix="/api/v1")
     app.register_blueprint(admin_bp, url_prefix="/api/v1/admin")
+    app.register_blueprint(admin_video_reports_bp, url_prefix="/api/v1/admin/video-reports")
 
     return app
