@@ -350,6 +350,61 @@ describe('Admin stats invalidation', () => {
   });
 });
 
+describe('Admin data invalidation', () => {
+  it('dispatches data invalidation only after successful admin mutations', async () => {
+    const listener = vi.fn();
+    const userMutationListener = (event) => {
+      if (event.detail?.path === '/admin/users') listener(event);
+    };
+    window.addEventListener('baytara:admin-data-changed', userMutationListener);
+    try {
+      await api.userCreate({
+        name: 'New User',
+        email: 'new-user@example.test',
+        password: 'secret123',
+        role: 'student',
+      });
+      await waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+
+      fetch.mockImplementationOnce(() => json({ error: 'mutation_failed' }, 500));
+      await expect(api.userCreate({
+        name: 'Failed User',
+        email: 'failed-user@example.test',
+        password: 'secret123',
+        role: 'student',
+      })).rejects.toThrow('mutation_failed');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(listener).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener('baytara:admin-data-changed', userMutationListener);
+    }
+  });
+
+  it('reloads the active routed page when admin data changes', async () => {
+    const defaultFetch = fetch.getMockImplementation();
+    let usersFetches = 0;
+    fetch.mockImplementation((input, options = {}) => {
+      const url = String(input);
+      const method = (options.method || 'GET').toUpperCase();
+      if (url.includes('/admin/users') && method === 'GET') {
+        usersFetches += 1;
+        return json({ users: [] });
+      }
+      return defaultFetch(input, options);
+    });
+
+    renderAdmin('/admin/users');
+
+    expect(await screen.findByRole('heading', { name: /المستخدمون|users/i })).toBeVisible();
+    await waitFor(() => expect(usersFetches).toBe(1));
+
+    act(() => window.dispatchEvent(new Event('baytara:admin-data-changed')));
+
+    await waitFor(() => expect(usersFetches).toBe(2));
+    expect(window.location.pathname).toBe('/admin/users');
+  });
+});
+
 describe('Admin language', () => {
   it('persists English and restores its document direction', async () => {
     const firstRender = renderAdmin('/admin/dashboard');

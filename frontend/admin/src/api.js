@@ -1,4 +1,5 @@
 import { withAdminStatsInvalidation } from './admin-stats.js';
+import { notifyAdminDataChanged, shouldNotifyAdminDataChanged } from './admin-data-events.js';
 
 const BASE = '/api/v1';
 let token = localStorage.getItem('baytara_admin_token') || '';
@@ -11,7 +12,7 @@ export function setToken(t) {
 }
 
 async function req(path, opts = {}) {
-  const { clearTokenOn401 = true, ...fetchOptions } = opts;
+  const { clearTokenOn401 = true, skipAdminDataChanged = false, ...fetchOptions } = opts;
   const r = await fetch(BASE + path, {
     ...fetchOptions,
     headers: {
@@ -27,6 +28,9 @@ async function req(path, opts = {}) {
     throw Object.assign(new Error('unauthorized'), { status: 401 });
   }
   if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
+  if (!skipAdminDataChanged && shouldNotifyAdminDataChanged(path, fetchOptions.method || 'GET')) {
+    notifyAdminDataChanged({ path, method: (fetchOptions.method || 'GET').toUpperCase() });
+  }
   return data;
 }
 
@@ -97,7 +101,7 @@ export const api = {
   vdocipherSyncFolders: (body) => req('/admin/vdocipher/sync-folders', { method: 'POST', body: JSON.stringify(body || {}) }),
   vdocipherVideos: (params) => req('/admin/vdocipher/videos' + qs(params)),
   vdocipherVideo: (id) => req(`/admin/vdocipher/videos/${id}`),
-  vdocipherVideoUpdate: (id, body) => req(`/admin/vdocipher/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  vdocipherVideoUpdate: (id, body, options = {}) => req(`/admin/vdocipher/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body), ...options }),
   vdocipherPreview: (id) => req(`/admin/vdocipher/videos/${id}/preview`, { method: 'POST' }),
   vdocipherFolder: (id, params) => req(`/admin/vdocipher/folders/${id}` + qs(params)),
   vdocipherFolderCreate: (body) => req('/admin/vdocipher/folders', { method: 'POST', body: JSON.stringify(body) }),
@@ -105,7 +109,7 @@ export const api = {
   vdocipherFolderDelete: (id) => req(`/admin/vdocipher/folders/${id}`, { method: 'DELETE' }),
   vdocipherMove: (body) => req('/admin/vdocipher/move', { method: 'POST', body: JSON.stringify(body) }),
   vdocipherUploadCredentials: (body) => req('/admin/vdocipher/upload-credentials', { method: 'POST', body: JSON.stringify(body) }),
-  vdocipherImport: (body) => req('/admin/vdocipher/import', { method: 'POST', body: JSON.stringify(body) }),
+  vdocipherImport: (body, options = {}) => req('/admin/vdocipher/import', { method: 'POST', body: JSON.stringify(body), ...options }),
 
   // Baytara-owned playback security and viewing reports
   videoReportSummary: (params) => req('/admin/video-reports/summary' + qs(params)),

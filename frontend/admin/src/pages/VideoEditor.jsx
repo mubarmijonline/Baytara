@@ -139,7 +139,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const retryImport = async (savedRecovery) => {
     setPhase('import');
     try {
-      const result = await api.vdocipherImport(savedRecovery.importPayload);
+      const result = await api.vdocipherImport(savedRecovery.importPayload, { skipAdminDataChanged: true });
       setRecovery(null);
       navigate(`/videos/${result.video.id}`);
     } catch (error) { setRecovery({ ...savedRecovery, step: 'import' }); setLocalError(error.message); }
@@ -148,7 +148,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const updateProviderThenImport = async (savedRecovery) => {
     setPhase('provider');
     try {
-      await api.vdocipherVideoUpdate(savedRecovery.providerId, savedRecovery.providerPayload);
+      await api.vdocipherVideoUpdate(savedRecovery.providerId, savedRecovery.providerPayload, { skipAdminDataChanged: true });
       setProviderError('');
       await retryImport({ ...savedRecovery, step: 'import' });
     } catch (error) { setRecovery({ ...savedRecovery, step: 'provider' }); setProviderError(error.message); setPhase('idle'); }

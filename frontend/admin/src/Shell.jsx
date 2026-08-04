@@ -17,6 +17,7 @@ import {
   Tags,
 } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { ADMIN_DATA_CHANGED_EVENT } from './admin-data-events.js';
 import { ADMIN_STATS_CHANGED_EVENT } from './admin-stats.js';
 import { api } from './api.js';
 import { useAdminLanguage } from './i18n.jsx';
@@ -39,6 +40,7 @@ const NAV = [
 
 export default function Shell({ onLogout }) {
   const [stats, setStats] = useState(null);
+  const [outletRevision, setOutletRevision] = useState(0);
   const { language, setLanguage, t } = useAdminLanguage();
   const { pathname } = useLocation();
   const statsRequestSequence = useRef(0);
@@ -64,6 +66,15 @@ export default function Shell({ onLogout }) {
       window.removeEventListener(ADMIN_STATS_CHANGED_EVENT, refreshStats);
     };
   }, [pathname, onLogout]);
+
+  useEffect(() => {
+    function refreshActivePage() {
+      setOutletRevision((value) => value + 1);
+    }
+
+    window.addEventListener(ADMIN_DATA_CHANGED_EVENT, refreshActivePage);
+    return () => window.removeEventListener(ADMIN_DATA_CHANGED_EVENT, refreshActivePage);
+  }, []);
 
   return (
     <div className="shell">
@@ -93,7 +104,7 @@ export default function Shell({ onLogout }) {
         </button>
       </aside>
       <main className="content">
-        <Outlet context={{ stats }} />
+        <Outlet key={`${pathname}:${outletRevision}`} context={{ stats }} />
       </main>
     </div>
   );
