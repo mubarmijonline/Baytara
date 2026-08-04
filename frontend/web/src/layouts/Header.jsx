@@ -152,8 +152,9 @@ export default function Header() {
   return (
     <>
       {/* Top utility bar */}
-      <div style={{ background: colors.utilityBar, color: '#cfcfe0', fontSize: 13 }}>
+      <div className="site-utility-bar" style={{ background: colors.utilityBar, color: '#cfcfe0', fontSize: 13 }}>
         <div
+          className="site-utility-inner"
           style={{
             maxWidth: layout.maxWidth,
             margin: '0 auto',
@@ -188,6 +189,7 @@ export default function Header() {
         }}
       >
         <div
+          className="site-header-inner"
           style={{
             maxWidth: layout.maxWidth,
             margin: '0 auto',
@@ -199,6 +201,7 @@ export default function Header() {
           }}
         >
           <img
+            className="site-logo"
             src="/brand/logo-blue.png"
             alt="بيطرة BAYTARA"
             onClick={() => navigate('/')}

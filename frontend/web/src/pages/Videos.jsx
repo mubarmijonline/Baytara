@@ -34,13 +34,13 @@ export default function Videos() {
   };
 
   return (
-    <main style={{ background: colors.surfaceMuted, minHeight: '70vh', padding: '48px 0 72px' }}>
+    <main className="videos-page" style={{ background: colors.surfaceMuted, minHeight: '70vh', padding: '48px 0 72px' }}>
       <Container>
-        <div style={{ maxWidth: 720, marginBottom: 30 }}>
-          <h1 style={{ margin: '0 0 8px', fontSize: 38, lineHeight: 1.25, fontWeight: 900 }}>{t('video.libraryTitle')}</h1>
-          <p style={{ margin: 0, color: colors.muted, fontSize: 17, lineHeight: 1.7 }}>{t('video.librarySubtitle')}</p>
+        <div className="videos-page-header" style={{ maxWidth: 720, marginBottom: 30 }}>
+          <h1 className="videos-page-title" style={{ margin: '0 0 8px', fontSize: 38, lineHeight: 1.25, fontWeight: 900 }}>{t('video.libraryTitle')}</h1>
+          <p className="videos-page-copy" style={{ margin: 0, color: colors.muted, fontSize: 17, lineHeight: 1.7 }}>{t('video.librarySubtitle')}</p>
         </div>
-        <form onSubmit={submit} style={{ display: 'flex', gap: 8, maxWidth: 600, marginBottom: 20 }}>
+        <form className="videos-search-form" onSubmit={submit} style={{ display: 'flex', gap: 8, maxWidth: 600, marginBottom: 20 }}>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('video.searchPlaceholder')} aria-label={t('video.searchPlaceholder')} style={{ flex: 1, minWidth: 0, height: 44, border: `1px solid ${colors.line}`, borderRadius: 6, padding: '0 14px', fontSize: 15 }} />
           <button type="submit" style={{ height: 44, border: 0, borderRadius: 6, background: colors.accent, color: '#fff', padding: '0 20px', fontWeight: 800, cursor: 'pointer' }}>{t('video.search')}</button>
         </form>
@@ -70,6 +70,7 @@ function CategoryFilterCard({ title, label, active, index = 0, image = '', onCli
   const marker = colorsByIndex[index % colorsByIndex.length];
   return (
     <button
+      className="video-category-card"
       type="button"
       aria-pressed={active}
       onClick={onClick}

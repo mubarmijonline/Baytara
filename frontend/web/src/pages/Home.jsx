@@ -22,7 +22,7 @@ function Hero() {
   const settings = useSiteSettings();
   const hero = settings.hero || {};
   return (
-    <section style={{ position: 'relative', background: gradients.hero, color: '#fff', overflow: 'hidden' }}>
+    <section className="home-hero" style={{ position: 'relative', background: gradients.hero, color: '#fff', overflow: 'hidden' }}>
       <div
         style={{
           position: 'absolute',
@@ -46,7 +46,7 @@ function Hero() {
         }}
       />
       <Container
-        className="grid-collapse-2"
+        className="grid-collapse-2 home-hero-inner"
         style={{
           padding: '72px 24px 80px',
           position: 'relative',
@@ -74,13 +74,13 @@ function Hero() {
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.accent }} />
             {hero.eyebrow}
           </div>
-          <h1 style={{ fontSize: 52, lineHeight: 1.15, fontWeight: 900, margin: '0 0 20px', letterSpacing: '-1px' }}>
+          <h1 className="home-hero-title" style={{ fontSize: 52, lineHeight: 1.15, fontWeight: 900, margin: '0 0 20px', letterSpacing: '-1px' }}>
             {hero.title}
           </h1>
-          <p style={{ fontSize: 19, lineHeight: 1.7, color: '#c9c9dc', margin: '0 0 32px', maxWidth: 520 }}>
+          <p className="home-hero-copy" style={{ fontSize: 19, lineHeight: 1.7, color: '#c9c9dc', margin: '0 0 32px', maxWidth: 520 }}>
             {hero.subtitle}
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 34, flexWrap: 'wrap' }}>
+          <div className="home-hero-actions" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 34, flexWrap: 'wrap' }}>
             <button
               className="hover-bright"
               onClick={() => navigate('/courses')}
@@ -124,7 +124,7 @@ function Hero() {
               {hero.secondary_cta}
             </button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 26, fontSize: 14, color: '#a9a9c2', flexWrap: 'wrap' }}>
+          <div className="home-hero-trust" style={{ display: 'flex', alignItems: 'center', gap: 26, fontSize: 14, color: '#a9a9c2', flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: colors.star, fontSize: 16 }}>★</span> تقييم 4.8 من 5
             </span>
@@ -132,7 +132,7 @@ function Hero() {
             <span>شهادات معتمدة</span>
           </div>
         </div>
-        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+        <div className="home-hero-media" style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
           <div
             style={{
               width: '100%',
@@ -219,7 +219,7 @@ function StatsBand() {
   return (
     <section style={{ background: '#fff', borderBottom: `1px solid ${colors.line}` }}>
       <Container
-        className="grid-collapse-sm"
+        className="grid-collapse-sm home-stats-grid"
         style={{ padding: '34px 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}
       >
         {list.map((s) => (
@@ -247,7 +247,7 @@ function Carousel({ title, badge, courses, markNew }) {
     color: colors.ink,
   };
   return (
-    <Container style={{ padding: '46px 24px 20px' }}>
+    <Container className="home-section home-carousel" style={{ padding: '46px 24px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <h2 style={{ fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: '-.5px' }}>{title}</h2>
@@ -290,7 +290,7 @@ function Carousel({ title, badge, courses, markNew }) {
 function BusinessBanner() {
   const navigate = useNavigate();
   return (
-    <Container style={{ margin: '44px auto', padding: '0 24px' }}>
+    <Container className="home-section home-business-banner" style={{ margin: '44px auto', padding: '0 24px' }}>
       <div
         className="grid-collapse-2"
         style={{
@@ -376,7 +376,7 @@ function InstructorsSection() {
     : [];
   return (
     <section style={{ background: colors.surfaceMuted, marginTop: 44 }}>
-      <Container style={{ padding: '56px 24px' }}>
+      <Container className="home-section" style={{ padding: '56px 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: 38 }}>
           <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 8px', letterSpacing: '-.5px' }}>
             تعلّم على يد نخبة من الأطباء
@@ -443,7 +443,7 @@ function Testimonials() {
       }))
     : [];
   return (
-    <Container style={{ padding: '60px 24px' }}>
+    <Container className="home-section" style={{ padding: '60px 24px' }}>
       <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 34px', textAlign: 'center', letterSpacing: '-.5px' }}>
         {home.testimonials_title}
       </h2>
@@ -489,7 +489,7 @@ function Testimonials() {
 function FinalCta() {
   const navigate = useNavigate();
   return (
-    <Container style={{ margin: '0 auto 60px', padding: '0 24px' }}>
+    <Container className="home-section home-final-cta" style={{ margin: '0 auto 60px', padding: '0 24px' }}>
       <div
         style={{
           background: gradients.accentCta,
@@ -561,7 +561,7 @@ function CategoriesSection() {
       }))
     : [];
   return (
-    <Container style={{ padding: '56px 24px 20px' }}>
+    <Container className="home-section" style={{ padding: '56px 24px 20px' }}>
       <SectionHeading
         title="تصفّح حسب التخصّص"
         subtitle="اختر التخصّص الذي يناسب أهدافك وابدأ رحلتك"
@@ -575,7 +575,7 @@ function CategoriesSection() {
         }
       />
       <div
-        className="grid-collapse-sm"
+        className="grid-collapse-sm home-category-grid"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}
       >
         {list.map((c) => (
@@ -613,7 +613,7 @@ function FreeVideosSection() {
   if (!videos.length) return null;
   return (
     <section style={{ background: colors.surfaceMuted, marginTop: 36 }}>
-      <Container style={{ padding: '54px 24px 60px' }}>
+      <Container className="home-section" style={{ padding: '54px 24px 60px' }}>
         <SectionHeading
           title={t('video.homeTitle')}
           subtitle={t('video.homeSubtitle')}

@@ -37,12 +37,12 @@ export default function VideoDetail() {
   if (error || !video) return <Container style={{ padding: '64px 24px' }}><h1>{t('video.notFound')}</h1></Container>;
 
   return (
-    <main style={{ background: colors.surfaceMuted, padding: '38px 0 72px' }}>
+    <main className="video-detail-page" style={{ background: colors.surfaceMuted, padding: '38px 0 72px' }}>
       <Container>
         <button type="button" onClick={() => navigate('/videos')} style={{ border: 0, background: 'transparent', color: colors.accent, cursor: 'pointer', padding: '8px 0', fontWeight: 800, marginBottom: 16 }}>{t('video.back')}</button>
         <div className="video-detail-grid">
           <section>
-            <div style={{ aspectRatio: '16 / 9', background: '#10152c', overflow: 'hidden', borderRadius: 8, position: 'relative' }}>
+            <div className="video-detail-player" style={{ aspectRatio: '16 / 9', background: '#10152c', overflow: 'hidden', borderRadius: 8, position: 'relative' }}>
               {playback ? <SecureVdoPlayer playback={playback} title={video.title} onSecurityError={() => setPlayError('security')} /> : <>
                 {video.poster && <img src={video.poster} alt={video.title} style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />}
                 {video.can_play ? (
@@ -75,7 +75,7 @@ export default function VideoDetail() {
           </section>
           <aside style={{ minWidth: 0 }}>
             <div style={{ color: colors.accent, fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{video.category?.name}</div>
-            <h1 style={{ margin: '0 0 14px', fontSize: 34, lineHeight: 1.3, fontWeight: 900 }}>{video.title}</h1>
+            <h1 className="video-detail-title" style={{ margin: '0 0 14px', fontSize: 34, lineHeight: 1.3, fontWeight: 900 }}>{video.title}</h1>
             {video.access_type === 'free' && <span style={{ display: 'inline-block', color: '#176b45', background: '#e8f6ef', padding: '5px 10px', borderRadius: 4, fontWeight: 800, marginBottom: 18 }}>{t('video.freeForAll')}</span>}
             {video.description && <p style={{ margin: 0, color: colors.muted, lineHeight: 1.8, fontSize: 16 }}>{video.description}</p>}
           </aside>

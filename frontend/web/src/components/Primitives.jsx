@@ -16,6 +16,7 @@ export function Container({ children, style, className }) {
 export function SectionHeading({ title, subtitle, action }) {
   return (
     <div
+      className="section-heading"
       style={{
         display: 'flex',
         alignItems: 'flex-end',
