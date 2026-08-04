@@ -85,6 +85,9 @@ it('shows free catalog videos on the main website', async () => {
 it('opens a main website category directly in the filtered video library', async () => {
   renderRoute('/');
 
+  expect(await screen.findByRole('img', { name: 'Large animals - Cattle & Sheep' })).toHaveAttribute(
+    'src', '/images/categories/large-animals.webp',
+  );
   fireEvent.click(await screen.findByRole('button', { name: /Large animals - Cattle & Sheep/i }));
   expect(window.location.pathname).toBe('/videos');
   expect(new URLSearchParams(window.location.search).get('category')).toBe('large-animals');

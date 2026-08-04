@@ -15,6 +15,7 @@ import {
 import { webapi, mapCourse, useFetch } from '../lib/api.js';
 import { useSiteSettings } from '../lib/site-settings.jsx';
 import { useI18n } from '../lib/i18n.jsx';
+import { categoryImage } from '../lib/category-images.js';
 
 function Hero() {
   const navigate = useNavigate();
@@ -556,6 +557,7 @@ function CategoriesSection() {
     ? data.categories.map((c, i) => ({
         name: c.name, slug: c.slug, count: categories[i % categories.length].count,
         bg: categories[i % categories.length].bg, letter: (c.name || '؟').trim().charAt(0),
+        image: categoryImage(c.slug),
       }))
     : [];
   return (
@@ -582,27 +584,20 @@ function CategoriesSection() {
             className="hover-card"
             type="button"
             onClick={() => navigate(`/videos?category=${encodeURIComponent(c.slug)}`)}
-            style={{ border: `1px solid ${colors.line}`, borderRadius: 8, padding: 22, cursor: 'pointer', background: '#fff', textAlign: 'inherit' }}
+            style={{ border: `1px solid ${colors.line}`, borderRadius: 8, padding: 0, cursor: 'pointer', background: '#fff', textAlign: 'inherit', overflow: 'hidden' }}
           >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: c.bg,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-                fontSize: 22,
-                fontWeight: 900,
-                color: '#fff',
-              }}
-            >
-              {c.letter}
+            <div style={{ position: 'relative', aspectRatio: '16 / 9', background: c.bg, overflow: 'hidden' }}>
+              {c.image ? (
+                <img src={c.image} alt={c.name} loading="lazy" style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 24, fontWeight: 900 }}>{c.letter}</div>
+              )}
+              <span aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(20,30,66,0) 35%, rgba(20,30,66,.52) 100%)' }} />
             </div>
-            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{c.name}</div>
-            <div style={{ fontSize: 13, color: colors.muted2 }}>{c.count} دورة</div>
+            <div style={{ padding: 18 }}>
+              <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 4 }}>{c.name}</div>
+              <div style={{ fontSize: 13, color: colors.muted2 }}>{c.count} دورة</div>
+            </div>
           </button>
         ))}
       </div>

@@ -5,6 +5,7 @@ import { Container } from '../components/Primitives.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 import { useFetch, webapi } from '../lib/api.js';
 import { colors } from '../theme/tokens.js';
+import { categoryImage } from '../lib/category-images.js';
 
 export default function Videos() {
   const { t } = useI18n();
@@ -46,7 +47,7 @@ export default function Videos() {
         <div aria-label={t('video.categories')} className="video-category-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 28 }}>
           <CategoryFilterCard title={t('video.allCategories')} label={t('video.allVideos')} active={!category} onClick={() => selectCategory('')} />
           {(categories.data?.categories || []).map((item, index) => (
-            <CategoryFilterCard key={item.slug} title={item.name} label={t('video.specialty')} active={category === item.slug} index={index} onClick={() => selectCategory(item.slug)} />
+            <CategoryFilterCard key={item.slug} title={item.name} label={t('video.specialty')} active={category === item.slug} index={index} image={categoryImage(item.slug)} onClick={() => selectCategory(item.slug)} />
           ))}
         </div>
         {catalog.loading ? <p>{t('common.loading')}</p> : catalog.error ? <p style={{ color: '#9b2626' }}>{t('video.loadError')}</p> : items.length ? (
@@ -64,7 +65,7 @@ export default function Videos() {
   );
 }
 
-function CategoryFilterCard({ title, label, active, index = 0, onClick }) {
+function CategoryFilterCard({ title, label, active, index = 0, image = '', onClick }) {
   const colorsByIndex = ['#3048A0', '#1E2A5E', '#8a6d1f', '#176b45', '#9b6526', '#4356A6'];
   const marker = colorsByIndex[index % colorsByIndex.length];
   return (
@@ -84,6 +85,11 @@ function CategoryFilterCard({ title, label, active, index = 0, onClick }) {
         boxShadow: active ? '0 12px 26px rgba(48,72,160,.13)' : '0 8px 20px rgba(20,30,66,.04)',
       }}
     >
+      {image ? (
+        <img src={image} alt="" loading="lazy" aria-hidden="true" style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 6, marginBottom: 12 }} />
+      ) : (
+        <span aria-hidden="true" style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', borderRadius: 6, marginBottom: 12, background: `linear-gradient(135deg, ${colors.accentSoft}, #fff)`, border: `1px solid ${colors.line}` }} />
+      )}
       <span style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
         <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 4, background: marker, boxShadow: active ? `0 0 0 4px ${colors.accentSoft}` : 'none', flex: '0 0 auto' }} />
         <span style={{ fontSize: 12, fontWeight: 900, color: active ? colors.accent : colors.muted }}>{label}</span>
