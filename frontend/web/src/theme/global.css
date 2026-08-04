@@ -148,10 +148,12 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 .video-detail-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr); gap: 34px; align-items: start; }
 
 @media (max-width: 900px) {
+  .video-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .video-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .video-detail-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 600px) {
+  .video-category-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .video-grid { grid-template-columns: minmax(0, 1fr); }
 }

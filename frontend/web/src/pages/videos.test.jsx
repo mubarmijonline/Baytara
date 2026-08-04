@@ -82,10 +82,33 @@ it('shows free catalog videos on the main website', async () => {
   expect(screen.getByRole('heading', { name: 'Introduction' })).toBeVisible();
 });
 
+it('opens a main website category directly in the filtered video library', async () => {
+  renderRoute('/');
+
+  fireEvent.click(await screen.findByRole('button', { name: /Large animals - Cattle & Sheep/i }));
+  expect(window.location.pathname).toBe('/videos');
+  expect(new URLSearchParams(window.location.search).get('category')).toBe('large-animals');
+
+  await screen.findByRole('heading', { name: 'Video library' });
+  const catalogCall = fetch.mock.calls.find(([url]) => String(url).includes('/api/v1/videos?') && String(url).includes('category=large-animals'));
+  expect(catalogCall).toBeTruthy();
+  expect(String(catalogCall[0])).toContain('category=large-animals');
+});
+
+it('shows locked catalog cards with a register action for anonymous viewers', async () => {
+  renderRoute('/videos');
+
+  expect(await screen.findByRole('link', { name: /Register to watch Introduction/i })).toHaveAttribute(
+    'href', '/auth?next=%2Fvideos%2F2',
+  );
+  expect(screen.getByText('Protected playback')).toBeVisible();
+});
+
 it('requires sign in before playing a free video and preserves the return route', async () => {
   renderRoute('/videos/2');
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Sign in to watch' }));
+  expect(await screen.findByText('Register to unlock protected playback')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Register to watch' }));
   expect(window.location.pathname).toBe('/auth');
   expect(new URLSearchParams(window.location.search).get('next')).toBe('/videos/2');
   expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
@@ -178,6 +201,6 @@ it('shows a sign-in action instead of attempting locked playback', async () => {
   });
   renderRoute('/videos/2');
 
-  expect(await screen.findByRole('button', { name: 'Sign in to watch' })).toBeVisible();
+  expect(await screen.findByRole('button', { name: 'Register to watch' })).toBeVisible();
   expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
 });

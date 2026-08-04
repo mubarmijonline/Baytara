@@ -48,6 +48,11 @@ const DICT = {
     'video.pagination': 'صفحات الفيديو', 'video.previous': 'السابق', 'video.next': 'التالي', 'video.page': 'صفحة',
     'video.signIn': 'سجّل الدخول للمشاهدة', 'video.accessRequired': 'الوصول مطلوب',
     'video.addPhone': 'أضف رقم الهاتف للمشاهدة',
+    'video.registerToWatch': 'سجّل حسابك للمشاهدة', 'video.protectedPlayback': 'تشغيل محمي',
+    'video.lockedTitle': 'سجّل حسابك لفتح التشغيل المحمي',
+    'video.lockedDescription': 'الفيديوهات المجانية تظهر للجميع، لكن التشغيل يحتاج حساباً مفعّلاً لحماية المحتوى والعلامة المائية.',
+    'video.watchRequiresAccount': 'أكمل متطلبات الحساب لتشغيل هذا الفيديو.',
+    'video.specialty': 'تخصص', 'video.allVideos': 'كل الفيديوهات',
   },
   en: {
     'nav.home': 'Home', 'nav.courses': 'Courses', 'nav.videos': 'Videos', 'nav.bundles': 'Bundles',
@@ -93,6 +98,11 @@ const DICT = {
     'video.pagination': 'Video pages', 'video.previous': 'Previous', 'video.next': 'Next', 'video.page': 'Page',
     'video.signIn': 'Sign in to watch', 'video.accessRequired': 'Access required',
     'video.addPhone': 'Add phone number to watch',
+    'video.registerToWatch': 'Register to watch', 'video.protectedPlayback': 'Protected playback',
+    'video.lockedTitle': 'Register to unlock protected playback',
+    'video.lockedDescription': 'Free videos are visible to everyone, but playback requires an active account for content protection and watermarking.',
+    'video.watchRequiresAccount': 'Complete your account requirements to play this video.',
+    'video.specialty': 'Specialty', 'video.allVideos': 'All videos',
   },
 };
 

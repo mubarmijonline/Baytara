@@ -577,11 +577,12 @@ function CategoriesSection() {
         style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}
       >
         {list.map((c) => (
-          <div
+          <button
             key={c.name}
             className="hover-card"
-            onClick={() => navigate('/courses')}
-            style={{ border: `1px solid ${colors.line}`, borderRadius: 16, padding: 22, cursor: 'pointer', background: '#fff' }}
+            type="button"
+            onClick={() => navigate(`/videos?category=${encodeURIComponent(c.slug)}`)}
+            style={{ border: `1px solid ${colors.line}`, borderRadius: 8, padding: 22, cursor: 'pointer', background: '#fff', textAlign: 'inherit' }}
           >
             <div
               style={{
@@ -602,7 +603,7 @@ function CategoriesSection() {
             </div>
             <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{c.name}</div>
             <div style={{ fontSize: 13, color: colors.muted2 }}>{c.count} دورة</div>
-          </div>
+          </button>
         ))}
       </div>
     </Container>
