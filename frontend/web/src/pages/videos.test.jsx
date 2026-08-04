@@ -104,6 +104,7 @@ it('shows locked catalog cards with a register action for anonymous viewers', as
   expect(await screen.findByRole('link', { name: /Register to watch Introduction/i })).toHaveAttribute(
     'href', '/auth?next=%2Fvideos%2F2',
   );
+  expect(screen.getByRole('img', { name: 'Unlock to watch Introduction' })).toBeVisible();
   expect(screen.getByText('Protected playback')).toBeVisible();
 });
 
@@ -139,7 +140,7 @@ it('plays a free video for a phone-complete authenticated viewer', async () => {
   });
   renderRoute('/videos/2');
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Watch video' }));
+  fireEvent.click(await screen.findByTestId('video-touch-target'));
   const player = await screen.findByTitle('Introduction');
   expect(player).toHaveAttribute('src', expect.stringContaining('otp=viewer-otp'));
   expect(fetch).toHaveBeenCalledWith('/api/v1/video/playback', expect.objectContaining({

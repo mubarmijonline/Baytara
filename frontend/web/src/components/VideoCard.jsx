@@ -26,9 +26,17 @@ export default function VideoCard({ video }) {
         ) : (
           <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', color: colors.gold, fontSize: 24, fontWeight: 900 }}>BAYTARA</span>
         )}
-        <span aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
+        <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
           <span style={{ width: 50, height: 50, borderRadius: '50%', background: 'rgba(255,255,255,.94)', display: 'grid', placeItems: 'center', boxShadow: '0 5px 18px rgba(0,0,0,.22)', color: colors.accent, fontWeight: 900 }}>
-            {locked ? <span style={{ fontSize: 12, letterSpacing: 0 }}>LOCK</span> : <span style={{ width: 0, height: 0, borderTop: '8px solid transparent', borderBottom: '8px solid transparent', borderInlineStart: `13px solid ${colors.accent}`, marginInlineStart: 3 }} />}
+            {locked ? (
+              <span
+                className="video-status-icon video-status-icon-unlock"
+                role="img"
+                aria-label={`${t('video.unlockToWatch')} ${video.title}`}
+              />
+            ) : (
+              <span aria-hidden="true" style={{ width: 0, height: 0, borderTop: '8px solid transparent', borderBottom: '8px solid transparent', borderInlineStart: `13px solid ${colors.accent}`, marginInlineStart: 3 }} />
+            )}
           </span>
         </span>
         {locked && <span style={{ position: 'absolute', insetInlineStart: 12, top: 12, color: '#fff', background: 'rgba(20,30,66,.82)', padding: '5px 9px', borderRadius: 5, fontSize: 12, fontWeight: 900 }}>{t('video.protectedPlayback')}</span>}

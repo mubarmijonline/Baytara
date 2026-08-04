@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import SecureVdoPlayer from './SecureVdoPlayer.jsx';
 import { setToken } from '../lib/api.js';
@@ -130,4 +130,21 @@ it('uses a backend-valid UUID when randomUUID is unavailable', async () => {
   await waitFor(() => expect(window.VdoPlayer.getInstance).toHaveBeenCalled());
   await act(async () => listeners.get('play')());
   expect(body.event_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+});
+
+it('prevents browser context menu and drag actions over the secure player', async () => {
+  const { player } = fakePlayer();
+  window.VdoPlayer = { getInstance: vi.fn(() => player) };
+  vi.stubGlobal('fetch', vi.fn(() => json({})));
+
+  render(<SecureVdoPlayer playback={playback} title="Introduction" />);
+  const shell = screen.getByTestId('secure-video-shell');
+  const contextEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+  const dragEvent = new MouseEvent('dragstart', { bubbles: true, cancelable: true });
+
+  shell.dispatchEvent(contextEvent);
+  shell.dispatchEvent(dragEvent);
+
+  expect(contextEvent.defaultPrevented).toBe(true);
+  expect(dragEvent.defaultPrevented).toBe(true);
 });

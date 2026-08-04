@@ -45,6 +45,20 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
   const iframeRef = useRef(null);
 
   useEffect(() => {
+    const blockShortcut = (event) => {
+      const key = String(event.key || '').toLowerCase();
+      if (
+        key === 'printscreen'
+        || ((event.ctrlKey || event.metaKey) && ['p', 's', 'u'].includes(key))
+      ) {
+        event.preventDefault();
+      }
+    };
+    document.addEventListener('keydown', blockShortcut);
+    return () => document.removeEventListener('keydown', blockShortcut);
+  }, []);
+
+  useEffect(() => {
     if (!playback?.session_id || !iframeRef.current) return undefined;
     let active = true;
     let player;
@@ -130,14 +144,24 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
     };
   }, [playback, onEnded, onSecurityError]);
 
+  const preventBrowserCaptureAction = (event) => event.preventDefault();
+
   return (
+    <div
+      className="secure-video-shell"
+      data-testid="secure-video-shell"
+      onContextMenu={preventBrowserCaptureAction}
+      onDragStart={preventBrowserCaptureAction}
+    >
     <iframe
       ref={iframeRef}
       title={title}
       src={playerUrl(playback)}
       allow="encrypted-media; fullscreen"
       allowFullScreen
+      referrerPolicy="strict-origin-when-cross-origin"
       style={{ width: '100%', height: '100%', border: 0 }}
     />
+    </div>
   );
 }

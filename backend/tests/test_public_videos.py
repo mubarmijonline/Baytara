@@ -5,7 +5,7 @@ import pytest
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
-from app.models import Category, Lesson, User, UserDevice, VideoPlaybackSession
+from app.models import Category, Lesson, User, UserDevice, VideoEntitlement, VideoPlaybackSession
 from app.security import hash_password
 
 
@@ -164,6 +164,34 @@ def test_signed_in_free_playback_uses_identity_device_watermark_and_session(publ
         assert session.device_id == "public-browser-1"
         assert session.ip_address == "203.0.113.9"
         assert session.events[0].event_type == "otp_issued"
+        watermark_text = " ".join(row["text"] for row in app.config["PLAYBACK_CAPTURED"]["annotate"])
+        assert "public-video-student@example.test" in watermark_text
+        assert "+201000000002" in watermark_text
+        assert "203.0.113.9" in watermark_text
+        assert session.public_id[:8] in watermark_text
+
+
+def test_paid_video_playback_uses_same_identity_device_watermark_and_session(public_video_app):
+    app, ids = public_video_app
+    client = app.test_client()
+    with app.app_context():
+        student = User.query.filter_by(email="public-video-student@example.test").one()
+        db.session.add(VideoEntitlement(user_id=student.id, video_id=ids["مدفوع"], source="purchase"))
+        db.session.commit()
+
+    response = client.post(
+        "/api/v1/video/playback", headers=_viewer_headers(client, "paid-browser"),
+        json={"lesson_id": ids["مدفوع"]},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["otp"] == "otp-paid-video"
+    assert response.get_json()["session_id"]
+
+    with app.app_context():
+        session = VideoPlaybackSession.query.filter_by(public_id=response.get_json()["session_id"]).one()
+        assert session.status == "issued"
+        assert session.device_id == "paid-browser"
+        assert session.video_id == ids["مدفوع"]
         watermark_text = " ".join(row["text"] for row in app.config["PLAYBACK_CAPTURED"]["annotate"])
         assert "public-video-student@example.test" in watermark_text
         assert "+201000000002" in watermark_text

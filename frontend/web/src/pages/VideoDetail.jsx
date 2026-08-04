@@ -46,11 +46,23 @@ export default function VideoDetail() {
               {playback ? <SecureVdoPlayer playback={playback} title={video.title} onSecurityError={() => setPlayError('security')} /> : <>
                 {video.poster && <img src={video.poster} alt={video.title} style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />}
                 {video.can_play ? (
-                  <button type="button" onClick={play} disabled={starting} style={{ position: 'absolute', insetInlineStart: '50%', top: '50%', transform: 'translate(-50%, -50%)', border: 0, borderRadius: 6, background: colors.accent, color: '#fff', minHeight: 48, padding: '0 24px', fontWeight: 900, fontSize: 16, cursor: 'pointer' }}>{starting ? t('common.loading') : t('video.watch')}</button>
+                  <button
+                    type="button"
+                    data-testid="video-touch-target"
+                    onClick={play}
+                    disabled={starting}
+                    aria-label={t('video.watch')}
+                    className="video-touch-target"
+                    style={{ position: 'absolute', inset: 0, border: 0, background: 'linear-gradient(180deg, rgba(16,21,44,.08), rgba(16,21,44,.34))', color: '#fff', display: 'grid', placeItems: 'center', cursor: starting ? 'progress' : 'pointer' }}
+                  >
+                    <span style={{ borderRadius: 6, background: colors.accent, color: '#fff', minHeight: 48, padding: '0 24px', fontWeight: 900, fontSize: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 12px 32px rgba(0,0,0,.28)' }}>{starting ? t('common.loading') : t('video.watch')}</span>
+                  </button>
                 ) : (
                   <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 22, background: 'linear-gradient(180deg, rgba(16,21,44,.24), rgba(16,21,44,.78))' }}>
                     <div style={{ width: 'min(440px, 100%)', border: '1px solid rgba(255,255,255,.26)', borderRadius: 8, background: 'rgba(255,255,255,.95)', padding: 22, textAlign: 'center', color: colors.ink, boxShadow: '0 18px 42px rgba(0,0,0,.22)' }}>
-                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: colors.accentSoft, color: colors.accent, display: 'grid', placeItems: 'center', margin: '0 auto 12px', fontSize: 12, fontWeight: 900, letterSpacing: 0 }}>LOCK</div>
+                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: colors.accentSoft, color: colors.accent, display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
+                        <span className="video-status-icon video-status-icon-unlock" role="img" aria-label={`${t('video.unlockToWatch')} ${video.title}`} />
+                      </div>
                       <h2 style={{ margin: '0 0 8px', fontSize: 22, lineHeight: 1.25, fontWeight: 900 }}>{anonymous ? t('video.lockedTitle') : t('video.accessRequired')}</h2>
                       <p style={{ margin: '0 0 16px', color: colors.muted, lineHeight: 1.6, fontSize: 14 }}>{anonymous ? t('video.lockedDescription') : t('video.watchRequiresAccount')}</p>
                       <button type="button" onClick={openRequiredAccess} style={{ border: 0, borderRadius: 6, background: colors.accent, color: '#fff', minHeight: 44, padding: '0 22px', fontWeight: 900, fontSize: 15, cursor: 'pointer' }}>{video.requires_phone || (isAuthed() && !user?.phone) ? t('video.addPhone') : (anonymous ? t('video.registerToWatch') : t('video.accessRequired'))}</button>
