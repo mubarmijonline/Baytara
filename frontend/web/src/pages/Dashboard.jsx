@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
-import { colors, gradients } from '../theme/tokens.js';
-import { dashNav, dashStats, rawCourses } from '../data/mock.js';
-import { auth, webapi, mapCourse, getDeviceId } from '../lib/api.js';
+import { colors } from '../theme/tokens.js';
+import { auth, getDeviceId } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 
@@ -12,32 +11,90 @@ function daysLeft(iso) {
   return Math.ceil((new Date(iso) - new Date()) / 86400000);
 }
 
+function dateLabel(iso, lang) {
+  if (!iso) return '-';
+  try {
+    return new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'ar-EG', { dateStyle: 'medium' }).format(new Date(iso));
+  } catch {
+    return String(iso).slice(0, 10);
+  }
+}
+
+function money(payment) {
+  if (payment.amount == null) return '';
+  return `${Number(payment.amount).toLocaleString()} ${payment.currency || 'EGP'}`;
+}
+
+function pct(value) {
+  return `${Math.max(0, Math.min(100, Number(value) || 0))}%`;
+}
+
+function statusCopy(status, t) {
+  return t(`dashboard.status.${status || 'unknown'}`);
+}
+
+function sourceCopy(source, t) {
+  return t(`dashboard.source.${source || 'unknown'}`);
+}
+
+function courseMeta(course) {
+  return [course?.category?.name, course?.instructor?.name].filter(Boolean).join(' · ');
+}
+
+function Card({ children, className = '' }) {
+  return <section className={`student-card ${className}`}>{children}</section>;
+}
+
+function Stat({ value, label, tone = 'blue' }) {
+  return (
+    <div className={`student-stat student-stat-${tone}`}>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function Empty({ children }) {
+  return <div className="student-empty">{children}</div>;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const { user, updateProfile, logout, loading } = useAuth();
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const [enrollments, setEnrollments] = useState(null);
-  const [recs, setRecs] = useState([]);
   const [devices, setDevices] = useState([]);
+  const [baytarian, setBaytarian] = useState(null);
+  const [payments, setPayments] = useState([]);
   const [profilePhone, setProfilePhone] = useState('');
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileError, setProfileError] = useState('');
 
-  const loadDevices = () => auth.devices().then((r) => setDevices(r.devices)).catch(() => {});
+  const loadDevices = () => auth.devices().then((r) => setDevices(r.devices || [])).catch(() => setDevices([]));
+
   useEffect(() => {
-    if (!loading && !user) { navigate('/auth'); return; }
+    if (!loading && !user) {
+      navigate('/auth');
+      return;
+    }
     if (!user) return;
-    auth.enrollments().then((r) => setEnrollments(r.enrollments)).catch(() => setEnrollments([]));
-    webapi.courses({ per_page: 6 }).then((r) => setRecs((r.courses || []).map(mapCourse))).catch(() => {});
+    auth.enrollments().then((r) => setEnrollments(r.enrollments || [])).catch(() => setEnrollments([]));
+    auth.baytarianMe().then(setBaytarian).catch(() => setBaytarian({ is_baytarian: !!user.is_baytarian }));
+    auth.myPayments().then((r) => setPayments(r.payments || [])).catch(() => setPayments([]));
     loadDevices();
   }, [user, loading, navigate]);
 
   useEffect(() => setProfilePhone(user?.phone || ''), [user?.phone]);
 
   async function removeDevice(id) {
-    try { await auth.removeDevice(id); loadDevices(); } catch { /* noop */ }
+    try {
+      await auth.removeDevice(id);
+      loadDevices();
+    } catch {
+      /* keep the dashboard usable when a stale device disappears server-side */
+    }
   }
 
   async function savePhone(event) {
@@ -55,255 +112,208 @@ export default function Dashboard() {
     }
   }
 
-  const name = user?.name || '';
+  const rows = enrollments || [];
+  const totalCourses = rows.length;
+  const completedLessons = rows.reduce((sum, row) => sum + (row.progress?.completed_lessons || 0), 0);
+  const watchedOpen = rows.reduce((sum, row) => sum + (row.progress?.watched_not_completed || 0), 0);
+  const completedCourses = rows.filter((row) => (row.progress?.percent || 0) >= 100).length;
+  const pendingPayments = payments.filter((payment) => payment.status === 'pending' || payment.status === 'review').length;
+  const latestRequest = baytarian?.request;
+  const isVerified = !!(baytarian?.is_baytarian || user?.is_baytarian);
+  const requestRows = useMemo(() => {
+    const verification = latestRequest ? [{
+      id: `baytarian-${latestRequest.id}`,
+      title: t('dashboard.petDoctorVerification'),
+      status: latestRequest.status,
+      meta: dateLabel(latestRequest.created_at, lang),
+      amount: '',
+    }] : [];
+    const paymentRows = payments.slice(0, 4).map((payment) => ({
+      id: `payment-${payment.id}`,
+      title: payment.status === 'pending' ? t('dashboard.paymentPending') : t('dashboard.paymentRequest'),
+      status: payment.status,
+      meta: [sourceCopy(payment.kind, t), dateLabel(payment.created_at, lang)].filter(Boolean).join(' · '),
+      amount: money(payment),
+    }));
+    return [...verification, ...paymentRows];
+  }, [latestRequest, payments, lang, t]);
   const thisDevice = getDeviceId();
-  const myCourses = (enrollments || []).map((e, i) => {
-    const c = mapCourse(e.course, i);
-    const pct = e.progress?.percent ?? 0;
-    const left = (e.progress?.total_lessons ?? 0) - (e.progress?.completed_lessons ?? 0);
-    return { ...c, progress: `${pct}%`, remaining: left > 0 ? `باقٍ ${left} درس` : 'مكتملة',
-      expiresAt: e.expires_at, isExpired: e.is_expired, daysLeft: daysLeft(e.expires_at) };
-  });
-  const recommended = recs.length ? recs : rawCourses.slice(5, 8);
-  const doneCount = (enrollments || []).filter((e) => (e.progress?.percent ?? 0) === 100).length;
-  const lessonsDone = (enrollments || []).reduce((s, e) => s + (e.progress?.completed_lessons ?? 0), 0);
-  const realStats = [
-    { num: (enrollments || []).length, label: 'دورة مسجّلة', color: dashStats[0].color },
-    { num: lessonsDone, label: 'درس مكتمل', color: dashStats[1].color },
-    { num: doneCount, label: 'دورة منجزة', color: dashStats[2].color },
-    { num: (enrollments || []).length, label: 'قيد التقدّم', color: dashStats[3].color },
-  ];
+  const name = user?.name || '';
+
+  if (loading || (!user && !loading)) {
+    return <div style={{ minHeight: 420, background: colors.surfaceMuted }}><Container style={{ padding: '44px 24px' }}>{t('common.loading')}</Container></div>;
+  }
 
   return (
-    <div style={{ background: colors.surfaceMuted, minHeight: 620 }}>
-      <Container
-        className="grid-collapse-2"
-        style={{ padding: '40px 24px 60px', display: 'grid', gridTemplateColumns: '230px 1fr', gap: 30, alignItems: 'start' }}
-      >
-        {/* Sidebar */}
-        <aside
-          className="hide-md"
-          style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 18, padding: 20, position: 'sticky', top: 90 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 18, borderBottom: `1px solid ${colors.line2}`, marginBottom: 14 }}>
-            <div
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: '50%',
-                background: gradients.avatar,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 800,
-              }}
-            >
-              {(name || 'م').charAt(0)}
-            </div>
+    <div className="student-dashboard">
+      <Container className="student-dashboard-shell">
+        <aside className="student-sidebar hide-md">
+          <div className="student-profile-mini">
+            <span>{(name || t('dashboard.studentInitial')).charAt(0)}</span>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>مرحباً، {name || 'بك'}</div>
-              <div style={{ fontSize: 12, color: colors.muted2 }}>{user?.email || ''}</div>
+              <strong>{name || t('dashboard.student')}</strong>
+              <small>{user?.email || ''}</small>
             </div>
           </div>
-          {dashNav.map((n) => (
-            <div
-              key={n.label}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '11px 12px',
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: n.active ? 800 : 600,
-                color: n.active ? colors.accent : colors.ink2,
-                background: n.active ? colors.accentSoft : 'transparent',
-                cursor: 'pointer',
-                marginBottom: 2,
-              }}
-            >
-              <span>{n.icon}</span> {n.label}
-            </div>
+          {[
+            ['/dashboard', t('dashboard.nav.overview')],
+            ['/dashboard/my-courses', t('dashboard.nav.courses')],
+            ['/dashboard/payments', t('dashboard.nav.requests')],
+            ['/dashboard/profile', t('dashboard.nav.profile')],
+          ].map(([to, label]) => (
+            <button key={to} className={pathname === to ? 'active' : ''} type="button" onClick={() => navigate(to)}>{label}</button>
           ))}
-          <div
-            onClick={() => { logout(); navigate('/'); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', borderRadius: 10, fontSize: 14, fontWeight: 700, color: colors.accent, cursor: 'pointer', marginTop: 8 }}
-          >
-            <span>⎋</span> تسجيل الخروج
-          </div>
+          <button type="button" className="danger" onClick={() => { logout(); navigate('/'); }}>{t('nav.logout')}</button>
         </aside>
 
-        <div>
+        <main className="student-dashboard-main">
           {pathname === '/dashboard/profile' && (
-            <form onSubmit={savePhone} style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 8, padding: 22, marginBottom: 28, maxWidth: 620 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 8px' }}>{t('profile.phoneTitle')}</h1>
-              <p style={{ color: colors.muted, lineHeight: 1.7, margin: '0 0 18px' }}>{t('profile.phoneDescription')}</p>
-              <label htmlFor="profile-phone" style={{ display: 'block', fontSize: 14, fontWeight: 800, marginBottom: 7 }}>{t('auth.phone')}</label>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <input id="profile-phone" required value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} placeholder="+2010xxxxxxxx" style={{ flex: '1 1 260px', height: 44, border: `1px solid ${colors.line}`, borderRadius: 6, padding: '0 13px', fontSize: 15 }} />
-                <button type="submit" disabled={profileBusy} style={{ border: 0, borderRadius: 6, background: colors.accent, color: '#fff', padding: '0 18px', minHeight: 44, fontWeight: 800, cursor: 'pointer' }}>{profileBusy ? t('common.loading') : t('profile.phoneSave')}</button>
-              </div>
-              {profileError && <p role="alert" style={{ color: '#9b2626', marginBottom: 0 }}>{profileError}</p>}
-            </form>
+            <Card className="student-profile-form">
+              <form onSubmit={savePhone}>
+                <h2>{t('profile.phoneTitle')}</h2>
+                <p>{t('profile.phoneDescription')}</p>
+                <label htmlFor="profile-phone">{t('auth.phone')}</label>
+                <div>
+                  <input id="profile-phone" required value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} placeholder="+2010xxxxxxxx" />
+                  <button type="submit" disabled={profileBusy}>{profileBusy ? t('common.loading') : t('profile.phoneSave')}</button>
+                </div>
+                {profileError && <p role="alert" className="student-error">{profileError}</p>}
+              </form>
+            </Card>
           )}
-          <h1 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 6px' }}>أهلاً بعودتك، {name || ''} 👋</h1>
-          <p style={{ color: colors.muted, fontSize: 16, margin: '0 0 26px' }}>
-            {myCourses.length ? `لديك ${myCourses.length} دورة. واصل من حيث توقّفت.` : 'لم تسجّل في أي دورة بعد.'}
-          </p>
 
-          <div
-            className="grid-collapse-sm"
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 30 }}
-          >
-            {realStats.map((s) => (
-              <div key={s.label} style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 16, padding: 20 }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: s.color }}>{s.num}</div>
-                <div style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>{s.label}</div>
-              </div>
-            ))}
+          <section className="student-hero">
+            <div>
+              <span>{t('dashboard.accountWorkspace')}</span>
+              <h1>{t('dashboard.heading')}</h1>
+              <p>{totalCourses ? t('dashboard.subtitleActive').replace('{count}', totalCourses) : t('dashboard.subtitleEmpty')}</p>
+            </div>
+            <div className={`student-verification-badge ${isVerified ? 'verified' : latestRequest?.status || 'none'}`}>
+              <strong>{isVerified ? t('dashboard.verifiedPetDoctor') : latestRequest ? statusCopy(latestRequest.status, t) : t('dashboard.notVerified')}</strong>
+              <small>{isVerified ? t('dashboard.verifiedAccess') : t('dashboard.verifyHint')}</small>
+            </div>
+          </section>
+
+          <div className="student-stat-grid">
+            <Stat value={totalCourses} label={t('dashboard.registeredCourses')} />
+            <Stat value={completedLessons} label={t('dashboard.completedLessons')} tone="green" />
+            <Stat value={watchedOpen} label={t('dashboard.watchedNotCompleted')} tone="gold" />
+            <Stat value={completedCourses} label={t('dashboard.completedCourses')} tone="navy" />
           </div>
 
-          <h2 style={{ fontSize: 20, fontWeight: 900, margin: '0 0 16px' }}>واصل التعلّم</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 34 }}>
-            {myCourses.length === 0 && (
-              <div style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 16, padding: 24, color: colors.muted }}>
-                لا دورات مسجّلة بعد.{' '}
-                <span onClick={() => navigate('/courses')} style={{ color: colors.accent, fontWeight: 800, cursor: 'pointer' }}>تصفّح الدورات</span>
+          <div className="student-dashboard-grid">
+            <Card className="student-account-card">
+              <div className="student-section-heading">
+                <h2>{t('dashboard.studentData')}</h2>
+                <span>{user?.role || t('dashboard.student')}</span>
               </div>
-            )}
-            {myCourses.map((c, i) => (
-              <div
-                key={i}
-                onClick={() => !c.isExpired && navigate(`/learn/${c.slug}/first`)}
-                style={{
-                  background: '#fff',
-                  border: `1px solid ${c.isExpired ? '#f5c6c2' : colors.line}`,
-                  borderRadius: 16,
-                  padding: 16,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 18,
-                  cursor: c.isExpired ? 'default' : 'pointer',
-                  opacity: c.isExpired ? 0.85 : 1,
-                }}
-              >
-                <div
-                  className="hide-sm"
-                  style={{
-                    width: 120,
-                    height: 74,
-                    borderRadius: 12,
-                    background: c.grad,
-                    flex: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 0,
-                      height: 0,
-                      borderTop: '8px solid transparent',
-                      borderBottom: '8px solid transparent',
-                      borderRight: '13px solid rgba(255,255,255,.9)',
-                      marginRight: -3,
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, color: colors.muted2, marginBottom: 4 }}>
-                    {c.cat} · {c.instructor}
+              <dl className="student-facts">
+                <div><dt>{t('dashboard.name')}</dt><dd>{name || '-'}</dd></div>
+                <div><dt>{t('dashboard.email')}</dt><dd>{user?.email || '-'}</dd></div>
+                <div><dt>{t('auth.phone')}</dt><dd>{user?.phone || t('dashboard.phoneMissing')}</dd></div>
+                <div><dt>{t('dashboard.petDoctorStatus')}</dt><dd>{isVerified ? t('dashboard.verifiedPetDoctor') : latestRequest ? statusCopy(latestRequest.status, t) : t('dashboard.notRequested')}</dd></div>
+              </dl>
+            </Card>
+
+            <Card>
+              <div className="student-section-heading">
+                <h2>{t('dashboard.recentRequests')}</h2>
+                <span>{pendingPayments ? t('dashboard.pendingCount').replace('{count}', pendingPayments) : t('dashboard.upToDate')}</span>
+              </div>
+              <div className="student-request-list">
+                {!requestRows.length && <Empty>{t('dashboard.noRequests')}</Empty>}
+                {requestRows.map((item) => (
+                  <div key={item.id} className="student-request-row">
+                    <div>
+                      <strong>{item.title}</strong>
+                      <small>{item.meta}</small>
+                    </div>
+                    <span className={`student-status status-${item.status || 'unknown'}`}>{statusCopy(item.status, t)}</span>
+                    {item.amount && <b>{item.amount}</b>}
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 10 }}>{c.title}</div>
-                  <div style={{ height: 7, background: '#f0f0f4', borderRadius: 100, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: c.progress, background: colors.accent, borderRadius: 100 }} />
-                  </div>
-                  <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>
-                    اكتمل {c.progress} · {c.remaining}
-                    {c.expiresAt && !c.isExpired && (
-                      <span style={{ color: colors.muted2 }}> · {t('access.expires')} {c.expiresAt.slice(0, 10)}
-                        {c.daysLeft != null && c.daysLeft <= 14 ? ` (${c.daysLeft} ${t('access.daysLeft')})` : ''}</span>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          <Card className="student-courses-card">
+            <div className="student-section-heading">
+              <h2>{t('dashboard.registeredCourses')}</h2>
+              <button type="button" onClick={() => navigate('/courses')}>{t('common.viewAll')}</button>
+            </div>
+            <div className="student-course-list">
+              {enrollments === null && <Empty>{t('common.loading')}</Empty>}
+              {enrollments !== null && !rows.length && <Empty>{t('dashboard.noCourses')}</Empty>}
+              {rows.map((enrollment) => {
+                const course = enrollment.course || {};
+                const progress = enrollment.progress || {};
+                const left = Math.max(0, (progress.total_lessons || 0) - (progress.completed_lessons || 0));
+                const remaining = left ? t('dashboard.remainingLessons').replace('{count}', left) : t('dashboard.courseComplete');
+                const accessDaysLeft = daysLeft(enrollment.expires_at);
+                return (
+                  <article key={enrollment.id} className="student-course-row">
+                    <button type="button" className="student-course-thumb" onClick={() => !enrollment.is_expired && navigate(`/learn/${course.slug}/first`)} aria-label={course.title}>
+                      <span />
+                    </button>
+                    <div className="student-course-body">
+                      <div className="student-course-title">
+                        <div>
+                          <small>{courseMeta(course) || sourceCopy(enrollment.source, t)}</small>
+                          <h3>{course.title}</h3>
+                        </div>
+                        <span className={`student-status status-${enrollment.status}`}>{statusCopy(enrollment.status, t)}</span>
+                      </div>
+                      <div className="student-progress-bar" aria-label={t('dashboard.courseProgress')}>
+                        <span style={{ width: pct(progress.percent) }} />
+                      </div>
+                      <div className="student-course-meta">
+                        <span>{pct(progress.percent)} · {remaining}</span>
+                        <span>{t('dashboard.watchedNotCompleted')}: {progress.watched_not_completed || 0}</span>
+                        <span>{sourceCopy(enrollment.source, t)}</span>
+                        {enrollment.expires_at ? (
+                          <span className={enrollment.is_expired ? 'danger' : ''}>
+                            {enrollment.is_expired ? t('access.expired') : `${t('access.expires')} ${dateLabel(enrollment.expires_at, lang)}`}
+                            {accessDaysLeft != null && accessDaysLeft <= 14 && accessDaysLeft > 0 ? ` (${accessDaysLeft} ${t('access.daysLeft')})` : ''}
+                          </span>
+                        ) : <span className="success">{t('access.lifetime')}</span>}
+                      </div>
+                    </div>
+                    {enrollment.is_expired ? (
+                      <button type="button" className="student-action danger" onClick={() => navigate(`/buy/${course.slug}?kind=renewal`)}>{t('access.renew')}</button>
+                    ) : (
+                      <button type="button" className="student-action" onClick={() => navigate(`/learn/${course.slug}/first`)}>{t('dashboard.continueLearning')}</button>
                     )}
-                    {!c.expiresAt && <span style={{ color: '#1a7f4b' }}> · {t('access.lifetime')}</span>}
-                    {c.isExpired && <span style={{ color: '#b3261e', fontWeight: 800 }}> · {t('access.expired')}</span>}
-                  </div>
-                </div>
-                {c.isExpired ? (
-                  <button
-                    className="hide-sm"
-                    onClick={(e) => { e.stopPropagation(); navigate(`/buy/${c.slug}?kind=renewal`); }}
-                    style={{ background: '#b3261e', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14,
-                      fontWeight: 800, padding: '11px 20px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  >
-                    {t('access.renew')}
-                  </button>
-                ) : (
-                  <button
-                    className="hide-sm"
-                    style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14,
-                      fontWeight: 800, padding: '11px 20px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  >
-                    متابعة
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          </Card>
 
-          <h2 style={{ fontSize: 20, fontWeight: 900, margin: '0 0 16px' }}>موصى به لك</h2>
-          <div
-            className="grid-collapse-sm"
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}
-          >
-            {recommended.map((c) => (
-              <div
-                key={c.id}
-                className="hover-lift"
-                onClick={() => navigate(`/courses/${c.slug}`)}
-                style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 16, overflow: 'hidden', cursor: 'pointer' }}
-              >
-                <div style={{ height: 120, background: c.grad }} />
-                <div style={{ padding: 14 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.4, marginBottom: 6 }}>{c.title}</div>
-                  <div style={{ fontSize: 12, color: colors.muted2 }}>
-                    {c.instructor} · ★ {c.rating}
-                  </div>
-                </div>
+          <Card className="student-devices-card">
+            <div className="student-section-heading">
+              <div>
+                <h2>{t('devices.title')}</h2>
+                <p>{t('devices.limit')}</p>
               </div>
-            ))}
-          </div>
-
-          {/* Devices (contract البند2: 2-device limit) */}
-          <h2 style={{ fontSize: 20, fontWeight: 900, margin: '34px 0 6px' }}>{t('devices.title')}</h2>
-          <p style={{ color: colors.muted, fontSize: 13, margin: '0 0 16px' }}>{t('devices.limit')}</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {devices.map((d) => {
-              const isCurrent = d.device_id === thisDevice;
-              return (
-                <div key={d.id} style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 14,
-                  padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800 }}>
-                      {isCurrent ? `${t('devices.current')} ✓` : (d.label || d.device_id).slice(0, 60)}
+              <span>{devices.length}/2</span>
+            </div>
+            <div className="student-device-list">
+              {!devices.length && <Empty>{t('dashboard.noDevices')}</Empty>}
+              {devices.map((device) => {
+                const isCurrent = device.device_id === thisDevice;
+                return (
+                  <div key={device.id} className="student-device-row">
+                    <div>
+                      <strong>{isCurrent ? t('devices.current') : (device.label || device.device_id).slice(0, 60)}</strong>
+                      <small>{(device.label || '').slice(0, 90)} · {dateLabel(device.last_seen, lang)}</small>
                     </div>
-                    <div style={{ fontSize: 12, color: colors.muted2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {(d.label || '').slice(0, 80)} · {(d.last_seen || '').slice(0, 16).replace('T', ' ')}
-                    </div>
+                    <button type="button" onClick={() => removeDevice(device.id)}>{t('devices.remove')}</button>
                   </div>
-                  <button
-                    onClick={() => removeDevice(d.id)}
-                    style={{ background: 'transparent', color: '#b3261e', border: '1px solid #f5c6c2', borderRadius: 9,
-                      fontSize: 13, fontWeight: 700, padding: '8px 14px', cursor: 'pointer', flex: 'none' }}
-                  >
-                    {t('devices.remove')}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                );
+              })}
+            </div>
+          </Card>
+        </main>
       </Container>
     </div>
   );

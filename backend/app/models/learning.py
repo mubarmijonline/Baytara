@@ -89,13 +89,31 @@ class Enrollment(db.Model):
         percent = round(completed / total * 100) if total else 0
         return percent, completed, total
 
+    def progress_summary(self):
+        percent, completed, total = self.completion()
+        lesson_ids = {lesson.id for lesson in _course_lessons_query(self.course_id).all()}
+        rows = [p for p in self.progress if p.lesson_id in lesson_ids]
+        watched = sum(1 for p in rows if (p.watched_seconds or 0) > 0)
+        watched_not_completed = sum(
+            1 for p in rows
+            if (p.watched_seconds or 0) > 0 and p.completed_at is None
+        )
+        watched_seconds = sum((p.watched_seconds or 0) for p in rows)
+        return {
+            "percent": percent,
+            "completed_lessons": completed,
+            "watched_lessons": watched,
+            "watched_not_completed": watched_not_completed,
+            "watched_seconds": watched_seconds,
+            "total_lessons": total,
+        }
+
     def includes_lesson(self, lesson_id):
         from .catalog import Lesson
 
         return _course_lessons_query(self.course_id).filter(Lesson.id == lesson_id).first() is not None
 
     def to_dict(self, lang="ar"):
-        percent, completed, total = self.completion()
         return {
             "id": self.id,
             "course": self.course.to_dict(lang=lang) if self.course else None,
@@ -103,7 +121,7 @@ class Enrollment(db.Model):
             "status": self.status,
             "expires_at": _aware(self.expires_at).isoformat() if self.expires_at else None,
             "is_expired": self.is_expired(),
-            "progress": {"percent": percent, "completed_lessons": completed, "total_lessons": total},
+            "progress": self.progress_summary(),
         }
 
 

@@ -9,7 +9,7 @@ import pytest
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
-from app.models import Category, Course, CourseModule, CourseVideo, Enrollment, Lesson, User
+from app.models import Category, Course, CourseModule, CourseVideo, Enrollment, Lesson, LessonProgress, User
 from app.security import hash_password
 
 
@@ -92,6 +92,39 @@ def test_progress_requires_video_membership_in_supplied_enrollment_course(learni
     assert accepted.get_json()["progress"] == {
         "percent": 100, "completed_lessons": 1, "total_lessons": 1,
     }
+
+
+def test_enrollments_report_watched_lessons_that_are_not_completed(learning_app):
+    app, data = learning_app
+    client = app.test_client()
+    login = client.post("/api/v1/auth/login", json={
+        "email": "progress-student@example.test", "password": "secret12",
+    })
+    headers = {"Authorization": f"Bearer {login.get_json()['access_token']}"}
+
+    with app.app_context():
+        student = User.query.filter_by(email="progress-student@example.test").first()
+        enrollment = Enrollment(user_id=student.id, course_id=data["source_id"], status="active")
+        db.session.add(enrollment)
+        db.session.flush()
+        db.session.add(LessonProgress(
+            enrollment_id=enrollment.id,
+            lesson_id=data["video_id"],
+            watched_seconds=90,
+        ))
+        db.session.commit()
+
+    response = client.get("/api/v1/enrollments", headers=headers)
+
+    assert response.status_code == 200
+    enrollment = next(
+        item for item in response.get_json()["enrollments"]
+        if item["course"]["id"] == data["source_id"]
+    )
+    progress = enrollment["progress"]
+    assert progress["watched_lessons"] == 1
+    assert progress["watched_not_completed"] == 1
+    assert progress["completed_lessons"] == 0
 
 
 def _seed(tag, price=0):
