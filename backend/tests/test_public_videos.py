@@ -173,6 +173,45 @@ def test_signed_in_free_playback_uses_identity_device_watermark_and_session(publ
         assert session.public_id[:8] in watermark_text
 
 
+def test_playback_response_resumes_from_latest_unfinished_position(public_video_app):
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "resume-browser")
+
+    with app.app_context():
+        student = User.query.filter_by(email="public-video-student@example.test").one()
+        video = db.session.get(Lesson, ids["Introduction"])
+        db.session.add(VideoPlaybackSession(
+            public_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            user_id=student.id,
+            video_id=video.id,
+            video_title=video.title_en,
+            category_slug=video.category.slug,
+            access_type=video.access_type,
+            viewer_email=student.email,
+            viewer_phone=student.phone,
+            device_id="resume-browser",
+            status="paused",
+            current_position_seconds=126,
+            max_position_seconds=126,
+            duration_seconds=300,
+            watched_seconds=130,
+            covered_seconds=126,
+            completion_percent=42,
+            started_at=datetime(2026, 8, 5, 9, 0, tzinfo=timezone.utc),
+            last_event_at=datetime(2026, 8, 5, 9, 10, tzinfo=timezone.utc),
+        ))
+        db.session.commit()
+
+    response = client.post(
+        "/api/v1/video/playback", headers=headers,
+        json={"lesson_id": ids["Introduction"]},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["resume_position_seconds"] == 126
+
+
 def test_student_video_progress_lists_latest_standalone_watch_sessions(public_video_app):
     app, ids = public_video_app
     client = app.test_client()

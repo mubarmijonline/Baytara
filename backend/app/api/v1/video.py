@@ -34,6 +34,27 @@ def _public_video_dict(video, user, lang):
     return data
 
 
+def _resume_position_seconds(user, lesson):
+    if not user or not lesson:
+        return 0
+    session = VideoPlaybackSession.query.filter(
+        VideoPlaybackSession.user_id == user.id,
+        VideoPlaybackSession.video_id == lesson.id,
+        VideoPlaybackSession.current_position_seconds > 0,
+        VideoPlaybackSession.status.notin_(["denied", "provider_failed", "completed"]),
+    ).order_by(
+        VideoPlaybackSession.last_event_at.desc(),
+        VideoPlaybackSession.id.desc(),
+    ).first()
+    if not session or session.completion_percent >= 90:
+        return 0
+    duration = session.duration_seconds or ((lesson.duration_minutes or 0) * 60)
+    position = max(0, int(session.current_position_seconds or 0))
+    if duration and position >= max(duration - 5, 0):
+        return 0
+    return position
+
+
 @bp.get("/videos")
 @jwt_required(optional=True)
 def videos():
@@ -174,6 +195,7 @@ def playback():
     if not allowed:
         return deny(reason, 403)
 
+    resume_position_seconds = _resume_position_seconds(user, lesson)
     session = start_playback_attempt(
         user, lesson, requested_course, device_id, ip_address, user_agent,
     )
@@ -192,7 +214,12 @@ def playback():
     device.last_seen = session.started_at
     append_playback_event(session, "otp_issued")
     db.session.commit()
-    return jsonify(otp=res["otp"], playbackInfo=res["playbackInfo"], session_id=session.public_id)
+    return jsonify(
+        otp=res["otp"],
+        playbackInfo=res["playbackInfo"],
+        session_id=session.public_id,
+        resume_position_seconds=resume_position_seconds,
+    )
 
 
 @bp.post("/video/playback-sessions/<session_id>/events")

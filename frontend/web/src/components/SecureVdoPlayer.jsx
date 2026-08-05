@@ -103,6 +103,14 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
     loadPlayerApi().then((VdoPlayer) => {
       if (!active) return;
       player = VdoPlayer.getInstance(iframeRef.current);
+      const resumeAt = Math.max(0, Math.round(Number(playback.resume_position_seconds) || 0));
+      if (resumeAt > 0) {
+        try {
+          player.video.currentTime = resumeAt;
+        } catch {
+          // Some browser/player states reject early seeks; user can still continue manually.
+        }
+      }
       const handlers = {
         play: async () => {
           playing = true;

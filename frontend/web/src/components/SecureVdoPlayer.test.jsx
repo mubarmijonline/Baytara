@@ -92,6 +92,22 @@ it('reports official player transitions and throttles heartbeats', async () => {
   expect(player.video.removeEventListener).toHaveBeenCalledTimes(5);
 });
 
+it('seeks to the saved resume position when playback starts', async () => {
+  const { player } = fakePlayer();
+  window.VdoPlayer = { getInstance: vi.fn(() => player) };
+  vi.stubGlobal('fetch', vi.fn(() => json({})));
+
+  render(
+    <SecureVdoPlayer
+      playback={{ ...playback, resume_position_seconds: 87 }}
+      title="Introduction"
+    />,
+  );
+
+  await waitFor(() => expect(window.VdoPlayer.getInstance).toHaveBeenCalled());
+  expect(player.video.currentTime).toBe(87);
+});
+
 it('retries a failed event with the same client event id', async () => {
   const { player, listeners } = fakePlayer();
   window.VdoPlayer = { getInstance: vi.fn(() => player) };
