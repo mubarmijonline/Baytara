@@ -230,6 +230,43 @@ it('uses the branded fallback when a provider poster is absent', () => {
   expect(screen.getByRole('img', { name: /fallback poster/i })).toBeVisible();
 });
 
+it('opens a video details panel from the library card without leaving the library', async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={['/videos']}>
+      <LanguageProvider>
+        <VideoViews
+          view="grid"
+          videos={[{
+            id: 'v1',
+            provider_id: 'v1',
+            title: 'Provider exam',
+            status: 'ready',
+            duration_seconds: 125,
+            uploaded_at: '2026-08-01T10:00:00Z',
+            catalog: {
+              id: 7,
+              title: 'Exam',
+              description: 'Detailed notes',
+              status: 'published',
+              access_type: 'free',
+              category: { name: 'Equine', name_en: 'Equine' },
+              courses: [{ id: 4, title: 'Dawara A', title_en: 'Course A' }],
+            },
+          }]}
+        />
+      </LanguageProvider>
+    </MemoryRouter>,
+  );
+
+  await user.click(screen.getByRole('button', { name: /view details for exam/i }));
+
+  expect(screen.getByRole('dialog', { name: /exam/i })).toBeVisible();
+  expect(screen.getByText('Detailed notes')).toBeVisible();
+  expect(screen.getByText('Course A')).toBeVisible();
+  expect(screen.getByRole('link', { name: /edit metadata/i })).toHaveAttribute('href', '/videos/7');
+});
+
 it('loads nested folders when an administrator expands a folder', async () => {
   fetch.mockImplementation((input) => {
     const url = String(input);
