@@ -84,6 +84,41 @@ def video_detail(video_id):
     return jsonify(video=_public_video_dict(video, user, req_lang()))
 
 
+@bp.get("/video/my-progress")
+@jwt_required()
+def my_video_progress():
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not user.is_active:
+        return jsonify(error="invalid_user"), 401
+    rows = VideoPlaybackSession.query.filter(
+        VideoPlaybackSession.user_id == user.id,
+        VideoPlaybackSession.video_id.isnot(None),
+        VideoPlaybackSession.status.notin_(["denied", "provider_failed"]),
+    ).order_by(VideoPlaybackSession.last_event_at.desc(), VideoPlaybackSession.id.desc()).limit(80).all()
+    latest = []
+    seen = set()
+    for session in rows:
+        if session.video_id in seen:
+            continue
+        seen.add(session.video_id)
+        video = session.video
+        latest.append({
+            "id": session.video_id,
+            "title": video.to_dict(lang=req_lang(), user=user)["title"] if video else session.video_title,
+            "category": video.category.slug if video and video.category else session.category_slug,
+            "access_type": session.access_type,
+            "status": session.status,
+            "completion_percent": session.completion_percent,
+            "watched_seconds": session.watched_seconds,
+            "duration_seconds": session.duration_seconds,
+            "last_event_at": session.last_event_at.isoformat() if session.last_event_at else None,
+            "completed_at": session.completed_at.isoformat() if session.completed_at else None,
+        })
+        if len(latest) >= 10:
+            break
+    return jsonify(videos=latest)
+
+
 @bp.post("/video/playback")
 @jwt_required(optional=True)
 def playback():

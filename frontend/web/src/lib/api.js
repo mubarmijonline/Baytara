@@ -102,6 +102,7 @@ export const auth = {
   playbackEvent: (sessionId, event) => authFetch(`/video/playback-sessions/${sessionId}/events`, {
     method: 'POST', body: JSON.stringify(event),
   }),
+  videoProgress: () => authFetch('/video/my-progress'),
   notifications: () => authFetch('/notifications'),
   notifRead: (id) => authFetch(`/notifications/${id}/read`, { method: 'POST' }),
   notifReadAll: () => authFetch('/notifications/read-all', { method: 'POST' }),

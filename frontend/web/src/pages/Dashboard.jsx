@@ -25,6 +25,14 @@ function money(payment) {
   return `${Number(payment.amount).toLocaleString()} ${payment.currency || 'EGP'}`;
 }
 
+function timeLabel(seconds) {
+  const total = Math.max(0, Number(seconds) || 0);
+  if (total < 60) return `${total}s`;
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  return rest ? `${minutes}m ${rest}s` : `${minutes}m`;
+}
+
 function pct(value) {
   return `${Math.max(0, Math.min(100, Number(value) || 0))}%`;
 }
@@ -68,6 +76,7 @@ export default function Dashboard() {
   const [devices, setDevices] = useState([]);
   const [baytarian, setBaytarian] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [videos, setVideos] = useState(null);
   const [profilePhone, setProfilePhone] = useState('');
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileError, setProfileError] = useState('');
@@ -83,6 +92,7 @@ export default function Dashboard() {
     auth.enrollments().then((r) => setEnrollments(r.enrollments || [])).catch(() => setEnrollments([]));
     auth.baytarianMe().then(setBaytarian).catch(() => setBaytarian({ is_baytarian: !!user.is_baytarian }));
     auth.myPayments().then((r) => setPayments(r.payments || [])).catch(() => setPayments([]));
+    auth.videoProgress().then((r) => setVideos(r.videos || [])).catch(() => setVideos([]));
     loadDevices();
   }, [user, loading, navigate]);
 
@@ -116,10 +126,24 @@ export default function Dashboard() {
   const totalCourses = rows.length;
   const completedLessons = rows.reduce((sum, row) => sum + (row.progress?.completed_lessons || 0), 0);
   const watchedOpen = rows.reduce((sum, row) => sum + (row.progress?.watched_not_completed || 0), 0);
+  const watchedVideos = videos || [];
   const completedCourses = rows.filter((row) => (row.progress?.percent || 0) >= 100).length;
   const pendingPayments = payments.filter((payment) => payment.status === 'pending' || payment.status === 'review').length;
   const latestRequest = baytarian?.request;
   const isVerified = !!(baytarian?.is_baytarian || user?.is_baytarian);
+  const isOverview = pathname === '/dashboard';
+  const isCourses = pathname === '/dashboard/my-courses';
+  const isPayments = pathname === '/dashboard/payments';
+  const isProfile = pathname === '/dashboard/profile';
+  const heroSubtitle = isCourses
+    ? t('dashboard.subtitleCourses')
+    : isPayments
+      ? t('dashboard.subtitleRequests')
+      : isProfile
+        ? t('dashboard.subtitleProfile')
+        : totalCourses
+          ? t('dashboard.subtitleActive').replace('{count}', totalCourses)
+          : t('dashboard.subtitleEmpty');
   const requestRows = useMemo(() => {
     const verification = latestRequest ? [{
       id: `baytarian-${latestRequest.id}`,
@@ -186,7 +210,7 @@ export default function Dashboard() {
             <div>
               <span>{t('dashboard.accountWorkspace')}</span>
               <h1>{t('dashboard.heading')}</h1>
-              <p>{totalCourses ? t('dashboard.subtitleActive').replace('{count}', totalCourses) : t('dashboard.subtitleEmpty')}</p>
+              <p>{heroSubtitle}</p>
             </div>
             <div className={`student-verification-badge ${isVerified ? 'verified' : latestRequest?.status || 'none'}`}>
               <strong>{isVerified ? t('dashboard.verifiedPetDoctor') : latestRequest ? statusCopy(latestRequest.status, t) : t('dashboard.notVerified')}</strong>
@@ -194,14 +218,51 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <div className="student-stat-grid">
-            <Stat value={totalCourses} label={t('dashboard.registeredCourses')} />
-            <Stat value={completedLessons} label={t('dashboard.completedLessons')} tone="green" />
-            <Stat value={watchedOpen} label={t('dashboard.watchedNotCompleted')} tone="gold" />
-            <Stat value={completedCourses} label={t('dashboard.completedCourses')} tone="navy" />
-          </div>
+          {isOverview && (
+            <div className="student-stat-grid">
+              <Stat value={totalCourses} label={t('dashboard.registeredCourses')} />
+              <Stat value={completedLessons} label={t('dashboard.completedLessons')} tone="green" />
+              <Stat value={watchedOpen} label={t('dashboard.watchedNotCompleted')} tone="gold" />
+              <Stat value={watchedVideos.length} label={t('dashboard.videoProgress')} tone="navy" />
+            </div>
+          )}
 
-          <div className="student-dashboard-grid">
+          {(isOverview || isCourses) && <Card className="student-video-card">
+            <div className="student-section-heading">
+              <div>
+                <h2>{t('dashboard.continueWatching')}</h2>
+                <p>{t('dashboard.latestActivity')}</p>
+              </div>
+              <button type="button" onClick={() => navigate('/videos')}>{t('common.viewAll')}</button>
+            </div>
+            <div className="student-video-list">
+              {videos === null && <Empty>{t('common.loading')}</Empty>}
+              {videos !== null && !watchedVideos.length && <Empty>{t('dashboard.noVideos')}</Empty>}
+              {watchedVideos.map((video) => (
+                <article key={video.id} className="student-video-row">
+                  <button type="button" className="student-video-play" onClick={() => navigate(`/videos/${video.id}`)} aria-label={video.title}><span /></button>
+                  <div className="student-video-body">
+                    <div>
+                      <small>{video.category || sourceCopy(video.access_type, t)}</small>
+                      <h3>{video.title}</h3>
+                    </div>
+                    <div className="student-progress-bar" aria-label={t('dashboard.videoProgress')}>
+                      <span style={{ width: pct(video.completion_percent) }} />
+                    </div>
+                    <div className="student-course-meta">
+                      <span>{t('dashboard.watchedPercent').replace('{percent}', video.completion_percent || 0)}</span>
+                      <span>{t('dashboard.watchedTime').replace('{time}', timeLabel(video.watched_seconds))}</span>
+                      <span>{dateLabel(video.last_event_at, lang)}</span>
+                    </div>
+                  </div>
+                  <button type="button" className="student-action secondary" onClick={() => navigate(`/videos/${video.id}`)}>{t('dashboard.watchNow')}</button>
+                </article>
+              ))}
+            </div>
+          </Card>}
+
+          {(isOverview || isProfile || isPayments) && <div className="student-dashboard-grid student-dashboard-grid-uneven">
+            {(isOverview || isProfile) && (
             <Card className="student-account-card">
               <div className="student-section-heading">
                 <h2>{t('dashboard.studentData')}</h2>
@@ -214,7 +275,9 @@ export default function Dashboard() {
                 <div><dt>{t('dashboard.petDoctorStatus')}</dt><dd>{isVerified ? t('dashboard.verifiedPetDoctor') : latestRequest ? statusCopy(latestRequest.status, t) : t('dashboard.notRequested')}</dd></div>
               </dl>
             </Card>
+            )}
 
+            {(isOverview || isPayments) && (
             <Card>
               <div className="student-section-heading">
                 <h2>{t('dashboard.recentRequests')}</h2>
@@ -234,11 +297,15 @@ export default function Dashboard() {
                 ))}
               </div>
             </Card>
-          </div>
+            )}
+          </div>}
 
-          <Card className="student-courses-card">
+          {(isOverview || isCourses) && <Card className="student-courses-card">
             <div className="student-section-heading">
-              <h2>{t('dashboard.registeredCourses')}</h2>
+              <div>
+                <h2>{t('dashboard.registeredCourses')}</h2>
+                <p>{t('dashboard.learningSnapshot')}: {completedCourses} {t('dashboard.completedCourses')}</p>
+              </div>
               <button type="button" onClick={() => navigate('/courses')}>{t('common.viewAll')}</button>
             </div>
             <div className="student-course-list">
@@ -287,9 +354,9 @@ export default function Dashboard() {
                 );
               })}
             </div>
-          </Card>
+          </Card>}
 
-          <Card className="student-devices-card">
+          {(isOverview || isProfile) && <Card className="student-devices-card">
             <div className="student-section-heading">
               <div>
                 <h2>{t('devices.title')}</h2>
@@ -312,7 +379,7 @@ export default function Dashboard() {
                 );
               })}
             </div>
-          </Card>
+          </Card>}
         </main>
       </Container>
     </div>

@@ -1,5 +1,7 @@
 """Public standalone-video catalog and free playback coverage."""
 
+from datetime import datetime, timezone
+
 import pytest
 
 from app import create_app
@@ -169,6 +171,52 @@ def test_signed_in_free_playback_uses_identity_device_watermark_and_session(publ
         assert "+201000000002" in watermark_text
         assert "203.0.113.9" in watermark_text
         assert session.public_id[:8] in watermark_text
+
+
+def test_student_video_progress_lists_latest_standalone_watch_sessions(public_video_app):
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "progress-browser")
+
+    with app.app_context():
+        student = User.query.filter_by(email="public-video-student@example.test").one()
+        video = db.session.get(Lesson, ids["Introduction"])
+        session = VideoPlaybackSession(
+            public_id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            user_id=student.id,
+            video_id=video.id,
+            video_title=video.title_en,
+            category_slug=video.category.slug,
+            access_type=video.access_type,
+            viewer_email=student.email,
+            viewer_phone=student.phone,
+            device_id="progress-browser",
+            status="playing",
+            duration_seconds=300,
+            watched_seconds=198,
+            covered_seconds=198,
+            completion_percent=66,
+            started_at=datetime(2026, 8, 5, 10, 0, tzinfo=timezone.utc),
+            last_event_at=datetime(2026, 8, 5, 10, 12, tzinfo=timezone.utc),
+        )
+        db.session.add(session)
+        db.session.commit()
+
+    response = client.get("/api/v1/video/my-progress?lang=en", headers=headers)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["videos"] == [{
+        **body["videos"][0],
+        "id": ids["Introduction"],
+        "title": "Introduction",
+        "category": "large-animals",
+        "access_type": "free",
+        "status": "playing",
+        "completion_percent": 66,
+        "watched_seconds": 198,
+        "duration_seconds": 300,
+    }]
 
 
 def test_paid_video_playback_uses_same_identity_device_watermark_and_session(public_video_app):

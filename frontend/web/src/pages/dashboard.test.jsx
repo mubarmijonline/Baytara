@@ -52,6 +52,19 @@ beforeEach(() => {
     if (url.includes('/payment/mine')) return json({
       payments: [{ id: 55, kind: 'enroll', status: 'pending', amount: 500, currency: 'EGP', created_at: '2026-08-03T10:00:00Z' }],
     });
+    if (url.includes('/video/my-progress')) return json({
+      videos: [{
+        id: 9,
+        title: 'Free intro video',
+        category: 'large-animals',
+        access_type: 'free',
+        status: 'playing',
+        completion_percent: 66,
+        watched_seconds: 198,
+        duration_seconds: 300,
+        last_event_at: '2026-08-05T10:12:00Z',
+      }],
+    });
     if (url.includes('/auth/devices')) return json({ devices: [], max_devices: 2 });
     if (url.includes('/enrollments')) return json({
       enrollments: [{
@@ -98,5 +111,9 @@ it('shows the student learning, request, and verification overview from live acc
   expect(screen.getByText('2')).toBeVisible();
   expect(screen.getByText('Recent requests')).toBeVisible();
   expect(screen.getByText('Payment review pending')).toBeVisible();
+  expect(screen.getByText('Continue watching')).toBeVisible();
+  expect(screen.getByText('Free intro video')).toBeVisible();
+  expect(screen.getByText('66% watched')).toBeVisible();
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/v1/baytarian/me', expect.any(Object)));
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/v1/video/my-progress', expect.any(Object)));
 });
