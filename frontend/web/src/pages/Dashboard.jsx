@@ -33,6 +33,16 @@ function timeLabel(seconds) {
   return rest ? `${minutes}m ${rest}s` : `${minutes}m`;
 }
 
+function remainingLabel(video, t) {
+  const left = Math.max(0, Number(video.duration_seconds || 0) - Number(video.watched_seconds || 0));
+  return left ? t('dashboard.remainingTime').replace('{time}', timeLabel(left)) : t('dashboard.videoReady');
+}
+
+function prettyCategory(value, t) {
+  if (!value) return t('dashboard.videoLesson');
+  return String(value).replace(/[-_]+/g, ' ');
+}
+
 function pct(value) {
   return `${Math.max(0, Math.min(100, Number(value) || 0))}%`;
 }
@@ -53,12 +63,50 @@ function Card({ children, className = '' }) {
   return <section className={`student-card ${className}`}>{children}</section>;
 }
 
-function Stat({ value, label, tone = 'blue' }) {
+function Metric({ value, unit, label }) {
   return (
-    <div className={`student-stat student-stat-${tone}`}>
+    <div className="student-metric">
       <strong>{value}</strong>
-      <span>{label}</span>
+      <span>{unit}</span>
+      <small>{label}</small>
     </div>
+  );
+}
+
+function ModeToggle({ mode, setMode, t }) {
+  return (
+    <div className="student-mode-toggle" aria-label={t('dashboard.modeLabel')}>
+      <button type="button" className={mode === 'new' ? 'active' : ''} onClick={() => setMode('new')}>{t('dashboard.modeNew')}</button>
+      <button type="button" className={mode === 'active' ? 'active' : ''} onClick={() => setMode('active')}>{t('dashboard.modeActive')}</button>
+    </div>
+  );
+}
+
+function SetupChecklist({ items, progress, t }) {
+  return (
+    <Card className="student-onboarding-card">
+      <div className="student-section-heading">
+        <div>
+          <h2>{t('dashboard.setupTitle')}</h2>
+          <p>{t('dashboard.setupSubtitle')}</p>
+        </div>
+        <span>{progress}%</span>
+      </div>
+      <div className="student-setup-progress" aria-label={t('dashboard.setupTitle')}>
+        <span style={{ width: `${progress}%` }} />
+      </div>
+      <div className="student-setup-list">
+        {items.map((item) => (
+          <button type="button" key={item.title} className={item.done ? 'done' : ''} onClick={item.action}>
+            <span>{item.done ? '✓' : item.index}</span>
+            <div>
+              <strong>{item.title}</strong>
+              <small>{item.text}</small>
+            </div>
+          </button>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -80,6 +128,7 @@ export default function Dashboard() {
   const [profilePhone, setProfilePhone] = useState('');
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const [modeOverride, setModeOverride] = useState('');
 
   const loadDevices = () => auth.devices().then((r) => setDevices(r.devices || [])).catch(() => setDevices([]));
 
@@ -131,6 +180,8 @@ export default function Dashboard() {
   const pendingPayments = payments.filter((payment) => payment.status === 'pending' || payment.status === 'review').length;
   const latestRequest = baytarian?.request;
   const isVerified = !!(baytarian?.is_baytarian || user?.is_baytarian);
+  const hasActivity = totalCourses > 0 || watchedVideos.length > 0 || payments.length > 0 || !!latestRequest;
+  const dashboardMode = modeOverride || (hasActivity ? 'active' : 'new');
   const isOverview = pathname === '/dashboard';
   const isCourses = pathname === '/dashboard/my-courses';
   const isPayments = pathname === '/dashboard/payments';
@@ -141,6 +192,8 @@ export default function Dashboard() {
       ? t('dashboard.subtitleRequests')
       : isProfile
         ? t('dashboard.subtitleProfile')
+        : dashboardMode === 'new'
+          ? t('dashboard.startSubtitle')
         : totalCourses
           ? t('dashboard.subtitleActive').replace('{count}', totalCourses)
           : t('dashboard.subtitleEmpty');
@@ -163,6 +216,44 @@ export default function Dashboard() {
   }, [latestRequest, payments, lang, t]);
   const thisDevice = getDeviceId();
   const name = user?.name || '';
+  const setupItems = [
+    {
+      index: 1,
+      done: !!(user?.phone || '').trim(),
+      title: t('dashboard.setupPhone'),
+      text: t('dashboard.setupPhoneHint'),
+      action: () => navigate('/dashboard/profile'),
+    },
+    {
+      index: 2,
+      done: watchedVideos.length > 0,
+      title: t('dashboard.setupVideo'),
+      text: t('dashboard.setupVideoHint'),
+      action: () => navigate('/videos'),
+    },
+    {
+      index: 3,
+      done: totalCourses > 0,
+      title: t('dashboard.setupCourse'),
+      text: t('dashboard.setupCourseHint'),
+      action: () => navigate('/courses'),
+    },
+    {
+      index: 4,
+      done: isVerified || !!latestRequest,
+      title: t('dashboard.setupVerify'),
+      text: t('dashboard.setupVerifyHint'),
+      action: () => navigate('/pricing'),
+    },
+  ];
+  const setupDone = setupItems.filter((item) => item.done).length;
+  const setupProgress = Math.round(setupDone / setupItems.length * 100);
+  const navItems = [
+    ['/dashboard', t('dashboard.nav.overview'), 0],
+    ['/dashboard/my-courses', t('dashboard.nav.courses'), totalCourses],
+    ['/dashboard/payments', t('dashboard.nav.requests'), requestRows.length],
+    ['/dashboard/profile', t('dashboard.nav.profile'), devices.length],
+  ];
 
   if (loading || (!user && !loading)) {
     return <div style={{ minHeight: 420, background: colors.surfaceMuted }}><Container style={{ padding: '44px 24px' }}>{t('common.loading')}</Container></div>;
@@ -179,18 +270,26 @@ export default function Dashboard() {
               <small>{user?.email || ''}</small>
             </div>
           </div>
-          {[
-            ['/dashboard', t('dashboard.nav.overview')],
-            ['/dashboard/my-courses', t('dashboard.nav.courses')],
-            ['/dashboard/payments', t('dashboard.nav.requests')],
-            ['/dashboard/profile', t('dashboard.nav.profile')],
-          ].map(([to, label]) => (
-            <button key={to} className={pathname === to ? 'active' : ''} type="button" onClick={() => navigate(to)}>{label}</button>
+          <button type="button" className={`student-side-verify ${isVerified ? 'verified' : latestRequest?.status || ''}`} onClick={() => navigate('/pricing')}>
+            <strong>{isVerified ? t('dashboard.verifiedPetDoctor') : latestRequest ? statusCopy(latestRequest.status, t) : t('dashboard.notVerified')}</strong>
+            <small>{isVerified ? t('dashboard.verifiedShort') : t('dashboard.verifyShort')}</small>
+          </button>
+          {navItems.map(([to, label, count]) => (
+            <button key={to} className={pathname === to ? 'active' : ''} type="button" onClick={() => navigate(to)}>
+              <span>{label}</span>
+              {count > 0 && <b>{count}</b>}
+            </button>
           ))}
           <button type="button" className="danger" onClick={() => { logout(); navigate('/'); }}>{t('nav.logout')}</button>
         </aside>
 
         <main className="student-dashboard-main">
+          {isOverview && (
+            <div className="student-dashboard-topline">
+              <ModeToggle mode={dashboardMode} setMode={setModeOverride} t={t} />
+            </div>
+          )}
+
           {pathname === '/dashboard/profile' && (
             <Card className="student-profile-form">
               <form onSubmit={savePhone}>
@@ -209,29 +308,39 @@ export default function Dashboard() {
           <section className="student-hero">
             <div>
               <span>{t('dashboard.accountWorkspace')}</span>
-              <h1>{t('dashboard.heading')}</h1>
+              <h1>{dashboardMode === 'new' && isOverview ? t('dashboard.startTitle') : t('dashboard.heading')}</h1>
               <p>{heroSubtitle}</p>
-            </div>
-            <div className={`student-verification-badge ${isVerified ? 'verified' : latestRequest?.status || 'none'}`}>
-              <strong>{isVerified ? t('dashboard.verifiedPetDoctor') : latestRequest ? statusCopy(latestRequest.status, t) : t('dashboard.notVerified')}</strong>
-              <small>{isVerified ? t('dashboard.verifiedAccess') : t('dashboard.verifyHint')}</small>
             </div>
           </section>
 
           {isOverview && (
-            <div className="student-stat-grid">
-              <Stat value={totalCourses} label={t('dashboard.registeredCourses')} />
-              <Stat value={completedLessons} label={t('dashboard.completedLessons')} tone="green" />
-              <Stat value={watchedOpen} label={t('dashboard.watchedNotCompleted')} tone="gold" />
-              <Stat value={watchedVideos.length} label={t('dashboard.videoProgress')} tone="navy" />
+            <section className={`student-verification-bar ${isVerified ? 'verified' : latestRequest?.status || ''}`}>
+              <div>
+                <strong>{isVerified ? t('dashboard.verifiedPetDoctor') : latestRequest ? statusCopy(latestRequest.status, t) : t('dashboard.verifyActionTitle')}</strong>
+                <p>{isVerified ? t('dashboard.verifiedAccess') : t('dashboard.verifyHint')}</p>
+              </div>
+              {!isVerified && <button type="button" onClick={() => navigate('/pricing')}>{t('dashboard.verifyAction')}</button>}
+            </section>
+          )}
+
+          {isOverview && dashboardMode === 'new' && (
+            <SetupChecklist items={setupItems} progress={setupProgress} t={t} />
+          )}
+
+          {isOverview && dashboardMode === 'active' && (
+            <div className="student-metric-strip">
+              <Metric value={totalCourses} unit={t('dashboard.unitCourses')} label={t('dashboard.registeredCourses')} />
+              <Metric value={completedLessons} unit={t('dashboard.unitLessons')} label={t('dashboard.completedLessons')} />
+              <Metric value={watchedOpen} unit={t('dashboard.unitLessons')} label={t('dashboard.watchedNotCompleted')} />
+              <Metric value={watchedVideos.length} unit={t('dashboard.unitVideos')} label={t('dashboard.videoProgress')} />
             </div>
           )}
 
-          {(isOverview || isCourses) && <Card className="student-video-card">
+          {(isCourses || (isOverview && dashboardMode === 'active')) && <Card className="student-video-card">
             <div className="student-section-heading">
               <div>
                 <h2>{t('dashboard.continueWatching')}</h2>
-                <p>{t('dashboard.latestActivity')}</p>
+                <p>{t('dashboard.resumeSubtitle')}</p>
               </div>
               <button type="button" onClick={() => navigate('/videos')}>{t('common.viewAll')}</button>
             </div>
@@ -243,7 +352,7 @@ export default function Dashboard() {
                   <button type="button" className="student-video-play" onClick={() => navigate(`/videos/${video.id}`)} aria-label={video.title}><span /></button>
                   <div className="student-video-body">
                     <div>
-                      <small>{video.category || sourceCopy(video.access_type, t)}</small>
+                      <small>{prettyCategory(video.category, t)} · {sourceCopy(video.access_type, t)}</small>
                       <h3>{video.title}</h3>
                     </div>
                     <div className="student-progress-bar" aria-label={t('dashboard.videoProgress')}>
@@ -251,8 +360,7 @@ export default function Dashboard() {
                     </div>
                     <div className="student-course-meta">
                       <span>{t('dashboard.watchedPercent').replace('{percent}', video.completion_percent || 0)}</span>
-                      <span>{t('dashboard.watchedTime').replace('{time}', timeLabel(video.watched_seconds))}</span>
-                      <span>{dateLabel(video.last_event_at, lang)}</span>
+                      <span>{remainingLabel(video, t)}</span>
                     </div>
                   </div>
                   <button type="button" className="student-action secondary" onClick={() => navigate(`/videos/${video.id}`)}>{t('dashboard.watchNow')}</button>
@@ -261,8 +369,8 @@ export default function Dashboard() {
             </div>
           </Card>}
 
-          {(isOverview || isProfile || isPayments) && <div className="student-dashboard-grid student-dashboard-grid-uneven">
-            {(isOverview || isProfile) && (
+          {(isProfile || isPayments || (isOverview && dashboardMode === 'active')) && <div className="student-dashboard-grid student-dashboard-grid-uneven">
+            {isProfile && (
             <Card className="student-account-card">
               <div className="student-section-heading">
                 <h2>{t('dashboard.studentData')}</h2>
@@ -300,7 +408,7 @@ export default function Dashboard() {
             )}
           </div>}
 
-          {(isOverview || isCourses) && <Card className="student-courses-card">
+          {(isCourses || (isOverview && dashboardMode === 'active')) && <Card className="student-courses-card">
             <div className="student-section-heading">
               <div>
                 <h2>{t('dashboard.registeredCourses')}</h2>
@@ -356,7 +464,7 @@ export default function Dashboard() {
             </div>
           </Card>}
 
-          {(isOverview || isProfile) && <Card className="student-devices-card">
+          {isProfile && <Card className="student-devices-card">
             <div className="student-section-heading">
               <div>
                 <h2>{t('devices.title')}</h2>

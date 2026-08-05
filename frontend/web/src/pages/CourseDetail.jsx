@@ -155,7 +155,7 @@ export default function CourseDetail() {
                           height: 0,
                           borderTop: '5px solid transparent',
                           borderBottom: '5px solid transparent',
-                          borderRight: '8px solid #9a9aac',
+                          borderRight: '8px solid #6B7291',
                         }}
                       />
                     </span>
@@ -275,7 +275,7 @@ export default function CourseDetail() {
                 <div style={{ fontSize: 13, color: '#b3261e', margin: '10px 0 14px', fontWeight: 700 }}>{t('lock.' + locked)}</div>
                 <button
                   onClick={() => navigate(locked === 'needs_baytarian' ? '/pricing' : '/courses')}
-                  style={{ width: '100%', background: locked === 'needs_baytarian' ? colors.accent : '#9a9aac',
+                  style={{ width: '100%', background: locked === 'needs_baytarian' ? colors.accent : '#575E7D',
                     border: 'none', borderRadius: 12, color: '#fff', fontSize: 16, fontWeight: 800, padding: 15,
                     cursor: 'pointer', marginBottom: 10 }}
                 >

@@ -36,7 +36,7 @@ export default function Pricing() {
   }
 
   const card = { background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 18, padding: 24 };
-  const tierColor = { free: '#1a7f4b', vet_free: '#2b6cb0', baytarian: colors.accent, general: '#6b6b7b' };
+  const tierColor = { free: '#1a7f4b', vet_free: '#2b6cb0', baytarian: colors.accent, general: '#575E7D' };
   const status = state?.request?.status;
   const verified = state?.is_baytarian;
 

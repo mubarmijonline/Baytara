@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import App from '../App.jsx';
@@ -108,7 +108,7 @@ it('shows the student learning, request, and verification overview from live acc
   expect(screen.getAllByText('Registered courses').length).toBeGreaterThan(0);
   expect(await screen.findByText('Equine Surgery')).toBeVisible();
   expect(screen.getByText('Watched not completed')).toBeVisible();
-  expect(screen.getByText('2')).toBeVisible();
+  expect(screen.getAllByText('2').length).toBeGreaterThan(0);
   expect(screen.getByText('Recent requests')).toBeVisible();
   expect(screen.getByText('Payment review pending')).toBeVisible();
   expect(screen.getByText('Continue watching')).toBeVisible();
@@ -116,4 +116,38 @@ it('shows the student learning, request, and verification overview from live acc
   expect(screen.getByText('66% watched')).toBeVisible();
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/v1/baytarian/me', expect.any(Object)));
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/v1/video/my-progress', expect.any(Object)));
+});
+
+it('shows an onboarding-first dashboard for a new student', async () => {
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.includes('/settings')) return json({ settings: {} });
+    if (url.includes('/auth/me')) return json({
+      user: {
+        id: 8,
+        name: 'Ahmed Diab',
+        email: 'ahmeddiab1712@gmail.com',
+        phone: '',
+        role: 'student',
+        is_baytarian: false,
+      },
+    });
+    if (url.includes('/baytarian/me')) return json({ is_baytarian: false, request: null });
+    if (url.includes('/payment/mine')) return json({ payments: [] });
+    if (url.includes('/video/my-progress')) return json({ videos: [] });
+    if (url.includes('/auth/devices')) return json({ devices: [], max_devices: 2 });
+    if (url.includes('/enrollments')) return json({ enrollments: [] });
+    return json({});
+  });
+
+  renderRoute('/dashboard');
+
+  expect(await screen.findByRole('heading', { name: 'Start your Baytara account' })).toBeVisible();
+  expect(screen.getByText('Complete your setup')).toBeVisible();
+  expect(screen.getByText('Browse free videos')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Verify as Pet Doctor' })).toBeVisible();
+  expect(screen.queryByText('Student data')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Active student' }));
+  expect(screen.getByText(/Learning snapshot/)).toBeVisible();
 });

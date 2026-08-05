@@ -25,7 +25,7 @@ function UserMenu() {
           border: '1px solid #ececf2', borderRadius: 14, boxShadow: '0 18px 44px rgba(20,20,43,.18)', zIndex: 60, overflow: 'hidden' }}>
           <div style={{ padding: '12px 14px', borderBottom: '1px solid #f0f0f4' }}>
             <div style={{ fontWeight: 800, fontSize: 14 }}>{user?.name}</div>
-            <div style={{ fontSize: 12, color: '#6b6b7b', direction: 'ltr', textAlign: 'right' }}>{user?.email}</div>
+            <div style={{ fontSize: 12, color: '#5A6180', direction: 'ltr', textAlign: 'right' }}>{user?.email}</div>
           </div>
           <div onClick={() => { setOpen(false); navigate('/dashboard'); }} style={{ padding: '11px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>لوحتي</div>
           <div onClick={() => { logout(); setOpen(false); navigate('/'); }} style={{ padding: '11px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 14, color: '#3048A0', borderTop: '1px solid #f0f0f4' }}>تسجيل الخروج</div>
@@ -87,7 +87,7 @@ function SearchIcon() {
       style={{
         width: 16,
         height: 16,
-        border: '2px solid #9a9aac',
+        border: '2px solid #5A6180',
         borderRadius: '50%',
         position: 'relative',
         flex: 'none',
@@ -98,7 +98,7 @@ function SearchIcon() {
           position: 'absolute',
           width: 7,
           height: 2,
-          background: '#9a9aac',
+          background: '#5A6180',
           bottom: -3,
           left: -4,
           transform: 'rotate(45deg)',

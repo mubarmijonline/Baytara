@@ -149,7 +149,7 @@ export default function Learn() {
               {course.cat} · {course.instructor}
             </div>
             <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 6px' }}>{activeLesson.name}</h1>
-            <div style={{ fontSize: 14, color: '#9a9aac' }}>
+            <div style={{ fontSize: 14, color: '#6B7291' }}>
               {activeLesson.mod} · {activeLesson.dur}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
@@ -227,7 +227,7 @@ export default function Learn() {
                     {doneIds[l.id] ? '✓' : i + 1}
                   </span>
                   <span style={{ flex: 1, fontSize: 14, color: isActive ? '#fff' : '#c9c9dc' }}>{l.name}</span>
-                  <span style={{ fontSize: 12, color: '#9a9aac' }}>{l.dur}</span>
+                  <span style={{ fontSize: 12, color: '#6B7291' }}>{l.dur}</span>
                 </div>
               );
             })}
