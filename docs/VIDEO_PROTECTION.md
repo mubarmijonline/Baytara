@@ -19,6 +19,24 @@ the website. No vendor — VdoCipher included — can block them everywhere:
 Sources: VdoCipher's own documentation — screen capture "can only be prevented in Safari on
 Mac with the FairPlay DRM upgrade", not in Chrome or Firefox.
 
+## Audio is never protected
+
+Where DRM does block capture, it blocks the **picture only**. Video frames are decrypted
+inside the secure enclave (FairPlay on Apple hardware, Widevine L1 on Android), so a screen
+recording comes out black — but the audio path is outside that enclave and records normally.
+This is true of every DRM platform, Netflix included, and no vendor setting changes it.
+
+A browser cannot fix this. Only a native app can:
+
+- **iOS** — poll `UIScreen.isCaptured` and pause + mute playback while a recording runs.
+- **Android** — `FLAG_SECURE` on the player window plus
+  `AudioManager.setAllowedCapturePolicy(ALLOW_CAPTURE_BY_NONE)`, which excludes the app's
+  audio from screen-recorder capture at the OS level.
+
+Until the mobile app exists (`PROJECT_PLAN.md` §19), an audio-only rip of a protected lesson
+is possible, and the visual watermark cannot identify who made it — a black picture carries
+no watermark either.
+
 ## What Baytara does about it
 
 1. **Protected videos are Safari-only on macOS.** `POST /api/v1/video/playback` refuses to mint
