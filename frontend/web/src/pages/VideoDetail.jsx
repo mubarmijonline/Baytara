@@ -71,7 +71,11 @@ export default function VideoDetail() {
                 )}
               </>}
             </div>
-            {playError && <p role="alert" style={{ color: '#9b2626' }}>{t('video.playError')}</p>}
+            {playError && (
+              <p role="alert" style={{ color: '#9b2626' }}>
+                {t(playError === 'mac_needs_safari' ? 'video.macNeedsSafari' : 'video.playError')}
+              </p>
+            )}
           </section>
           <aside style={{ minWidth: 0 }}>
             <div style={{ color: colors.accent, fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{video.category?.name}</div>
