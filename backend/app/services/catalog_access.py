@@ -25,6 +25,17 @@ def access_is_paid(access_type):
     return access_type in PAID_ACCESS
 
 
+def capture_protected(video):
+    """Does this video enforce the screen-capture rule (macOS Safari only)?
+
+    Paid videos always do. Free ones only when an admin ticks `is_protected`,
+    so free content plays in any browser by default.
+    """
+    if access_is_paid(getattr(video, "access_type", None)):
+        return True
+    return bool(getattr(video, "is_protected", False))
+
+
 def audience_error(user, access_type):
     if getattr(user, "role", None) == "admin":
         return None

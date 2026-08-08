@@ -21,10 +21,22 @@ Mac with the FairPlay DRM upgrade", not in Chrome or Firefox.
 
 ## What Baytara does about it
 
-1. **macOS is Safari-only.** `POST /api/v1/video/playback` refuses to mint an OTP when the
-   request comes from macOS in any browser other than Safari (`403 mac_needs_safari`, see
-   `mac_without_safari()` in `backend/app/utils.py`). No OTP means no video — not a warning,
-   an actual block. The learner sees an Arabic message telling them to open Safari.
+1. **Protected videos are Safari-only on macOS.** `POST /api/v1/video/playback` refuses to mint
+   an OTP when the request comes from macOS in any browser other than Safari
+   (`403 mac_needs_safari`, see `mac_without_safari()` in `backend/app/utils.py`). No OTP means
+   no video — not a warning, an actual block. The learner sees an Arabic message telling them
+   to open Safari.
+
+   Which videos are protected is decided by `capture_protected()` in
+   `backend/app/services/catalog_access.py`:
+
+   | Video tier | Screen-capture rule |
+   |------------|---------------------|
+   | Paid (`baytarian`, `general`) | Always enforced; the admin toggle is locked on |
+   | Free (`free`, `vet_free`)     | Off by default — plays in any browser. An admin can tick **حماية من تسجيل الشاشة** on the video to enforce it |
+
+   Free content therefore reaches the widest audience, and the Safari requirement is only
+   paid for where there is something to protect.
 2. **Dynamic watermark stays on everywhere.** Name, email, phone and user id float over every
    stream (`watermark_for()`), so a recording made on an unblockable platform identifies who
    made it.

@@ -15,7 +15,7 @@ from ...models import (
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
 from ...services.catalog_access import (
-    CatalogValidationError, validate_bundle_compatibility, validate_catalog_item,
+    CatalogValidationError, access_is_paid, validate_bundle_compatibility, validate_catalog_item,
     validate_course_bundle_compatibility, validate_video_bundle_compatibility,
 )
 from ...utils import slugify
@@ -389,7 +389,8 @@ def lesson_create(mid):
         duration_minutes=d.get("duration_minutes"),
         poster=d.get("poster") or None,
         vdocipher_video_id=d.get("vdocipher_video_id"),
-        is_protected=d.get("is_protected", True),
+        # screen-capture protection defaults on for paid content, off for free
+        is_protected=d.get("is_protected", access_is_paid(d.get("access_type"))),
     )
     db.session.add(l)
     db.session.commit()
@@ -935,7 +936,7 @@ def video_create():
         duration_minutes=d.get("duration_minutes"),
         poster=d.get("poster") or None,
         vdocipher_video_id=provider_id,
-        is_protected=d.get("is_protected", True),
+        is_protected=d.get("is_protected", access_is_paid(catalog["access_type"])),
     )
     db.session.add(l)
     db.session.flush()

@@ -11,6 +11,7 @@ import { useAdminLanguage } from '../i18n.jsx';
 const emptyForm = {
   title: '', title_en: '', description: '', description_en: '', duration_minutes: '', category_id: '',
   price: '0', currency: 'EGP', access_days: '', access_type: 'general', status: 'draft', course_ids: [],
+  is_protected: false,
 };
 
 function payload(form, includeCourses = false) {
@@ -44,11 +45,24 @@ function previewUrl(preview) {
 function CatalogFields({ form, setForm, categories, courses, language, t }) {
   const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
   const toggle = (id) => setForm({ ...form, course_ids: form.course_ids.includes(id) ? form.course_ids.filter((value) => value !== id) : [...form.course_ids, id] });
+  // paid videos always enforce the macOS Safari rule; free ones are opt-in
+  const paidTier = form.access_type === 'baytarian' || form.access_type === 'general';
   return <>
     <div className="video-form-columns"><Field label={t('video.titleArabic')}><input value={form.title} onChange={set('title')} /></Field><Field label={t('video.titleEnglish')}><input dir="ltr" value={form.title_en} onChange={set('title_en')} /></Field></div>
     <div className="video-form-columns"><Field label={t('video.descriptionArabic')}><textarea value={form.description} onChange={set('description')} /></Field><Field label={t('video.descriptionEnglish')}><textarea dir="ltr" value={form.description_en} onChange={set('description_en')} /></Field></div>
     <div className="video-form-columns"><Field label={t('catalog.category')}><select value={form.category_id} onChange={set('category_id')}><option value="">{t('video.chooseCategory')}</option>{categories.filter((category) => CATEGORY_KEYS.includes(category.slug)).map((category) => <option value={category.id} key={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field><Field label={t('catalog.accessType')}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option value={access} key={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field><Field label={t('catalog.status')}><select value={form.status} onChange={set('status')}>{['draft', 'published', 'unpublished'].map((status) => <option value={status} key={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field></div>
     <div className="video-form-columns"><Field label={t('catalog.price')}><input type="number" min="0" value={form.price} onChange={set('price')} /></Field><Field label={t('catalog.currency')}><input dir="ltr" maxLength="3" value={form.currency} onChange={set('currency')} /></Field><Field label={t('catalog.accessDays')}><input type="number" min="1" value={form.access_days} onChange={set('access_days')} /></Field><Field label={t('video.duration')}><input type="number" min="0" value={form.duration_minutes} onChange={set('duration_minutes')} /></Field></div>
+    <Field label={t('video.captureProtection')}>
+      <label className="video-protection-toggle" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input
+          type="checkbox"
+          checked={paidTier || !!form.is_protected}
+          disabled={paidTier}
+          onChange={(event) => setForm({ ...form, is_protected: event.target.checked })}
+        />
+        <span>{paidTier ? t('video.captureProtectionPaid') : t('video.captureProtectionHint')}</span>
+      </label>
+    </Field>
     <Field label={t('video.assignCourses')}><div className="course-picker">{courses.map((course) => <label key={course.id}><input type="checkbox" checked={form.course_ids.includes(course.id)} onChange={() => toggle(course.id)} /> {localizedCatalogValue(course, 'title', language)}</label>)}{!courses.length && <span>{t('video.noCourses')}</span>}</div></Field>
   </>;
 }

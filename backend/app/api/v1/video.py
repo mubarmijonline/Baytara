@@ -3,7 +3,7 @@ from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 
 from ...extensions import db
 from ...models import Category, Lesson, User, UserDevice, VideoPlaybackSession
-from ...services.catalog_access import audience_error, video_access
+from ...services.catalog_access import audience_error, capture_protected, video_access
 from ...services.video_provider import provider, watermark_for, VideoProviderError
 from ...services.video_monitoring import (
     PlaybackEventError,
@@ -194,7 +194,7 @@ def playback():
     allowed, reason = video_access(user, lesson)
     if not allowed:
         return deny(reason, 403)
-    if mac_without_safari(user_agent):
+    if capture_protected(lesson) and mac_without_safari(user_agent):
         # No OTP is minted at all: on a Mac, only Safari + FairPlay blocks screen
         # recording. A UA can be spoofed, so the dynamic watermark below stays on.
         return deny("mac_needs_safari", 403)

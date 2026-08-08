@@ -139,7 +139,7 @@ def demo():
         plain = Lesson(module_id=mod.id, title="بدون فيديو", position=1,
                        status="published", access_type="general")
         db.session.add_all([vlesson, plain]); db.session.commit()
-        vid_id, plain_id, course_id = vlesson.id, plain.id, course.id
+        vid_id, plain_id, course_id, mod_id = vlesson.id, plain.id, course.id, mod.id
 
     c = app.test_client()
     email = f"vs_{tag}@t.test"
@@ -185,11 +185,30 @@ def demo():
                   "Version/17.5 Safari/605.1.15")
     win_chrome = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                   "Chrome/126.0.0.0 Safari/537.36")
+    # paid video: always gated on a Mac outside Safari
     r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers={**h, "User-Agent": mac_chrome})
     assert r.status_code == 403 and r.get_json()["error"] == "mac_needs_safari", r.get_json()
     assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
                   headers={**h, "User-Agent": mac_safari}).status_code == 200
     assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
+                  headers={**h, "User-Agent": win_chrome}).status_code == 200
+
+    # free video: plays in any browser, including a Mac outside Safari...
+    with app.app_context():
+        free = Lesson(module_id=mod_id, title="مجاني", position=2, vdocipher_video_id="VIDFREE",
+                      status="published", access_type="free", is_protected=False)
+        db.session.add(free); db.session.commit()
+        free_id = free.id
+    assert c.post("/api/v1/video/playback", json={"lesson_id": free_id},
+                  headers={**h, "User-Agent": mac_chrome}).status_code == 200
+
+    # ...unless the admin ticks screen-capture protection on that free video
+    with app.app_context():
+        db.session.get(Lesson, free_id).is_protected = True
+        db.session.commit()
+    r = c.post("/api/v1/video/playback", json={"lesson_id": free_id}, headers={**h, "User-Agent": mac_chrome})
+    assert r.status_code == 403 and r.get_json()["error"] == "mac_needs_safari", r.get_json()
+    assert c.post("/api/v1/video/playback", json={"lesson_id": free_id},
                   headers={**h, "User-Agent": win_chrome}).status_code == 200
 
     print("video (vdocipher) self-check OK")
