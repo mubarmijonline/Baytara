@@ -53,6 +53,17 @@ no watermark either.
    | Paid (`baytarian`, `general`) | Always enforced; the admin toggle is locked on |
    | Free (`free`, `vet_free`)     | Off by default — plays in any browser. An admin can tick **حماية من تسجيل الشاشة** on the video to enforce it |
 
+   Where a protected video may play:
+
+   | Client | Protected video |
+   |--------|-----------------|
+   | Baytara app (UA carries `BaytaraApp/`) | allowed — the shell blocks capture itself |
+   | Phone / tablet browser | refused, `403 app_required` — a mobile browser hands the audio to any recorder |
+   | macOS Safari | allowed (needs the FairPlay upgrade on the account) |
+   | macOS Chrome / Firefox | refused, `403 mac_needs_safari` |
+   | Social in-app webview | refused, `403 unsupported_browser` |
+   | Windows / Linux browser | allowed |
+
    Free content therefore reaches the widest audience, and the Safari requirement is only
    paid for where there is something to protect.
 2. **Dynamic watermark stays on everywhere.** Name, email, phone and user id float over every

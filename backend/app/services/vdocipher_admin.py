@@ -24,7 +24,10 @@ _ALL_VIDEO_FLIGHTS = {}
 
 
 class VdoCipherAdminError(Exception):
-    pass
+    def __init__(self, code, detail=None):
+        super().__init__(code)
+        self.code = code
+        self.detail = detail
 
 
 def _setting(key):
@@ -99,13 +102,30 @@ def _mutation_response(value):
 
 
 def _provider_error(status):
-    if status in (401, 403):
+    if status == 401:
         return "no_api_key"
+    if status == 403:
+        # Valid key, refused request — plan limits (e.g. the 4-video trial cap), or a
+        # permission the account does not have. Never report this as a missing key.
+        return "vdocipher_forbidden"
     if status == 404:
         return "vdocipher_not_found"
     if status == 429:
         return "vdocipher_rate_limited"
     return "vdocipher_unreachable"
+
+
+def _provider_detail(exc):
+    """The vendor's own message for a rejected call, so an admin sees why."""
+    try:
+        payload = json.loads(exc.read().decode(errors="replace"))
+    except Exception:  # noqa: BLE001 - a detail is a bonus, never a failure path
+        return None
+    if isinstance(payload, dict):
+        message = payload.get("message") or payload.get("error")
+        if isinstance(message, str) and message.strip():
+            return " ".join(message.split())[:300]
+    return None
 
 
 def _nullable_string(value, default=None):
@@ -226,7 +246,7 @@ class VdoCipherAdminClient:
                 except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError) as exc:
                     raise VdoCipherAdminError("vdocipher_bad_response") from exc
         except urllib.error.HTTPError as exc:
-            raise VdoCipherAdminError(_provider_error(exc.code)) from exc
+            raise VdoCipherAdminError(_provider_error(exc.code), _provider_detail(exc)) from exc
         except VdoCipherAdminError:
             raise
         except Exception as exc:  # noqa: BLE001 - provider details must not reach clients

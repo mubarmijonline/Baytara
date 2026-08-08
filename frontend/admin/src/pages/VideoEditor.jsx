@@ -91,6 +91,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const [recovery, setRecovery] = useState(null);
   const [localError, setLocalError] = useState('');
   const [providerError, setProviderError] = useState('');
+  const [providerDetail, setProviderDetail] = useState('');
   const [preview, setPreview] = useState(null);
 
   const providerId = form.vdocipher_video_id || provider?.id || '';
@@ -199,19 +200,21 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     if (!providerId || !providerTitle.trim()) return;
     setPhase('provider'); setProviderError('');
     try { const result = await api.vdocipherVideoUpdate(providerId, { title: providerTitle.trim(), description: providerDescription }); setProvider(result.video || { ...provider, title: providerTitle, description: providerDescription }); }
-    catch (error) { setProviderError(error.message); } finally { setPhase('idle'); }
+    catch (error) { setProviderError(error.message); setProviderDetail(error.data?.detail || ''); } finally { setPhase('idle'); }
   };
   const moveVideo = async () => {
     if (!providerId) return;
     setPhase('move');
     try { await api.vdocipherMove({ folder_id: folderId, video_ids: [providerId], folder_ids: [] }); }
-    catch (error) { setProviderError(error.message); } finally { setPhase('idle'); }
+    catch (error) { setProviderError(error.message); setProviderDetail(error.data?.detail || ''); } finally { setPhase('idle'); }
   };
-  const openPreview = async () => { try { setPreview(await api.vdocipherPreview(providerId)); } catch (error) { setProviderError(error.message); } };
+  const openPreview = async () => { try { setPreview(await api.vdocipherPreview(providerId)); } catch (error) { setProviderError(error.message); setProviderDetail(error.data?.detail || ''); } };
   const message = (error) => {
     const validationMessages = [t('video.validation.title'), t('video.validation.description'), t('video.validation.category'), t('video.validation.file'), t('video.validation.videoFile')];
     if (validationMessages.includes(error)) return error;
     if (error === 'no_api_key') return <>{t('video.noApiKey')} <Link to="/settings">{t('nav.settings')}</Link></>;
+    // 403 = valid key, request refused (trial video cap, missing permission). Show VdoCipher's own words.
+    if (error === 'vdocipher_forbidden') return <>{t('video.providerRefused')}{providerDetail ? ` — ${providerDetail}` : ''}</>;
     if (error === 'upload') return t('video.uploadFailed');
     if (error === 'import_failed') return t('video.importFailed');
     return error ? t('errors.load') : '';

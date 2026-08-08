@@ -16,7 +16,7 @@ from ...services.video_monitoring import (
     start_playback_attempt,
     trusted_request_ip,
 )
-from ...utils import inapp_webview, mac_without_safari, req_lang
+from ...utils import baytara_app, inapp_webview, mac_without_safari, mobile_browser, req_lang
 
 bp = Blueprint("video", __name__)
 
@@ -204,11 +204,14 @@ def playback():
     allowed, reason = video_access(user, lesson)
     if not allowed:
         return deny(reason, 403)
-    if capture_protected(lesson):
-        # No OTP is minted at all for a browser that cannot defend the stream: on a Mac
-        # only Safari + FairPlay blocks recording, and a social in-app webview has no
-        # dependable DRM on any platform. A UA can be spoofed, so the dynamic watermark
-        # below stays on regardless.
+    if capture_protected(lesson) and not baytara_app(user_agent):
+        # No OTP is minted at all for a client that cannot defend the stream. On a phone
+        # that means the app only: a mobile browser hands the audio track to any screen
+        # recorder and cannot be told a recording started. On a Mac only Safari + FairPlay
+        # blocks recording, and a social in-app webview has no dependable DRM anywhere.
+        # A UA can be spoofed, so the dynamic watermark below stays on regardless.
+        if mobile_browser(user_agent):
+            return deny("app_required", 403)
         if mac_without_safari(user_agent):
             return deny("mac_needs_safari", 403)
         if inapp_webview(user_agent):

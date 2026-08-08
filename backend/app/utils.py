@@ -45,6 +45,26 @@ def mac_without_safari(ua=None):
     return "Safari" not in ua
 
 
+# The Capacitor shell appends this to its User-Agent (mobile/capacitor.config.json).
+# It is the only client on a phone that can defend the audio track, so protected video
+# is reserved for it. A UA can be forged; the watermark and the OTP gate still apply.
+APP_UA_MARKER = "BaytaraApp/"
+_MOBILE_MARKERS = ("Android", "iPhone", "iPad", "iPod", "Mobile")
+
+
+def baytara_app(ua=None):
+    """True when the caller is the Baytara native shell rather than a mobile browser."""
+    return APP_UA_MARKER in _ua(ua)
+
+
+def mobile_browser(ua=None):
+    """True for a phone/tablet browser (the app shell is excluded)."""
+    ua = _ua(ua)
+    if APP_UA_MARKER in ua:
+        return False
+    return any(marker in ua for marker in _MOBILE_MARKERS)
+
+
 def inapp_webview(ua=None):
     """True for a social app's embedded browser (Instagram, Facebook, TikTok, ...)."""
     ua = _ua(ua)

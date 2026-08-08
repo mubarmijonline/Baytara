@@ -1080,8 +1080,14 @@ def _vdocipher_error(e):
         "vdocipher_rate_limited": 429,
         "vdocipher_invalid_folder": 422,
         "vdocipher_invalid_video": 422,
+        "vdocipher_forbidden": 403,
     }
-    return jsonify(error=code), statuses.get(code, 503)
+    # detail carries VdoCipher's own wording (plan limits, permissions) — admin-only view
+    detail = getattr(e, "detail", None)
+    payload = {"error": code}
+    if detail:
+        payload["detail"] = detail
+    return jsonify(payload), statuses.get(code, 503)
 
 
 @bp.post("/vdocipher/test")

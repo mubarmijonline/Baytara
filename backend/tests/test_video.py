@@ -204,11 +204,17 @@ def demo():
                "Chrome/126.0.0.0 Mobile Safari/537.36")
     instagram = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) "
                  "Mobile/15E148 Instagram 331.0.0.0")
+    r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers={**h, "User-Agent": instagram})
+    assert r.status_code == 403 and r.get_json()["error"] == "app_required", r.get_json()
+
+    # protected video on a phone: browsers are refused, the app shell is served
     for agent in (ios_safari, ios_chrome, android):
+        r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
+                   headers={**h, "User-Agent": agent})
+        assert r.status_code == 403 and r.get_json()["error"] == "app_required", (agent, r.get_json())
+    for agent in (android + " BaytaraApp/1", ios_safari + " BaytaraApp/1"):
         assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
                       headers={**h, "User-Agent": agent}).status_code == 200, agent
-    r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers={**h, "User-Agent": instagram})
-    assert r.status_code == 403 and r.get_json()["error"] == "unsupported_browser", r.get_json()
 
     # free video: plays in any browser, including a Mac outside Safari...
     with app.app_context():

@@ -12,6 +12,7 @@ const PLAY_ERROR_KEYS = {
   mac_needs_safari: 'video.macNeedsSafari',
   unsupported_browser: 'video.unsupportedBrowser',
   already_playing: 'video.alreadyPlaying',
+  app_required: 'video.appRequired',
   too_many_requests: 'video.tooManyRequests',
 };
 
