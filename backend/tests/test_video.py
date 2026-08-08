@@ -5,6 +5,7 @@ Verifies access gating: not-enrolled -> 403, no-video -> 409, enrolled+video -> 
 """
 import uuid
 from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -227,6 +228,27 @@ def demo():
     assert r.status_code == 403 and r.get_json()["error"] == "mac_needs_safari", r.get_json()
     assert c.post("/api/v1/video/playback", json={"lesson_id": free_id},
                   headers={**h, "User-Agent": win_chrome}).status_code == 200
+
+    # sharing limits: a second device cannot stream while the first one is live
+    second = f"dev2-{tag}"
+    c.post("/api/v1/auth/login", json={"email": email, "password": "secret12", "device_id": second})
+    tok2 = c.post("/api/v1/auth/login", json={
+        "email": email, "password": "secret12", "device_id": second,
+    }).get_json()["access_token"]
+    h2 = {"Authorization": f"Bearer {tok2}", "X-Baytara-Device-ID": second}
+    r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers=h2)
+    assert r.status_code == 409 and r.get_json()["error"] == "already_playing", r.get_json()
+    # the device already streaming may still reload / switch lesson
+    assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers=h).status_code == 200
+
+    # ...and once that session goes stale the other device is served
+    with app.app_context():
+        from app.models import VideoPlaybackSession
+        stale = datetime.now(timezone.utc) - timedelta(minutes=10)
+        for row in VideoPlaybackSession.query.filter_by(device_id=device).all():
+            row.last_event_at = stale
+        db.session.commit()
+    assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers=h2).status_code == 200
 
     print("video (vdocipher) self-check OK")
 

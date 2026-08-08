@@ -11,6 +11,8 @@ import { useAuth } from '../lib/auth.jsx';
 const PLAY_ERROR_KEYS = {
   mac_needs_safari: 'video.macNeedsSafari',
   unsupported_browser: 'video.unsupportedBrowser',
+  already_playing: 'video.alreadyPlaying',
+  too_many_requests: 'video.tooManyRequests',
 };
 
 export default function VideoDetail() {

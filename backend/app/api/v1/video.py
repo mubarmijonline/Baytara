@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 
@@ -17,6 +19,14 @@ from ...services.video_monitoring import (
 from ...utils import inapp_webview, mac_without_safari, req_lang
 
 bp = Blueprint("video", __name__)
+
+# Sharing limits. They do not stop a viewer recording their own screen — nothing in a
+# browser can — but they stop one account from serving a group, which is how a leak
+# actually spreads. Admins are exempt so support can always reproduce a report.
+LIVE_STATUSES = ("issued", "playing", "paused")
+CONCURRENT_GRACE = timedelta(minutes=2)   # the player heartbeats every 15s
+OTP_WINDOW = timedelta(hours=1)
+OTP_PER_WINDOW = 40                       # a fresh lesson every 90 seconds, all hour
 
 
 def _current_user():
@@ -203,6 +213,25 @@ def playback():
             return deny("mac_needs_safari", 403)
         if inapp_webview(user_agent):
             return deny("unsupported_browser", 403)
+
+    if not privileged:
+        now = datetime.now(timezone.utc)
+        # one stream at a time per account (a reload from the same device is not a second stream)
+        live = VideoPlaybackSession.query.filter(
+            VideoPlaybackSession.user_id == user.id,
+            VideoPlaybackSession.status.in_(LIVE_STATUSES),
+            VideoPlaybackSession.last_event_at >= now - CONCURRENT_GRACE,
+            VideoPlaybackSession.device_id.isnot(None),
+            VideoPlaybackSession.device_id != device_id,
+        ).first()
+        if live:
+            return deny("already_playing", 409)
+        minted = VideoPlaybackSession.query.filter(
+            VideoPlaybackSession.user_id == user.id,
+            VideoPlaybackSession.started_at >= now - OTP_WINDOW,
+        ).count()
+        if minted >= OTP_PER_WINDOW:
+            return deny("too_many_requests", 429)
 
     resume_position_seconds = _resume_position_seconds(user, lesson)
     session = start_playback_attempt(

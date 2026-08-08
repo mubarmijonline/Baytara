@@ -63,6 +63,20 @@ no watermark either.
 A User-Agent can be spoofed, so rule 1 raises the cost rather than making capture impossible.
 Rule 2 is what makes a leaked recording traceable, and it does not depend on the browser.
 
+## Sharing limits (what replaces the impossible audio block)
+
+Since a browser cannot stop a recording, the web-side defence is to limit how far one
+account can spread content. Enforced in `POST /api/v1/video/playback`, admins exempt:
+
+- **One stream at a time per account.** A second device asking for an OTP while another
+  device's session is still alive (heartbeat within 2 minutes) gets `409 already_playing`.
+  A reload or lesson change from the *same* device is not a second stream.
+- **40 playback tokens per account per hour** → `429 too_many_requests`. A learner never
+  reaches it; a script walking the library does.
+
+Both are visible in the admin Video Reports page, since every denial is written to
+`video_playback_sessions` with its reason.
+
 ## Required in the VdoCipher account (not code)
 
 These are dashboard/support actions on the VdoCipher side — the code above assumes they are done:
