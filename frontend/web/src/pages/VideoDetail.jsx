@@ -22,6 +22,7 @@ export default function VideoDetail() {
   const [playback, setPlayback] = useState(null);
   const [playError, setPlayError] = useState('');
   const [starting, setStarting] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
   const video = data?.video;
   const anonymous = video && (!isAuthed() || video.requires_auth);
 
@@ -50,7 +51,11 @@ export default function VideoDetail() {
           <section>
             <div className={`video-detail-player${!playback && !video.can_play ? ' video-detail-player-locked' : ''}`}>
               {playback ? <SecureVdoPlayer playback={playback} title={video.title} onSecurityError={() => setPlayError('security')} /> : <>
-                {video.poster && <img className="video-detail-poster" src={video.poster} alt={video.title} draggable={false} />}
+                {video.poster && !posterFailed && (
+                  // a dead poster URL must not leave a broken-image glyph over the player
+                  <img className="video-detail-poster" src={video.poster} alt="" draggable={false}
+                       onError={() => setPosterFailed(true)} />
+                )}
                 {video.can_play ? (
                   <button
                     type="button"
