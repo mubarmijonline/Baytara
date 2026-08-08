@@ -193,14 +193,31 @@ def demo():
     assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
                   headers={**h, "User-Agent": win_chrome}).status_code == 200
 
+    # mobile: iOS is WebKit everywhere, so FairPlay applies and Chrome-on-iOS is fine;
+    # Android has Widevine. Social in-app webviews have no dependable DRM -> refused.
+    ios_safari = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                  "Version/17.5 Mobile/15E148 Safari/604.1")
+    ios_chrome = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                  "CriOS/126.0.0.0 Mobile/15E148 Safari/604.1")
+    android = ("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) "
+               "Chrome/126.0.0.0 Mobile Safari/537.36")
+    instagram = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                 "Mobile/15E148 Instagram 331.0.0.0")
+    for agent in (ios_safari, ios_chrome, android):
+        assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
+                      headers={**h, "User-Agent": agent}).status_code == 200, agent
+    r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers={**h, "User-Agent": instagram})
+    assert r.status_code == 403 and r.get_json()["error"] == "unsupported_browser", r.get_json()
+
     # free video: plays in any browser, including a Mac outside Safari...
     with app.app_context():
         free = Lesson(module_id=mod_id, title="مجاني", position=2, vdocipher_video_id="VIDFREE",
                       status="published", access_type="free", is_protected=False)
         db.session.add(free); db.session.commit()
         free_id = free.id
-    assert c.post("/api/v1/video/playback", json={"lesson_id": free_id},
-                  headers={**h, "User-Agent": mac_chrome}).status_code == 200
+    for agent in (mac_chrome, instagram):
+        assert c.post("/api/v1/video/playback", json={"lesson_id": free_id},
+                      headers={**h, "User-Agent": agent}).status_code == 200, agent
 
     # ...unless the admin ticks screen-capture protection on that free video
     with app.app_context():

@@ -8,6 +8,7 @@ import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
 // Screen recording can only be blocked by FairPlay DRM, which runs in Safari alone.
 // The backend refuses to issue an OTP to any other browser on a Mac; this is the
 // message the viewer sees in that case.
+const INAPP_BROWSER_MSG = 'لا يمكن تشغيل المحتوى المحمي داخل تطبيقات مثل انستجرام أو فيسبوك. افتح الرابط في متصفّح الجهاز.';
 const MAC_SAFARI_MSG = 'لحماية المحتوى، تشغيل الفيديو على أجهزة Mac متاح عبر متصفّح Safari فقط. افتح الصفحة في Safari.';
 
 // Video lesson watch page. Real course content + progress tracking.
@@ -67,6 +68,7 @@ export default function Learn() {
         setVideoErr(
           code === 'no_api_key' ? 'خدمة الفيديو غير مُفعّلة بعد.'
           : code === 'mac_needs_safari' ? MAC_SAFARI_MSG
+          : code === 'unsupported_browser' ? INAPP_BROWSER_MSG
           : code === 'access_expired' ? 'انتهت مدة اشتراكك في الدورة. جدّد للمتابعة.'
           : e.status === 403 ? 'اشترك في الدورة لمشاهدة الفيديو.'
           : 'تعذّر تحميل الفيديو.'

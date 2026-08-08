@@ -17,18 +17,38 @@ def req_lang():
 # FairPlay DRM, which runs in Safari alone — Chrome/Firefox/Edge on a Mac can always
 # be recorded, by any vendor. So playback on a Mac is refused outside Safari.
 _MAC_MARKERS = ("Mac OS X", "Macintosh")
+_IOS_MARKERS = ("iPhone", "iPad", "iPod")
 _NON_SAFARI = ("Chrome", "Chromium", "Edg/", "OPR/", "Firefox")
+# Social in-app webviews. They embed a stripped browser whose DRM support is absent or
+# unreliable, and the host app can record the surface — no protected stream belongs there.
+_INAPP_MARKERS = ("FBAN", "FBAV", "FB_IAB", "Instagram", "Line/", "MicroMessenger",
+                  "TikTok", "Snapchat", "Twitter", "GSA/")
+
+
+def _ua(ua=None):
+    return ua if ua is not None else (request.headers.get("User-Agent") or "")
 
 
 def mac_without_safari(ua=None):
-    """True when the caller is on macOS in a browser that cannot block screen capture."""
-    if ua is None:
-        ua = request.headers.get("User-Agent") or ""
+    """True when the caller is on macOS in a browser that cannot block screen capture.
+
+    iPhone/iPad are excluded: every iOS browser is WebKit, so FairPlay applies there
+    even when the UA carries 'CriOS' or an iPad sends a desktop 'Macintosh' string.
+    """
+    ua = _ua(ua)
+    if any(m in ua for m in _IOS_MARKERS):
+        return False
     if not any(m in ua for m in _MAC_MARKERS):
         return False
     if any(b in ua for b in _NON_SAFARI):
         return True
     return "Safari" not in ua
+
+
+def inapp_webview(ua=None):
+    """True for a social app's embedded browser (Instagram, Facebook, TikTok, ...)."""
+    ua = _ua(ua)
+    return any(marker in ua for marker in _INAPP_MARKERS)
 
 
 def renewal_percent():

@@ -14,7 +14,7 @@ from ...services.video_monitoring import (
     start_playback_attempt,
     trusted_request_ip,
 )
-from ...utils import mac_without_safari, req_lang
+from ...utils import inapp_webview, mac_without_safari, req_lang
 
 bp = Blueprint("video", __name__)
 
@@ -194,10 +194,15 @@ def playback():
     allowed, reason = video_access(user, lesson)
     if not allowed:
         return deny(reason, 403)
-    if capture_protected(lesson) and mac_without_safari(user_agent):
-        # No OTP is minted at all: on a Mac, only Safari + FairPlay blocks screen
-        # recording. A UA can be spoofed, so the dynamic watermark below stays on.
-        return deny("mac_needs_safari", 403)
+    if capture_protected(lesson):
+        # No OTP is minted at all for a browser that cannot defend the stream: on a Mac
+        # only Safari + FairPlay blocks recording, and a social in-app webview has no
+        # dependable DRM on any platform. A UA can be spoofed, so the dynamic watermark
+        # below stays on regardless.
+        if mac_without_safari(user_agent):
+            return deny("mac_needs_safari", 403)
+        if inapp_webview(user_agent):
+            return deny("unsupported_browser", 403)
 
     resume_position_seconds = _resume_position_seconds(user, lesson)
     session = start_playback_attempt(
