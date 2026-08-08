@@ -9,6 +9,9 @@
 # InstaPay: uploaded receipts + Google Vision service-account key (never commit)
 instapay_image/
 backend/instapay_image/
+# Admin-uploaded public images + Baytarian verification documents
+backend/uploads/
+backend/baytarian_docs/
 graceful-castle-*.json
 *service-account*.json
 *-vision-key.json

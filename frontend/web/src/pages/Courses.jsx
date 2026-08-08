@@ -146,11 +146,9 @@ export default function Courses() {
                   <h3 style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.4, margin: '0 0 8px', minHeight: 45 }}>{c.title}</h3>
                   <div style={{ fontSize: 13, color: colors.muted, marginBottom: 10 }}>{c.instructor}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.muted }}>
-                    <span style={{ color: colors.star, fontWeight: 800 }}>★ {c.rating}</span>
-                    <span>·</span>
-                    <span>{c.lessons} درس</span>
-                    <span>·</span>
-                    <span>{c.hours} ساعة</span>
+                    {c.rating && <><span style={{ color: colors.star, fontWeight: 800 }}>★ {c.rating}</span><span>·</span></>}
+                    <span>{c.lessons} فيديو</span>
+                    {c.hours > 0 && <><span>·</span><span>{c.hours} ساعة</span></>}
                   </div>
                 </div>
               </div>

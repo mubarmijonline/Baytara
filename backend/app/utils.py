@@ -13,6 +13,24 @@ def req_lang():
     return "en" if (request.headers.get("Accept-Language") or "").lower().startswith("en") else "ar"
 
 
+# Browsers on macOS that can be screen-recorded. Screen capture is only blocked by
+# FairPlay DRM, which runs in Safari alone — Chrome/Firefox/Edge on a Mac can always
+# be recorded, by any vendor. So playback on a Mac is refused outside Safari.
+_MAC_MARKERS = ("Mac OS X", "Macintosh")
+_NON_SAFARI = ("Chrome", "Chromium", "Edg/", "OPR/", "Firefox")
+
+
+def mac_without_safari(ua=None):
+    """True when the caller is on macOS in a browser that cannot block screen capture."""
+    if ua is None:
+        ua = request.headers.get("User-Agent") or ""
+    if not any(m in ua for m in _MAC_MARKERS):
+        return False
+    if any(b in ua for b in _NON_SAFARI):
+        return True
+    return "Safari" not in ua
+
+
 def renewal_percent():
     """Global renewal fee as a percent of course price (admin-set, default 30%)."""
     from .models import Setting

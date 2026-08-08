@@ -14,8 +14,6 @@ function UserForm({ user, onClose, onSaved }) {
   const [f, setF] = useState({
     name: user?.name || '', email: user?.email || '', password: '',
     role: user?.role || 'student', is_active: user?.is_active ?? true,
-    headline: user?.headline || '', bio: user?.bio || '',
-    expertise: (user?.expertise || []).join('، '),
   });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -23,12 +21,10 @@ function UserForm({ user, onClose, onSaved }) {
 
   async function save() {
     setErr(''); setBusy(true);
-    const expertise = f.expertise.split(/[،,]/).map((x) => x.trim()).filter(Boolean);
     try {
       if (editing) {
         const body = { name: f.name, role: f.role, is_active: f.is_active };
         if (f.password) body.password = f.password;
-        if (f.role === 'instructor') Object.assign(body, { headline: f.headline, bio: f.bio, expertise });
         await api.userUpdate(user.id, body);
       } else {
         await api.userCreate({ name: f.name, email: f.email, password: f.password, role: f.role });
@@ -57,12 +53,7 @@ function UserForm({ user, onClose, onSaved }) {
         </label>
       )}
       {editing && f.role === 'instructor' && (
-        <>
-          <Field label={copy.headline}><input value={f.headline} onChange={set('headline')} /></Field>
-          <Field label={copy.bio}><textarea value={f.bio} onChange={set('bio')} rows={3}
-            style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10, font: 'inherit', resize: 'vertical' }} /></Field>
-          <Field label={copy.expertise}><input value={f.expertise} onChange={set('expertise')} /></Field>
-        </>
+        <div style={{ fontSize: 13, color: 'var(--muted, #6b6b80)', marginBottom: 12 }}>{copy.instructorProfileHint}</div>
       )}
       <ErrText>{err}</ErrText>
       <div className="row">

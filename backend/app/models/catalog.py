@@ -106,7 +106,12 @@ class Course(db.Model):
     def accessible_to(self, user):
         return self.lock_reason(user) is None
 
+    def video_minutes(self):
+        """Real content length: the sum of the course's video durations."""
+        return sum((v.duration_minutes or 0) for v in self.content_videos())
+
     def to_dict(self, with_content=False, lang="ar", user=None):
+        vids = self.content_videos()
         d = {
             "id": self.id,
             "title": loc(self.title, self.title_en, lang),
@@ -117,7 +122,11 @@ class Course(db.Model):
             "image": self.image,
             "price": float(self.price),
             "currency": self.currency,
+            # duration_minutes: what admins typed; video_minutes/lessons_count are the
+            # real figures computed from the videos actually attached to the course.
             "duration_minutes": self.duration_minutes,
+            "video_minutes": self.video_minutes(),
+            "lessons_count": len(vids),
             "access_days": self.access_days,
             "access_type": self.access_type,
             "is_paid": self.is_paid(),
@@ -125,10 +134,12 @@ class Course(db.Model):
             "status": self.status,
             "enrolled_count": self.enrolled_count,
             "category": self.category.to_dict(lang) if self.category else None,
-            "instructor": {"id": self.instructor.id, "name": self.instructor.name} if self.instructor else None,
+            "instructor": {"id": self.instructor.id, "name": self.instructor.name,
+                           "headline": self.instructor.headline,
+                           "avatar_url": self.instructor.avatar_url} if self.instructor else None,
         }
         if with_content:
-            d["videos"] = [l.to_dict(lang, user=user) for l in self.content_videos()]
+            d["videos"] = [l.to_dict(lang, user=user) for l in vids]
         return d
 
     def content_videos(self):

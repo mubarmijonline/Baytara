@@ -131,21 +131,27 @@ def demo():
         db.session.add(instr); db.session.flush()
         cat = Category(name=f"C{tag}", slug=f"c-{tag}"); db.session.add(cat); db.session.flush()
         course = Course(title=f"K{tag}", slug=f"k-{tag}", price=0, instructor_id=instr.id,
-                        category_id=cat.id, status="published", access_type="free")
+                        category_id=cat.id, status="published", access_type="general")
         db.session.add(course); db.session.flush()
         mod = CourseModule(course_id=course.id, title="M", position=0); db.session.add(mod); db.session.flush()
-        vlesson = Lesson(module_id=mod.id, title="مع فيديو", position=0, vdocipher_video_id="VID123")
-        plain = Lesson(module_id=mod.id, title="بدون فيديو", position=1)
+        vlesson = Lesson(module_id=mod.id, title="مع فيديو", position=0, vdocipher_video_id="VID123",
+                         status="published", access_type="general")
+        plain = Lesson(module_id=mod.id, title="بدون فيديو", position=1,
+                       status="published", access_type="general")
         db.session.add_all([vlesson, plain]); db.session.commit()
         vid_id, plain_id, course_id = vlesson.id, plain.id, course.id
 
     c = app.test_client()
     email = f"vs_{tag}@t.test"
+    device = f"dev-{tag}"
     c.post("/api/v1/auth/register", json={
-        "name": "S", "email": email, "phone": "+201000000000", "password": "secret12",
+        "name": "S", "email": email, "phone": "+201000000000", "password": "secret12", "device_id": device,
     })
-    tok = c.post("/api/v1/auth/login", json={"email": email, "password": "secret12"}).get_json()["access_token"]
-    h = {"Authorization": f"Bearer {tok}"}
+    tok = c.post("/api/v1/auth/login", json={
+        "email": email, "password": "secret12", "device_id": device,
+    }).get_json()["access_token"]
+    # playback binds the JWT to the calling device, so every call carries the device header
+    h = {"Authorization": f"Bearer {tok}", "X-Baytara-Device-ID": device}
 
     # auth required
     assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id}).status_code == 401
@@ -153,7 +159,11 @@ def demo():
     assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers=h).status_code == 403
 
     # enroll (free), then: lesson without video -> 409
-    c.post("/api/v1/enrollments", json={"course_id": course_id}, headers=h)
+    # paid videos: grant the course enrollment directly (checkout is covered elsewhere)
+    with app.app_context():
+        uid = User.query.filter_by(email=email).first().id
+        db.session.add(Enrollment(user_id=uid, course_id=course_id, source="purchase", status="active"))
+        db.session.commit()
     assert c.post("/api/v1/video/playback", json={"lesson_id": plain_id}, headers=h).status_code == 409
 
     # enrolled + has video -> OTP + watermark carries viewer identity
@@ -166,6 +176,21 @@ def demo():
 
     # missing lesson -> 404
     assert c.post("/api/v1/video/playback", json={"lesson_id": 999999}, headers=h).status_code == 404
+
+    # screen-capture gate: on a Mac only Safari (FairPlay) blocks recording, so no OTP
+    # is minted for Chrome/Firefox on macOS.
+    mac_chrome = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/126.0.0.0 Safari/537.36")
+    mac_safari = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                  "Version/17.5 Safari/605.1.15")
+    win_chrome = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/126.0.0.0 Safari/537.36")
+    r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers={**h, "User-Agent": mac_chrome})
+    assert r.status_code == 403 and r.get_json()["error"] == "mac_needs_safari", r.get_json()
+    assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
+                  headers={**h, "User-Agent": mac_safari}).status_code == 200
+    assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
+                  headers={**h, "User-Agent": win_chrome}).status_code == 200
 
     print("video (vdocipher) self-check OK")
 

@@ -207,14 +207,18 @@ def demo():
         from app.models import Lesson
         row = Enrollment.query.filter_by(course_id=c30).first()
         row.expires_at = datetime.now(timezone.utc) - timedelta(days=1)
-        l = Lesson(course_id=c30, title="l", vdocipher_video_id="vid123"); db.session.add(l)
+        # published: playback rejects draft videos before it ever reaches the expiry check
+        l = Lesson(course_id=c30, title="l", vdocipher_video_id="vid123", status="published")
+        db.session.add(l)
         db.session.flush()
         db.session.add(CourseVideo(course_id=c30, video_id=l.id, position=0))
         db.session.commit()
         lesson_id = l.id
     pr = c.post("/api/v1/progress", json={"lesson_id": lesson_id, "completed": True}, headers=sh)
     assert pr.status_code == 403 and pr.get_json()["error"] == "access_expired", pr.get_json()
-    pb = c.post("/api/v1/video/playback", json={"lesson_id": lesson_id}, headers=sh)
+    # playback now binds the JWT to the calling device, so send the device header too
+    pb = c.post("/api/v1/video/playback", json={"lesson_id": lesson_id},
+                headers={**sh, "X-Baytara-Device-ID": "dev-1"})
     assert pb.status_code == 403 and pb.get_json()["error"] == "access_expired", pb.get_json()
 
     # ---- renewal quote is a percentage of the price (extend logic covered in test_fawaterk) ----
@@ -243,7 +247,8 @@ def demo():
         db.session.add(u)
         db.session.commit()
         wm = watermark_for(u)
-        assert "01099998888" in wm[0]["text"], wm
+        # the watermark is split across annotation lines; the phone may be on any of them
+        assert any("01099998888" in line["text"] for line in wm), wm
 
     print("contract-gaps self-check OK")
 

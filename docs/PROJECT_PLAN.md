@@ -285,6 +285,8 @@ Flags on `instructor_profiles`: `can_add_video=true`, `can_edit_video=false`, `c
   `lesson_progress`.
 - VdoCipher API key stored in `.env` (server-side only). Subscription cost is out of scope.
 - Abstracted behind a `VideoProvider` interface so the DRM vendor can be swapped.
+- **Screen capture:** see `docs/VIDEO_PROTECTION.md` — what is actually blockable per platform,
+  and the macOS Safari-only rule enforced in `POST /api/v1/video/playback`.
 
 ---
 

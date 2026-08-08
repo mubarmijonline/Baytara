@@ -5,6 +5,11 @@ import { rawCourses, curriculum } from '../data/mock.js';
 import { webapi, mapCourse, auth, isAuthed } from '../lib/api.js';
 import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
 
+// Screen recording can only be blocked by FairPlay DRM, which runs in Safari alone.
+// The backend refuses to issue an OTP to any other browser on a Mac; this is the
+// message the viewer sees in that case.
+const MAC_SAFARI_MSG = 'لحماية المحتوى، تشغيل الفيديو على أجهزة Mac متاح عبر متصفّح Safari فقط. افتح الصفحة في Safari.';
+
 // Video lesson watch page. Real course content + progress tracking.
 // In Phase 5 the placeholder player is replaced by the VdoCipher DRM player:
 // backend validates enrollment → issues a short-lived OTP → player consumes it.
@@ -58,8 +63,11 @@ export default function Learn() {
       .then((r) => alive && setVideo(r))
       .catch((e) => {
         if (!alive) return;
+        const code = e.data?.error;
         setVideoErr(
-          e.data?.error === 'no_api_key' ? 'خدمة الفيديو غير مُفعّلة بعد.'
+          code === 'no_api_key' ? 'خدمة الفيديو غير مُفعّلة بعد.'
+          : code === 'mac_needs_safari' ? MAC_SAFARI_MSG
+          : code === 'access_expired' ? 'انتهت مدة اشتراكك في الدورة. جدّد للمتابعة.'
           : e.status === 403 ? 'اشترك في الدورة لمشاهدة الفيديو.'
           : 'تعذّر تحميل الفيديو.'
         );

@@ -91,25 +91,37 @@ def bundle_detail(slug):
     return jsonify(bundle=b.to_dict(with_courses=True, lang=req_lang(), user=user))
 
 
+def _instructor_stats(user, courses):
+    """Real figures for a public instructor profile — no placeholders."""
+    return {"courses": len(courses),
+            "students": sum(c.enrolled_count for c in courses),
+            "lessons": sum(len(c.content_videos()) for c in courses),
+            "minutes": sum(c.video_minutes() for c in courses)}
+
+
 @bp.get("/instructors")
 def list_instructors():
+    lang = req_lang()
     rows = User.query.filter_by(role="instructor", is_active=True).all()
     out = []
     for u in rows:
-        cnt = Course.query.filter_by(instructor_id=u.id, status="published").count()
-        p = u.public_profile()
-        p["courses"] = cnt
+        courses = Course.query.filter_by(instructor_id=u.id, status="published").all()
+        p = u.public_profile(lang)
+        p.update(_instructor_stats(u, courses))
         out.append(p)
     return jsonify(instructors=out)
 
 
 @bp.get("/instructors/<int:user_id>")
 def instructor_profile(user_id):
+    lang = req_lang()
     user = User.query.filter_by(id=user_id, role="instructor").first()
     if not user:
         return jsonify(error="not_found"), 404
     courses = Course.query.filter_by(instructor_id=user.id, status="published").all()
+    profile = user.public_profile(lang)
+    profile.update(_instructor_stats(user, courses))
     return jsonify(
-        instructor=user.public_profile(),
-        courses=[c.to_dict(lang=req_lang()) for c in courses],
+        instructor=profile,
+        courses=[c.to_dict(lang=lang) for c in courses],
     )

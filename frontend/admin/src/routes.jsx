@@ -12,6 +12,7 @@ import Hierarchy from './pages/Hierarchy.jsx';
 import Messages from './pages/Messages.jsx';
 import Payments from './pages/Payments.jsx';
 import Settings from './pages/Settings.jsx';
+import Instructors from './pages/Instructors.jsx';
 import Users from './pages/Users.jsx';
 import Videos from './pages/Videos.jsx';
 import VideoEditor from './pages/VideoEditor.jsx';
@@ -40,6 +41,8 @@ const sectionRoutes = [
   ['articles', Articles],
   ['articles/new', Articles],
   ['articles/:articleId/edit', Articles],
+  ['instructors', Instructors],
+  ['instructors/:instructorId', Instructors],
   ['users', Users],
   ['users/:userId', Users],
   ['messages', Messages],

@@ -29,13 +29,17 @@ class User(db.Model):
     bio = db.Column(db.Text)
     avatar_url = db.Column(db.String(500))
     expertise = db.Column(db.JSON)  # list[str]
+    # Section the instructor is listed under on the site (e.g. الخيول). NULL = unassigned.
+    category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), index=True)
+
+    category = db.relationship("Category")
 
     # instructor video permission flags (admin-toggled; defaults per plan §10)
     can_add_video = db.Column(db.Boolean, nullable=False, default=True, server_default=db.text("true"))
     can_edit_video = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     can_delete_video = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
 
-    def public_profile(self):
+    def public_profile(self, lang="ar"):
         return {
             "id": self.id,
             "name": self.name,
@@ -43,6 +47,7 @@ class User(db.Model):
             "bio": self.bio,
             "avatar_url": self.avatar_url,
             "expertise": self.expertise or [],
+            "category": self.category.to_dict(lang) if self.category else None,
         }
 
     def __repr__(self):

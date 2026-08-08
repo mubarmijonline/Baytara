@@ -1,5 +1,8 @@
-from flask import Blueprint, jsonify, request
+import os
+
+from flask import Blueprint, jsonify, request, current_app, send_from_directory
 from marshmallow import Schema, ValidationError, fields, validate
+from werkzeug.utils import secure_filename
 
 from ...extensions import db
 from ...models import Setting, Article, ContactMessage
@@ -14,6 +17,16 @@ def settings():
     """Public site config. Keys prefixed 'secret_' are admin-only and never exposed."""
     rows = {setting.key: setting.value for setting in Setting.query.all()}
     return jsonify(settings=public_settings(rows, req_lang()))
+
+
+@bp.get("/uploads/<name>")
+def uploaded_image(name):
+    """Serve an admin-uploaded public image (instructor photo, course cover)."""
+    safe = secure_filename(name)
+    folder = os.path.abspath(current_app.config["UPLOAD_IMAGE_DIR"])
+    if not safe or not os.path.exists(os.path.join(folder, safe)):
+        return jsonify(error="not_found"), 404
+    return send_from_directory(folder, safe, max_age=86400)
 
 
 @bp.get("/articles")

@@ -18,6 +18,8 @@ class BaseConfig:
     INSTAPAY_IMAGE_DIR = os.environ.get("INSTAPAY_IMAGE_DIR", "./instapay_image")
     # Baytarian verification documents (PDF/images)
     BAYTARIAN_DOC_DIR = os.environ.get("BAYTARIAN_DOC_DIR", "./baytarian_docs")
+    # Public images uploaded from the Admin Portal (instructor photos, course covers)
+    UPLOAD_IMAGE_DIR = os.environ.get("UPLOAD_IMAGE_DIR", "./uploads")
     MAX_CONTENT_LENGTH = 12 * 1024 * 1024  # 12 MB cap on uploads (docs may include PDFs)
     # Public site origin — used to build Fawaterak redirect + webhook URLs
     SITE_URL = os.environ.get("SITE_URL", "https://baytara.app")

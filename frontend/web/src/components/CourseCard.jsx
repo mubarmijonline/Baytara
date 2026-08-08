@@ -98,11 +98,9 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
           {course.title}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-          <span style={{ color: colors.star, fontWeight: 800 }}>★ {course.rating}</span>
-          <span>·</span>
-          <span>{course.lessons} درس</span>
-          <span>·</span>
-          <span>{course.hours} ساعة</span>
+          {course.rating && <><span style={{ color: colors.star, fontWeight: 800 }}>★ {course.rating}</span><span>·</span></>}
+          <span>{course.lessons} فيديو</span>
+          {course.hours > 0 && <><span>·</span><span>{course.hours} ساعة</span></>}
         </div>
         <div
           style={{

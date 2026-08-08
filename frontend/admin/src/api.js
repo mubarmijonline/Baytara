@@ -63,6 +63,21 @@ export const api = {
   userUpdate: (id, body) => req(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   userDelete: (id) => req(`/admin/users/${id}`, { method: 'DELETE' }),
 
+  // image upload (instructor photo, course cover) -> { url }
+  uploadImage: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return fetch(BASE + '/admin/uploads/image', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    }).then(async (r) => {
+      const data = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+      if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
+      return data;
+    });
+  },
+
   // categories
   categories: () => req('/categories'),
   categoryCreate: (body) => req('/admin/categories', { method: 'POST', body: JSON.stringify(body) }),

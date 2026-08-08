@@ -369,11 +369,12 @@ function InstructorsSection() {
   const { data } = useFetch(() => webapi.instructors(), []);
   const list = data?.instructors?.length
     ? data.instructors.map((m, i) => ({
-        id: m.id, name: m.name, title: m.headline || 'مدرّب معتمد',
+        id: m.id, name: m.name, title: m.headline || (m.category ? `قسم ${m.category.name}` : ''),
         ini: (m.name || '؟').trim().charAt(0), grad: rawInstructors[i % rawInstructors.length].grad,
-        courses: m.courses, students: '—',
+        avatar: m.avatar_url, courses: m.courses, students: m.students,
       }))
     : [];
+  if (!list.length) return null;
   return (
     <section style={{ background: colors.surfaceMuted, marginTop: 44 }}>
       <Container className="home-section" style={{ padding: '56px 24px' }}>
@@ -382,7 +383,7 @@ function InstructorsSection() {
             تعلّم على يد نخبة من الأطباء
           </h2>
           <p style={{ margin: 0, color: colors.muted, fontSize: 16 }}>
-            أكثر من 700 طبيب ومدرّب من رواد كل تخصّص بيطري في العالم العربي
+            {list.length} {list.length === 1 ? 'محاضر' : 'محاضرين'} من رواد التخصّصات البيطرية
           </p>
         </div>
         <div
@@ -403,27 +404,32 @@ function InstructorsSection() {
                 cursor: 'pointer',
               }}
             >
-              <div
-                style={{
-                  width: 84,
-                  height: 84,
-                  borderRadius: '50%',
-                  margin: '0 auto 16px',
-                  background: m.grad,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: 30,
-                  fontWeight: 900,
-                }}
-              >
-                {m.ini}
-              </div>
+              {m.avatar ? (
+                <img src={m.avatar} alt={m.name}
+                     style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 16px', display: 'block' }} />
+              ) : (
+                <div
+                  style={{
+                    width: 84,
+                    height: 84,
+                    borderRadius: '50%',
+                    margin: '0 auto 16px',
+                    background: m.grad,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontSize: 30,
+                    fontWeight: 900,
+                  }}
+                >
+                  {m.ini}
+                </div>
+              )}
               <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 3 }}>{m.name}</div>
               <div style={{ fontSize: 13, color: colors.muted, marginBottom: 12, lineHeight: 1.4 }}>{m.title}</div>
               <div style={{ fontSize: 12, color: colors.muted2, paddingTop: 12, borderTop: `1px solid ${colors.line2}` }}>
-                {m.courses} دورة · {m.students} متعلّم
+                {m.courses} دورة{m.students > 0 ? ` · ${m.students} متعلّم` : ''}
               </div>
             </div>
           ))}
@@ -637,10 +643,11 @@ export default function Home() {
       <CategoriesSection />
       <FreeVideosSection />
       {trending.length > 0 && <Carousel title="الأكثر رواجاً هذا الأسبوع" badge="🔥 رائج" courses={trending} />}
-      <BusinessBanner />
       {recent.length > 0 && <Carousel title="أضيفت حديثاً" courses={recent} markNew />}
       <InstructorsSection />
       <Testimonials />
+      {/* Business pitch sits at the end — the middle of the page belongs to the courses. */}
+      <BusinessBanner />
       <FinalCta />
     </>
   );

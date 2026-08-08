@@ -136,18 +136,26 @@ export const webapi = {
     }),
 };
 
-// Map an API course to the shape the approved design expects (fills display-only fields).
+// Map an API course to the shape the approved design expects. Numbers stay real:
+// anything the platform doesn't measure yet (ratings) comes back null so the UI
+// can hide it instead of printing a made-up figure.
 export function mapCourse(c, i = 0) {
+  const minutes = c.video_minutes || c.duration_minutes || 0;
   return {
     id: c.id,
     title: c.title,
     slug: c.slug,
+    instructorId: c.instructor?.id ?? null,
     instructor: c.instructor?.name || '',
+    instructorHeadline: c.instructor?.headline || '',
+    instructorAvatar: c.instructor?.avatar_url || '',
     ini: (c.instructor?.name || '؟').trim().charAt(0),
     cat: c.category?.name || '',
-    rating: c.rating || '4.8',
-    lessons: c.lessons_count || c.lessons || 0,
-    hours: c.duration_minutes ? Math.round(c.duration_minutes / 60) : 0,
+    rating: c.rating ?? null,
+    lessons: c.lessons_count ?? 0,
+    minutes,
+    hours: minutes ? Math.round((minutes / 60) * 10) / 10 : 0,
+    videos: c.videos || [],
     learners: c.enrolled_count != null ? String(c.enrolled_count) : '0',
     grad: thumbGradients[i % thumbGradients.length],
     price: c.price,

@@ -1,6 +1,8 @@
 import os
+import uuid
 
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, request, send_file, current_app
+from werkzeug.utils import secure_filename
 
 from ...extensions import db
 from datetime import datetime, timezone
@@ -61,11 +63,29 @@ def stats():
 # ------------------------------ users ------------------------------
 
 def _user_json(u):
-    return {"id": u.id, "name": u.name, "email": u.email, "role": u.role,
+    return {"id": u.id, "name": u.name, "email": u.email, "role": u.role, "phone": u.phone,
             "is_active": u.is_active, "is_baytarian": u.is_baytarian,
             "created_at": u.created_at.isoformat() if u.created_at else None,
             "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or [],
+            "category_id": u.category_id,
+            "category": u.category.to_dict() if u.category else None,
+            "courses_count": Course.query.filter_by(instructor_id=u.id).count() if u.role == "instructor" else 0,
             "can_add_video": u.can_add_video, "can_edit_video": u.can_edit_video, "can_delete_video": u.can_delete_video}
+
+
+PROFILE_FIELDS = ("phone", "headline", "bio", "avatar_url", "expertise", "category_id",
+                  "is_baytarian", "can_add_video", "can_edit_video", "can_delete_video")
+
+
+def _apply_profile_fields(u, d):
+    """Copy the optional profile/permission fields present in the payload onto the user."""
+    for f in PROFILE_FIELDS:
+        if f not in d:
+            continue
+        v = d[f]
+        if f == "category_id":
+            v = int(v) if v else None  # "" from an unselected dropdown -> unassigned
+        setattr(u, f, v)
 
 
 @bp.get("/users")
@@ -98,6 +118,7 @@ def users_create():
         return jsonify(error="email_taken"), 409
     u = User(name=d["name"], email=email, password_hash=hash_password(d["password"]),
              role=d.get("role", "student"))
+    _apply_profile_fields(u, d)
     db.session.add(u)
     db.session.commit()
     return jsonify(user=_user_json(u)), 201
@@ -124,10 +145,7 @@ def users_update(uid):
         u.is_active = bool(d["is_active"])
     if d.get("password"):
         u.password_hash = hash_password(d["password"])
-    for f in ("headline", "bio", "avatar_url", "expertise", "is_baytarian",
-              "can_add_video", "can_edit_video", "can_delete_video"):
-        if f in d:
-            setattr(u, f, d[f])
+    _apply_profile_fields(u, d)
     db.session.commit()
     return jsonify(user=_user_json(u))
 
@@ -396,6 +414,29 @@ def lesson_update(lid):
 @require_role("admin")
 def lesson_delete(lid):
     return _delete_catalog_video(lid)
+
+
+# ------------------------------ image uploads ------------------------------
+
+IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+
+
+@bp.post("/uploads/image")
+@require_role("admin")
+def upload_image():
+    """Store a public image (instructor photo, course cover) and return its URL."""
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="file_required"), 400
+    ext = IMAGE_TYPES.get(f.mimetype)
+    if not ext:
+        return jsonify(error="unsupported_media_type", allowed=sorted(IMAGE_TYPES)), 415
+    folder = current_app.config["UPLOAD_IMAGE_DIR"]
+    os.makedirs(folder, exist_ok=True)
+    stem = os.path.splitext(secure_filename(f.filename))[0][:40] or "image"
+    name = f"{stem}_{uuid.uuid4().hex[:8]}{ext}"
+    f.save(os.path.join(folder, name))
+    return jsonify(url=f"/api/v1/uploads/{name}"), 201
 
 
 # ------------------------------ baytarian verification ------------------------------
