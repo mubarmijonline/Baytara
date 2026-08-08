@@ -30,3 +30,12 @@ venv/
 
 # OS
 .DS_Store
+
+# Capacitor app shell: build output, native caches, SDK paths
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/ios/App/Pods/
+mobile/ios/App/build/
+mobile/ios/App/output/

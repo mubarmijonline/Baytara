@@ -1,0 +1,2 @@
+# Copied to android/local.properties by the build; points Gradle at the SDK.
+sdk.dir=/home/ahmeddiab/android-sdk

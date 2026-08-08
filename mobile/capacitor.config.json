@@ -1,0 +1,17 @@
+{
+  "appId": "app.baytara.mobile",
+  "appName": "Baytara",
+  "webDir": "www",
+  "server": {
+    "url": "https://baytara.app",
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "always"
+  }
+}

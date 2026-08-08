@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Baytara</string>
+    <string name="title_activity_main">Baytara</string>
+    <string name="package_name">app.baytara.mobile</string>
+    <string name="custom_url_scheme">app.baytara.mobile</string>
+</resources>

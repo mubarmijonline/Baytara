@@ -144,8 +144,22 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
       });
     }).catch((error) => active && onSecurityError?.(error));
 
+    // The native shell (Capacitor) calls this when iOS reports the screen is being
+    // recorded or mirrored. iOS cannot strip audio from a recording, so the only real
+    // defence is to stop playing: pause and mute until the recording ends.
+    window.__baytaraCaptureChanged = (captured) => {
+      if (!player) return;
+      try {
+        player.video.muted = !!captured;
+        if (captured) player.video.pause();
+      } catch {
+        // player torn down mid-notification; the shell's cover still hides the page
+      }
+    };
+
     return () => {
       active = false;
+      delete window.__baytaraCaptureChanged;
       if (player) {
         subscriptions.forEach(([name, handler]) => player.video.removeEventListener(name, handler));
       }
