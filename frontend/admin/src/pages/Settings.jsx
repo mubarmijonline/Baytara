@@ -187,6 +187,11 @@ export default function Settings() {
             </Section>
             <Section title={copy.sections.vdocipher}>
               <Field label={copy.integrations.vdoSecret}><input type="password" dir="ltr" value={draft.secret_vdocipher || ''} onChange={(event) => setKey('secret_vdocipher', event.target.value)} /></Field>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '4px 0 12px' }}>
+                <input type="checkbox" checked={draft.mobile_requires_app === true || draft.mobile_requires_app === 'true'}
+                       onChange={(event) => setKey('mobile_requires_app', event.target.checked)} />
+                <span>{copy.integrations.mobileRequiresApp}</span>
+              </label>
               <div className="row">
                 <button className="btn btn-tonal" disabled={busy} onClick={() => runVdo(() => api.vdocipherTest(), copy.integrations.connected, copy.integrations.connectionError)}>{copy.integrations.testVdo}</button>
                 <button className="btn btn-tonal" disabled={busy} onClick={() => runVdo(() => api.vdocipherSyncFolders({ all_courses: true }), copy.integrations.synced, copy.integrations.syncError)}>{copy.integrations.syncVdo}</button>

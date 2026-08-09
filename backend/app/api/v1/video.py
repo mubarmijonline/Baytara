@@ -16,7 +16,8 @@ from ...services.video_monitoring import (
     start_playback_attempt,
     trusted_request_ip,
 )
-from ...utils import baytara_app, inapp_webview, mac_without_safari, mobile_browser, req_lang
+from ...utils import (baytara_app, inapp_webview, mac_without_safari, mobile_browser,
+                      mobile_requires_app, req_lang)
 
 bp = Blueprint("video", __name__)
 
@@ -210,7 +211,9 @@ def playback():
         # recorder and cannot be told a recording started. On a Mac only Safari + FairPlay
         # blocks recording, and a social in-app webview has no dependable DRM anywhere.
         # A UA can be spoofed, so the dynamic watermark below stays on regardless.
-        if mobile_browser(user_agent):
+        if mobile_browser(user_agent) and mobile_requires_app():
+            # Admin chose app-only for phones. Off by default: a mobile browser plays,
+            # it just cannot stop a recorder taking the audio.
             return deny("app_required", 403)
         if mac_without_safari(user_agent):
             return deny("mac_needs_safari", 403)

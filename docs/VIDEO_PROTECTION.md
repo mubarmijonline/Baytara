@@ -37,6 +37,10 @@ Until the mobile app exists (`PROJECT_PLAN.md` §19), an audio-only rip of a pro
 is possible, and the visual watermark cannot identify who made it — a black picture carries
 no watermark either.
 
+There is no middle setting. On a mobile browser the choice is binary: protected video plays
+and its audio is recordable, or it does not play at all (`mobile_requires_app`). Muting only
+while a recording runs is impossible, because the page is never told a recording started.
+
 ## What Baytara does about it
 
 1. **Protected videos are Safari-only on macOS.** `POST /api/v1/video/playback` refuses to mint
@@ -58,7 +62,7 @@ no watermark either.
    | Client | Protected video |
    |--------|-----------------|
    | Baytara app (UA carries `BaytaraApp/`) | allowed — the shell blocks capture itself |
-   | Phone / tablet browser | refused, `403 app_required` — a mobile browser hands the audio to any recorder |
+   | Phone / tablet browser | allowed by default; refused (`403 app_required`) only when an admin ticks **mobile_requires_app** in Settings → Integrations |
    | macOS Safari | allowed (needs the FairPlay upgrade on the account) |
    | macOS Chrome / Firefox | refused, `403 mac_needs_safari` |
    | Social in-app webview | refused, `403 unsupported_browser` |

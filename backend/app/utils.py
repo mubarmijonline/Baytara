@@ -71,6 +71,22 @@ def inapp_webview(ua=None):
     return any(marker in ua for marker in _INAPP_MARKERS)
 
 
+def mobile_requires_app():
+    """Admin switch: refuse protected video to mobile browsers, serving the app only.
+
+    Default off — a phone browser can still watch, it simply cannot stop a recording
+    from taking the audio. Turn it on once the apps are published, and mobile web
+    loses protected playback entirely.
+    """
+    from .models import Setting
+    from .extensions import db
+    setting = db.session.get(Setting, "mobile_requires_app")
+    value = setting.value if setting else None
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
+
+
 def renewal_percent():
     """Global renewal fee as a percent of course price (admin-set, default 30%)."""
     from .models import Setting

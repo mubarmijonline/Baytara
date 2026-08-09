@@ -205,16 +205,29 @@ def demo():
     instagram = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) "
                  "Mobile/15E148 Instagram 331.0.0.0")
     r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers={**h, "User-Agent": instagram})
-    assert r.status_code == 403 and r.get_json()["error"] == "app_required", r.get_json()
+    assert r.status_code == 403 and r.get_json()["error"] == "unsupported_browser", r.get_json()
 
-    # protected video on a phone: browsers are refused, the app shell is served
+    # protected video on a phone: allowed by default (the browser simply cannot stop a
+    # recorder taking the audio), refused once an admin turns on mobile_requires_app.
     for agent in (ios_safari, ios_chrome, android):
+        assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
+                      headers={**h, "User-Agent": agent}).status_code == 200, agent
+    with app.app_context():
+        from app.models import Setting
+        db.session.merge(Setting(key="mobile_requires_app", value=True))
+        db.session.commit()
+    for agent in (ios_safari, android):
         r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
                    headers={**h, "User-Agent": agent})
         assert r.status_code == 403 and r.get_json()["error"] == "app_required", (agent, r.get_json())
+    # the app shell identifies itself and is served either way
     for agent in (android + " BaytaraApp/1", ios_safari + " BaytaraApp/1"):
         assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
                       headers={**h, "User-Agent": agent}).status_code == 200, agent
+    with app.app_context():
+        from app.models import Setting
+        db.session.merge(Setting(key="mobile_requires_app", value=False))
+        db.session.commit()
 
     # free video: plays in any browser, including a Mac outside Safari...
     with app.app_context():
