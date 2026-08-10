@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { auth } from '../lib/api.js';
+import { startAudioWatermark } from '../lib/audioWatermark.js';
 
 const PLAYER_API_URL = 'https://player.vdocipher.com/v2/api.js';
 let playerApiPromise;
@@ -65,6 +66,7 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
     let played = false;
     let playing = false;
     let lastHeartbeat = Date.now();
+    let stopWatermark = null;
     const subscriptions = [];
 
     const send = async (payload) => {
@@ -115,12 +117,15 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
         play: async () => {
           playing = true;
           lastHeartbeat = Date.now();
+          // inaudible account watermark rides in the audio mix a recorder captures
+          if (!stopWatermark) stopWatermark = startAudioWatermark(playback.audio_mark);
           const type = played ? 'resume' : 'play';
           played = true;
           return report(type);
         },
         pause: async () => {
           playing = false;
+          if (stopWatermark) { stopWatermark(); stopWatermark = null; }
           return report('pause');
         },
         timeupdate: async () => {
@@ -130,6 +135,7 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
         },
         ended: async () => {
           playing = false;
+          if (stopWatermark) { stopWatermark(); stopWatermark = null; }
           await report('ended');
           if (active) onEnded?.();
         },
@@ -159,6 +165,7 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
 
     return () => {
       active = false;
+      if (stopWatermark) stopWatermark();
       delete window.__baytaraCaptureChanged;
       if (player) {
         subscriptions.forEach(([name, handler]) => player.video.removeEventListener(name, handler));

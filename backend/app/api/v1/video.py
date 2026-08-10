@@ -263,6 +263,10 @@ def playback():
         playbackInfo=res["playbackInfo"],
         session_id=session.public_id,
         resume_position_seconds=resume_position_seconds,
+        # Inaudible audio watermark payload (docs/AUDIO_WATERMARK.md). A screen recorder
+        # captures the digital audio mix, so this rides along in any rip of the lesson and
+        # names the account afterwards. It cannot stop the recording.
+        audio_mark=user.id,
     )
 
 
