@@ -39,3 +39,8 @@ mobile/android/local.properties
 mobile/ios/App/Pods/
 mobile/ios/App/build/
 mobile/ios/App/output/
+
+# Screen recordings dropped in for watermark analysis
+*.MP4
+*.MOV
+*.watermark-probe.wav

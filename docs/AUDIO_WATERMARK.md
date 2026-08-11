@@ -50,6 +50,27 @@ cd backend && python3 -m tools.decode_audio_watermark /path/to/leak.mp4
 Any format ffmpeg reads works — the screen recording itself, or audio extracted from it.
 `--json` gives machine-readable output. Cross-reference the id with `users.id`.
 
+## Confirmed on real hardware
+
+2026-08-11, iPhone / iOS 18.7 / Safari 26.5.2. A 53-second screen recording of a lesson on
+baytara.app decoded to:
+
+```
+3 watermark frame(s) found.
+  account id 36  at 6.95s, 26.95s, 46.96s
+```
+
+The full chain works: Safari emits the tones, the iOS recorder captures them through
+HEVC/AAC, the decoder reads the account id back. The recorded picture is black; the account
+id is in the sound.
+
+An earlier attempt on the same phone decoded to nothing. Spectrum analysis showed 14–18 kHz
+as a flat noise floor with no cliff — the band survived, the tones were never emitted. Cause:
+iOS starts an `AudioContext` only inside a user gesture, and ours was created in the player's
+`play` handler, which arrives by postMessage from a cross-origin iframe and does not count.
+`primeAudioWatermark()` now runs inside the tap. **Recordings made before 2026-08-11 18:08
+EEST carry no watermark.**
+
 ## What is verified, and what is not
 
 `backend/tests/test_audio_watermark.py` runs the **real browser encoder** inside Chromium via
@@ -57,10 +78,10 @@ an `OfflineAudioContext`, mixes it under speech-band content, re-encodes to AAC 
 way a phone recorder does, and decodes it back. It asserts the id round-trips, and that clean
 audio yields no false positive.
 
-Not yet verified, and only a real device can settle it: that a given phone's screen recorder
-preserves the 15–16.5 kHz band in practice. Record a lesson on the target phone and run the
-decoder over the file. If the mark is missing, the carrier band is the thing to lower —
-`WM.baseHz` in the encoder and the matching constants in the decoder.
+iOS is now confirmed end to end (above). Android is not yet tested — repeat the same
+procedure on an Android phone. If a mark is ever missing, check the spectrum first: a flat
+noise floor across 14–18 kHz means the tones were not emitted (a client bug), while a cliff
+above ~16 kHz means the codec stripped them and `WM.baseHz` must come down on both sides.
 
 ## Limits, stated plainly
 

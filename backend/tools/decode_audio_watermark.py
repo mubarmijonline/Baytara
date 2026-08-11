@@ -38,11 +38,20 @@ DETECT_RATIO = 3.0
 
 def extract_pcm(path):
     """Decode any media file to mono 44.1 kHz 16-bit PCM via ffmpeg."""
+    def run(wav_path):
+        cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(path),
+               "-ac", "1", "-ar", str(SAMPLE_RATE), "-c:a", "pcm_s16le", wav_path]
+        subprocess.run(cmd, check=True, capture_output=True)
+
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         wav_path = tmp.name
-    cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(path),
-           "-ac", "1", "-ar", str(SAMPLE_RATE), "-c:a", "pcm_s16le", wav_path]
-    subprocess.run(cmd, check=True, capture_output=True)
+    try:
+        run(wav_path)
+    except (subprocess.CalledProcessError, PermissionError, OSError):
+        # some environments deny writes to the system temp dir — fall back beside the input
+        Path(wav_path).unlink(missing_ok=True)
+        wav_path = str(Path(path).with_suffix(".watermark-probe.wav"))
+        run(wav_path)
     with wave.open(wav_path, "rb") as wav:
         frames = wav.readframes(wav.getnframes())
         samples = list(struct.unpack("<%dh" % (len(frames) // 2), frames))
