@@ -78,6 +78,35 @@ while a recording runs is impossible, because the page is never told a recording
 A User-Agent can be spoofed, so rule 1 raises the cost rather than making capture impossible.
 Rule 2 is what makes a leaked recording traceable, and it does not depend on the browser.
 
+## Can a page detect that it is being recorded? Measured: no
+
+Tested 2026-08-11 on iPhone, iOS 18.7, Safari 26.5.2, on the live lesson page with the
+`?diag=1` probe (`frontend/web/src/components/CaptureProbe.jsx`). A screen recording ran for
+~26 seconds while every candidate signal was sampled:
+
+| Signal | During recording |
+|---|---|
+| `visibilitychange`, `blur`, `focus`, `pagehide`, `freeze` | no change |
+| Frame rate / worst frame time | 60.0 fps, 18–26 ms — unchanged |
+| `devicePixelRatio`, viewport, screen size, colour depth, `dynamic-range` | no change |
+| AudioContext state | no change |
+| AirPlay target events | none |
+| HTML5 media events (`waiting`, `stalled`, `error`, `volumechange`) | none |
+| VdoCipher `statusChange` | `READY`, then `PLAY` — nothing after |
+| `currentTime` progress | `advanced=2.00s` every tick, for the whole recording |
+
+The picture in the recording is blank, yet the player decoded normally throughout: the
+blanking happens in the compositor, below JavaScript, and nothing above it is notified.
+
+**Conclusion: no detector is possible on the mobile web.** Every design that starts with
+"pause/mute when we notice the recording" is dead on arrival — not because it is hard, but
+because the notification does not exist. The probe stays in the repo behind `?diag=1` so the
+test can be repeated on a new OS version.
+
+The one remaining path to real prevention on the web is not ours to write: if VdoCipher
+exposed an `output-restricted` key-status event from the CDM (their player knows — that is
+what blanks the picture), muting on capture becomes a few lines. Worth asking them.
+
 ## Sharing limits (what replaces the impossible audio block)
 
 Since a browser cannot stop a recording, the web-side defence is to limit how far one
