@@ -229,6 +229,29 @@ def demo():
         db.session.merge(Setting(key="mobile_requires_app", value=False))
         db.session.commit()
 
+    # strict browser policy: only hardware-DRM browsers may play protected video
+    with app.app_context():
+        from app.models import Setting
+        db.session.merge(Setting(key="strict_browser_policy", value=True))
+        db.session.commit()
+    win_edge = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0")
+    linux = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+             "Chrome/126.0.0.0 Safari/537.36")
+    for agent in (mac_safari, ios_safari, android, win_edge):
+        assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
+                      headers={**h, "User-Agent": agent}).status_code == 200, agent
+    for agent in (win_chrome, linux):
+        r = c.post("/api/v1/video/playback", json={"lesson_id": vid_id}, headers={**h, "User-Agent": agent})
+        assert r.status_code == 403 and r.get_json()["error"] == "browser_not_supported", (agent, r.get_json())
+    with app.app_context():
+        from app.models import Setting
+        db.session.merge(Setting(key="strict_browser_policy", value=False))
+        db.session.commit()
+    # off again: Windows Chrome plays
+    assert c.post("/api/v1/video/playback", json={"lesson_id": vid_id},
+                  headers={**h, "User-Agent": win_chrome}).status_code == 200
+
     # free video: plays in any browser, including a Mac outside Safari...
     with app.app_context():
         free = Lesson(module_id=mod_id, title="مجاني", position=2, vdocipher_video_id="VIDFREE",

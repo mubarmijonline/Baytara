@@ -71,6 +71,36 @@ def inapp_webview(ua=None):
     return any(marker in ua for marker in _INAPP_MARKERS)
 
 
+# Browsers where the platform actually enforces hardware DRM on the picture. Everything
+# else decodes in software, so a desktop recorder captures the lesson at full quality.
+def protected_browser(ua=None):
+    """True when this client's DRM is hardware-enforced (picture cannot be captured)."""
+    ua = _ua(ua)
+    if APP_UA_MARKER in ua:
+        return True                                  # the app shell enforces its own
+    if any(m in ua for m in _IOS_MARKERS):
+        return True                                  # every iOS browser is WebKit + FairPlay
+    if "Android" in ua:
+        # Widevine L1 on Chrome / Samsung Internet; the level itself cannot be checked here
+        return ("Chrome" in ua or "SamsungBrowser" in ua) and "Firefox" not in ua
+    if any(m in ua for m in _MAC_MARKERS):
+        return not mac_without_safari(ua)            # Safari + FairPlay only
+    if "Windows" in ua:
+        return "Edg/" in ua                          # Edge + PlayReady SL3000 only
+    return False                                     # Linux, ChromeOS, unknown -> software DRM
+
+
+def strict_browser_policy():
+    """Admin switch: serve protected video only to hardware-DRM browsers (default off)."""
+    from .models import Setting
+    from .extensions import db
+    setting = db.session.get(Setting, "strict_browser_policy")
+    value = setting.value if setting else None
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
+
+
 def mobile_requires_app():
     """Admin switch: refuse protected video to mobile browsers, serving the app only.
 

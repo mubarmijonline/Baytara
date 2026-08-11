@@ -17,7 +17,7 @@ from ...services.video_monitoring import (
     trusted_request_ip,
 )
 from ...utils import (baytara_app, inapp_webview, mac_without_safari, mobile_browser,
-                      mobile_requires_app, req_lang)
+                      mobile_requires_app, protected_browser, req_lang, strict_browser_policy)
 
 bp = Blueprint("video", __name__)
 
@@ -219,6 +219,11 @@ def playback():
             return deny("mac_needs_safari", 403)
         if inapp_webview(user_agent):
             return deny("unsupported_browser", 403)
+        if strict_browser_policy() and not protected_browser(user_agent):
+            # Strictest web setting: only browsers whose DRM is hardware-enforced. Keeps
+            # Windows Chrome/Firefox and Linux out, where a desktop recorder captures
+            # picture and sound at full quality.
+            return deny("browser_not_supported", 403)
 
     if not privileged:
         now = datetime.now(timezone.utc)

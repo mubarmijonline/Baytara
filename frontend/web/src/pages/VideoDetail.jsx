@@ -15,6 +15,7 @@ const PLAY_ERROR_KEYS = {
   unsupported_browser: 'video.unsupportedBrowser',
   already_playing: 'video.alreadyPlaying',
   app_required: 'video.appRequired',
+  browser_not_supported: 'video.browserNotSupported',
   too_many_requests: 'video.tooManyRequests',
 };
 

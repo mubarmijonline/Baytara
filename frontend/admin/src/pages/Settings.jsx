@@ -192,6 +192,11 @@ export default function Settings() {
                        onChange={(event) => setKey('mobile_requires_app', event.target.checked)} />
                 <span>{copy.integrations.mobileRequiresApp}</span>
               </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '4px 0 12px' }}>
+                <input type="checkbox" checked={draft.strict_browser_policy === true || draft.strict_browser_policy === 'true'}
+                       onChange={(event) => setKey('strict_browser_policy', event.target.checked)} />
+                <span>{copy.integrations.strictBrowsers}</span>
+              </label>
               <div className="row">
                 <button className="btn btn-tonal" disabled={busy} onClick={() => runVdo(() => api.vdocipherTest(), copy.integrations.connected, copy.integrations.connectionError)}>{copy.integrations.testVdo}</button>
                 <button className="btn btn-tonal" disabled={busy} onClick={() => runVdo(() => api.vdocipherSyncFolders({ all_courses: true }), copy.integrations.synced, copy.integrations.syncError)}>{copy.integrations.syncVdo}</button>

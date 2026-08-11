@@ -70,6 +70,7 @@ export default function Learn() {
           code === 'no_api_key' ? 'خدمة الفيديو غير مُفعّلة بعد.'
           : code === 'mac_needs_safari' ? MAC_SAFARI_MSG
           : code === 'unsupported_browser' ? INAPP_BROWSER_MSG
+          : code === 'browser_not_supported' ? 'هذا المتصفّح لا يوفّر حماية كافية للمحتوى. استخدم Safari على أجهزة Apple، أو Edge على ويندوز، أو Chrome على أندرويد.'
           : code === 'app_required' ? 'المحتوى المحمي يُشاهد على الهاتف عبر تطبيق بيطرة. المتصفّح لا يمنع تسجيل الصوت.'
           : code === 'already_playing' ? 'حسابك يشغّل فيديو على جهاز آخر الآن. أوقفه ثم أعد المحاولة.'
           : code === 'too_many_requests' ? 'عدد كبير من محاولات التشغيل خلال ساعة. انتظر قليلاً ثم أعد المحاولة.'
