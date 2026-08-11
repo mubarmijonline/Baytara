@@ -34,7 +34,7 @@ Wire format — the encoder and `backend/tools/decode_audio_watermark.py` must a
 | Checksum | 1 nibble — XOR of the payload nibbles |
 | Timing | 120 ms tone, 30 ms gap → one frame ≈ 1.65 s |
 | Level | gain 0.03 (≈ −30 dBFS), with 8 ms ramps so there is no click |
-| Repeat | every 90 s of playback |
+| Repeat | every 20 s of playback (a 30-second rip must contain a whole frame) |
 
 ## Reading a leaked file
 

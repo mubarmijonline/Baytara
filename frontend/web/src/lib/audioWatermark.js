@@ -22,7 +22,7 @@ export const WM = {
   toneMs: 120,
   gapMs: 30,
   gain: 0.03, // ~-30 dBFS: inaudible over speech, still well above the noise floor
-  repeatMs: 90000,
+  repeatMs: 20000, // a 30s rip must contain a frame; 1.65s of inaudible tone each time
 };
 
 export function markNibbles(accountId) {
