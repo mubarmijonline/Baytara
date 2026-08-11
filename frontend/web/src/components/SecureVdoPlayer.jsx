@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { auth } from '../lib/api.js';
 import { startAudioWatermark } from '../lib/audioWatermark.js';
+import { diagEnabled, diagLog } from '../lib/diag.js';
 
 const PLAYER_API_URL = 'https://player.vdocipher.com/v2/api.js';
 let playerApiPromise;
@@ -148,6 +149,33 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
         player.video.addEventListener(name, handler);
         subscriptions.push([name, handler]);
       });
+
+      // ?diag=1 — log what the player itself notices. If a blanked picture is observable
+      // anywhere, it is here: the player owns the DRM key session.
+      if (diagEnabled()) {
+        const watched = ['play', 'pause', 'waiting', 'stalled', 'seeking', 'seeked', 'ratechange',
+                         'error', 'ended', 'emptied', 'suspend', 'volumechange'];
+        watched.forEach((name) => {
+          const probe = () => diagLog('PLAYER ' + name,
+            `t=${(player.video.currentTime || 0).toFixed(1)} paused=${player.video.paused} muted=${player.video.muted}`);
+          player.video.addEventListener(name, probe);
+          subscriptions.push([name, probe]);
+        });
+        try {
+          ['statusChange', 'videoQualityChange', 'videoAdaptivenessChange', 'fullscreenChange'].forEach((name) => {
+            player.addEventListener(name, (event) => diagLog('VDO ' + name, JSON.stringify(event || {}).slice(0, 160)));
+          });
+        } catch {
+          diagLog('VDO listeners unavailable');
+        }
+        let lastTime = 0;
+        const drift = setInterval(() => {
+          const now = player.video.currentTime || 0;
+          diagLog('PLAYER tick', `t=${now.toFixed(1)} advanced=${(now - lastTime).toFixed(2)}s paused=${player.video.paused}`);
+          lastTime = now;
+        }, 2000);
+        subscriptions.push(['__interval', () => clearInterval(drift)]);
+      }
     }).catch((error) => active && onSecurityError?.(error));
 
     // The native shell (Capacitor) calls this when iOS reports the screen is being
@@ -168,7 +196,10 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
       if (stopWatermark) stopWatermark();
       delete window.__baytaraCaptureChanged;
       if (player) {
-        subscriptions.forEach(([name, handler]) => player.video.removeEventListener(name, handler));
+        subscriptions.forEach(([name, handler]) => {
+          if (name === '__interval') handler();
+          else player.video.removeEventListener(name, handler);
+        });
       }
     };
   }, [playback, onEnded, onSecurityError]);

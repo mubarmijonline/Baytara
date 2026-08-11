@@ -5,6 +5,7 @@ import { auth, isAuthed, useFetch, webapi } from '../lib/api.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { colors } from '../theme/tokens.js';
 import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
+import CaptureProbe from '../components/CaptureProbe.jsx';
 import { useAuth } from '../lib/auth.jsx';
 
 // Playback denials the viewer can act on; anything else falls back to the generic message.
@@ -99,6 +100,7 @@ export default function VideoDetail() {
           </aside>
         </div>
       </Container>
+      <CaptureProbe />
     </main>
   );
 }
