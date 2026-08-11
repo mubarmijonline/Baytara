@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فحص تسجيل الشاشة — بيطرة</title>
+<!--
+  Diagnostic page. Not linked from the site.
+
+  Question: does a phone browser expose ANY observable signal while the screen is being
+  recorded? This samples every candidate continuously and logs anything that moves, so a
+  real device settles it instead of speculation.
+
+  Method: open on the phone, tap Start, record the screen for ~30s, stop, tap Copy log.
+-->
+<style>
+  body { font: 15px/1.6 system-ui, sans-serif; margin: 0; padding: 16px; background: #f7f7fb; color: #14142b; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  p { margin: 0 0 12px; color: #5a6180; font-size: 13px; }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 8px; padding: 12px 18px;
+           background: #3048a0; color: #fff; margin-inline-end: 8px; margin-bottom: 10px; }
+  button.ghost { background: #fff; color: #3048a0; border: 1.5px solid #3048a0; }
+  #now { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; background: #fff;
+         border: 1px solid #ececf2; border-radius: 10px; padding: 12px; font-size: 13px; margin-bottom: 12px; }
+  #now b { font-weight: 700; }
+  #log { background: #10152c; color: #d8e0ff; border-radius: 10px; padding: 12px; height: 46vh;
+         overflow: auto; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; direction: ltr; text-align: left; }
+</style>
+</head>
+<body>
+<h1>فحص تسجيل الشاشة</h1>
+<p>افتح الصفحة على الهاتف ← اضغط «ابدأ» ← سجّل الشاشة ٣٠ ثانية ← أوقف التسجيل ← «انسخ السجل» وأرسله.</p>
+
+<button id="start">ابدأ</button>
+<button id="copy" class="ghost">انسخ السجل</button>
+<button id="clear" class="ghost">مسح</button>
+
+<div id="now"></div>
+<div id="log"></div>
+
+<script>
+(() => {
+  const logEl = document.getElementById('log');
+  const nowEl = document.getElementById('now');
+  const t0 = performance.now();
+  const stamp = () => ((performance.now() - t0) / 1000).toFixed(2).padStart(7, ' ');
+  let lines = [];
+
+  function log(what, detail) {
+    const line = `${stamp()}s  ${what}${detail !== undefined ? '  ' + detail : ''}`;
+    lines.push(line);
+    logEl.textContent = lines.slice(-400).join('\n');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ---- candidate signals -------------------------------------------------
+  // 1. page lifecycle: fires when Control Centre opens, NOT while recording runs
+  ['visibilitychange', 'blur', 'focus', 'pagehide', 'pageshow', 'freeze', 'resume'].forEach((name) => {
+    const target = name === 'visibilitychange' ? document : window;
+    target.addEventListener(name, () => log('EVENT ' + name, 'visibility=' + document.visibilityState + ' focus=' + document.hasFocus()));
+  });
+  // 2. geometry: some capture modes change dpr or the visual viewport
+  ['resize', 'orientationchange'].forEach((name) =>
+    window.addEventListener(name, () => log('EVENT ' + name, `${innerWidth}x${innerHeight} dpr=${devicePixelRatio}`)));
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', () => log('EVENT visualViewport', `${visualViewport.width}x${visualViewport.height}`));
+  }
+
+  // 3. AirPlay / external target — real API, real event (mirroring, not recording)
+  const probe = document.createElement('video');
+  probe.muted = true; probe.playsInline = true;
+  if ('webkitCurrentPlaybackTargetIsWireless' in probe) {
+    probe.addEventListener('webkitcurrentplaybacktargetiswirelesschanged',
+      () => log('EVENT airplayTargetChanged', String(probe.webkitCurrentPlaybackTargetIsWireless)));
+    probe.addEventListener('webkitplaybacktargetavailabilitychanged',
+      (e) => log('EVENT airplayAvailability', e.availability));
+  }
+
+  // 4. audio context state — does starting a recording interrupt or duck audio?
+  let audio;
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audio = new Ctx();
+    audio.onstatechange = () => log('EVENT audioContext.state', audio.state);
+  } catch { /* not available */ }
+
+  // 5. frame timing — a recorder encodes every frame, which can show up as jitter
+  let frames = 0, last = performance.now(), worst = 0, sum = 0, samples = 0;
+  function frame(now) {
+    const delta = now - last; last = now;
+    frames += 1; sum += delta; samples += 1;
+    if (delta > worst) worst = delta;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---- periodic snapshot -------------------------------------------------
+  let prev = {};
+  function snapshot(force) {
+    const fps = samples ? (1000 / (sum / samples)) : 0;
+    const state = {
+      visibility: document.visibilityState,
+      focus: String(document.hasFocus()),
+      fps: fps.toFixed(1),
+      worstFrameMs: worst.toFixed(1),
+      dpr: String(devicePixelRatio),
+      viewport: `${innerWidth}x${innerHeight}`,
+      screen: `${screen.width}x${screen.height}`,
+      colorDepth: String(screen.colorDepth),
+      audio: audio ? audio.state : 'n/a',
+      reducedMotion: String(matchMedia('(prefers-reduced-motion: reduce)').matches),
+      dynamicRange: matchMedia('(dynamic-range: high)').matches ? 'high' : 'standard',
+    };
+    nowEl.innerHTML = Object.entries(state)
+      .map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
+    // log only what changed, so the log stays readable across a long recording
+    Object.entries(state).forEach(([k, v]) => {
+      if (k === 'fps' || k === 'worstFrameMs') return;
+      if (prev[k] !== undefined && prev[k] !== v) log('CHANGED ' + k, `${prev[k]} -> ${v}`);
+    });
+    if (force || samples > 0) log('sample', `fps=${state.fps} worstFrame=${state.worstFrameMs}ms vis=${state.visibility} focus=${state.focus} audio=${state.audio}`);
+    prev = state;
+    worst = 0; sum = 0; samples = 0;
+  }
+
+  let timer;
+  document.getElementById('start').onclick = async () => {
+    lines = [];
+    if (audio && audio.state === 'suspended') { try { await audio.resume(); } catch {} }
+    log('START', `ua=${navigator.userAgent}`);
+    log('baseline', `dpr=${devicePixelRatio} screen=${screen.width}x${screen.height} viewport=${innerWidth}x${innerHeight}`);
+    snapshot(true);
+    clearInterval(timer);
+    timer = setInterval(() => snapshot(false), 2000);
+  };
+  document.getElementById('copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(lines.join('\n')); alert('تم نسخ السجل'); }
+    catch { alert('انسخ النص يدوياً من الصندوق'); }
+  };
+  document.getElementById('clear').onclick = () => { lines = []; logEl.textContent = ''; };
+})();
+</script>
+</body>
+</html>
