@@ -161,12 +161,22 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
           player.video.addEventListener(name, probe);
           subscriptions.push([name, probe]);
         });
-        try {
-          ['statusChange', 'videoQualityChange', 'videoAdaptivenessChange', 'fullscreenChange'].forEach((name) => {
-            player.addEventListener(name, (event) => diagLog('VDO ' + name, JSON.stringify(event || {}).slice(0, 160)));
+        // VdoCipher's custom events live on player.api; older builds exposed them on the
+        // instance itself. Try both and report which one answered.
+        const vdoEvents = ['statusChange', 'videoQualityChange', 'videoAdaptivenessChange', 'fullscreenChange'];
+        const holder = (player.api && typeof player.api.addEventListener === 'function') ? player.api
+          : (typeof player.addEventListener === 'function' ? player : null);
+        if (holder) {
+          diagLog('VDO listeners on', holder === player.api ? 'player.api' : 'player');
+          vdoEvents.forEach((name) => {
+            try {
+              holder.addEventListener(name, (event) => diagLog('VDO ' + name, JSON.stringify(event || {}).slice(0, 200)));
+            } catch (err) {
+              diagLog('VDO ' + name + ' failed', String(err).slice(0, 80));
+            }
           });
-        } catch {
-          diagLog('VDO listeners unavailable');
+        } else {
+          diagLog('VDO listeners unavailable', 'keys=' + Object.keys(player).join(',').slice(0, 160));
         }
         let lastTime = 0;
         const drift = setInterval(() => {
