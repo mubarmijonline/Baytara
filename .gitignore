@@ -44,3 +44,7 @@ mobile/ios/App/output/
 *.MP4
 *.MOV
 *.watermark-probe.wav
+
+# .NET build output (desktop shells)
+desktop/windows/bin/
+desktop/windows/obj/
