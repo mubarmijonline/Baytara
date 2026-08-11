@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { auth } from '../lib/api.js';
-import { startAudioWatermark } from '../lib/audioWatermark.js';
+import { startAudioWatermark, watermarkState } from '../lib/audioWatermark.js';
 import { diagEnabled, diagLog } from '../lib/diag.js';
 
 const PLAYER_API_URL = 'https://player.vdocipher.com/v2/api.js';
@@ -119,7 +119,10 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
           playing = true;
           lastHeartbeat = Date.now();
           // inaudible account watermark rides in the audio mix a recorder captures
-          if (!stopWatermark) stopWatermark = startAudioWatermark(playback.audio_mark);
+          if (!stopWatermark) {
+            stopWatermark = startAudioWatermark(playback.audio_mark);
+            diagLog('WATERMARK', `mark=${playback.audio_mark} audioContext=${watermarkState()}`);
+          }
           const type = played ? 'resume' : 'play';
           played = true;
           return report(type);

@@ -69,19 +69,37 @@ export function frameSeconds() {
  * Emit the watermark for as long as the lesson plays.
  * Returns a stop() function; call it on pause, end and unmount.
  */
+// iOS only lets an AudioContext start inside a real user gesture. The player's "play"
+// event arrives by postMessage from a cross-origin iframe, which is NOT a user activation,
+// so a context created there stays suspended for ever and emits nothing — measured on
+// iOS 18.7. Prime it from the tap that starts the lesson instead, and reuse it after.
+let sharedCtx = null;
+
+export function primeAudioWatermark() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  try {
+    if (!sharedCtx) sharedCtx = new Ctx();
+    if (sharedCtx.state === 'suspended') sharedCtx.resume().catch(() => {});
+    // a one-sample silent buffer completes the unlock on older iOS
+    const source = sharedCtx.createBufferSource();
+    source.buffer = sharedCtx.createBuffer(1, 1, sharedCtx.sampleRate);
+    source.connect(sharedCtx.destination);
+    source.start(0);
+  } catch {
+    return null;
+  }
+  return sharedCtx;
+}
+
+export function watermarkState() {
+  return sharedCtx ? sharedCtx.state : 'none';
+}
+
 export function startAudioWatermark(accountId) {
   if (!accountId) return () => {};
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return () => {};
-
-  let ctx;
-  try {
-    ctx = new Ctx();
-  } catch {
-    return () => {}; // no audio context (rare, locked-down browsers) — nothing to do
-  }
-  // Playback always starts from a tap, so the context is allowed to run; resume anyway
-  // because iOS suspends it whenever the page was backgrounded.
+  const ctx = primeAudioWatermark();
+  if (!ctx) return () => {};
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
   let stopped = false;
@@ -101,6 +119,6 @@ export function startAudioWatermark(accountId) {
   return () => {
     stopped = true;
     clearTimeout(timer);
-    ctx.close().catch(() => {});
+    // shared context, unlocked by a gesture — keep it alive, just stop scheduling
   };
 }

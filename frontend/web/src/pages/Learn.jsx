@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { colors, layout } from '../theme/tokens.js';
 import { rawCourses, curriculum } from '../data/mock.js';
 import { webapi, mapCourse, auth, isAuthed } from '../lib/api.js';
+import { primeAudioWatermark } from '../lib/audioWatermark.js';
 import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
 
 // Screen recording can only be blocked by FairPlay DRM, which runs in Safari alone.
@@ -210,6 +211,7 @@ export default function Learn() {
                 <div
                   key={l.key}
                   onClick={() => {
+                    primeAudioWatermark(); // unlock audio inside the tap (iOS)
                     setActive(l.key);
                     navigate(`/learn/${courseId}/${l.key}`);
                   }}

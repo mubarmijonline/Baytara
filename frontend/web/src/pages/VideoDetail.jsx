@@ -5,6 +5,7 @@ import { auth, isAuthed, useFetch, webapi } from '../lib/api.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { colors } from '../theme/tokens.js';
 import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
+import { primeAudioWatermark } from '../lib/audioWatermark.js';
 import CaptureProbe from '../components/CaptureProbe.jsx';
 import { useAuth } from '../lib/auth.jsx';
 
@@ -31,6 +32,8 @@ export default function VideoDetail() {
   const anonymous = video && (!isAuthed() || video.requires_auth);
 
   const play = async () => {
+    // must run inside the tap: iOS refuses to start an AudioContext later
+    primeAudioWatermark();
     setStarting(true);
     setPlayError('');
     try { setPlayback(await auth.playback(Number(id))); }
