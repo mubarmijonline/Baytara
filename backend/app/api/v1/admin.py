@@ -440,6 +440,85 @@ def upload_image():
     return jsonify(url=f"/api/v1/uploads/{name}"), 201
 
 
+# ------------------------------ self-hosted video upload ------------------------------
+
+VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-matroska", "video/webm", "video/x-msvideo"}
+
+
+def _package_local_video(app, lesson_id, source_path):
+    """Transcode + encrypt in a worker thread; the request must not wait an hour."""
+    from ...services import local_video
+
+    with app.app_context():
+        lesson = db.session.get(Lesson, lesson_id)
+        if not lesson:
+            return
+        try:
+            local_video.package(source_path, local_video.lesson_dir(app, lesson_id))
+            minutes = local_video.probe_duration_minutes(source_path)
+            lesson = db.session.get(Lesson, lesson_id)
+            if minutes and not lesson.duration_minutes:
+                lesson.duration_minutes = minutes
+            lesson.local_status = "ready"
+            lesson.local_error = None
+        except Exception as exc:  # noqa: BLE001 - the reason belongs in the admin UI
+            lesson = db.session.get(Lesson, lesson_id)
+            if lesson:
+                lesson.local_status = "failed"
+                lesson.local_error = str(exc)[:200]
+        finally:
+            os.path.exists(source_path) and os.unlink(source_path)
+            db.session.commit()
+
+
+@bp.post("/videos/<int:lid>/upload")
+@require_role("admin")
+def video_upload(lid):
+    """Upload a video file to this server; it is packaged as encrypted HLS in the background."""
+    import threading
+
+    lesson = db.session.get(Lesson, lid)
+    if not lesson:
+        return jsonify(error="not_found"), 404
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="file_required"), 400
+    if f.mimetype not in VIDEO_TYPES:
+        return jsonify(error="unsupported_media_type", allowed=sorted(VIDEO_TYPES)), 415
+
+    incoming = os.path.join(current_app.config["LOCAL_VIDEO_DIR"], "_incoming")
+    os.makedirs(incoming, exist_ok=True)
+    source_path = os.path.join(incoming, f"{lid}_{uuid.uuid4().hex[:8]}_{secure_filename(f.filename)}")
+    f.save(source_path)
+
+    lesson.source = "local"
+    lesson.local_status = "packaging"
+    lesson.local_error = None
+    db.session.commit()
+
+    threading.Thread(target=_package_local_video,
+                     args=(current_app._get_current_object(), lid, source_path),
+                     daemon=True).start()
+    return jsonify(video=_video_dict(lesson)), 202
+
+
+@bp.delete("/videos/<int:lid>/upload")
+@require_role("admin")
+def video_upload_delete(lid):
+    """Remove the packaged files and hand the video back to VdoCipher delivery."""
+    from ...services import local_video
+
+    lesson = db.session.get(Lesson, lid)
+    if not lesson:
+        return jsonify(error="not_found"), 404
+    local_video.delete(current_app, lid)
+    lesson.source = "vdocipher"
+    lesson.local_status = None
+    lesson.local_error = None
+    db.session.commit()
+    return jsonify(video=_video_dict(lesson))
+
+
 # ------------------------------ baytarian verification ------------------------------
 
 @bp.get("/baytarian-requests")

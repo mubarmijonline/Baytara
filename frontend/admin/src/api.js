@@ -78,6 +78,25 @@ export const api = {
     });
   },
 
+  // self-hosted video: upload a file to our own server (packaged as encrypted HLS)
+  videoUpload: (id, file, onProgress) => new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', BASE + `/admin/videos/${id}/upload`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => {
+      let data = null;
+      try { data = JSON.parse(xhr.responseText); } catch { /* non-JSON error page */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(Object.assign(new Error((data && data.error) || 'error'), { status: xhr.status, data }));
+    };
+    xhr.onerror = () => reject(new Error('network'));
+    xhr.send(fd);
+  }),
+  videoUploadDelete: (id) => req(`/admin/videos/${id}/upload`, { method: 'DELETE' }),
+
   // categories
   categories: () => req('/categories'),
   categoryCreate: (body) => req('/admin/categories', { method: 'POST', body: JSON.stringify(body) }),

@@ -383,6 +383,8 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
             "category": {"id": category.id, "name": "Equine", "name_en": "Equine", "slug": "equine-serialized"},
             "assignment_count": 1,
             "is_protected": True,
+            "source": "vdocipher",
+            "local_status": None,
             "has_video": False,
             "course_id": None,
         }

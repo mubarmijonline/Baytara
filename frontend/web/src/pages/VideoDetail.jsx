@@ -5,6 +5,7 @@ import { auth, isAuthed, useFetch, webapi } from '../lib/api.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { colors } from '../theme/tokens.js';
 import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
+import LocalHlsPlayer from '../components/LocalHlsPlayer.jsx';
 import { primeAudioWatermark } from '../lib/audioWatermark.js';
 import CaptureProbe from '../components/CaptureProbe.jsx';
 import { useAuth } from '../lib/auth.jsx';
@@ -58,7 +59,9 @@ export default function VideoDetail() {
         <div className="video-detail-grid">
           <section>
             <div className={`video-detail-player${!playback && !video.can_play ? ' video-detail-player-locked' : ''}`}>
-              {playback ? <SecureVdoPlayer playback={playback} title={video.title} onSecurityError={() => setPlayError('security')} /> : <>
+              {playback ? (playback.kind === 'local'
+                ? <LocalHlsPlayer playback={playback} title={video.title} onSecurityError={() => setPlayError('security')} />
+                : <SecureVdoPlayer playback={playback} title={video.title} onSecurityError={() => setPlayError('security')} />) : <>
                 {video.poster && !posterFailed && (
                   // a dead poster URL must not leave a broken-image glyph over the player
                   <img className="video-detail-poster" src={video.poster} alt="" draggable={false}
