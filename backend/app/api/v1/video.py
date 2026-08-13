@@ -4,7 +4,8 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 
 from ...extensions import db
-from ...models import Category, Lesson, User, UserDevice, VideoPlaybackSession
+from ...models import (Category, Lesson, User, UserDevice, VideoPlaybackEvent,
+                       VideoPlaybackSession)
 from ...services.catalog_access import audience_error, capture_protected, video_access
 from ...services.video_provider import provider, watermark_for, VideoProviderError
 from .local_hls import issue_token
@@ -29,6 +30,11 @@ LIVE_STATUSES = ("issued", "playing", "paused")
 CONCURRENT_GRACE = timedelta(minutes=2)   # the player heartbeats every 15s
 OTP_WINDOW = timedelta(hours=1)
 OTP_PER_WINDOW = 40                       # a fresh lesson every 90 seconds, all hour
+# Escalation: the activity guard reports capture-shaped behaviour (PrintScreen, DevTools,
+# save shortcuts...). A few is a curious learner; a stream of them is someone working at it,
+# and playback stops until the window passes.
+SUSPICIOUS_WINDOW = timedelta(minutes=15)
+SUSPICIOUS_LIMIT = 5
 
 
 def _current_user():
@@ -250,6 +256,15 @@ def playback():
         ).count()
         if minted >= OTP_PER_WINDOW:
             return deny("too_many_requests", 429)
+
+        flagged = (VideoPlaybackEvent.query
+                   .join(VideoPlaybackSession, VideoPlaybackEvent.session_id == VideoPlaybackSession.id)
+                   .filter(VideoPlaybackSession.user_id == user.id,
+                           VideoPlaybackEvent.event_type == "suspicious",
+                           VideoPlaybackEvent.created_at >= now - SUSPICIOUS_WINDOW)
+                   .count())
+        if flagged >= SUSPICIOUS_LIMIT:
+            return deny("suspicious_activity", 403)
 
     resume_position_seconds = _resume_position_seconds(user, lesson)
     session = start_playback_attempt(

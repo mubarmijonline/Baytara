@@ -140,7 +140,8 @@ def _seconds(payload, key, default=0):
 
 def _event_details(payload):
     raw = payload.get("metadata") or {}
-    if not isinstance(raw, dict) or set(raw) - {"error_code", "message"}:
+    # "reason" carries the activity-guard trigger (printscreen, devtools_open, ...)
+    if not isinstance(raw, dict) or set(raw) - {"error_code", "message", "reason"}:
         raise PlaybackEventError("invalid_event_metadata")
     details = {}
     for key, value in raw.items():

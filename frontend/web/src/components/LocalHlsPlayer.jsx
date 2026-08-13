@@ -98,7 +98,7 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
           duration_seconds: Math.max(1, Math.round(video.duration || 1)),
           watched_seconds: Math.max(0, Math.round(video.currentTime || 0)),
           covered_seconds: Math.max(0, Math.round(video.currentTime || 0)),
-          metadata: { reason },
+          metadata: { reason },   // whitelisted server-side
         }).catch(() => { /* the pause already happened; never break playback on a report */ });
       },
       onPause: (reason) => {
