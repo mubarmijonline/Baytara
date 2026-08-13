@@ -19,7 +19,10 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
     const video = videoRef.current;
     if (!video || !playback?.url) return undefined;
     let hls;
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // hls.js first: Chromium answers "maybe" to the HLS MIME type but cannot actually
+    // play it, which leaves the element with MEDIA_ERR_SRC_NOT_SUPPORTED. Native HLS is
+    // the fallback for Safari/iOS, where hls.js is unsupported.
+    if (!Hls.isSupported() && video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = playback.url;                       // Safari / iOS
     } else if (Hls.isSupported()) {
       hls = new Hls({ maxBufferLength: 30 });

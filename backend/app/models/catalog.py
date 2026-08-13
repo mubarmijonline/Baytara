@@ -257,7 +257,8 @@ class Lesson(db.Model):
             "is_protected": self.is_protected,
             "source": self.source,
             "local_status": self.local_status,
-            "has_video": bool(self.vdocipher_video_id),
+            "has_video": bool(self.vdocipher_video_id
+                                or (self.source == "local" and self.local_status == "ready")),
             "course_id": self.course_id,
         }
 
