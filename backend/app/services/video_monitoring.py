@@ -7,7 +7,9 @@ from ..models import Course, CourseVideo, VideoPlaybackEvent, VideoPlaybackSessi
 
 
 OPEN_SESSION_STATUSES = {"issued", "playing", "paused"}
-CLIENT_EVENT_TYPES = {"play", "pause", "resume", "heartbeat", "ended", "player_error"}
+# "suspicious" is reported by the browser activity guard (frontend/web/src/lib/activityGuard.js)
+# when the viewer does something that usually surrounds a capture attempt.
+CLIENT_EVENT_TYPES = {"play", "pause", "resume", "heartbeat", "ended", "player_error", "suspicious"}
 
 
 class PlaybackEventError(ValueError):
@@ -207,7 +209,11 @@ def record_playback_event(session, user, device_id, payload, now=None):
     locked.completion_percent = min(round(locked.covered_seconds / duration * 100), 100)
     locked.last_event_at = now
 
-    if event_type in {"play", "resume", "heartbeat"}:
+    if event_type == "suspicious":
+        # never changes the session status; it is an audit trail, and the client has already
+        # paused playback itself
+        pass
+    elif event_type in {"play", "resume", "heartbeat"}:
         locked.status = "playing"
         if not locked.first_played_at:
             locked.first_played_at = now

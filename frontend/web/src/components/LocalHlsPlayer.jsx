@@ -3,6 +3,7 @@ import Hls from 'hls.js';
 import { auth } from '../lib/api.js';
 import { startAudioWatermark } from '../lib/audioWatermark.js';
 import { diagEnabled, diagLog } from '../lib/diag.js';
+import { startActivityGuard } from '../lib/activityGuard.js';
 
 // Player for self-hosted lessons (encrypted HLS from this server). Safari plays HLS
 // natively; everywhere else hls.js does. The moving overlay carries the viewer's identity,
@@ -13,6 +14,7 @@ import { diagEnabled, diagLog } from '../lib/diag.js';
 export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityError }) {
   const videoRef = useRef(null);
   const [offset, setOffset] = useState({ top: '12%', left: '8%' });
+  const [halted, setHalted] = useState('');
 
   // ---- stream ----
   useEffect(() => {
@@ -85,6 +87,26 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
     };
     Object.entries(handlers).forEach(([name, fn]) => video.addEventListener(name, fn));
 
+    // watch for the behaviour that surrounds a capture attempt: pause, and record it
+    const stopGuard = startActivityGuard({
+      onSuspicious: (reason) => {
+        diagLog('SUSPICIOUS', reason);
+        auth.playbackEvent(playback.session_id, {
+          event_id: (crypto.randomUUID ? crypto.randomUUID() : String(Math.random())),
+          type: 'suspicious',
+          position_seconds: Math.max(0, Math.round(video.currentTime || 0)),
+          duration_seconds: Math.max(1, Math.round(video.duration || 1)),
+          watched_seconds: Math.max(0, Math.round(video.currentTime || 0)),
+          covered_seconds: Math.max(0, Math.round(video.currentTime || 0)),
+          metadata: { reason },
+        }).catch(() => { /* the pause already happened; never break playback on a report */ });
+      },
+      onPause: (reason) => {
+        if (!video.paused) video.pause();
+        setHalted(reason);
+      },
+    });
+
     // the native shell tells us a recording started (iOS) — stop playing
     window.__baytaraCaptureChanged = (captured) => {
       video.muted = !!captured;
@@ -94,6 +116,7 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
     return () => {
       Object.entries(handlers).forEach(([name, fn]) => video.removeEventListener(name, fn));
       if (stopWatermark) stopWatermark();
+      stopGuard();
       delete window.__baytaraCaptureChanged;
     };
   }, [playback, onEnded, onSecurityError]);
@@ -121,6 +144,23 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
         disablePictureInPicture
         style={{ width: '100%', height: '100%', display: 'block', background: '#000' }}
       />
+      {halted && (
+        <div data-testid="local-video-halted"
+             style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 20,
+               background: 'rgba(16,21,44,.92)', color: '#fff', textAlign: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 8 }}>تم إيقاف التشغيل مؤقتاً</div>
+            <div style={{ fontSize: 13, color: '#c9c9dc', marginBottom: 14, lineHeight: 1.7 }}>
+              رصدنا نشاطاً غير مسموح أثناء المشاهدة، وسُجّل على حسابك.
+            </div>
+            <button type="button" onClick={() => { setHalted(''); videoRef.current?.play(); }}
+              style={{ border: 0, borderRadius: 8, background: '#3048A0', color: '#fff', fontWeight: 800,
+                minHeight: 42, padding: '0 20px', cursor: 'pointer' }}>
+              متابعة المشاهدة
+            </button>
+          </div>
+        </div>
+      )}
       {playback?.watermark && (
         <span
           data-testid="local-video-watermark"
