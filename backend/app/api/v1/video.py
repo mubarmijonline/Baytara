@@ -199,7 +199,7 @@ def playback():
     device = UserDevice.query.filter_by(user_id=user.id, device_id=device_id).first()
     if not device:
         return deny("device_not_registered", 403)
-    if UserDevice.query.filter_by(user_id=user.id).count() > UserDevice.MAX_DEVICES:
+    if UserDevice.query.filter_by(user_id=user.id).count() > UserDevice.limit_for(user):
         return deny("device_limit_reached", 403)
 
     if not lesson:

@@ -29,6 +29,9 @@ class User(db.Model):
     bio = db.Column(db.Text)
     avatar_url = db.Column(db.String(500))
     expertise = db.Column(db.JSON)  # list[str]
+    # Per-account device allowance. NULL = the contract default (UserDevice.MAX_DEVICES).
+    # Raised only for staff/testing accounts, never as a way around البند2 for buyers.
+    max_devices = db.Column(db.Integer)
     # Section the instructor is listed under on the site (e.g. الخيول). NULL = unassigned.
     category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), index=True)
 
@@ -101,6 +104,11 @@ class UserDevice(db.Model):
     __table_args__ = (db.UniqueConstraint("user_id", "device_id", name="uq_device_user_device"),)
 
     MAX_DEVICES = 2
+
+    @staticmethod
+    def limit_for(user):
+        """Device allowance for this account: its override, else the contract default."""
+        return int(getattr(user, "max_devices", None) or UserDevice.MAX_DEVICES)
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)

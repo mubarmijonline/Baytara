@@ -31,7 +31,7 @@ def _register_device(user, device_id, label):
             dev.label = label[:160]
         db.session.commit()
         return True
-    if UserDevice.query.filter_by(user_id=user.id).count() >= UserDevice.MAX_DEVICES:
+    if UserDevice.query.filter_by(user_id=user.id).count() >= UserDevice.limit_for(user):
         return False
     db.session.add(UserDevice(user_id=user.id, device_id=device_id, label=(label or "")[:160]))
     db.session.commit()
@@ -114,7 +114,7 @@ def login():
     if not _register_device(user, body.get("device_id"), request.headers.get("User-Agent")):
         # cap reached — surface the devices so the user can remove one and retry
         devices = UserDevice.query.filter_by(user_id=user.id).order_by(UserDevice.last_seen).all()
-        return jsonify(error="device_limit_reached", max_devices=UserDevice.MAX_DEVICES,
+        return jsonify(error="device_limit_reached", max_devices=UserDevice.limit_for(user),
                        devices=[d.to_dict() for d in devices]), 403
     return jsonify(user=_user_json(user), **_tokens(user, body.get("device_id")))
 
@@ -176,9 +176,10 @@ def logout():
 @bp.get("/devices")
 @jwt_required()
 def list_devices():
-    rows = UserDevice.query.filter_by(user_id=int(get_jwt_identity())).order_by(
-        UserDevice.last_seen.desc()).all()
-    return jsonify(devices=[d.to_dict() for d in rows], max_devices=UserDevice.MAX_DEVICES)
+    uid = int(get_jwt_identity())
+    user = db.session.get(User, uid)
+    rows = UserDevice.query.filter_by(user_id=uid).order_by(UserDevice.last_seen.desc()).all()
+    return jsonify(devices=[d.to_dict() for d in rows], max_devices=UserDevice.limit_for(user))
 
 
 @bp.delete("/devices/<int:did>")

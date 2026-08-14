@@ -67,13 +67,13 @@ def _user_json(u):
             "is_active": u.is_active, "is_baytarian": u.is_baytarian,
             "created_at": u.created_at.isoformat() if u.created_at else None,
             "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or [],
-            "category_id": u.category_id,
+            "category_id": u.category_id, "max_devices": u.max_devices,
             "category": u.category.to_dict() if u.category else None,
             "courses_count": Course.query.filter_by(instructor_id=u.id).count() if u.role == "instructor" else 0,
             "can_add_video": u.can_add_video, "can_edit_video": u.can_edit_video, "can_delete_video": u.can_delete_video}
 
 
-PROFILE_FIELDS = ("phone", "headline", "bio", "avatar_url", "expertise", "category_id",
+PROFILE_FIELDS = ("phone", "headline", "bio", "avatar_url", "expertise", "category_id", "max_devices",
                   "is_baytarian", "can_add_video", "can_edit_video", "can_delete_video")
 
 
