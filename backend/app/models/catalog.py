@@ -210,11 +210,6 @@ class Lesson(db.Model):
     poster = db.Column(db.String(1000))
     vdocipher_video_id = db.Column(db.String(120))
     is_protected = db.Column(db.Boolean, nullable=False, default=True)
-    # Where the video lives: "vdocipher" (DRM provider) or "local" (this server, encrypted
-    # HLS served behind a signed token). Same catalog, same gates, different delivery.
-    source = db.Column(db.String(20), nullable=False, default="vdocipher", index=True)
-    local_status = db.Column(db.String(20))       # uploading | packaging | ready | failed
-    local_error = db.Column(db.String(200))
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
     updated_at = db.Column(db.DateTime(timezone=True), default=_now, onupdate=_now)
 
@@ -255,10 +250,7 @@ class Lesson(db.Model):
             "category": self.category.to_dict(lang) if self.category else None,
             "assignment_count": len(self.course_assignments),
             "is_protected": self.is_protected,
-            "source": self.source,
-            "local_status": self.local_status,
-            "has_video": bool(self.vdocipher_video_id
-                                or (self.source == "local" and self.local_status == "ready")),
+            "has_video": bool(self.vdocipher_video_id),
             "course_id": self.course_id,
         }
 

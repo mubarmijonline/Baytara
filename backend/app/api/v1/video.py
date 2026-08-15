@@ -8,7 +8,6 @@ from ...models import (Category, Lesson, User, UserDevice, VideoPlaybackEvent,
                        VideoPlaybackSession, push_notification)
 from ...services.catalog_access import audience_error, capture_protected, video_access
 from ...services.video_provider import provider, watermark_for, VideoProviderError
-from .local_hls import issue_token
 from ...services.video_monitoring import (
     PlaybackEventError,
     append_playback_event,
@@ -82,8 +81,7 @@ def videos():
     per_page = min(max(request.args.get("per_page", 12, type=int), 1), 50)
     query = Lesson.query.filter(
         Lesson.status == "published",
-        db.or_(Lesson.vdocipher_video_id.isnot(None),
-               db.and_(Lesson.source == "local", Lesson.local_status == "ready")),
+        Lesson.vdocipher_video_id.isnot(None),
     )
     category = request.args.get("category")
     if category:
@@ -117,9 +115,7 @@ def videos():
 def video_detail(video_id):
     user = _current_user()
     video = db.session.get(Lesson, video_id)
-    playable = video and (video.vdocipher_video_id
-                          or (video.source == "local" and video.local_status == "ready"))
-    if not video or video.status != "published" or not playable:
+    if not video or video.status != "published" or not video.vdocipher_video_id:
         return jsonify(error="not_found"), 404
     if video.access_type == "vet_free" and audience_error(user, "vet_free"):
         return jsonify(error="not_found"), 404
@@ -206,10 +202,7 @@ def playback():
         return deny("lesson_not_found", 404)
     if body.get("course_id") and not requested_course:
         return deny("invalid_course_context", 422)
-    if lesson.source == "local":
-        if lesson.local_status != "ready":
-            return deny("no_video", 409)
-    elif not lesson.vdocipher_video_id:
+    if not lesson.vdocipher_video_id:
         return deny("no_video", 409)
 
     privileged = user is not None and user.role == "admin"
@@ -277,21 +270,6 @@ def playback():
     session = start_playback_attempt(
         user, lesson, requested_course, device_id, ip_address, user_agent,
     )
-
-    if lesson.source == "local":
-        # Self-hosted: no vendor call. The watermark text is rendered by our own player,
-        # so hand it over with the token (docs/SELF_HOSTED_VIDEO.md).
-        append_playback_event(session, "otp_issued")
-        device.last_seen = session.started_at
-        db.session.commit()
-        return jsonify(
-            kind="local",
-            url=f"/api/v1/video/hls/{lesson.id}/master.m3u8?t={issue_token(lesson.id, user.id, session.public_id)}",
-            session_id=session.public_id,
-            resume_position_seconds=resume_position_seconds,
-            audio_mark=user.id,
-            watermark=" · ".join(filter(None, [user.name, user.email, user.phone, f"ID {user.id}"])),
-        )
 
     try:
         res = provider.issue_otp(

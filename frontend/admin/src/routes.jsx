@@ -16,7 +16,6 @@ import Instructors from './pages/Instructors.jsx';
 import Users from './pages/Users.jsx';
 import Videos from './pages/Videos.jsx';
 import VideoEditor from './pages/VideoEditor.jsx';
-import VideoUpload from './pages/VideoUpload.jsx';
 import VideoReports from './pages/VideoReports.jsx';
 
 const sectionRoutes = [
@@ -31,7 +30,6 @@ const sectionRoutes = [
   ['courses/:courseId/content', CourseContent],
   ['videos', Videos],
   ['videos/new', VideoEditor],
-  ['videos/upload', VideoUpload],
   ['videos/:videoId', VideoEditor],
   ['video-reports', VideoReports],
   ['video-reports/:sessionId', VideoReports],

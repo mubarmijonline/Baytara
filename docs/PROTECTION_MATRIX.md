@@ -1,6 +1,6 @@
 # What we control, and what we do not
 
-Tested 2026-08-14 against production, video 4 (self-hosted, `is_protected` on), account
+Tested 2026-08-14 against production (video 4, since removed), account
 `selftest@baytara.local`. Every row below is a measured result, not an expectation.
 
 ## 1. Who may play — we control this completely

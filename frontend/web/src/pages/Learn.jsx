@@ -5,7 +5,6 @@ import { rawCourses, curriculum } from '../data/mock.js';
 import { webapi, mapCourse, auth, isAuthed } from '../lib/api.js';
 import { primeAudioWatermark } from '../lib/audioWatermark.js';
 import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
-import LocalHlsPlayer from '../components/LocalHlsPlayer.jsx';
 
 // Screen recording can only be blocked by FairPlay DRM, which runs in Safari alone.
 // The backend refuses to issue an OTP to any other browser on a Mac; this is the
@@ -116,9 +115,7 @@ export default function Learn() {
         <div>
           {video ? (
             <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
-              {video.kind === 'local'
-                ? <LocalHlsPlayer playback={video} title="مشغّل الفيديو" onEnded={completeCurrent} onSecurityError={() => setVideoErr('تعذّر التحقق من جلسة المشاهدة.')} />
-                : <SecureVdoPlayer playback={video} title="مشغّل الفيديو" onEnded={completeCurrent} onSecurityError={() => setVideoErr('تعذّر التحقق من جلسة المشاهدة.')} />}
+              <SecureVdoPlayer playback={video} title="مشغّل الفيديو" onEnded={completeCurrent} onSecurityError={() => setVideoErr('تعذّر التحقق من جلسة المشاهدة.')} />
             </div>
           ) : (
             <div
