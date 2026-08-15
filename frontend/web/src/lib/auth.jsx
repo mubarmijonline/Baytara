@@ -28,8 +28,14 @@ export function AuthProvider({ children }) {
     setUser(res.user);
     return res.user;
   }
-  async function updateProfile(phone) {
-    const res = await auth.profile({ phone });
+  // Accepts a plain phone string (the old call sites) or a field object.
+  async function updateProfile(patch) {
+    const res = await auth.profile(typeof patch === 'string' ? { phone: patch } : patch);
+    setUser(res.user);
+    return res.user;
+  }
+  async function uploadProfileImage(kind, file) {
+    const res = await auth.profileImage(kind, file);
     setUser(res.user);
     return res.user;
   }
@@ -40,7 +46,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, loading, login, register, updateProfile, logout }}>
+    <AuthCtx.Provider value={{ user, loading, login, register, updateProfile, uploadProfileImage, logout }}>
       {children}
     </AuthCtx.Provider>
   );

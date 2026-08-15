@@ -14,7 +14,9 @@ from .catalog import (
     bundle_courses,
     bundle_videos,
 )
-from .learning import Enrollment, LessonProgress, VideoEntitlement
+from .learning import (
+    Certificate, Enrollment, LessonProgress, VideoEntitlement, issue_certificate_if_earned,
+)
 from .payment import InstapayAccount, InstapayPayment, Payment
 from .content import Setting, Article, ContactMessage, Notification, push_notification
 from .video_monitoring import (
@@ -28,6 +30,7 @@ __all__ = [
     "User", "UserDevice", "BaytarianRequest", "Category", "Course", "CourseModule", "CourseVideo", "Lesson",
     "Bundle", "CourseReview", "refresh_course_rating", "LearningPath", "PathCourse", "LEVELS",
     "bundle_courses", "bundle_videos",
+    "Certificate", "issue_certificate_if_earned",
     "Enrollment", "LessonProgress", "VideoEntitlement", "InstapayAccount", "InstapayPayment",
     "Payment", "Setting", "Article", "ContactMessage", "Notification", "push_notification",
     "PLAYBACK_EVENT_TYPES", "PLAYBACK_SESSION_STATUSES", "VideoPlaybackEvent", "VideoPlaybackSession",

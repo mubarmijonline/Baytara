@@ -28,6 +28,8 @@ class User(db.Model):
     headline = db.Column(db.String(200))
     bio = db.Column(db.Text)
     avatar_url = db.Column(db.String(500))
+    cover_url = db.Column(db.String(500))
+    location = db.Column(db.String(120))
     expertise = db.Column(db.JSON)  # list[str]
     # Per-account device allowance. NULL = the contract default (UserDevice.MAX_DEVICES).
     # Raised only for staff/testing accounts, never as a way around البند2 for buyers.

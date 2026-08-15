@@ -4,7 +4,10 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
-from ...models import Course, CourseModule, Lesson, Enrollment, LessonProgress, User
+from ...models import (
+    Certificate, Course, CourseModule, Lesson, Enrollment, LessonProgress, Payment, User,
+    issue_certificate_if_earned,
+)
 from ...models.catalog import loc
 from ...models.video_monitoring import VideoPlaybackSession
 from ...utils import req_lang
@@ -205,6 +208,83 @@ def update_progress():
     if data.get("completed"):
         prog.completed_at = prog.completed_at or datetime.now(timezone.utc)
 
+    db.session.flush()
+    # Finishing the last lesson is what earns the certificate; the helper is idempotent.
+    certificate = issue_certificate_if_earned(enrollment)
     db.session.commit()
     percent, completed, total = enrollment.completion()
-    return jsonify(progress={"percent": percent, "completed_lessons": completed, "total_lessons": total})
+    return jsonify(progress={"percent": percent, "completed_lessons": completed, "total_lessons": total},
+                   certificate=certificate.to_dict(req_lang()) if certificate else None)
+
+
+# ------------------------------ certificates ------------------------------
+
+@bp.get("/certificates")
+@jwt_required()
+def my_certificates():
+    rows = (Certificate.query.filter_by(user_id=_uid())
+            .order_by(Certificate.issued_at.desc(), Certificate.id.desc()).all())
+    return jsonify(certificates=[c.to_dict(req_lang()) for c in rows])
+
+
+@bp.get("/certificates/<serial>")
+def verify_certificate(serial):
+    """Public: anyone holding the serial can confirm the certificate is real. It
+    exposes the learner's name and the course, and nothing else about the account."""
+    certificate = Certificate.query.filter_by(serial=serial).first()
+    if not certificate:
+        return jsonify(error="not_found"), 404
+    return jsonify(certificate=certificate.to_dict(req_lang()), valid=True)
+
+
+# ------------------------------ activity ------------------------------
+
+@bp.get("/activity")
+@jwt_required()
+def my_activity():
+    """One time-sorted feed.
+
+    ponytail: derived from rows three features already write — lesson completions,
+    playback sessions and payments — rather than a user_activity table that would have
+    to be kept in step with all three.
+    """
+    user_id = _uid()
+    items = []
+
+    enrollments = Enrollment.query.filter_by(user_id=user_id, status="active").all()
+    titles = {}
+    for enrollment in enrollments:
+        course = enrollment.course
+        if not course:
+            continue
+        for lesson in course.content_videos():
+            titles[lesson.id] = (lesson, course)
+        for entry in enrollment.progress:
+            if entry.completed_at and entry.lesson_id in titles:
+                lesson, lesson_course = titles[entry.lesson_id]
+                items.append({
+                    "type": "lesson_completed", "at": entry.completed_at,
+                    "title": lesson.title, "context": lesson_course.title,
+                    "href": f"/learn/{lesson_course.slug}/{lesson.id}",
+                })
+
+    for certificate in Certificate.query.filter_by(user_id=user_id).all():
+        items.append({
+            "type": "certificate", "at": certificate.issued_at,
+            "title": certificate.course.title if certificate.course else "",
+            "context": certificate.serial, "href": f"/certificates/{certificate.serial}",
+        })
+
+    for payment in Payment.query.filter_by(user_id=user_id, status="paid").all():
+        bought = payment.course or payment.bundle or payment.video
+        items.append({
+            "type": "purchase", "at": payment.paid_at or payment.created_at,
+            "title": getattr(bought, "title", "") or "",
+            "context": f"{float(payment.amount or 0):g} {payment.currency}",
+            "href": "/dashboard/payments",
+        })
+
+    items = [i for i in items if i["at"]]
+    items.sort(key=lambda i: i["at"], reverse=True)
+    limit = min(max(request.args.get("limit", 10, type=int), 1), 50)
+    return jsonify(activity=[{**i, "at": i["at"].isoformat()} for i in items[:limit]])

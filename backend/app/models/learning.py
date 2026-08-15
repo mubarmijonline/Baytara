@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from ..extensions import db
@@ -123,6 +124,65 @@ class Enrollment(db.Model):
             "is_expired": self.is_expired(),
             "progress": self.progress_summary(),
         }
+
+
+class Certificate(db.Model):
+    """Issued once a learner completes every lesson of a course that offers one.
+
+    The serial is the public handle: /certificates/<serial> verifies it without
+    exposing a user id, and the same page is what «تحميل PDF» prints.
+    """
+
+    __tablename__ = "certificates"
+    __table_args__ = (db.UniqueConstraint("user_id", "course_id", name="uq_certificate_user_course"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    serial = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    issued_at = db.Column(db.DateTime(timezone=True), default=_now)
+
+    user = db.relationship("User")
+    course = db.relationship("Course")
+
+    @staticmethod
+    def new_serial():
+        # Short, unambiguous, and not guessable from a user or course id.
+        return f"BT-{uuid.uuid4().hex[:10].upper()}"
+
+    def to_dict(self, lang="ar"):
+        from .catalog import loc
+
+        return {
+            "serial": self.serial,
+            "issued_at": self.issued_at.isoformat() if self.issued_at else None,
+            "learner_name": self.user.name if self.user else None,
+            "course": {
+                "id": self.course.id,
+                "slug": self.course.slug,
+                "title": loc(self.course.title, self.course.title_en, lang),
+            } if self.course else None,
+        }
+
+
+def issue_certificate_if_earned(enrollment):
+    """Award a certificate when the course is finished and offers one. Idempotent —
+    the unique constraint plus this lookup mean re-completing a lesson cannot mint a
+    second one. Returns the certificate when there is one, else None.
+    """
+    course = enrollment.course
+    if not course or not course.has_certificate:
+        return None
+    percent, _, total = enrollment.completion()
+    if not total or percent < 100:
+        return None
+    existing = Certificate.query.filter_by(user_id=enrollment.user_id, course_id=course.id).first()
+    if existing:
+        return existing
+    certificate = Certificate(serial=Certificate.new_serial(),
+                              user_id=enrollment.user_id, course_id=course.id)
+    db.session.add(certificate)
+    return certificate
 
 
 class LessonProgress(db.Model):

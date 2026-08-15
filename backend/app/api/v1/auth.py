@@ -1,6 +1,8 @@
+import os
+import uuid
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from marshmallow import EXCLUDE, Schema, ValidationError, fields, validate
 from flask_jwt_extended import (
     create_access_token,
@@ -15,6 +17,9 @@ from ...models import User, UserDevice
 from ...security import hash_password, verify_password
 
 bp = Blueprint("auth", __name__)
+
+PROFILE_IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024   # the 5 MB the profile screen promises
 
 
 def _register_device(user, device_id, label):
@@ -74,7 +79,15 @@ def _tokens(user: User, device_id=None):
 
 def _user_json(user: User):
     return {"id": user.id, "name": user.name, "email": user.email, "phone": user.phone,
-            "role": user.role, "locale": user.locale, "is_baytarian": user.is_baytarian}
+            "role": user.role, "locale": user.locale, "is_baytarian": user.is_baytarian,
+            "headline": user.headline, "bio": user.bio, "location": user.location,
+            "avatar_url": user.avatar_url, "cover_url": user.cover_url,
+            "created_at": user.created_at.isoformat() if user.created_at else None}
+
+
+# What a learner may change about themselves, and how long each may be. Role,
+# email and verification are deliberately absent — those are not self-service.
+EDITABLE_PROFILE_FIELDS = {"name": 120, "headline": 200, "location": 120, "bio": 4000}
 
 
 @bp.post("/register")
@@ -152,12 +165,80 @@ def update_profile():
     user = db.session.get(User, int(get_jwt_identity()))
     if not user or not user.is_active:
         return jsonify(error="invalid_user"), 401
-    phone = (request.get_json(silent=True) or {}).get("phone")
-    if not isinstance(phone, str) or not phone.strip() or len(phone.strip()) > 40:
-        return jsonify(error="validation", messages={"phone": ["phone_required"]}), 422
-    user.phone = phone.strip()
+    data = request.get_json(silent=True) or {}
+
+    # Phone stays required whenever it is touched: it is the video watermark, so an
+    # empty one would silently weaken content protection. Fields we do not recognise
+    # (role, email, is_baytarian) are ignored rather than applied.
+    if "phone" in data:
+        phone = data.get("phone")
+        if not isinstance(phone, str) or not phone.strip() or len(phone.strip()) > 40:
+            return jsonify(error="validation", messages={"phone": ["phone_required"]}), 422
+        user.phone = phone.strip()
+
+    errors = {}
+    for field, limit in EDITABLE_PROFILE_FIELDS.items():
+        if field not in data:
+            continue
+        value = data[field]
+        if value is None:
+            value = ""
+        if not isinstance(value, str) or len(value.strip()) > limit:
+            errors[field] = ["invalid"]
+            continue
+        cleaned = value.strip()
+        if field == "name" and not cleaned:
+            errors[field] = ["required"]      # an account with no name breaks the watermark too
+            continue
+        setattr(user, field, cleaned or None)
+    if errors:
+        return jsonify(error="validation", messages=errors), 422
+
     db.session.commit()
     return jsonify(user=_user_json(user))
+
+
+@bp.post("/profile/image")
+@jwt_required()
+def upload_profile_image():
+    """A learner's own avatar or cover. The target user is the caller — there is no
+    user_id parameter, so this cannot be pointed at somebody else's profile."""
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not user.is_active:
+        return jsonify(error="invalid_user"), 401
+
+    kind = (request.form.get("kind") or "avatar").lower()
+    if kind not in ("avatar", "cover"):
+        return jsonify(error="bad_kind"), 422
+
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="file_required"), 400
+    ext = PROFILE_IMAGE_TYPES.get(f.mimetype)
+    if not ext:
+        return jsonify(error="unsupported_media_type", allowed=sorted(PROFILE_IMAGE_TYPES)), 415
+
+    # Measure the stream rather than trusting Content-Length.
+    f.stream.seek(0, os.SEEK_END)
+    size = f.stream.tell()
+    f.stream.seek(0)
+    if size > PROFILE_IMAGE_MAX_BYTES:
+        return jsonify(error="file_too_large", max_bytes=PROFILE_IMAGE_MAX_BYTES), 413
+
+    folder = current_app.config["UPLOAD_IMAGE_DIR"]
+    os.makedirs(folder, exist_ok=True)
+    # The stored name is generated, never taken from the upload, so a crafted
+    # filename cannot escape the folder or collide with someone else's file.
+    name = f"u{user.id}_{kind}_{uuid.uuid4().hex[:8]}{ext}"
+    f.save(os.path.join(folder, name))
+
+    url = f"/api/v1/uploads/{name}"
+    if kind == "avatar":
+        user.avatar_url = url
+    else:
+        user.cover_url = url
+    db.session.commit()
+    return jsonify(user=_user_json(user), url=url), 201
 
 
 @bp.post("/logout")
