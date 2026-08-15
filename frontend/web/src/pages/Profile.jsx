@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Award, BadgeCheck, Play, ShoppingBag } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { auth, getDeviceId, isAuthed, useFetch } from '../lib/api.js';
@@ -21,9 +22,9 @@ const input = {
 const TABS = ['overview', 'courses', 'certificates', 'devices', 'settings'];
 
 const ACTIVITY_ICON = {
-  lesson_completed: { glyph: '▶', bg: colors.accentSoft, fg: colors.accent },
-  certificate: { glyph: '✓', bg: '#e8f4ee', fg: '#1a7f4b' },
-  purchase: { glyph: '◈', bg: colors.surfaceAlt, fg: colors.muted },
+  lesson_completed: { Glyph: Play, bg: colors.accentSoft, fg: colors.accent },
+  certificate: { Glyph: Award, bg: '#e8f4ee', fg: '#1a7f4b' },
+  purchase: { Glyph: ShoppingBag, bg: colors.surfaceAlt, fg: colors.muted },
 };
 
 // An off-site or protocol-relative target would walk the viewer off the site from the
@@ -267,8 +268,8 @@ export default function Profile() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                 <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700, color: DARK, letterSpacing: '-.5px' }}>{user.name}</h1>
                 {verified && (
-                  <span style={{ background: '#e8f4ee', color: '#1a7f4b', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700 }}>
-                    ✓ {t('profile.verified')}
+                  <span style={{ background: '#e8f4ee', color: '#1a7f4b', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <BadgeCheck size={15} aria-hidden="true" /> {t('profile.verified')}
                   </span>
                 )}
               </div>
@@ -365,8 +366,8 @@ export default function Profile() {
                       return (
                         <Link key={`${item.type}-${i}`} to={item.href || '/dashboard'}
                           style={{ display: 'flex', gap: 13, alignItems: 'center', border: `1px solid ${colors.line2}`, borderRadius: 12, padding: 12, color: 'inherit' }}>
-                          <span aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 10, background: icon.bg, color: icon.fg, display: 'grid', placeItems: 'center', fontSize: 15, flex: 'none' }}>
-                            {icon.glyph}
+                          <span aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 10, background: icon.bg, color: icon.fg, display: 'grid', placeItems: 'center', flex: 'none' }}>
+                            <icon.Glyph size={17} />
                           </span>
                           <span style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ display: 'block', fontSize: 14.5, fontWeight: 700, color: colors.ink }}>

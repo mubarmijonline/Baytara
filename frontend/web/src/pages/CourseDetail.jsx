@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Check, Play } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
 import CurriculumAccordion from '../components/CurriculumAccordion.jsx';
 import ReviewList from '../components/ReviewList.jsx';
@@ -60,10 +61,10 @@ function PurchaseCard({ course, slug, preview }) {
             aria-label={`${t('course.preview')}: ${preview.title}`}
             style={{ width: 58, height: 58, borderRadius: '50%', background: DARK, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 17 }}
           >
-            <span aria-hidden="true">▶</span>
+            <Play size={20} fill="currentColor" aria-hidden="true" />
           </Link>
         ) : (
-          <span aria-hidden="true" style={{ width: 58, height: 58, borderRadius: '50%', background: 'rgba(20,30,66,.55)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 17 }}>▶</span>
+          <span aria-hidden="true" style={{ width: 58, height: 58, borderRadius: '50%', background: 'rgba(20,30,66,.55)', display: 'grid', placeItems: 'center', color: '#fff' }}><Play size={20} fill="currentColor" /></span>
         )}
         {preview && (
           <span style={{ position: 'absolute', bottom: 10, insetInlineStart: 10, background: 'rgba(20,30,66,.85)', color: '#fff', fontSize: 11.5, padding: '4px 9px', borderRadius: 6 }}>
@@ -111,7 +112,7 @@ function PurchaseCard({ course, slug, preview }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {includes.map((row) => (
             <div key={row} style={{ display: 'flex', gap: 10, alignItems: 'center', background: colors.surfaceMuted, borderRadius: 9, padding: '11px 13px', fontSize: 13.5, color: colors.ink2 }}>
-              <span aria-hidden="true" style={{ color: colors.accent }}>✓</span>{row}
+              <Check size={16} strokeWidth={3} aria-hidden="true" style={{ color: colors.accent, flex: 'none' }} />{row}
             </div>
           ))}
         </div>
@@ -229,7 +230,7 @@ export default function CourseDetail() {
               <div className="grid-2">
                 {course.objectives.map((point) => (
                   <div key={point} style={{ display: 'flex', gap: 10, background: colors.surfaceMuted, borderRadius: 10, padding: '13px 14px', fontSize: 14, color: colors.ink2, lineHeight: 1.6 }}>
-                    <span aria-hidden="true" style={{ color: colors.accent }}>✓</span>{point}
+                    <Check size={16} strokeWidth={3} aria-hidden="true" style={{ color: colors.accent, flex: 'none', marginTop: 2 }} />{point}
                   </div>
                 ))}
               </div>

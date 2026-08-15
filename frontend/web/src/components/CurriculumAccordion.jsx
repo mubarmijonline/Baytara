@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronDown, ChevronLeft, Check, Play } from 'lucide-react';
 import { colors } from '../theme/tokens.js';
 import { useI18n } from '../lib/i18n.jsx';
 
@@ -34,8 +35,8 @@ export default function CurriculumAccordion({
               }}
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                <span aria-hidden="true" style={{ color: isOpen ? colors.accent : '#9aa1b8', fontSize: 13 }}>
-                  {isOpen ? '▾' : '▸'}
+                <span aria-hidden="true" style={{ color: isOpen ? colors.accent : '#9aa1b8', display: 'grid', placeItems: 'center' }}>
+                  {isOpen ? <ChevronDown size={16} /> : <ChevronLeft size={16} />}
                 </span>
                 <span style={{ fontSize: dense ? 13.5 : 15, fontWeight: 700, color: colors.ink }}>
                   {unit.title || t('course.unitDefault')}
@@ -73,8 +74,8 @@ export default function CurriculumAccordion({
                       }}
                     >
                       <span style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
-                        <span aria-hidden="true" style={{ color: done ? '#1a7f4b' : active ? colors.accent : '#9aa1b8', flex: 'none' }}>
-                          {done ? '✓' : '▶'}
+                        <span aria-hidden="true" style={{ color: done ? '#1a7f4b' : active ? colors.accent : '#9aa1b8', flex: 'none', display: 'grid', placeItems: 'center' }}>
+                          {done ? <Check size={15} strokeWidth={3} /> : <Play size={13} fill="currentColor" />}
                         </span>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{video.title}</span>
                         {video.access_type === 'free' && (

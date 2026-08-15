@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Play } from 'lucide-react';
 import { colors } from '../theme/tokens.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { isAuthed } from '../lib/api.js';
@@ -35,7 +36,7 @@ export default function VideoCard({ video }) {
                 aria-label={`${t('video.unlockToWatch')} ${video.title}`}
               />
             ) : (
-              <span aria-hidden="true" style={{ width: 0, height: 0, borderTop: '8px solid transparent', borderBottom: '8px solid transparent', borderInlineStart: '13px solid #fff', marginInlineStart: 3 }} />
+              <Play size={20} fill="#fff" color="#fff" aria-hidden="true" />
             )}
           </span>
         </span>

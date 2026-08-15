@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
+import { Home, Signpost, MessageSquareText, CircleUser } from 'lucide-react';
 import { colors } from '../theme/tokens.js';
 import { useI18n } from '../lib/i18n.jsx';
 
 const TABS = [
-  ['/', 'tab.home', '⌂'],
-  ['/paths', 'tab.paths', '◈'],
-  ['/content', 'tab.consultations', '✎'],
-  ['/dashboard', 'tab.dashboard', '◔'],
+  ['/', 'tab.home', Home],
+  ['/paths', 'tab.paths', Signpost],
+  ['/content', 'tab.consultations', MessageSquareText],
+  ['/dashboard', 'tab.dashboard', CircleUser],
 ];
 
 // Phone-only bottom navigation. Visibility lives in global.css under the same
@@ -20,7 +21,7 @@ export default function TabBar() {
 
   return (
     <nav className="site-tabbar" aria-label={t('nav.menu')}>
-      {TABS.map(([to, labelKey, glyph]) => {
+      {TABS.map(([to, labelKey, Glyph]) => {
         const active = to === '/' ? pathname === '/' : pathname.startsWith(to);
         return (
           <Link
@@ -29,7 +30,7 @@ export default function TabBar() {
             aria-current={active ? 'page' : undefined}
             style={{ color: active ? colors.accent : colors.muted2, fontWeight: active ? 700 : 500 }}
           >
-            <span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1.2, display: 'block' }}>{glyph}</span>
+            <Glyph size={19} aria-hidden="true" style={{ display: 'block', margin: '0 auto 2px' }} />
             {t(labelKey)}
           </Link>
         );
