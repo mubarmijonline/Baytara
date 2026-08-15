@@ -18,6 +18,7 @@ const FALLBACK_SETTINGS = {
     featured_label: 'دورة مميّزة',
     featured_title: 'جراحة الحيوانات الصغيرة',
     trust: [],
+    image: '',
   },
   home: {
     paths_title: 'مسارات مبنية على الممارسة',

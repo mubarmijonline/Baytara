@@ -9,7 +9,7 @@ import { uploadForm } from '../vdocipher-upload.js';
 import { useAdminLanguage } from '../i18n.jsx';
 
 const emptyForm = {
-  title: '', title_en: '', description: '', description_en: '', duration_minutes: '', category_id: '',
+  title: '', title_en: '', description: '', description_en: '', duration_minutes: '', category_id: '', instructor_id: '',
   price: '0', currency: 'EGP', access_days: '', access_type: 'general', status: 'draft', course_ids: [],
   is_protected: false,
 };
@@ -20,6 +20,7 @@ function payload(form, includeCourses = false) {
     ...metadata,
     ...(includeCourses ? { course_ids } : {}),
     category_id: form.category_id ? Number(form.category_id) : null,
+    instructor_id: form.instructor_id ? Number(form.instructor_id) : null,
     price: Number(form.price || 0),
     access_days: form.access_days === '' ? null : Number(form.access_days),
     duration_minutes: form.duration_minutes === '' ? null : Number(form.duration_minutes),
@@ -42,7 +43,7 @@ function previewUrl(preview) {
   return `https://player.vdocipher.com/v2/?otp=${encodeURIComponent(preview.otp)}&playbackInfo=${encodeURIComponent(preview.playbackInfo)}`;
 }
 
-function CatalogFields({ form, setForm, categories, courses, language, t }) {
+function CatalogFields({ form, setForm, categories, instructors, courses, language, t }) {
   const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
   const toggle = (id) => setForm({ ...form, course_ids: form.course_ids.includes(id) ? form.course_ids.filter((value) => value !== id) : [...form.course_ids, id] });
   // paid videos always enforce the macOS Safari rule; free ones are opt-in
@@ -50,7 +51,7 @@ function CatalogFields({ form, setForm, categories, courses, language, t }) {
   return <>
     <div className="video-form-columns"><Field label={t('video.titleArabic')}><input value={form.title} onChange={set('title')} /></Field><Field label={t('video.titleEnglish')}><input dir="ltr" value={form.title_en} onChange={set('title_en')} /></Field></div>
     <div className="video-form-columns"><Field label={t('video.descriptionArabic')}><textarea value={form.description} onChange={set('description')} /></Field><Field label={t('video.descriptionEnglish')}><textarea dir="ltr" value={form.description_en} onChange={set('description_en')} /></Field></div>
-    <div className="video-form-columns"><Field label={t('catalog.category')}><select value={form.category_id} onChange={set('category_id')}><option value="">{t('video.chooseCategory')}</option>{categories.filter((category) => CATEGORY_KEYS.includes(category.slug)).map((category) => <option value={category.id} key={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field><Field label={t('catalog.accessType')}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option value={access} key={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field><Field label={t('catalog.status')}><select value={form.status} onChange={set('status')}>{['draft', 'published', 'unpublished'].map((status) => <option value={status} key={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field></div>
+    <div className="video-form-columns"><Field label={t('catalog.category')}><select value={form.category_id} onChange={set('category_id')}><option value="">{t('video.chooseCategory')}</option>{categories.filter((category) => CATEGORY_KEYS.includes(category.slug)).map((category) => <option value={category.id} key={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field><Field label={t('video.instructor')}><select value={form.instructor_id} onChange={set('instructor_id')}><option value="">{t('video.chooseInstructor')}</option>{instructors.map((person) => <option value={person.id} key={person.id}>{person.name}</option>)}</select></Field><Field label={t('catalog.accessType')}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option value={access} key={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field><Field label={t('catalog.status')}><select value={form.status} onChange={set('status')}>{['draft', 'published', 'unpublished'].map((status) => <option value={status} key={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field></div>
     <div className="video-form-columns"><Field label={t('catalog.price')}><input type="number" min="0" value={form.price} onChange={set('price')} /></Field><Field label={t('catalog.currency')}><input dir="ltr" maxLength="3" value={form.currency} onChange={set('currency')} /></Field><Field label={t('catalog.accessDays')}><input type="number" min="1" value={form.access_days} onChange={set('access_days')} /></Field><Field label={t('video.duration')}><input type="number" min="0" value={form.duration_minutes} onChange={set('duration_minutes')} /></Field></div>
     <Field label={t('video.captureProtection')}>
       <label className="video-protection-toggle" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -80,6 +81,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     };
   });
   const [categories, setCategories] = useState([]);
+  const [instructors, setInstructors] = useState([]);
   const [courses, setCourses] = useState([]);
   const [provider, setProvider] = useState(null);
   const [providerOnly, setProviderOnly] = useState(false);
@@ -109,6 +111,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
 
   useEffect(() => {
     api.categories().then((result) => setCategories(result.categories || [])).catch(() => setCategories([]));
+    api.users({ role: 'instructor', per_page: 100 }).then((result) => setInstructors(result.users || [])).catch(() => setInstructors([]));
     api.courses({ per_page: 100 }).then((result) => setCourses(result.courses || [])).catch(() => setCourses([]));
   }, []);
   useEffect(() => {
@@ -130,7 +133,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
       try {
         const result = await api.video(videoId);
         const video = result.video;
-        set(() => setForm({ ...emptyForm, ...video, category_id: video.category?.id || '', price: String(video.price ?? 0), access_days: video.access_days ?? '', duration_minutes: video.duration_minutes ?? '', course_ids: (video.courses || []).map((course) => course.id) }));
+        set(() => setForm({ ...emptyForm, ...video, category_id: video.category?.id || '', instructor_id: video.instructor?.id || video.instructor_id || '', price: String(video.price ?? 0), access_days: video.access_days ?? '', duration_minutes: video.duration_minutes ?? '', course_ids: (video.courses || []).map((course) => course.id) }));
         if (video.vdocipher_video_id) await loadProvider(video.vdocipher_video_id, video);
       } catch (error) {
         if (error.status !== 404) { set(() => setLocalError(error.message)); return; }
@@ -147,7 +150,8 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const validate = (requiresUpload) => {
     if (!form.title.trim()) return t('video.validation.title');
     if (requiresUpload && !form.description.trim()) return t('video.validation.description');
-    if (requiresUpload && !form.category_id) return t('video.validation.category');
+    if (!form.category_id) return t('video.validation.category');
+    if (!form.instructor_id) return t('video.validation.instructor');
     if (creating && !file) return t('video.validation.file');
     if (file && !file.type.startsWith('video/')) return t('video.validation.videoFile');
     return '';
@@ -222,7 +226,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   };
 
   return <section className="video-editor"><Link className="back-link" to="/videos"><ArrowLeft size={16} /> {t('common.back')}</Link><h2>{creating ? t('pages.videoNew') : t('pages.videoDetails')}</h2><ErrText>{message(localError)}</ErrText>
-    <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} courses={courses} language={language} t={t} />
+    <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} instructors={instructors} courses={courses} language={language} t={t} />
       {(creating || providerOnly) && <><h3>{t('video.folder')}</h3><VideoFolderTree selectedId={folderId} onSelect={selectFolder} picker />{creating && <Field label={t('video.file')}><input type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} /></Field>}</>}
       {creating && busy && <progress max="100" value={progress} />}
       <button className="btn btn-filled" type="button" disabled={busy} onClick={creating ? upload : saveCatalog}>{creating ? <><Upload size={16} /> {t('video.uploadVideo')}</> : providerOnly ? t('common.import') : <><Save size={16} /> {t('common.save')}</>}</button>

@@ -276,6 +276,9 @@ class Lesson(db.Model):
     # nullable for legacy rows only.
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True, index=True)
     module_id = db.Column(db.Integer, db.ForeignKey("course_modules.id"), nullable=True, index=True)
+    # Who presents this video. Nullable in the schema because rows predate the column;
+    # the admin API requires it on every create and update from here on.
+    instructor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     title = db.Column(db.String(200), nullable=False)
     title_en = db.Column(db.String(200))
     description = db.Column(db.Text, nullable=False, default="")
@@ -296,6 +299,7 @@ class Lesson(db.Model):
 
     module = db.relationship("CourseModule", back_populates="lessons")
     category = db.relationship("Category", back_populates="videos")
+    instructor = db.relationship("User", foreign_keys=[instructor_id])
     course_assignments = db.relationship(
         "CourseVideo", back_populates="video", cascade="all, delete-orphan", order_by="CourseVideo.course_id",
     )
@@ -329,6 +333,10 @@ class Lesson(db.Model):
             "lock_reason": audience_error(user, self.access_type),
             "status": self.status,
             "category": self.category.to_dict(lang) if self.category else None,
+            "instructor": {"id": self.instructor.id, "name": self.instructor.name,
+                           "headline": self.instructor.headline,
+                           "avatar_url": self.instructor.avatar_url} if self.instructor else None,
+            "instructor_id": self.instructor_id,
             "assignment_count": len(self.course_assignments),
             "is_protected": self.is_protected,
             "has_video": bool(self.vdocipher_video_id),

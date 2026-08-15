@@ -26,6 +26,9 @@ SITE_SETTING_DEFAULTS = {
         ),
         "primary_cta": _text("ابدأ التعلّم مجاناً", "Start learning free"),
         "secondary_cta": _text("شاهد كيف تعمل", "See how it works"),
+        # Hero artwork. A plain URL, not a localized pair — one photo serves both languages.
+        # Empty falls back to the bundled /images/hero.jpg.
+        "image": "",
         "featured_label": _text("دورة مميّزة", "Featured course"),
         "featured_title": _text("جراحة الحيوانات الصغيرة", "Small animal surgery"),
         # The chips under the hero buttons. Claims, so they stay editable rather than
