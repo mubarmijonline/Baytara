@@ -107,7 +107,6 @@ function NotificationBell() {
 
 // One list drives both the desktop bar and the mobile drawer — they used to drift.
 const NAV = [
-  ['/paths', 'nav.paths'],
   ['/courses', 'nav.courses'],
   ['/videos', 'nav.videos'],
   ['/content', 'nav.consultations'],

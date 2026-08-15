@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Container, SectionHeading } from '../components/Primitives.jsx';
-import PathCard from '../components/PathCard.jsx';
 import ResumeCard from '../components/ResumeCard.jsx';
 import VideoCard from '../components/VideoCard.jsx';
 import { colors, font, gradients } from '../theme/tokens.js';
@@ -53,7 +52,7 @@ function Hero({ summary }) {
             {hero.subtitle}
           </p>
           <div className="home-hero-actions" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 30 }}>
-            <button type="button" style={filledBtn} onClick={() => navigate('/paths')}>{hero.primary_cta}</button>
+            <button type="button" style={filledBtn} onClick={() => navigate('/courses')}>{hero.primary_cta}</button>
             <button type="button" style={ghostBtn} onClick={() => navigate('/videos?access_type=free')}>{hero.secondary_cta}</button>
           </div>
           {trust.length > 0 && (
@@ -91,28 +90,7 @@ function StatsBand() {
   );
 }
 
-/* -------------------------------- paths -------------------------------- */
-
-function PathsSection() {
-  const settings = useSiteSettings();
-  const { t } = useI18n();
-  const { data } = useFetch(() => webapi.paths(), []);
-  const paths = (data?.paths || []).slice(0, 3);
-  if (!paths.length) return null;
-
-  return (
-    <Container className="home-section" style={{ padding: '52px 24px 26px' }}>
-      <SectionHeading
-        title={settings.home?.paths_title}
-        subtitle={settings.home?.paths_subtitle}
-        action={<SectionLink to="/paths">{t('paths.viewAll')}</SectionLink>}
-      />
-      <div className="grid-3">
-        {paths.map((path, i) => <PathCard key={path.id} path={path} index={i} />)}
-      </div>
-    </Container>
-  );
-}
+// The paths section is hidden for now; PathCard and /paths still exist for when it returns.
 
 /* ------------------------------ categories ------------------------------ */
 
@@ -367,7 +345,6 @@ export default function Home() {
     <div style={{ background: colors.surface }}>
       <Hero summary={summary} />
       <StatsBand />
-      <PathsSection />
       <CategoriesSection />
       <FreeVideosSection />
       <InstructorsSection />

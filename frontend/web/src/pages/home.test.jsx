@@ -85,21 +85,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it('renders learning paths from the API with real step and duration figures', async () => {
-  mockApi();
-  renderHome();
-
-  expect(await screen.findByRole('heading', { name: 'Practice paths' })).toBeVisible();
-  expect(screen.getByRole('heading', { name: 'Herd health end to end' })).toBeVisible();
-  expect(screen.getByText('Intermediate')).toBeVisible();
-  expect(screen.getByText('Clinical examination')).toBeVisible();
-  // 3 courses and 840 minutes -> "3 courses · 14 h", never a hardcoded count
-  expect(screen.getByText(/3 courses · 14 h/)).toBeVisible();
-
-  fireEvent.click(screen.getByRole('link', { name: /Start/ }));
-  expect(window.location.pathname).toBe('/paths/herd-health');
-});
-
+// The paths section is hidden from the home page for now; PathCard and /paths remain.
 it('shows the CMS trust chips and the hero photo when signed out', async () => {
   mockApi();
   renderHome();

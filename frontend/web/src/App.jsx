@@ -44,7 +44,9 @@ export default function App() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/business" element={<Business />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        {/* The profile is the account home; the older dashboard views keep their own paths. */}
+        <Route path="/dashboard" element={<Profile />} />
+        <Route path="/dashboard/learning" element={<Dashboard />} />
         <Route path="/dashboard/my-courses" element={<Dashboard />} />
         <Route path="/dashboard/payments" element={<Dashboard />} />
         <Route path="/dashboard/profile" element={<Profile />} />
