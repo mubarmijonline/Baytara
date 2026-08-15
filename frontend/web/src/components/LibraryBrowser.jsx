@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Play } from 'lucide-react';
 import { colors } from '../theme/tokens.js';
 import { webapi } from '../lib/api.js';
 import { useI18n } from '../lib/i18n.jsx';
@@ -12,7 +13,7 @@ function Row({ to, title, meta, badge }) {
   return (
     <Link to={to} style={{ display: 'flex', gap: 10, border: `1px solid ${colors.line2}`, borderRadius: 11, padding: 9, color: 'inherit' }}>
       <span style={{ width: 66, height: 44, borderRadius: 8, background: colors.surfaceAlt, flex: 'none', display: 'grid', placeItems: 'center', color: colors.utilityBar, fontSize: 12 }}>
-        <span aria-hidden="true">▶</span>
+        <Play size={14} fill="currentColor" aria-hidden="true" />
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: colors.ink, lineHeight: 1.45 }}>{title}</span>
