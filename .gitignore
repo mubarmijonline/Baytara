@@ -48,3 +48,6 @@ mobile/ios/App/output/
 # .NET build output (desktop shells)
 desktop/windows/bin/
 desktop/windows/obj/
+
+# Local brainstorm scratch
+.superpowers/
