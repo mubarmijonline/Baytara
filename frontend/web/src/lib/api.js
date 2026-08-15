@@ -70,6 +70,24 @@ async function authFetch(path, opts = {}) {
   return j;
 }
 
+// Multipart: the browser has to set Content-Type itself so the boundary is right,
+// which is why this cannot go through authFetch.
+async function authUpload(path, formData) {
+  const t = getToken();
+  const r = await fetch(BASE + path, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-Baytara-Device-ID': getDeviceId(),
+      ...(t ? { Authorization: `Bearer ${t}` } : {}),
+    },
+  });
+  const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+  if (r.status === 401) { setToken(''); throw Object.assign(new Error('unauthorized'), { status: 401 }); }
+  if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
+  return j;
+}
+
 export const auth = {
   register: (b) => authFetch('/auth/register', { method: 'POST', body: JSON.stringify({ ...b, device_id: getDeviceId() }) }),
   login: (b) => authFetch('/auth/login', { method: 'POST', body: JSON.stringify({ ...b, device_id: getDeviceId() }) }),
@@ -104,6 +122,14 @@ export const auth = {
   }),
   videoProgress: () => authFetch('/video/my-progress'),
   learningSummary: () => authFetch('/learning-summary'),
+  certificates: () => authFetch('/certificates'),
+  activity: (params) => authFetch('/activity' + qs(params)),
+  profileImage: (kind, file) => {
+    const form = new FormData();
+    form.append('kind', kind);
+    form.append('file', file);
+    return authUpload('/auth/profile/image', form);
+  },
   reviewCourse: (slug, body) => authFetch(`/courses/${slug}/reviews`, {
     method: 'POST', body: JSON.stringify(body),
   }),
@@ -128,6 +154,7 @@ export const webapi = {
   categories: () => get('/categories'),
   bundles: () => get('/bundles'),
   bundle: (slug) => get('/bundles/' + slug),
+  certificate: (serial) => get('/certificates/' + serial),
   paths: () => get('/paths'),
   path: (slug) => get('/paths/' + slug),
   instructors: () => get('/instructors'),

@@ -101,7 +101,10 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] Course admin — units UI, meta fields, reviews moderation page
 - [x] Course page rebuilt on real data; the mock-course fallback and its crash are gone
 - [x] Lesson player rebuilt — real progress, unit-grouped curriculum, all-content browser
+- [x] Profile page — cover/avatar upload, editable fields, real stats, derived activity
+- [x] Certificates — issued on course completion, public verification at `/certificates/<serial>`
 - [ ] Courses/videos listing redesigned to match
+- [ ] Blog & consultations (the profile's consultations tile waits on this)
 
 ## Phase 9 — Deployment
 - [x] NginX + HTTPS + security headers (HSTS, CSP, X-Content-Type-Options, X-Frame-Options,
