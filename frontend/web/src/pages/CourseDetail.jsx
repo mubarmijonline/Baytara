@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Check, Play } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
+import Avatar from '../components/Avatar.jsx';
 import CurriculumAccordion from '../components/CurriculumAccordion.jsx';
 import ReviewList from '../components/ReviewList.jsx';
 import NotFound from './NotFound.jsx';
@@ -260,10 +261,8 @@ export default function CourseDetail() {
             <section style={{ border: `1px solid ${colors.line}`, borderRadius: 16, padding: 26 }}>
               <h2 style={{ margin: '0 0 16px', fontSize: 20, fontWeight: 700, color: DARK }}>{t('course.aboutInstructor')}</h2>
               <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <span style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: gradients.avatar, flex: 'none' }}>
-                  {instructor.avatar_url && (
-                    <img src={instructor.avatar_url} alt={instructor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                  )}
+                <span style={{ width: 72, height: 72, flex: 'none' }}>
+                  <Avatar src={instructor.avatar_url} name={instructor.name} round iconSize={34} />
                 </span>
                 <div style={{ flex: 1, minWidth: 220 }}>
                   <Link to={`/instructors/${instructor.id}`} style={{ fontSize: 16.5, fontWeight: 700, color: colors.ink }}>{instructor.name}</Link>

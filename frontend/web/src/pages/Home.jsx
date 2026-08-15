@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Container, SectionHeading } from '../components/Primitives.jsx';
+import Avatar from '../components/Avatar.jsx';
 import ResumeCard from '../components/ResumeCard.jsx';
 import VideoCard from '../components/VideoCard.jsx';
 import { colors, font, gradients } from '../theme/tokens.js';
@@ -165,7 +166,7 @@ function InstructorsSection() {
   const settings = useSiteSettings();
   const { t, lang } = useI18n();
   const { data } = useFetch(() => webapi.instructors(), []);
-  const instructors = (data?.instructors || []).slice(0, 5);
+  const instructors = (data?.instructors || []).slice(0, 4);
   if (!instructors.length) return null;
 
   return (
@@ -178,26 +179,24 @@ function InstructorsSection() {
           <p style={{ margin: 0, fontSize: 14.5, color: colors.muted }}>{settings.home.instructors_subtitle}</p>
         )}
       </div>
-      <div className="grid-5">
+      <div className="grid-4">
         {instructors.map((instructor) => (
           <Link
             key={instructor.id}
             to={`/instructors/${instructor.id}`}
             className="hover-card"
-            style={{ border: `1px solid ${colors.line}`, borderRadius: 16, padding: '26px 18px', textAlign: 'center', background: colors.surface, display: 'block' }}
+            style={{ border: `1px solid ${colors.line}`, borderRadius: 16, overflow: 'hidden', background: colors.surface, display: 'block' }}
           >
-            <div style={{ width: 132, height: 132, borderRadius: '50%', margin: '0 auto 16px', overflow: 'hidden', background: gradients.avatar }}>
-              {instructor.avatar_url && (
-                <img src={instructor.avatar_url} alt={instructor.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            {/* Full-bleed portrait: a headshot cropped to a small circle lost the face. */}
+            <Avatar src={instructor.avatar_url} name={instructor.name} ratio="4 / 5" iconSize={72} />
+            <div style={{ padding: '18px 16px', textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: colors.ink, lineHeight: 1.45 }}>{instructor.name}</div>
+              {instructor.headline && (
+                <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 6, lineHeight: 1.6 }}>{instructor.headline}</div>
               )}
-            </div>
-            <div style={{ fontSize: 15.5, fontWeight: 700, color: colors.ink }}>{instructor.name}</div>
-            {instructor.headline && (
-              <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 4, lineHeight: 1.5 }}>{instructor.headline}</div>
-            )}
-            <div style={{ fontSize: 12, color: colors.muted2, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${colors.line2}` }}>
-              {instructor.courses} {t('paths.coursesUnit')} · {compact(instructor.students, lang)} {t('home.learners')}
+              <div style={{ fontSize: 12, color: colors.muted2, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${colors.line2}` }}>
+                {instructor.courses} {t('paths.coursesUnit')} · {compact(instructor.students, lang)} {t('home.learners')}
+              </div>
             </div>
           </Link>
         ))}
@@ -232,7 +231,9 @@ function Testimonials() {
               {item.quote}
             </blockquote>
             <figcaption style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-              <span style={{ width: 40, height: 40, borderRadius: '50%', background: gradients.avatar, flex: 'none' }} />
+              <span style={{ width: 40, height: 40, flex: 'none' }}>
+                <Avatar name={item.name} round iconSize={20} />
+              </span>
               <span>
                 <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: colors.ink }}>{item.name}</span>
                 <span style={{ display: 'block', fontSize: 12.5, color: colors.muted2 }}>{item.role}</span>
