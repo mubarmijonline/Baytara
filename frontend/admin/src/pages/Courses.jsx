@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import {
-  ACCESS_TYPES, CATALOG_STATUSES, catalogErrorCodes, localizedCatalogValue, orderedCategories,
+  ACCESS_TYPES, CATALOG_STATUSES, LEVELS, catalogErrorCodes, localizedCatalogValue, orderedCategories,
 } from '../catalog.js';
 import { confirmDialog } from '../dialog.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
@@ -22,6 +22,8 @@ const COPY = {
     lifetime: 'مدى الحياة', save: 'حفظ الدورة', cancel: 'إلغاء', titleRequired: 'العنوان العربي مطلوب.',
     instructorRequired: 'اختر مدرّباً.', categoryPublished: 'الفئة مطلوبة قبل نشر الدورة.',
     deleteConfirm: 'حذف هذه الدورة؟', loadError: 'تعذّر تحميل بيانات الدورة.',
+    level: 'المستوى', certificate: 'شهادة إتمام معتمدة', objectives: 'ماذا ستتعلّم',
+    objectivesEn: 'ماذا ستتعلّم (إنجليزي)', objectiveHint: 'سطر لكل نقطة؛ الأسطر الفارغة تُهمل.',
   },
   en: {
     courses: 'Courses', newCourse: 'New course', editCourse: 'Edit course', search: 'Search courses',
@@ -34,12 +36,15 @@ const COPY = {
     lifetime: 'Lifetime', save: 'Save course', cancel: 'Cancel', titleRequired: 'Arabic title is required.',
     instructorRequired: 'Choose an instructor.', categoryPublished: 'Choose a category before publishing.',
     deleteConfirm: 'Delete this course?', loadError: 'Unable to load course details.',
+    level: 'Level', certificate: 'Accredited certificate', objectives: 'What you will learn',
+    objectivesEn: 'What you will learn (English)', objectiveHint: 'One bullet per line; blank lines are ignored.',
   },
 };
 
 const emptyCourse = {
   title: '', title_en: '', description: '', description_en: '', instructor_id: '', category_id: '',
   access_type: 'general', price: '0', currency: 'EGP', access_days: '', status: 'draft',
+  level: 'beginner', has_certificate: false, objectives: '', objectives_en: '',
 };
 
 function courseForm(course) {
@@ -51,6 +56,10 @@ function courseForm(course) {
     instructor_id: course.instructor?.id || '', category_id: course.category?.id || '',
     access_type: course.access_type || 'general', price: String(course.price ?? 0),
     currency: course.currency || 'EGP', access_days: course.access_days ?? '', status: course.status || 'draft',
+    level: course.level || 'beginner', has_certificate: !!course.has_certificate,
+    // One bullet per line is the cheapest editor that round-trips a list.
+    objectives: (course.objectives || []).join('\n'),
+    objectives_en: (course.objectives_en || []).join('\n'),
   };
 }
 
@@ -61,6 +70,8 @@ function payload(form) {
     category_id: form.category_id ? Number(form.category_id) : null,
     price: Number(form.price || 0),
     access_days: form.access_days === '' ? null : Number(form.access_days),
+    objectives: form.objectives.split('\n'),
+    objectives_en: form.objectives_en.split('\n'),
   };
 }
 
@@ -147,6 +158,17 @@ export function CourseEditor({ routeParams = {} }) {
           <Field label={c.price}><input type="number" min="0" value={form.price} disabled={!['baytarian', 'general'].includes(form.access_type)} onChange={set('price')} /></Field>
           <Field label={c.currency}><input dir="ltr" maxLength="3" value={form.currency} onChange={set('currency')} /></Field>
           <Field label={c.accessDays}><input type="number" min="1" placeholder={c.lifetime} value={form.access_days} onChange={set('access_days')} /></Field>
+          <Field label={c.level}><select value={form.level} onChange={set('level')}>{LEVELS.map((level) => <option key={level} value={level}>{t(`level.${level}`)}</option>)}</select></Field>
+          <Field label={c.certificate}>
+            <input type="checkbox" checked={form.has_certificate}
+              onChange={(event) => setForm((current) => ({ ...current, has_certificate: event.target.checked }))} />
+          </Field>
+        </div>
+      </section>
+      <section className="catalog-panel">
+        <div className="catalog-form-grid two-columns">
+          <Field label={c.objectives} hint={c.objectiveHint}><textarea rows="6" value={form.objectives} onChange={set('objectives')} /></Field>
+          <Field label={c.objectivesEn} hint={c.objectiveHint}><textarea rows="6" dir="ltr" value={form.objectives_en} onChange={set('objectives_en')} /></Field>
         </div>
       </section>
       <ErrText>{error}</ErrText>

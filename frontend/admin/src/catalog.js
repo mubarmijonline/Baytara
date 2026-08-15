@@ -7,7 +7,7 @@ export const ACCESS_TYPES = ['free', 'vet_free', 'baytarian', 'general'];
 export const VIDEO_VIEWS = ['grid', 'list', 'table'];
 
 export const CATALOG_STATUSES = ['draft', 'published', 'unpublished'];
-export const PATH_LEVELS = ['beginner', 'intermediate', 'advanced', 'breeders'];
+export const LEVELS = ['beginner', 'intermediate', 'advanced', 'breeders'];
 
 export function orderedCategories(categories = []) {
   const fixedOrder = new Map(CATEGORY_KEYS.map((slug, index) => [slug, index]));

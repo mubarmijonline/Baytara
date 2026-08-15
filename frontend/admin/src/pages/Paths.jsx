@@ -2,7 +2,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, Pencil, Plus, Save, Trash2 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { CATALOG_STATUSES, PATH_LEVELS, catalogErrorCodes, localizedCatalogValue } from '../catalog.js';
+import { CATALOG_STATUSES, LEVELS, catalogErrorCodes, localizedCatalogValue } from '../catalog.js';
 import { confirmDialog } from '../dialog.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 import { toast } from '../toast.jsx';
@@ -164,7 +164,7 @@ export function PathEditor({ routeParams = {} }) {
         <Field label={c.englishDescription}><textarea dir="ltr" value={form.description_en} onChange={set('description_en')} /></Field>
       </div></section>
       <section className="catalog-panel"><div className="catalog-form-grid">
-        <Field label={c.level}><select value={form.level} onChange={set('level')}>{PATH_LEVELS.map((level) => <option key={level} value={level}>{t(`paths.level.${level}`)}</option>)}</select></Field>
+        <Field label={c.level}><select value={form.level} onChange={set('level')}>{LEVELS.map((level) => <option key={level} value={level}>{t(`level.${level}`)}</option>)}</select></Field>
         <Field label={c.status}><select value={form.status} onChange={set('status')}>{CATALOG_STATUSES.map((status) => <option key={status} value={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field>
         <Field label={c.sortOrder}><input type="number" min="0" value={form.sort_order} onChange={set('sort_order')} /></Field>
       </div></section>
@@ -224,7 +224,7 @@ function PathList() {
         {rows.map((path) => <tr key={path.id}>
           <td>{localizedCatalogValue(path, 'title', language)}</td>
           <td><span className={`chip chip-${path.status}`}>{t(`catalog.status.${path.status}`)}</span></td>
-          <td>{t(`paths.level.${path.level}`)}</td>
+          <td>{t(`level.${path.level}`)}</td>
           <td>{replace(c.stepsCount, { count: path.courses_count, minutes: path.total_minutes })}</td>
           <td>{path.sort_order}</td>
           <td className="actions">

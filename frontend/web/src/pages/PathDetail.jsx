@@ -18,7 +18,7 @@ export default function PathDetail() {
 
   const hours = Math.round((path.total_minutes || 0) / 60);
   const meta = [
-    t(`paths.level.${path.level}`),
+    t(`level.${path.level}`),
     `${path.courses_count} ${t('paths.coursesUnit')}`,
     hours > 0 ? `${hours} ${t('paths.hoursUnit')}` : null,
   ].filter(Boolean).join(' · ');

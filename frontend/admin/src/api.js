@@ -148,6 +148,17 @@ export const api = {
   bundleUpdate: (id, body) => req(`/admin/bundles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   bundleDelete: (id) => req(`/admin/bundles/${id}`, { method: 'DELETE' }),
 
+  // course units: which unit a video sits in is per-course, so it keys off the course
+  courseVideoModule: (courseId, videoId, module_id) => req(
+    `/admin/courses/${courseId}/videos/${videoId}/module`,
+    { method: 'PUT', body: JSON.stringify({ module_id }) },
+  ),
+
+  // course reviews (moderation is publish-then-hide)
+  reviews: (params) => req('/admin/reviews' + qs(params)),
+  reviewUpdate: (id, body) => req(`/admin/reviews/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  reviewDelete: (id) => req(`/admin/reviews/${id}`, { method: 'DELETE' }),
+
   // learning paths (ordered course shelves shown as «مسارات» on the home page)
   paths: () => req('/admin/paths'),
   pathGet: (id) => req(`/admin/paths/${id}`),

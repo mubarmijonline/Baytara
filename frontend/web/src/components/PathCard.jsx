@@ -38,7 +38,7 @@ export default function PathCard({ path, index = 0, maxSteps = 3 }) {
           {t('paths.itemLabel')} {ordinal(index, lang)}
         </span>
         <span style={{ ...pill, fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 100 }}>
-          {t(`paths.level.${path.level}`)}
+          {t(`level.${path.level}`)}
         </span>
       </div>
 

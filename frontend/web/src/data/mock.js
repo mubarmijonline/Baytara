@@ -46,52 +46,13 @@ export const categories = [
 // Removed with the home-page rebuild: bizStats, rawInstructors and testimonials now come
 // from the settings CMS, and the instructor cards from /api/v1/instructors.
 
-export const reviews = [
-  { name: 'د. خالد المهدي', ini: 'خ', grad: g[0], text: 'من أفضل الدورات التي تابعتها. الشرح واضح والحالات العملية مفيدة جداً.' },
-  { name: 'د. ريم السالم', ini: 'ر', grad: g[1], text: 'المدرّب متمكّن والمحتوى مرتّب بشكل رائع. أنصح بها بشدّة.' },
-  { name: 'د. يوسف حمدان', ini: 'ي', grad: g[2], text: 'استفدت كثيراً وطبّقت ما تعلّمته في عملي مباشرة. شكراً بيطرة.' },
-];
+// Removed with the course/lesson rebuild: reviews, learnPoints, curriculum, includes and
+// expertise are all real data now — course_reviews, courses.objectives, the modules array,
+// derived access rows, and users.expertise respectively.
 
+// Still filter chrome for the course listing, which the next design file covers.
 export const levels = ['مبتدئ', 'متوسط', 'متقدّم'];
 export const ratingFilters = ['4.5', '4.0', '3.5'];
-
-export const learnPoints = [
-  'إتقان الأساسيات النظرية والعملية للتخصّص',
-  'تطبيق ما تتعلّمه على حالات سريرية واقعية',
-  'بناء منهجية تشخيص منظّمة للحالات المرضية',
-  'استخدام أحدث الأدوات والبروتوكولات العلاجية',
-  'تطوير مهاراتك لتصل لمستوى الاستشاري',
-  'الحصول على شهادة إتمام معتمدة',
-];
-
-export const curriculum = [
-  { title: 'الوحدة الأولى: المقدمة والأساسيات', count: 4, lessons: [
-    { name: 'مرحباً بك في الدورة', dur: '4:20' },
-    { name: 'نظرة عامة على المنهج', dur: '8:10' },
-    { name: 'المفاهيم الأساسية', dur: '12:45' },
-    { name: 'إعداد بيئة العمل', dur: '9:30' } ] },
-  { title: 'الوحدة الثانية: التطبيق العملي', count: 3, lessons: [
-    { name: 'أول حالة عملية', dur: '15:00' },
-    { name: 'دراسة حالة سريرية واقعية', dur: '18:20' },
-    { name: 'تمارين تفاعلية', dur: '11:05' } ] },
-  { title: 'الوحدة الثالثة: مستوى متقدّم', count: 3, lessons: [
-    { name: 'تقنيات متقدّمة', dur: '14:40' },
-    { name: 'أفضل الممارسات', dur: '10:15' },
-    { name: 'أخطاء شائعة وكيف تتجنّبها', dur: '13:50' } ] },
-  { title: 'الوحدة الرابعة: المشروع الختامي', count: 2, lessons: [
-    { name: 'بناء بروتوكولك الخاص', dur: '22:00' },
-    { name: 'المراجعة والشهادة', dur: '6:30' } ] },
-];
-
-export const includes = [
-  'وصول مدى الحياة',
-  'مشاهدة على جميع الأجهزة',
-  'ملفات ومصادر قابلة للتحميل',
-  'شهادة إتمام معتمدة',
-  'دعم من المجتمع',
-];
-
-export const expertise = ['أمراض الماشية', 'صحة القطيع', 'التشخيص السريري', 'الطب الوقائي'];
 
 export const plansData = (annual, accent = '#3048A0') => [
   { name: 'الأساسية', tagline: 'للمتعلّم الفردي', featured: false,

@@ -1,9 +1,9 @@
-import { ArrowDown, ArrowLeft, ArrowUp, Clock3, GripVertical, Plus, RefreshCw, Trash2, Upload, Video } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Clock3, GripVertical, Pencil, Plus, RefreshCw, Trash2, Upload, Video } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { catalogErrorCodes, durationLabel, localizedCatalogValue, posterFor } from '../catalog.js';
-import { confirmDialog } from '../dialog.jsx';
+import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 import { ErrText } from '../ui.jsx';
 
@@ -16,6 +16,10 @@ const COPY = {
     remove: 'إزالة {title} من هذه الدورة', removeConfirm: 'إزالة الفيديو من هذه الدورة فقط؟ سيبقى الفيديو في المكتبة والدورات الأخرى.',
     orderConflict: 'تغيّر ترتيب الدورة في جلسة أخرى. أعد التحميل ثم حاول مجدداً.', reload: 'إعادة التحميل',
     addError: 'تعذّر تعيين الفيديوهات المحددة.', removeError: 'تعذّرت إزالة الفيديو من الدورة.', courses: 'دورات', minutes: 'د',
+    units: 'الوحدات', newUnit: 'وحدة جديدة', unitName: 'اسم الوحدة', renameUnit: 'إعادة تسمية الوحدة',
+    deleteUnit: 'حذف الوحدة', deleteUnitConfirm: 'حذف هذه الوحدة؟ ستبقى الفيديوهات في الدورة بلا وحدة.',
+    noUnit: 'بدون وحدة', unitOf: 'الوحدة', unitError: 'تعذّر تحديث الوحدات.',
+    unitsHint: 'الوحدة تخص هذه الدورة وحدها، فالفيديو المشترك قد يكون في وحدة مختلفة في دورة أخرى.',
   },
   en: {
     heading: 'Course content', back: 'Courses', loading: 'Loading course content…', loadError: 'Unable to load course content.',
@@ -25,6 +29,10 @@ const COPY = {
     removeConfirm: 'Remove this video from this course only? It remains in the library and other courses.',
     orderConflict: 'The course order changed in another session. Reload it and try again.', reload: 'Reload',
     addError: 'Unable to assign the selected videos.', removeError: 'Unable to remove the video from this course.', courses: 'courses', minutes: 'min',
+    units: 'Units', newUnit: 'New unit', unitName: 'Unit name', renameUnit: 'Rename unit',
+    deleteUnit: 'Delete unit', deleteUnitConfirm: 'Delete this unit? Its videos stay in the course, ungrouped.',
+    noUnit: 'No unit', unitOf: 'Unit', unitError: 'Unable to update units.',
+    unitsHint: 'A unit belongs to this course only, so a shared video can sit in a different unit elsewhere.',
   },
 };
 
@@ -38,6 +46,9 @@ export default function CourseContent({ routeParams = {} }) {
   const courseId = Number(routeParams.courseId);
   const [course, setCourse] = useState(null);
   const [videos, setVideos] = useState([]);
+  const [units, setUnits] = useState([]);
+  // video_id -> module_id, so the select next to each video knows its unit
+  const [videoUnit, setVideoUnit] = useState({});
   const [library, setLibrary] = useState([]);
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState([]);
@@ -54,6 +65,12 @@ export default function CourseContent({ routeParams = {} }) {
     try {
       const result = await api.course(courseId);
       setCourse(result.course);
+      setUnits(result.course.all_modules || []);
+      const placement = {};
+      (result.course.modules || []).forEach((unit) => {
+        (unit.videos || []).forEach((video) => { placement[video.id] = unit.id; });
+      });
+      setVideoUnit(placement);
       const nextVideos = result.course.videos || [];
       setVideos(nextVideos);
       const assignedIds = new Set(nextVideos.map((video) => video.id));
@@ -123,6 +140,39 @@ export default function CourseContent({ routeParams = {} }) {
     } finally { setBusy(false); }
   }
 
+  async function addUnit() {
+    const title = await promptDialog(c.unitName, '');
+    if (!title || !title.trim()) return;
+    setBusy(true); setError('');
+    try { await api.moduleCreate(courseId, { title: title.trim(), position: units.length }); await loadCourse({ showLoading: false }); }
+    catch { setError(c.unitError); }
+    finally { setBusy(false); }
+  }
+
+  async function renameUnit(unit) {
+    const title = await promptDialog(c.renameUnit, unit.title || '');
+    if (!title || !title.trim()) return;
+    setBusy(true); setError('');
+    try { await api.moduleUpdate(unit.id, { title: title.trim() }); await loadCourse({ showLoading: false }); }
+    catch { setError(c.unitError); }
+    finally { setBusy(false); }
+  }
+
+  async function removeUnit(unit) {
+    if (!await confirmDialog(c.deleteUnitConfirm)) return;
+    setBusy(true); setError('');
+    try { await api.moduleDelete(unit.id); await loadCourse({ showLoading: false }); }
+    catch { setError(c.unitError); }
+    finally { setBusy(false); }
+  }
+
+  async function setUnitFor(videoId, value) {
+    const moduleId = value === '' ? null : Number(value);
+    setVideoUnit((current) => ({ ...current, [videoId]: moduleId }));
+    try { await api.courseVideoModule(courseId, videoId, moduleId); }
+    catch { setError(c.unitError); await loadCourse({ clearError: false, showLoading: false }); }
+  }
+
   async function remove(video) {
     if (!await confirmDialog(c.removeConfirm)) return;
     setBusy(true); setError('');
@@ -139,7 +189,18 @@ export default function CourseContent({ routeParams = {} }) {
     <ErrText>{error}</ErrText>
     {error === c.orderConflict && <button className="btn btn-tonal btn-sm" type="button" onClick={() => loadCourse()}><RefreshCw size={14} /> {c.reload}</button>}
     {loading ? <div className="empty">{c.loading}</div> : <div className="course-content-layout">
-      <section className="catalog-panel course-order-panel"><h3>{c.assigned}</h3>
+      <section className="catalog-panel course-order-panel">
+        <div className="catalog-page-header"><h3>{c.units}</h3><button className="btn btn-tonal btn-sm" type="button" disabled={controlsBusy} onClick={addUnit}><Plus size={14} /> {c.newUnit}</button></div>
+        <p className="catalog-warning">{c.unitsHint}</p>
+        <div className="catalog-selector">
+          {units.map((unit) => <div key={unit.id} className="ordered-video-row">
+            <strong style={{ flex: 1 }}>{unit.title}</strong>
+            <button className="btn btn-tonal btn-sm" type="button" disabled={controlsBusy} onClick={() => renameUnit(unit)}><Pencil size={14} /> {c.renameUnit}</button>
+            <button className="btn btn-error btn-sm" type="button" disabled={controlsBusy} onClick={() => removeUnit(unit)}><Trash2 size={14} /> {c.deleteUnit}</button>
+          </div>)}
+          {!units.length && <div className="empty compact">{c.noUnit}</div>}
+        </div>
+        <h3>{c.assigned}</h3>
         <div className="ordered-video-list">
           {videos.map((video, index) => {
             const title = localizedCatalogValue(video, 'title', language);
@@ -154,6 +215,11 @@ export default function CourseContent({ routeParams = {} }) {
               <div className="ordered-video-poster">{poster ? <img src={poster} alt="" /> : <Video size={20} aria-hidden="true" />}</div>
               <div className="ordered-video-copy"><strong>{title}</strong><span>{video.category ? localizedCatalogValue(video.category, 'name', language) : '—'} · {video.assignment_count ?? 1} {c.courses}</span><div className="ordered-video-meta"><span className="chip chip-role">{t(`catalog.access.${video.access_type}`)}</span>{minutes ? <span><Clock3 size={13} aria-hidden="true" /> {minutes} {c.minutes}</span> : null}</div></div>
               <div className="ordered-video-actions">
+                <select aria-label={`${c.unitOf}: ${title}`} disabled={controlsBusy}
+                  value={videoUnit[video.id] ?? ''} onChange={(event) => setUnitFor(video.id, event.target.value)}>
+                  <option value="">{c.noUnit}</option>
+                  {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.title}</option>)}
+                </select>
                 <button className="icon-button" type="button" title={label(c.moveUp, title)} aria-label={label(c.moveUp, title)} disabled={index === 0 || controlsBusy} onClick={() => move(index, index - 1)}><ArrowUp size={16} /></button>
                 <button className="icon-button" type="button" title={label(c.moveDown, title)} aria-label={label(c.moveDown, title)} disabled={index === videos.length - 1 || controlsBusy} onClick={() => move(index, index + 1)}><ArrowDown size={16} /></button>
                 <button className="btn btn-error btn-sm" type="button" aria-label={label(c.remove, title)} disabled={controlsBusy} onClick={() => remove(video)}><Trash2 size={14} /> {language === 'en' ? 'Remove from course' : 'إزالة من الدورة'}</button>

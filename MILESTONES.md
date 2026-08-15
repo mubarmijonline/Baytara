@@ -96,7 +96,12 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] `/paths` and `/paths/:slug` pages + shared `PathCard`
 - [x] `Home.jsx` rebuilt to the approved design on real data; home-page mock data deleted
 - [x] Dark header, real footer links, phone tab bar
-- [ ] Remaining pages redesigned to match
+- [x] Course metadata — objectives, level, certificate flag, last-updated; per-course units
+- [x] Course reviews — `course_reviews`, enrollment-gated posting, admin publish/hide
+- [x] Course admin — units UI, meta fields, reviews moderation page
+- [x] Course page rebuilt on real data; the mock-course fallback and its crash are gone
+- [x] Lesson player rebuilt — real progress, unit-grouped curriculum, all-content browser
+- [ ] Courses/videos listing redesigned to match
 
 ## Phase 9 — Deployment
 - [x] NginX + HTTPS + security headers (HSTS, CSP, X-Content-Type-Options, X-Frame-Options,
