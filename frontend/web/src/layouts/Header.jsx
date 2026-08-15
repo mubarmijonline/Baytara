@@ -81,13 +81,13 @@ function NotificationBell() {
   );
 }
 
-function SearchIcon() {
+function SearchIcon({ color = '#cfcfe0' }) {
   return (
     <span
       style={{
         width: 16,
         height: 16,
-        border: '2px solid #5A6180',
+        border: `2px solid ${color}`,
         borderRadius: '50%',
         position: 'relative',
         flex: 'none',
@@ -98,7 +98,7 @@ function SearchIcon() {
           position: 'absolute',
           width: 7,
           height: 2,
-          background: '#5A6180',
+          background: color,
           bottom: -3,
           left: -4,
           transform: 'rotate(45deg)',
@@ -109,13 +109,15 @@ function SearchIcon() {
   );
 }
 
+// One list drives both the desktop bar and the mobile drawer — they used to drift.
 const NAV = [
+  ['/paths', 'nav.paths'],
   ['/courses', 'nav.courses'],
   ['/videos', 'nav.videos'],
-  ['/bundles', 'nav.bundles'],
+  ['/content', 'nav.consultations'],
+  ['/blog', 'nav.blog'],
   ['/pricing', 'nav.pricing'],
   ['/business', 'nav.business'],
-  ['/blog', 'nav.blog'],
 ];
 
 export default function Header() {
@@ -140,14 +142,23 @@ export default function Header() {
     setMenuOpen(false);
     navigate(to);
   };
-  const navItem = (to, label) => (
-    <span
-      onClick={() => go(to)}
-      style={{ cursor: 'pointer', color: pathname === to ? colors.accent : colors.ink }}
-    >
-      {label}
-    </span>
-  );
+  const navItem = (to, label) => {
+    const active = pathname === to;
+    return (
+      <span
+        key={to}
+        onClick={() => go(to)}
+        style={{
+          cursor: 'pointer',
+          color: active ? '#fff' : '#dcdfeb',
+          borderBottom: active ? `2px solid ${colors.gold}` : '2px solid transparent',
+          paddingBottom: 4,
+        }}
+      >
+        {label}
+      </span>
+    );
+  };
 
   return (
     <>
@@ -172,7 +183,7 @@ export default function Header() {
               {header.help_label}
             </span>
             <span style={{ opacity: 0.4 }}>|</span>
-            {langToggle()}
+            {langToggle({ color: colors.gold })}
           </div>
         </div>
       </div>
@@ -183,9 +194,9 @@ export default function Header() {
           position: 'sticky',
           top: 0,
           zIndex: 50,
-          background: '#fff',
-          borderBottom: `1px solid ${colors.line}`,
-          boxShadow: '0 1px 12px rgba(20,20,43,.04)',
+          background: colors.utilityBar,
+          borderBottom: '1px solid rgba(255,255,255,.10)',
+          boxShadow: '0 1px 12px rgba(20,20,43,.18)',
         }}
       >
         <div
@@ -194,7 +205,7 @@ export default function Header() {
             maxWidth: layout.maxWidth,
             margin: '0 auto',
             padding: '0 24px',
-            height: layout.headerHeight,
+            height: 74,
             display: 'flex',
             alignItems: 'center',
             gap: 20,
@@ -202,7 +213,7 @@ export default function Header() {
         >
           <img
             className="site-logo"
-            src="/brand/logo-blue.png"
+            src="/brand/logo-white.png"
             alt="بيطرة BAYTARA"
             onClick={() => navigate('/')}
             style={{
@@ -214,71 +225,32 @@ export default function Header() {
             }}
           />
 
-          <button
-            className="hide-md"
-            onClick={() => navigate('/courses')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background: colors.surfaceAlt,
-              border: 'none',
-              borderRadius: 10,
-              padding: '10px 16px',
-              fontSize: 15,
-              fontWeight: 700,
-              color: colors.ink,
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 3 }}>
-              {[0, 1, 2].map((i) => (
-                <span key={i} style={{ width: 16, height: 2, background: colors.ink, borderRadius: 2 }} />
-              ))}
-            </span>
-            الفئات
-          </button>
-
-          <div
-            className="hide-sm"
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              background: colors.surfaceAlt,
-              border: `1px solid ${colors.line}`,
-              borderRadius: 12,
-              padding: '0 16px',
-              height: 44,
-            }}
-          >
-            <SearchIcon />
-            <input
-              placeholder="ابحث عن دورة أو طبيب أو تخصّص…"
-              style={{
-                flex: 1,
-                border: 'none',
-                background: 'transparent',
-                outline: 'none',
-                fontSize: 15,
-                color: colors.ink,
-              }}
-            />
-          </div>
-
           <nav
             className="hide-md"
-            style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 15, fontWeight: 700 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 22, fontSize: 14.5, fontWeight: 600 }}
           >
-            {navItem('/courses', t('nav.courses'))}
-            {navItem('/bundles', t('nav.bundles'))}
-            {navItem('/pricing', t('nav.pricing'))}
-            {navItem('/business', t('nav.business'))}
-            {navItem('/blog', t('nav.blog'))}
+            {NAV.map(([to, key]) => navItem(to, t(key)))}
           </nav>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginInlineStart: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginInlineStart: 'auto' }}>
+            <button
+              className="hide-sm"
+              aria-label={t('nav.search')}
+              onClick={() => navigate('/courses')}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                background: 'rgba(255,255,255,.09)',
+                border: 'none',
+                display: 'grid',
+                placeItems: 'center',
+                cursor: 'pointer',
+                flex: 'none',
+              }}
+            >
+              <SearchIcon />
+            </button>
             {!user && (
               <button
                 className="hide-sm"
@@ -286,43 +258,43 @@ export default function Header() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: colors.ink,
+                  fontSize: 14.5,
+                  fontWeight: 600,
+                  color: '#fff',
                   cursor: 'pointer',
                   padding: '10px 12px',
                 }}
               >
-                تسجيل الدخول
+                {t('nav.login')}
               </button>
             )}
             <button
               className="hover-bright hide-sm"
               onClick={() => navigate('/pricing')}
               style={{
-                background: colors.accent,
+                background: colors.gold,
                 border: 'none',
                 borderRadius: 10,
-                fontSize: 15,
-                fontWeight: 800,
-                color: '#fff',
+                fontSize: 14.5,
+                fontWeight: 700,
+                color: colors.utilityBar,
                 cursor: 'pointer',
-                padding: '11px 22px',
+                padding: '11px 20px',
               }}
             >
-              اشترك الآن
+              {t('common.enroll')}
             </button>
             {user && <NotificationBell />}
             {user && <UserMenu />}
             <button
               className="show-md"
-              aria-label="القائمة"
+              aria-label={t('nav.menu')}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((o) => !o)}
               style={{
                 flexDirection: 'column',
                 gap: 4,
-                background: colors.surfaceAlt,
+                background: 'rgba(255,255,255,.09)',
                 border: 'none',
                 borderRadius: 10,
                 padding: 12,
@@ -331,7 +303,7 @@ export default function Header() {
               }}
             >
               {[0, 1, 2].map((i) => (
-                <span key={i} style={{ width: 18, height: 2, background: colors.ink, borderRadius: 2 }} />
+                <span key={i} style={{ width: 18, height: 2, background: '#fff', borderRadius: 2 }} />
               ))}
             </button>
           </div>
@@ -343,16 +315,11 @@ export default function Header() {
             style={{
               flexDirection: 'column',
               padding: '8px 24px 16px',
-              borderTop: `1px solid ${colors.line}`,
-              background: '#fff',
+              borderTop: '1px solid rgba(255,255,255,.10)',
+              background: colors.utilityBar,
+              color: '#fff',
             }}
           >
-            <span
-              onClick={() => go('/courses')}
-              style={{ padding: '12px 4px', cursor: 'pointer', fontWeight: 700, borderBottom: `1px solid ${colors.line2}` }}
-            >
-              الفئات والدورات
-            </span>
             {NAV.map(([to, label]) => (
               <span
                 key={to}
@@ -361,19 +328,19 @@ export default function Header() {
                   padding: '12px 4px',
                   cursor: 'pointer',
                   fontWeight: 700,
-                  color: pathname === to ? colors.accent : colors.ink,
-                  borderBottom: `1px solid ${colors.line2}`,
+                  color: pathname === to ? colors.gold : '#fff',
+                  borderBottom: '1px solid rgba(255,255,255,.10)',
                 }}
               >
                 {t(label)}
               </span>
             ))}
-            <span style={{ padding: '12px 4px', borderBottom: `1px solid ${colors.line2}` }}>
-              {langToggle({ fontSize: 15, color: colors.ink })}
+            <span style={{ padding: '12px 4px', borderBottom: '1px solid rgba(255,255,255,.10)' }}>
+              {langToggle({ fontSize: 15, color: '#fff' })}
             </span>
             {user && (
-              <span onClick={() => go('/dashboard')} style={{ padding: '12px 4px', cursor: 'pointer', fontWeight: 700, borderBottom: `1px solid ${colors.line2}` }}>
-                لوحتي ({user.name})
+              <span onClick={() => go('/dashboard')} style={{ padding: '12px 4px', cursor: 'pointer', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,.10)' }}>
+                {t('nav.dashboard')} ({user.name})
               </span>
             )}
             <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
@@ -381,33 +348,33 @@ export default function Header() {
                 onClick={() => { if (user) { logout(); go('/'); } else { go('/auth'); } }}
                 style={{
                   flex: 1,
-                  background: colors.surfaceAlt,
-                  border: `1px solid ${colors.line}`,
+                  background: 'rgba(255,255,255,.09)',
+                  border: '1px solid rgba(255,255,255,.16)',
                   borderRadius: 10,
                   padding: 12,
                   fontSize: 15,
                   fontWeight: 700,
-                  color: colors.ink,
+                  color: '#fff',
                   cursor: 'pointer',
                 }}
               >
-                {user ? 'تسجيل الخروج' : 'تسجيل الدخول'}
+                {user ? t('nav.logout') : t('nav.login')}
               </button>
               <button
                 onClick={() => go('/pricing')}
                 style={{
                   flex: 1,
-                  background: colors.accent,
+                  background: colors.gold,
                   border: 'none',
                   borderRadius: 10,
                   padding: 12,
                   fontSize: 15,
-                  fontWeight: 800,
-                  color: '#fff',
+                  fontWeight: 700,
+                  color: colors.utilityBar,
                   cursor: 'pointer',
                 }}
               >
-                اشترك الآن
+                {t('common.enroll')}
               </button>
             </div>
           </div>

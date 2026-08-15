@@ -88,6 +88,21 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [ ] i18n structure (Arabic default, multilingual-ready)
 - [ ] Security hardening pass
 
+## Phase 11 — Home page redesign (see `docs/milestones/`)
+- [x] Learning paths backend — `learning_paths` + `path_courses`, public `/paths`, admin CRUD
+- [x] Paths admin UI — ordered course picker in the admin portal
+- [x] `GET /learning-summary` — real resume point, watched hours and streak, no new tables
+- [x] Home copy moved into the settings CMS; `t()` gained `{placeholder}` interpolation
+- [x] `/paths` and `/paths/:slug` pages + shared `PathCard`
+- [x] `Home.jsx` rebuilt to the approved design on real data; home-page mock data deleted
+- [x] Dark header, real footer links, phone tab bar
+- [x] Course metadata — objectives, level, certificate flag, last-updated; per-course units
+- [x] Course reviews — `course_reviews`, enrollment-gated posting, admin publish/hide
+- [x] Course admin — units UI, meta fields, reviews moderation page
+- [x] Course page rebuilt on real data; the mock-course fallback and its crash are gone
+- [x] Lesson player rebuilt — real progress, unit-grouped curriculum, all-content browser
+- [ ] Courses/videos listing redesigned to match
+
 ## Phase 9 — Deployment
 - [x] NginX + HTTPS + security headers (HSTS, CSP, X-Content-Type-Options, X-Frame-Options,
   Referrer-Policy, Permissions-Policy; `server_tokens off`) — live: main site, `/admin`, `/api` proxy

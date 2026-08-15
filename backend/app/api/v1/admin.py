@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 from ...models import (
     User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
-    VideoEntitlement, bundle_videos, push_notification,
+    CourseReview, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
+    push_notification, refresh_course_rating,
 )
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
@@ -250,12 +251,23 @@ def course_get(cid):
     return jsonify(course=c.to_dict(with_content=True))
 
 
+def _objectives(data, key):
+    """The «ماذا ستتعلّم» bullets: a list of non-empty strings, blanks dropped so an
+    editor's trailing empty row does not become an empty bullet on the page."""
+    value = data.get(key) or []
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
 @bp.post("/courses")
 @require_role("admin")
 def course_create():
     d = request.get_json() or {}
     if not d.get("title"):
         return jsonify(error="title_required"), 422
+    if d.get("level", "beginner") not in LEVELS:
+        return jsonify(error="bad_level"), 422
     instr_id = d.get("instructor_id")
     if not instr_id or not User.query.filter_by(id=instr_id, role="instructor").first():
         return jsonify(error="valid_instructor_required"), 422
@@ -288,6 +300,10 @@ def course_create():
         access_days=catalog["access_days"],
         access_type=catalog["access_type"],
         status=catalog["status"],
+        objectives=_objectives(d, "objectives"),
+        objectives_en=_objectives(d, "objectives_en"),
+        level=d.get("level", "beginner"),
+        has_certificate=bool(d.get("has_certificate", False)),
     )
     db.session.add(c)
     db.session.commit()
@@ -303,6 +319,8 @@ def course_update(cid):
     d = request.get_json() or {}
     if "status" in d and d["status"] not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
+    if "level" in d and d["level"] not in LEVELS:
+        return jsonify(error="bad_level"), 422
     if "instructor_id" in d and not User.query.filter_by(id=d["instructor_id"], role="instructor").first():
         return jsonify(error="valid_instructor_required"), 422
     try:
@@ -313,9 +331,15 @@ def course_update(cid):
     except CatalogValidationError as exc:
         return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     for f in ("title", "title_en", "description", "description_en", "image", "price", "currency",
-              "instructor_id", "category_id", "duration_minutes", "access_days", "access_type", "status"):
+              "instructor_id", "category_id", "duration_minutes", "access_days", "access_type", "status",
+              "level"):
         if f in d or f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
             setattr(c, f, catalog[f] if f in catalog else d[f])
+    for f in ("objectives", "objectives_en"):
+        if f in d:
+            setattr(c, f, _objectives(d, f))
+    if "has_certificate" in d:
+        c.has_certificate = bool(d["has_certificate"])
     db.session.commit()
     return jsonify(course=c.to_dict())
 
@@ -634,6 +658,157 @@ def bundle_delete(bid):
     db.session.delete(b)
     db.session.commit()
     return jsonify(deleted=bid)
+
+
+# ------------------------------ course reviews ------------------------------
+
+REVIEW_STATUSES = ("published", "hidden")
+
+
+@bp.get("/reviews")
+@require_role("admin")
+def reviews_list():
+    q = CourseReview.query
+    status = request.args.get("status")
+    if status in REVIEW_STATUSES:
+        q = q.filter_by(status=status)
+    course_id = request.args.get("course_id", type=int)
+    if course_id:
+        q = q.filter_by(course_id=course_id)
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = min(max(request.args.get("per_page", 25, type=int), 1), 100)
+    pg = db.paginate(q.order_by(CourseReview.created_at.desc(), CourseReview.id.desc()),
+                     page=page, per_page=per_page, error_out=False)
+    return jsonify(reviews=[r.to_dict(admin=True) for r in pg.items],
+                   total=pg.total, page=pg.page, pages=pg.pages)
+
+
+@bp.patch("/reviews/<int:rid>")
+@require_role("admin")
+def review_update(rid):
+    """Publish or hide. Hiding recounts, so the average always matches what is readable."""
+    review = db.session.get(CourseReview, rid)
+    if not review:
+        return jsonify(error="not_found"), 404
+    status = (request.get_json() or {}).get("status")
+    if status not in REVIEW_STATUSES:
+        return jsonify(error="bad_status"), 422
+    review.status = status
+    db.session.flush()
+    refresh_course_rating(review.course)
+    db.session.commit()
+    return jsonify(review=review.to_dict(admin=True))
+
+
+@bp.delete("/reviews/<int:rid>")
+@require_role("admin")
+def review_delete(rid):
+    review = db.session.get(CourseReview, rid)
+    if not review:
+        return jsonify(error="not_found"), 404
+    course = review.course
+    db.session.delete(review)
+    db.session.flush()
+    refresh_course_rating(course)
+    db.session.commit()
+    return jsonify(deleted=rid)
+
+
+# ------------------------------ learning paths ------------------------------
+
+# ponytail: no validate_catalog_item call — a path carries no price and no access tier,
+# so there is nothing for the catalog validator to check. Its courses gate themselves.
+
+def _path_assignments(data, current=None):
+    """Ordered PathCourse rows for the given course_ids, or the current ones untouched."""
+    if "course_ids" not in data:
+        return None
+    courses = _bundle_ids(data, "course_ids", Course, "course_not_found")
+    return [PathCourse(course_id=c.id, position=i) for i, c in enumerate(courses)]
+
+
+def _path_fields(data):
+    """Validate the path-only fields. Returns nothing; raises on bad input."""
+    if "level" in data and data["level"] not in LEVELS:
+        raise CatalogValidationError(["bad_level"])
+    if "status" in data and data["status"] not in ("draft", "published", "unpublished"):
+        raise CatalogValidationError(["bad_status"])
+
+
+@bp.get("/paths")
+@require_role("admin")
+def paths_list():
+    rows = LearningPath.query.order_by(LearningPath.sort_order, LearningPath.id).all()
+    return jsonify(paths=[p.to_dict() for p in rows])
+
+
+@bp.get("/paths/<int:pid>")
+@require_role("admin")
+def path_get(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    return jsonify(path=p.to_dict())
+
+
+@bp.post("/paths")
+@require_role("admin")
+def path_create():
+    d = request.get_json() or {}
+    if not d.get("title"):
+        return jsonify(error="title_required"), 422
+    try:
+        _path_fields(d)
+        assignments = _path_assignments(d) or []
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    p = LearningPath(
+        title=d["title"], title_en=d.get("title_en"),
+        slug=slugify(d.get("slug") or d["title"],
+                     lambda s: LearningPath.query.filter_by(slug=s).first() is not None),
+        description=d.get("description", ""), description_en=d.get("description_en"),
+        level=d.get("level", "beginner"), status=d.get("status", "draft"),
+        sort_order=d.get("sort_order", 0), course_assignments=assignments,
+    )
+    db.session.add(p)
+    db.session.commit()
+    return jsonify(path=p.to_dict()), 201
+
+
+@bp.patch("/paths/<int:pid>")
+@require_role("admin")
+def path_update(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    try:
+        _path_fields(d)
+        assignments = _path_assignments(d, current=p)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    for f in ("title", "title_en", "description", "description_en", "level", "status", "sort_order"):
+        if f in d:
+            setattr(p, f, d[f])
+    if assignments is not None:
+        # Drop the old rows first: reordering reuses the same (path, course) pairs, and
+        # without this flush the inserts race the orphan deletes into uq_path_course.
+        p.course_assignments.clear()
+        db.session.flush()
+        p.course_assignments = assignments
+    db.session.commit()
+    return jsonify(path=p.to_dict())
+
+
+@bp.delete("/paths/<int:pid>")
+@require_role("admin")
+def path_delete(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    db.session.delete(p)
+    db.session.commit()
+    return jsonify(deleted=pid)
 
 
 # ------------------------------ video catalog ------------------------------
@@ -1053,6 +1228,28 @@ def course_videos_order(cid):
         return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     db.session.commit()
     return jsonify(ok=True, count=len(video_ids))
+
+
+@bp.put("/courses/<int:cid>/videos/<int:vid>/module")
+@require_role("admin")
+def course_video_module(cid, vid):
+    """Place one of a course's videos in a unit (or remove it from units with null)."""
+    course = db.session.get(Course, cid)
+    if not course:
+        return jsonify(error="course_not_found"), 404
+    row = CourseVideo.query.filter_by(course_id=cid, video_id=vid).first()
+    if not row:
+        return jsonify(error="not_assigned"), 404
+
+    module_id = (request.get_json() or {}).get("module_id")
+    if module_id is not None:
+        module = db.session.get(CourseModule, module_id)
+        # A unit from another course would silently vanish from this one's accordion.
+        if not module or module.course_id != cid:
+            return jsonify(error="module_not_found"), 422
+    row.module_id = module_id
+    db.session.commit()
+    return jsonify(ok=True, video_id=vid, module_id=module_id)
 
 
 @bp.post("/courses/<int:cid>/videos/reorder")

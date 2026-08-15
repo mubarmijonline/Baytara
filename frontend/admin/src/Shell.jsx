@@ -15,6 +15,8 @@ import {
   Mail,
   Newspaper,
   Settings,
+  Signpost,
+  Star,
   Tags,
 } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -31,6 +33,8 @@ const NAV = [
   ['videos', 'nav.videos', Library],
   ['video-reports', 'nav.videoReports', BarChart3],
   ['bundles', 'nav.bundles', Boxes],
+  ['paths', 'nav.paths', Signpost],
+  ['reviews', 'nav.reviews', Star],
   ['hierarchy', 'nav.hierarchy', FolderTree],
   ['categories', 'nav.categories', Tags],
   ['articles', 'nav.articles', Newspaper],

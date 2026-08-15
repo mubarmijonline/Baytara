@@ -12,7 +12,7 @@ export function Modal({ title, onClose, children }) {
   );
 }
 
-export function Field({ label, children }) {
+export function Field({ label, hint, children }) {
   const fieldId = useId();
   const controlId = isValidElement(children) ? children.props.id || fieldId : fieldId;
   const control = isValidElement(children) ? cloneElement(children, { id: controlId }) : children;
@@ -20,6 +20,7 @@ export function Field({ label, children }) {
     <div className="field">
       <label htmlFor={controlId}>{label}</label>
       {control}
+      {hint && <small className="field-hint">{hint}</small>}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import Home from './pages/Home.jsx';
 import Courses from './pages/Courses.jsx';
 import CourseDetail from './pages/CourseDetail.jsx';
 import Bundles from './pages/Bundles.jsx';
+import Paths from './pages/Paths.jsx';
+import PathDetail from './pages/PathDetail.jsx';
 import Instructor from './pages/Instructor.jsx';
 import Pricing from './pages/Pricing.jsx';
 import Business from './pages/Business.jsx';
@@ -32,6 +34,8 @@ export default function App() {
         <Route path="/videos" element={<Videos />} />
         <Route path="/videos/:id" element={<VideoDetail />} />
         <Route path="/bundles" element={<Bundles />} />
+        <Route path="/paths" element={<Paths />} />
+        <Route path="/paths/:slug" element={<PathDetail />} />
         <Route path="/buy/:slug" element={<Buy />} />
         <Route path="/payment/callback" element={<PaymentCallback />} />
         <Route path="/instructors/:id" element={<Instructor />} />

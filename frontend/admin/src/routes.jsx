@@ -10,7 +10,9 @@ import CourseContent from './pages/CourseContent.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Hierarchy from './pages/Hierarchy.jsx';
 import Messages from './pages/Messages.jsx';
+import Paths from './pages/Paths.jsx';
 import Payments from './pages/Payments.jsx';
+import Reviews from './pages/Reviews.jsx';
 import Settings from './pages/Settings.jsx';
 import Instructors from './pages/Instructors.jsx';
 import Users from './pages/Users.jsx';
@@ -36,6 +38,10 @@ const sectionRoutes = [
   ['bundles', Bundles],
   ['bundles/new', Bundles],
   ['bundles/:bundleId/edit', Bundles],
+  ['paths', Paths],
+  ['paths/new', Paths],
+  ['paths/:pathId/edit', Paths],
+  ['reviews', Reviews],
   ['hierarchy', Hierarchy],
   ['categories', Categories],
   ['articles', Articles],

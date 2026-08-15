@@ -31,6 +31,9 @@ const LOGO_FIELDS = [
   { key: 'name', label: label('اسم الشعار', 'Name') },
   { key: 'url', label: label('رابط الشعار', 'URL') },
 ];
+const TRUST_FIELDS = [
+  { key: 'label', label: label('النص', 'label'), localized: true },
+];
 
 function Section({ title, children }) {
   return <section className="settings-section"><h3>{title}</h3>{children}</section>;
@@ -125,8 +128,17 @@ export default function Settings() {
               {field('hero', 'featured_label', label('وسم الدورة المميزة', copy.fields.featuredLabel))}
               {field('hero', 'featured_title', label('عنوان الدورة المميزة', copy.fields.featuredTitle))}
             </Section>
+            <ListEditor title={copy.sections.trust} items={group('hero').trust} fields={TRUST_FIELDS} onChange={(value) => setGroup('hero', 'trust', value)} />
             <Section title={copy.sections.home}>
+              {field('home', 'paths_title', label('عنوان المسارات', copy.fields.pathsTitle))}
+              {field('home', 'paths_subtitle', label('وصف المسارات', copy.fields.pathsSubtitle), true)}
+              {field('home', 'categories_title', label('عنوان التخصّصات', copy.fields.categoriesTitle))}
+              {field('home', 'categories_subtitle', label('وصف التخصّصات', copy.fields.categoriesSubtitle), true)}
+              {field('home', 'instructors_title', label('عنوان المدرّبين', copy.fields.instructorsTitle))}
+              {field('home', 'instructors_subtitle', label('وصف المدرّبين', copy.fields.instructorsSubtitle), true)}
               {field('home', 'testimonials_title', label('عنوان الآراء', copy.fields.testimonialsTitle))}
+              {field('home', 'cta_title', label('عنوان دعوة الاشتراك', copy.fields.ctaTitle))}
+              {field('home', 'cta_subtitle', label('وصف دعوة الاشتراك', copy.fields.ctaSubtitle), true)}
             </Section>
             <ListEditor title={copy.sections.stats} items={draft.stats} fields={STAT_FIELDS} onChange={(value) => setKey('stats', value)} />
             <ListEditor title={copy.sections.testimonials} items={draft.testimonials} fields={TESTIMONIAL_FIELDS} onChange={(value) => setKey('testimonials', value)} />
@@ -176,6 +188,8 @@ export default function Settings() {
           {tab === 'footer' && <Section title={copy.sections.footer}>
             {field('footer', 'tagline', label('الوصف المختصر', copy.fields.tagline), true)}
             {field('footer', 'copyright', label('حقوق النشر', copy.fields.copyright))}
+            <Field label={copy.fields.privacyUrl}><input dir="ltr" placeholder="https://…" value={group('footer').privacy_url || ''} onChange={(event) => setGroup('footer', 'privacy_url', event.target.value)} /></Field>
+            <Field label={copy.fields.termsUrl}><input dir="ltr" placeholder="https://…" value={group('footer').terms_url || ''} onChange={(event) => setGroup('footer', 'terms_url', event.target.value)} /></Field>
           </Section>}
 
           {tab === 'integrations' && <>
