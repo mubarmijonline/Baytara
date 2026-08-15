@@ -5,7 +5,7 @@ from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 
 from ...extensions import db
 from ...models import (Category, Lesson, User, UserDevice, VideoPlaybackEvent,
-                       VideoPlaybackSession)
+                       VideoPlaybackSession, push_notification)
 from ...services.catalog_access import audience_error, capture_protected, video_access
 from ...services.video_provider import provider, watermark_for, VideoProviderError
 from .local_hls import issue_token
@@ -34,7 +34,7 @@ OTP_PER_WINDOW = 40                       # a fresh lesson every 90 seconds, all
 # save shortcuts...). A few is a curious learner; a stream of them is someone working at it,
 # and playback stops until the window passes.
 SUSPICIOUS_WINDOW = timedelta(minutes=15)
-SUSPICIOUS_LIMIT = 5
+SUSPICIOUS_LIMIT = 3
 
 
 def _current_user():
@@ -264,6 +264,13 @@ def playback():
                            VideoPlaybackEvent.created_at >= now - SUSPICIOUS_WINDOW)
                    .count())
         if flagged >= SUSPICIOUS_LIMIT:
+            # tell the admins once per block so a repeat offender is not just a log line
+            minutes = int(SUSPICIOUS_WINDOW.total_seconds() // 60)
+            for admin in User.query.filter_by(role="admin", is_active=True).all():
+                push_notification(
+                    admin.id, "security", "نشاط مشبوه أثناء مشاهدة الفيديو",
+                    f"{user.name} ({user.email}) — {flagged} محاولة خلال {minutes} دقيقة.",
+                )
             return deny("suspicious_activity", 403)
 
     resume_position_seconds = _resume_position_seconds(user, lesson)

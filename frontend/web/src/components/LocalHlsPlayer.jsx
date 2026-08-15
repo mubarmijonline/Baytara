@@ -15,6 +15,9 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
   const videoRef = useRef(null);
   const [offset, setOffset] = useState({ top: '12%', left: '8%' });
   const [halted, setHalted] = useState('');
+  const [strikes, setStrikes] = useState(0);      // suspicious events in this session
+  const [cooldown, setCooldown] = useState(0);    // seconds before resume is allowed
+  const [terminated, setTerminated] = useState(false);
 
   // ---- stream ----
   useEffect(() => {
@@ -104,6 +107,18 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
       onPause: (reason) => {
         if (!video.paused) video.pause();
         setHalted(reason);
+        setStrikes((count) => {
+          const next = count + 1;
+          if (next >= 2) {
+            // second offence: the stream ends. Resuming needs a fresh page and a fresh
+            // token, so leaving to start a recorder is no longer a two-second detour.
+            setTerminated(true);
+            try { video.pause(); video.removeAttribute('src'); video.load(); } catch { /* gone */ }
+          } else {
+            setCooldown(20);
+          }
+          return next;
+        });
       },
     });
 
@@ -121,6 +136,13 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
     };
   }, [playback, onEnded, onSecurityError]);
 
+  // ---- resume cooldown ----
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
   // ---- moving identity watermark ----
   useEffect(() => {
     if (!playback?.watermark) return undefined;
@@ -128,9 +150,9 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
       top: `${8 + Math.random() * 76}%`,
       left: `${4 + Math.random() * 55}%`,
     });
-    const timer = setInterval(move, 5000);
+    const timer = setInterval(move, strikes > 0 ? 1500 : 5000);
     return () => clearInterval(timer);
-  }, [playback]);
+  }, [playback, strikes]);
 
   return (
     <div className="secure-video-shell" data-testid="local-video-shell"
@@ -149,15 +171,29 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
              style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 20,
                background: 'rgba(16,21,44,.92)', color: '#fff', textAlign: 'center' }}>
           <div>
-            <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 8 }}>تم إيقاف التشغيل مؤقتاً</div>
-            <div style={{ fontSize: 13, color: '#c9c9dc', marginBottom: 14, lineHeight: 1.7 }}>
-              رصدنا نشاطاً غير مسموح أثناء المشاهدة، وسُجّل على حسابك.
+            <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 8 }}>
+              {terminated ? 'انتهت جلسة المشاهدة' : 'تم إيقاف التشغيل مؤقتاً'}
             </div>
-            <button type="button" onClick={() => { setHalted(''); videoRef.current?.play(); }}
-              style={{ border: 0, borderRadius: 8, background: '#3048A0', color: '#fff', fontWeight: 800,
-                minHeight: 42, padding: '0 20px', cursor: 'pointer' }}>
-              متابعة المشاهدة
-            </button>
+            <div style={{ fontSize: 13, color: '#c9c9dc', marginBottom: 14, lineHeight: 1.7 }}>
+              {terminated
+                ? 'تكرر النشاط غير المسموح، فأُنهيت الجلسة وسُجّلت على حسابك. أعد تحميل الصفحة للمتابعة.'
+                : 'رصدنا نشاطاً غير مسموح أثناء المشاهدة، وسُجّل على حسابك.'}
+            </div>
+            {terminated ? (
+              <button type="button" onClick={() => window.location.reload()}
+                style={{ border: 0, borderRadius: 8, background: '#3048A0', color: '#fff', fontWeight: 800,
+                  minHeight: 42, padding: '0 20px', cursor: 'pointer' }}>
+                إعادة تحميل الصفحة
+              </button>
+            ) : (
+              <button type="button" disabled={cooldown > 0}
+                onClick={() => { setHalted(''); videoRef.current?.play(); }}
+                style={{ border: 0, borderRadius: 8, background: cooldown > 0 ? '#5a6180' : '#3048A0',
+                  color: '#fff', fontWeight: 800, minHeight: 42, padding: '0 20px',
+                  cursor: cooldown > 0 ? 'not-allowed' : 'pointer' }}>
+                {cooldown > 0 ? `متابعة المشاهدة بعد ${cooldown} ثانية` : 'متابعة المشاهدة'}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -165,7 +201,8 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
         <span
           data-testid="local-video-watermark"
           style={{ position: 'absolute', top: offset.top, left: offset.left, pointerEvents: 'none',
-            color: 'rgba(255,255,255,.55)', fontSize: 13, fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,.8)',
+            color: strikes > 0 ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.55)',
+            fontSize: strikes > 0 ? 20 : 13, fontWeight: 900, textShadow: '0 2px 6px rgba(0,0,0,.95)',
             transition: 'top .8s linear, left .8s linear', direction: 'ltr', whiteSpace: 'nowrap' }}
         >
           {playback.watermark}
