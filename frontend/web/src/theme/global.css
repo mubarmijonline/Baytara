@@ -128,6 +128,10 @@ textarea {
   gap: 18px;
 }
 
+@media (max-width: 1100px) {
+  .videos-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 @media (max-width: 900px) {
   .grid-collapse-2 {
     grid-template-columns: 1fr !important;
@@ -205,6 +209,11 @@ select { appearance: none; -webkit-appearance: none; background-color: #fff;
 select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2fb; }
 
 .video-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+/* The library shows four across; the home strip keeps three. */
+.videos-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+/* Chips scroll sideways rather than wrapping the filter bar onto three rows. */
+.videos-chip-row { scrollbar-width: none; }
+.videos-chip-row::-webkit-scrollbar { display: none; }
 .video-detail-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr); gap: 34px; align-items: start; }
 .video-status-icon { position: relative; display: inline-block; width: 22px; height: 22px; color: #3048A0; }
 .video-status-icon::before { content: ""; position: absolute; inset-inline-start: 4px; bottom: 2px; width: 15px; height: 12px; border: 2px solid currentColor; border-radius: 3px; background: transparent; }

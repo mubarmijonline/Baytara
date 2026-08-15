@@ -51,7 +51,7 @@ def public_video_app(tmp_path, monkeypatch):
             Lesson(
                 title="مقدمة", title_en="Introduction", description="وصف المقدمة",
                 category_id=large.id, access_type="free", status="published",
-                poster="https://cdn.example.test/introduction.jpg",
+                poster="https://cdn.example.test/introduction.jpg", duration_minutes=5,
                 vdocipher_video_id="public-introduction",
             ),
             Lesson(
@@ -64,7 +64,7 @@ def public_video_app(tmp_path, monkeypatch):
             ),
             Lesson(
                 title="مدفوع", category_id=large.id, access_type="general", status="published",
-                price=100, vdocipher_video_id="paid-video",
+                price=100, duration_minutes=45, vdocipher_video_id="paid-video",
             ),
         ]
         db.session.add_all(rows)
@@ -335,3 +335,43 @@ def test_signed_in_student_cannot_play_an_unpublished_free_video(public_video_ap
     )
     assert response.status_code == 403
     assert response.get_json() == {"error": "not_entitled"}
+
+
+def test_video_catalog_filters_by_access_length_and_sort(public_video_app):
+    """The library's filter bar: every control maps to a real query param."""
+    app, _ = public_video_app
+    client = app.test_client()
+
+    def titles(query=""):
+        return [v["title"] for v in client.get(f"/api/v1/videos{query}").get_json()["videos"]]
+
+    # anonymous sees the two published, non-vet rows
+    assert set(titles()) == {"مقدمة", "مدفوع"}
+
+    # access
+    assert titles("?access_type=free") == ["مقدمة"]
+    assert titles("?access_type=general") == ["مدفوع"]
+
+    # length bands
+    assert titles("?duration=short") == ["مقدمة"]        # 5 minutes
+    assert titles("?duration=long") == ["مدفوع"]         # 45 minutes
+    assert titles("?duration=medium") == []
+
+    # sort: longest first puts the 45-minute row ahead of the 5-minute one
+    assert titles("?sort=longest")[0] == "مدفوع"
+    assert titles("?sort=shortest")[0] == "مقدمة"
+
+    # an unknown sort falls back to newest rather than erroring
+    assert client.get("/api/v1/videos?sort=nonsense").status_code == 200
+
+
+def test_categories_carry_published_video_counts(public_video_app):
+    """The filter chips show a number, so it has to come from the same rows the
+    listing would return — published, with a provider id."""
+    app, _ = public_video_app
+    client = app.test_client()
+
+    counts = {c["slug"]: c["video_count"] for c in client.get("/api/v1/categories").get_json()["categories"]}
+    # large-animals holds the free row, the paid row and a draft; the draft must not count
+    assert counts["large-animals"] == 2, counts
+    assert counts["equine"] == 1, counts

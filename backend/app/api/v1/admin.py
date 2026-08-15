@@ -879,18 +879,24 @@ def _catalog_video_fields(data, current=None):
         }, current=current)
     except CatalogValidationError as exc:
         return None, (jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422)
-    # Every video must say which specialty it belongs to and who presents it — the
-    # library filters on one and the video page credits the other. On a PATCH the
-    # resolved value falls back to what is already stored, so a partial edit is fine.
-    if catalog["category_id"] is None:
-        return None, (jsonify(error="catalog_validation_failed", errors=["category_required"]), 422)
-    if not db.session.get(Category, catalog["category_id"]):
+    # Every new video must say which specialty it belongs to and who presents it — the
+    # library filters on one and the video page credits the other.
+    #
+    # On an update the rule applies only to what the caller actually sends. Videos
+    # predating the instructor column have none, and demanding one on every PATCH would
+    # block unrelated edits (changing access, fixing a title) on the whole legacy library.
+    creating = current is None
+    if creating or "category_id" in data:
+        if catalog["category_id"] is None:
+            return None, (jsonify(error="catalog_validation_failed", errors=["category_required"]), 422)
+    if catalog["category_id"] is not None and not db.session.get(Category, catalog["category_id"]):
         return None, (jsonify(error="catalog_validation_failed", errors=["invalid_category"]), 422)
 
     instructor_id = data.get("instructor_id", current.instructor_id if current else None)
-    if not instructor_id:
-        return None, (jsonify(error="catalog_validation_failed", errors=["instructor_required"]), 422)
-    if not User.query.filter_by(id=instructor_id, role="instructor").first():
+    if creating or "instructor_id" in data:
+        if not instructor_id:
+            return None, (jsonify(error="catalog_validation_failed", errors=["instructor_required"]), 422)
+    if instructor_id and not User.query.filter_by(id=instructor_id, role="instructor").first():
         return None, (jsonify(error="catalog_validation_failed", errors=["invalid_instructor"]), 422)
     catalog["instructor_id"] = instructor_id
     return catalog, None
