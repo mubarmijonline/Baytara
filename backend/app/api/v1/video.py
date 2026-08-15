@@ -93,11 +93,27 @@ def videos():
     if search:
         like = f"%{search}%"
         query = query.filter(db.or_(Lesson.title.ilike(like), Lesson.title_en.ilike(like)))
+    # Length bands rather than a free-form range: the library filter offers three
+    # buckets, and a minutes-from/to pair would be a wider contract than the UI uses.
+    duration = request.args.get("duration")
+    if duration == "short":
+        query = query.filter(Lesson.duration_minutes < 10)
+    elif duration == "medium":
+        query = query.filter(Lesson.duration_minutes >= 10, Lesson.duration_minutes <= 30)
+    elif duration == "long":
+        query = query.filter(Lesson.duration_minutes > 30)
+
     if audience_error(user, "vet_free"):
         query = query.filter(Lesson.access_type != "vet_free")
 
+    order = {
+        "oldest": (Lesson.created_at.asc(), Lesson.id.asc()),
+        "longest": (Lesson.duration_minutes.desc().nullslast(), Lesson.id.desc()),
+        "shortest": (Lesson.duration_minutes.asc().nullslast(), Lesson.id.desc()),
+    }.get(request.args.get("sort"), (Lesson.created_at.desc(), Lesson.id.desc()))
+
     result = db.paginate(
-        query.order_by(Lesson.created_at.desc(), Lesson.id.desc()),
+        query.order_by(*order),
         page=page, per_page=per_page, error_out=False,
     )
     lang = req_lang()

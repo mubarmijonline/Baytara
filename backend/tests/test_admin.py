@@ -67,11 +67,12 @@ def demo():
                   json={"title": "x", "instructor_id": 999999}).status_code == 422
 
     # video directly under the course (new model)
+    credits = {"category_id": cat["id"], "instructor_id": instr_id}
     v = c.post("/api/v1/admin/videos", headers=h,
                json={"course_id": course_id, "title": "الدرس 1", "duration_minutes": 12,
-                     "vdocipher_video_id": "vid1"}).get_json()["video"]
+                     "vdocipher_video_id": "vid1", **credits}).get_json()["video"]
     v2 = c.post("/api/v1/admin/videos", headers=h,
-                json={"course_id": course_id, "title": "الدرس 2"}).get_json()["video"]
+                json={"course_id": course_id, "title": "الدرس 2", **credits}).get_json()["video"]
     # full admin course tree shows ordered videos
     tree = c.get(f"/api/v1/admin/courses/{course_id}", headers=h).get_json()["course"]
     assert tree["videos"][0]["title"] == "الدرس 1", tree
@@ -100,6 +101,13 @@ def demo():
     assert c.delete(f"/api/v1/admin/videos/{l['id']}", headers=h).status_code == 200
     assert c.delete(f"/api/v1/admin/courses/{course_id}", headers=h).status_code == 200
     assert c.get(f"/api/v1/admin/courses/{course_id}", headers=h).status_code == 404
+
+    # a category holding videos is not deletable; deleting a course leaves its
+    # standalone videos behind, so they have to go first
+    assert c.delete(f"/api/v1/admin/categories/{cat['id']}", headers=h).status_code == 409
+    for leftover in c.get("/api/v1/admin/videos", headers=h).get_json()["items"]:
+        r = c.delete(f"/api/v1/admin/videos/{leftover['id']}", headers=h)
+        assert r.status_code == 200, (leftover["id"], r.get_json())
 
     # category now unused -> deletable
     assert c.delete(f"/api/v1/admin/categories/{cat['id']}", headers=h).status_code == 200

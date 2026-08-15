@@ -381,6 +381,8 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
             "lock_reason": None,
             "status": "published",
             "category": {"id": category.id, "name": "Equine", "name_en": "Equine", "slug": "equine-serialized"},
+            "instructor": None,
+            "instructor_id": None,
             "assignment_count": 1,
             "is_protected": True,
             "has_video": False,

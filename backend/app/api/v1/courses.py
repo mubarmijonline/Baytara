@@ -3,7 +3,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
 from ...models import (
-    Category, Course, Bundle, CourseReview, Enrollment, LearningPath, User, refresh_course_rating,
+    Category, Course, Bundle, CourseReview, Enrollment, LearningPath, Lesson, User,
+    refresh_course_rating,
 )
 from ...services.catalog_access import audience_error
 from ...utils import req_lang
@@ -21,7 +22,15 @@ def _current_user():
 def list_categories():
     lang = req_lang()
     cats = Category.query.order_by(Category.sort_order, Category.id).all()
-    return jsonify(categories=[c.to_dict(lang) for c in cats])
+    # One grouped count rather than a query per category: the video library shows a
+    # number on every chip, and a listing of six chips should not be six round trips.
+    counts = dict(
+        db.session.query(Lesson.category_id, db.func.count(Lesson.id))
+        .filter(Lesson.status == "published", Lesson.vdocipher_video_id.isnot(None))
+        .group_by(Lesson.category_id)
+        .all()
+    )
+    return jsonify(categories=[{**c.to_dict(lang), "video_count": counts.get(c.id, 0)} for c in cats])
 
 
 @bp.get("/courses")
