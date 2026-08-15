@@ -17,15 +17,26 @@ const FALLBACK_SETTINGS = {
     secondary_cta: 'شاهد كيف تعمل',
     featured_label: 'دورة مميّزة',
     featured_title: 'جراحة الحيوانات الصغيرة',
+    trust: [],
   },
-  home: { testimonials_title: 'ماذا يقول متعلّمونا' },
+  home: {
+    paths_title: 'مسارات مبنية على الممارسة',
+    paths_subtitle: 'كل مسار يبدأ بالأساسيات وينتهي بحالة سريرية كاملة.',
+    categories_title: 'تصفّح حسب التخصّص',
+    categories_subtitle: '',
+    instructors_title: 'تعلّم على يد نخبة من الأطباء',
+    instructors_subtitle: '',
+    testimonials_title: 'ماذا يقول متعلّمونا',
+    cta_title: 'ابدأ رحلة تعلّمك اليوم',
+    cta_subtitle: 'وصول غير محدود لكل الدورات والمسارات عبر جميع أجهزتك · إلغاء في أي وقت.',
+  },
   stats: [],
   testimonials: [],
   about: { title: 'من نحن', body: '' },
   business: { title: 'استثمر في نمو فريقك الطبي', body: '', stats: [], features: [], logos: [] },
   contact: { title: 'تواصل معنا', subtitle: '', email: '', phone: '', address: '', hours: '' },
   socials: {},
-  footer: { tagline: '', copyright: '© 2026 بيطرة. جميع الحقوق محفوظة.' },
+  footer: { tagline: '', copyright: '© 2026 بيطرة. جميع الحقوق محفوظة.', privacy_url: '', terms_url: '' },
 };
 
 const SiteSettingsContext = createContext(FALLBACK_SETTINGS);

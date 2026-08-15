@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
-from ...models import Category, Course, Bundle, User
+from ...models import Category, Course, Bundle, LearningPath, User
 from ...services.catalog_access import audience_error
 from ...utils import req_lang
 
@@ -89,6 +89,27 @@ def bundle_detail(slug):
     if not b:
         return jsonify(error="not_found"), 404
     return jsonify(bundle=b.to_dict(with_courses=True, lang=req_lang(), user=user))
+
+
+# ------------------------------ learning paths (public) ------------------------------
+
+@bp.get("/paths")
+@jwt_required(optional=True)
+def list_paths():
+    lang = req_lang()
+    rows = (LearningPath.query.filter_by(status="published")
+            .order_by(LearningPath.sort_order, LearningPath.id).all())
+    return jsonify(paths=[p.to_dict(lang=lang) for p in rows])
+
+
+@bp.get("/paths/<slug>")
+@jwt_required(optional=True)
+def path_detail(slug):
+    user = _current_user()
+    path = LearningPath.query.filter_by(slug=slug, status="published").first()
+    if not path:
+        return jsonify(error="not_found"), 404
+    return jsonify(path=path.to_dict(lang=req_lang(), with_courses=True, user=user))
 
 
 def _instructor_stats(user, courses):

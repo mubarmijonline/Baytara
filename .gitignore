@@ -17,7 +17,7 @@ graceful-castle-*.json
 *-vision-key.json
 
 # Node
-node_modules/
+node_modules
 dist/
 *.log
 

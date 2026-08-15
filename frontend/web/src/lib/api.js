@@ -103,6 +103,7 @@ export const auth = {
     method: 'POST', body: JSON.stringify(event),
   }),
   videoProgress: () => authFetch('/video/my-progress'),
+  learningSummary: () => authFetch('/learning-summary'),
   notifications: () => authFetch('/notifications'),
   notifRead: (id) => authFetch(`/notifications/${id}/read`, { method: 'POST' }),
   notifReadAll: () => authFetch('/notifications/read-all', { method: 'POST' }),
@@ -122,6 +123,8 @@ export const webapi = {
   categories: () => get('/categories'),
   bundles: () => get('/bundles'),
   bundle: (slug) => get('/bundles/' + slug),
+  paths: () => get('/paths'),
+  path: (slug) => get('/paths/' + slug),
   instructors: () => get('/instructors'),
   instructor: (id) => get('/instructors/' + id),
   instapayAccounts: () => get('/payment/instapay/accounts'),
@@ -135,6 +138,11 @@ export const webapi = {
       body: JSON.stringify(body),
     }),
 };
+
+// Short number for tight card lines: 84000 -> "٨٤ ألف" / "84K". Intl does the locale work.
+export function compact(n, lang) {
+  return new Intl.NumberFormat(lang === 'en' ? 'en' : 'ar-EG', { notation: 'compact' }).format(n || 0);
+}
 
 // Map an API course to the shape the approved design expects. Numbers stay real:
 // anything the platform doesn't measure yet (ratings) comes back null so the UI

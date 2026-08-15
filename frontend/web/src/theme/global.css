@@ -106,9 +106,27 @@ textarea {
   display: none;
 }
 
+/* The design's card grids. minmax(0,1fr) so a long Arabic title cannot widen a column. */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
 @media (max-width: 900px) {
   .grid-collapse-2 {
     grid-template-columns: 1fr !important;
+  }
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .hide-md {
     display: none !important;
@@ -120,6 +138,12 @@ textarea {
 @media (max-width: 640px) {
   .grid-collapse-sm {
     grid-template-columns: 1fr !important;
+  }
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .grid-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .hide-sm {
     display: none !important;
@@ -322,9 +346,30 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
   .student-section-heading button, .student-action, .student-profile-form button { width: 100%; }
 }
 
+/* Phone-only bottom navigation; shown in the 760px block below. */
+.site-tabbar {
+  display: none;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 8px 18px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+  border-top: 1px solid #ececf2;
+  text-align: center;
+  font-size: 11px;
+}
+.site-tabbar a { padding: 6px 0; }
+
 @media (max-width: 760px) {
   body { font-size: 15px; }
   .site-utility-bar { display: none !important; }
+  .site-tabbar { display: grid; }
+  /* Keep the last section clear of the fixed bar. */
+  .site-main { padding-bottom: 4px; }
+  footer { padding-bottom: 64px; }
   .site-header-inner { height: 54px !important; padding: 0 16px !important; gap: 10px !important; }
   .site-logo { height: 32px !important; }
   .show-md[aria-label] { padding: 10px !important; border-radius: 8px !important; }

@@ -148,6 +148,13 @@ export const api = {
   bundleUpdate: (id, body) => req(`/admin/bundles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   bundleDelete: (id) => req(`/admin/bundles/${id}`, { method: 'DELETE' }),
 
+  // learning paths (ordered course shelves shown as «مسارات» on the home page)
+  paths: () => req('/admin/paths'),
+  pathGet: (id) => req(`/admin/paths/${id}`),
+  pathCreate: (body) => req('/admin/paths', { method: 'POST', body: JSON.stringify(body) }),
+  pathUpdate: (id, body) => req(`/admin/paths/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  pathDelete: (id) => req(`/admin/paths/${id}`, { method: 'DELETE' }),
+
   // payments
   payments: (status) => req('/admin/payments' + (status ? `?status=${status}` : '')),
   approve: (id) => withAdminStatsInvalidation(

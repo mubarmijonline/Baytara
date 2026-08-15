@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from ...models import (
     User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
-    VideoEntitlement, bundle_videos, push_notification,
+    LearningPath, PathCourse, PATH_LEVELS, VideoEntitlement, bundle_videos, push_notification,
 )
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
@@ -634,6 +634,103 @@ def bundle_delete(bid):
     db.session.delete(b)
     db.session.commit()
     return jsonify(deleted=bid)
+
+
+# ------------------------------ learning paths ------------------------------
+
+# ponytail: no validate_catalog_item call — a path carries no price and no access tier,
+# so there is nothing for the catalog validator to check. Its courses gate themselves.
+
+def _path_assignments(data, current=None):
+    """Ordered PathCourse rows for the given course_ids, or the current ones untouched."""
+    if "course_ids" not in data:
+        return None
+    courses = _bundle_ids(data, "course_ids", Course, "course_not_found")
+    return [PathCourse(course_id=c.id, position=i) for i, c in enumerate(courses)]
+
+
+def _path_fields(data):
+    """Validate the path-only fields. Returns nothing; raises on bad input."""
+    if "level" in data and data["level"] not in PATH_LEVELS:
+        raise CatalogValidationError(["bad_level"])
+    if "status" in data and data["status"] not in ("draft", "published", "unpublished"):
+        raise CatalogValidationError(["bad_status"])
+
+
+@bp.get("/paths")
+@require_role("admin")
+def paths_list():
+    rows = LearningPath.query.order_by(LearningPath.sort_order, LearningPath.id).all()
+    return jsonify(paths=[p.to_dict() for p in rows])
+
+
+@bp.get("/paths/<int:pid>")
+@require_role("admin")
+def path_get(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    return jsonify(path=p.to_dict())
+
+
+@bp.post("/paths")
+@require_role("admin")
+def path_create():
+    d = request.get_json() or {}
+    if not d.get("title"):
+        return jsonify(error="title_required"), 422
+    try:
+        _path_fields(d)
+        assignments = _path_assignments(d) or []
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    p = LearningPath(
+        title=d["title"], title_en=d.get("title_en"),
+        slug=slugify(d.get("slug") or d["title"],
+                     lambda s: LearningPath.query.filter_by(slug=s).first() is not None),
+        description=d.get("description", ""), description_en=d.get("description_en"),
+        level=d.get("level", "beginner"), status=d.get("status", "draft"),
+        sort_order=d.get("sort_order", 0), course_assignments=assignments,
+    )
+    db.session.add(p)
+    db.session.commit()
+    return jsonify(path=p.to_dict()), 201
+
+
+@bp.patch("/paths/<int:pid>")
+@require_role("admin")
+def path_update(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    try:
+        _path_fields(d)
+        assignments = _path_assignments(d, current=p)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    for f in ("title", "title_en", "description", "description_en", "level", "status", "sort_order"):
+        if f in d:
+            setattr(p, f, d[f])
+    if assignments is not None:
+        # Drop the old rows first: reordering reuses the same (path, course) pairs, and
+        # without this flush the inserts race the orphan deletes into uq_path_course.
+        p.course_assignments.clear()
+        db.session.flush()
+        p.course_assignments = assignments
+    db.session.commit()
+    return jsonify(path=p.to_dict())
+
+
+@bp.delete("/paths/<int:pid>")
+@require_role("admin")
+def path_delete(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    db.session.delete(p)
+    db.session.commit()
+    return jsonify(deleted=pid)
 
 
 # ------------------------------ video catalog ------------------------------

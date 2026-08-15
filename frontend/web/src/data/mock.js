@@ -43,26 +43,8 @@ export const categories = [
   { name: 'طب الخيول', letter: 'خ', count: 98, bg: cg.violet },
 ];
 
-export const bizStats = [
-  { num: '+900', label: 'عيادة ومزرعة شريكة' },
-  { num: '94%', label: 'نسبة الإكمال' },
-  { num: '+2000', label: 'دورة متاحة' },
-  { num: '24/7', label: 'دعم مخصّص' },
-];
-
-export const rawInstructors = [
-  { name: 'د. أحمد الشريف', title: 'استشاري أمراض الماشية', ini: 'أ', courses: 12, students: '84k', grad: cg.red },
-  { name: 'د. سارة منصور', title: 'أخصائية جراحة بيطرية', ini: 'س', courses: 8, students: '52k', grad: cg.purple },
-  { name: 'د. كريم عادل', title: 'خبير تغذية حيوانية', ini: 'ك', courses: 6, students: '38k', grad: cg.teal },
-  { name: 'د. ليلى حسن', title: 'استشارية أمراض الدواجن', ini: 'ل', courses: 10, students: '71k', grad: cg.amber },
-  { name: 'د. طارق يوسف', title: 'أخصائي تكاثر وتلقيح', ini: 'ط', courses: 9, students: '63k', grad: cg.pink },
-].map((m, i) => ({ ...m, id: i }));
-
-export const testimonials = [
-  { quote: 'المحتوى البيطري العربي هنا غيّر طريقة عملي في العيادة تماماً. الدورات عملية ومباشرة وأثّرت في مسيرتي المهنية بشكل حقيقي.', name: 'د. محمد الرشيدي', role: 'طبيب بيطري', ini: 'م', grad: cg.purple },
-  { quote: 'أخيراً منصة تقدّم معرفة بيطرية احترافية بلغتي. تابعت أكثر من 15 دورة خلال عام وكل واحدة أضافت لي مهارة جديدة.', name: 'د. فاطمة العتيبي', role: 'مربّية ماشية', ini: 'ف', grad: cg.red },
-  { quote: 'جودة الإنتاج والمدرّبون على أعلى مستوى. الاشتراك السنوي كان أفضل استثمار في تطوّري المهني هذا العام.', name: 'د. عمر خليل', role: 'طالب بيطرة', ini: 'ع', grad: cg.teal },
-];
+// Removed with the home-page rebuild: bizStats, rawInstructors and testimonials now come
+// from the settings CMS, and the instructor cards from /api/v1/instructors.
 
 export const reviews = [
   { name: 'د. خالد المهدي', ini: 'خ', grad: g[0], text: 'من أفضل الدورات التي تابعتها. الشرح واضح والحالات العملية مفيدة جداً.' },
@@ -174,13 +156,8 @@ export const inProgress = [
   { ...rawCourses[2], progress: '85%', remaining: 'باقٍ 5 دروس' },
 ];
 
-export const footerCols = [
-  { title: 'المنصة', links: ['كل الدورات', 'المسارات التعليمية', 'الأطباء والمدرّبون', 'الاشتراكات', 'التطبيق'] },
-  { title: 'الشركة', links: ['من نحن', 'وظائف', 'المدوّنة', 'الصحافة', 'تواصل معنا'] },
-  { title: 'المساعدة', links: ['مركز المساعدة', 'الأسئلة الشائعة', 'كن مدرّباً', 'للأعمال', 'الدعم الفني'] },
-];
-
-export const socials = ['f', 'in', 'X', 'IG'];
+// footerCols and socials were removed: the footer now links to real routes and reads
+// its social URLs from the settings CMS.
 
 // ---- Content used by the new (non-design) pages ----
 

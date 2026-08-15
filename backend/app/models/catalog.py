@@ -4,6 +4,7 @@ from ..extensions import db
 from ..services.catalog_access import ACCESS_TYPES, PAID_ACCESS, access_is_paid, audience_error
 
 COURSE_STATUSES = ("draft", "published", "unpublished")
+PATH_LEVELS = ("beginner", "intermediate", "advanced", "breeders")
 FIXED_CATEGORIES = (
     ("large-animals", "الحيوانات الكبيرة - الأبقار والأغنام", "Large animals - Cattle & Sheep"),
     ("equine", "الخيول", "Equine"),
@@ -281,6 +282,73 @@ class CourseVideo(db.Model):
 
     course = db.relationship("Course", back_populates="video_assignments")
     video = db.relationship("Lesson", back_populates="course_assignments")
+
+
+class LearningPath(db.Model):
+    """An ordered shelf of courses — «مسار». A path carries no price and no access tier;
+    each course inside it keeps its own gating."""
+
+    __tablename__ = "learning_paths"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    title_en = db.Column(db.String(200))
+    slug = db.Column(db.String(220), unique=True, nullable=False, index=True)
+    description = db.Column(db.Text, nullable=False, default="")
+    description_en = db.Column(db.Text)
+    level = db.Column(db.String(20), nullable=False, default="beginner", server_default="beginner", index=True)
+    status = db.Column(db.String(20), nullable=False, default="draft", index=True)
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+
+    course_assignments = db.relationship(
+        "PathCourse",
+        back_populates="path",
+        cascade="all, delete-orphan",
+        order_by="PathCourse.position, PathCourse.id",
+        lazy="selectin",
+    )
+
+    def steps(self):
+        """The published courses on this path, in author order. Draft courses are skipped
+        so a work-in-progress cannot inflate the card."""
+        return [a.course for a in self.course_assignments if a.course and a.course.status == "published"]
+
+    def to_dict(self, lang="ar", with_courses=False, user=None):
+        steps = self.steps()
+        d = {
+            "id": self.id,
+            "title": loc(self.title, self.title_en, lang),
+            "title_en": self.title_en,
+            "slug": self.slug,
+            "description": loc(self.description, self.description_en, lang),
+            "description_en": self.description_en,
+            "level": self.level,
+            "status": self.status,
+            "sort_order": self.sort_order,
+            "courses_count": len(steps),
+            "total_minutes": sum(c.video_minutes() for c in steps),
+            "steps": [{"id": c.id, "slug": c.slug, "title": loc(c.title, c.title_en, lang), "position": i}
+                      for i, c in enumerate(steps)],
+            "start_slug": steps[0].slug if steps else None,
+        }
+        if with_courses:
+            d["courses"] = [c.to_dict(lang=lang, user=user) for c in steps]
+        return d
+
+
+class PathCourse(db.Model):
+    __tablename__ = "path_courses"
+    __table_args__ = (db.UniqueConstraint("path_id", "course_id", name="uq_path_course"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    path_id = db.Column(db.Integer, db.ForeignKey("learning_paths.id", ondelete="CASCADE"), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+
+    path = db.relationship("LearningPath", back_populates="course_assignments")
+    course = db.relationship("Course", lazy="joined")
 
 
 class Bundle(db.Model):

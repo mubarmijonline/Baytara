@@ -10,8 +10,26 @@ const DICT = {
     'nav.blog': 'المدونة', 'nav.content': 'محتوى مجاني', 'nav.about': 'من نحن',
     'nav.contact': 'تواصل معنا', 'nav.dashboard': 'حسابي', 'nav.login': 'دخول',
     'nav.logout': 'خروج', 'nav.search': 'ابحث عن كورس...',
+    'nav.paths': 'المسارات', 'nav.consultations': 'الاستشارات', 'nav.menu': 'القائمة',
     'common.egp': 'ج.م', 'common.free': 'مجاني', 'common.loading': 'جارٍ التحميل...',
     'common.enroll': 'اشترك الآن', 'common.viewAll': 'عرض الكل',
+    'common.getApp': 'حمّل التطبيق', 'common.viewAllCategories': 'كل التخصّصات',
+    'common.minutesShort': 'د',
+    'paths.title': 'المسارات التعليمية',
+    'paths.subtitle': 'كل مسار يبدأ بالأساسيات وينتهي بحالة سريرية كاملة.',
+    'paths.itemLabel': 'المسار', 'paths.start': 'ابدأ', 'paths.viewAll': 'كل المسارات',
+    'paths.coursesUnit': 'دورات', 'paths.hoursUnit': 'ساعة',
+    'paths.empty': 'لا توجد مسارات متاحة حالياً.',
+    'paths.level.beginner': 'مبتدئ', 'paths.level.intermediate': 'متوسط',
+    'paths.level.advanced': 'متقدم', 'paths.level.breeders': 'للمربّين',
+    'home.resumeLabel': 'أكمل من حيث توقفت',
+    'home.lessonOf': 'الدرس {n} من {total}', 'home.lessonsLeft': 'باقٍ {n} دروس',
+    'home.enrolledCourses': 'دورة', 'home.hoursWatched': 'ساعة', 'home.streakDays': 'أيام متتالية',
+    'home.freeVideosSubtitle': 'ابدأ بمشاهدة مجانية قبل الاشتراك', 'home.learners': 'متعلّم',
+    'tab.home': 'الرئيسية', 'tab.paths': 'المسارات',
+    'tab.consultations': 'الاستشارات', 'tab.dashboard': 'لوحتي',
+    'footer.col.platform': 'المنصة', 'footer.col.company': 'الشركة', 'footer.col.help': 'المساعدة',
+    'footer.privacy': 'سياسة الخصوصية', 'footer.terms': 'الشروط والأحكام',
     'lang.toggle': 'EN', 'lang.name': 'العربية',
     'bundles.title': 'الحزم التعليمية', 'bundles.subtitle': 'وفّر أكثر مع الحزم المجمّعة',
     'bundles.save': 'وفّر', 'bundles.contains': 'يشمل', 'bundles.courses': 'كورس',
@@ -111,6 +129,24 @@ const DICT = {
     'nav.blog': 'Blog', 'nav.content': 'Free content', 'nav.about': 'About',
     'nav.contact': 'Contact', 'nav.dashboard': 'My account', 'nav.login': 'Sign in',
     'nav.logout': 'Sign out', 'nav.search': 'Search for a course...',
+    'nav.paths': 'Paths', 'nav.consultations': 'Advisory', 'nav.menu': 'Menu',
+    'common.getApp': 'Get the app', 'common.viewAllCategories': 'All specialties',
+    'common.minutesShort': 'min',
+    'paths.title': 'Learning paths',
+    'paths.subtitle': 'Every path starts with the fundamentals and ends on a full clinical case.',
+    'paths.itemLabel': 'Path', 'paths.start': 'Start', 'paths.viewAll': 'All paths',
+    'paths.coursesUnit': 'courses', 'paths.hoursUnit': 'h',
+    'paths.empty': 'No paths are available yet.',
+    'paths.level.beginner': 'Beginner', 'paths.level.intermediate': 'Intermediate',
+    'paths.level.advanced': 'Advanced', 'paths.level.breeders': 'For breeders',
+    'home.resumeLabel': 'Pick up where you left off',
+    'home.lessonOf': 'Lesson {n} of {total}', 'home.lessonsLeft': '{n} lessons left',
+    'home.enrolledCourses': 'courses', 'home.hoursWatched': 'hours', 'home.streakDays': 'day streak',
+    'home.freeVideosSubtitle': 'Watch something free before you subscribe', 'home.learners': 'learners',
+    'tab.home': 'Home', 'tab.paths': 'Paths',
+    'tab.consultations': 'Advisory', 'tab.dashboard': 'My learning',
+    'footer.col.platform': 'Platform', 'footer.col.company': 'Company', 'footer.col.help': 'Help',
+    'footer.privacy': 'Privacy policy', 'footer.terms': 'Terms and conditions',
     'common.egp': 'EGP', 'common.free': 'Free', 'common.loading': 'Loading...',
     'common.enroll': 'Enroll now', 'common.viewAll': 'View all',
     'lang.toggle': 'ع', 'lang.name': 'English',
@@ -210,6 +246,16 @@ const DICT = {
 
 const I18nCtx = createContext(null);
 
+// t('home.lessonOf', { n: 6, total: 15 }) -> "الدرس 6 من 15". Values are substituted into
+// {name} placeholders so a sentence stays one translatable string instead of three fragments.
+const translate = (language) => (key, values) => {
+  const text = (DICT[language] && DICT[language][key]) || DICT.ar[key] || key;
+  if (!values) return text;
+  return Object.entries(values).reduce(
+    (result, [name, value]) => result.split(`{${name}}`).join(value), text,
+  );
+};
+
 export function I18nProvider({ children }) {
   const lang = getLang();
 
@@ -225,10 +271,9 @@ export function I18nProvider({ children }) {
     window.location.reload();
   }
 
-  const t = (key) => (DICT[lang] && DICT[lang][key]) || DICT.ar[key] || key;
-  return <I18nCtx.Provider value={{ lang, t, switchLang }}>{children}</I18nCtx.Provider>;
+  return <I18nCtx.Provider value={{ lang, t: translate(lang), switchLang }}>{children}</I18nCtx.Provider>;
 }
 
 export function useI18n() {
-  return useContext(I18nCtx) || { lang: getLang(), t: (k) => (DICT[getLang()] || DICT.ar)[k] || k, switchLang: () => {} };
+  return useContext(I18nCtx) || { lang: getLang(), t: translate(getLang()), switchLang: () => {} };
 }
