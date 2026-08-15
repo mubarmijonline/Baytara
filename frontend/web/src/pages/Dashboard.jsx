@@ -185,14 +185,11 @@ export default function Dashboard() {
   const isOverview = pathname === '/dashboard';
   const isCourses = pathname === '/dashboard/my-courses';
   const isPayments = pathname === '/dashboard/payments';
-  const isProfile = pathname === '/dashboard/profile';
   const heroSubtitle = isCourses
     ? t('dashboard.subtitleCourses')
     : isPayments
       ? t('dashboard.subtitleRequests')
-      : isProfile
-        ? t('dashboard.subtitleProfile')
-        : dashboardMode === 'new'
+      : dashboardMode === 'new'
           ? t('dashboard.startSubtitle')
         : totalCourses
           ? t('dashboard.subtitleActive').replace('{count}', totalCourses)
@@ -369,22 +366,7 @@ export default function Dashboard() {
             </div>
           </Card>}
 
-          {(isProfile || isPayments || (isOverview && dashboardMode === 'active')) && <div className="student-dashboard-grid student-dashboard-grid-uneven">
-            {isProfile && (
-            <Card className="student-account-card">
-              <div className="student-section-heading">
-                <h2>{t('dashboard.studentData')}</h2>
-                <span>{user?.role || t('dashboard.student')}</span>
-              </div>
-              <dl className="student-facts">
-                <div><dt>{t('dashboard.name')}</dt><dd>{name || '-'}</dd></div>
-                <div><dt>{t('dashboard.email')}</dt><dd>{user?.email || '-'}</dd></div>
-                <div><dt>{t('auth.phone')}</dt><dd>{user?.phone || t('dashboard.phoneMissing')}</dd></div>
-                <div><dt>{t('dashboard.petDoctorStatus')}</dt><dd>{isVerified ? t('dashboard.verifiedPetDoctor') : latestRequest ? statusCopy(latestRequest.status, t) : t('dashboard.notRequested')}</dd></div>
-              </dl>
-            </Card>
-            )}
-
+          {(isPayments || (isOverview && dashboardMode === 'active')) && <div className="student-dashboard-grid student-dashboard-grid-uneven">
             {(isOverview || isPayments) && (
             <Card>
               <div className="student-section-heading">
@@ -464,30 +446,6 @@ export default function Dashboard() {
             </div>
           </Card>}
 
-          {isProfile && <Card className="student-devices-card">
-            <div className="student-section-heading">
-              <div>
-                <h2>{t('devices.title')}</h2>
-                <p>{t('devices.limit')}</p>
-              </div>
-              <span>{devices.length}/2</span>
-            </div>
-            <div className="student-device-list">
-              {!devices.length && <Empty>{t('dashboard.noDevices')}</Empty>}
-              {devices.map((device) => {
-                const isCurrent = device.device_id === thisDevice;
-                return (
-                  <div key={device.id} className="student-device-row">
-                    <div>
-                      <strong>{isCurrent ? t('devices.current') : (device.label || device.device_id).slice(0, 60)}</strong>
-                      <small>{(device.label || '').slice(0, 90)} · {dateLabel(device.last_seen, lang)}</small>
-                    </div>
-                    <button type="button" onClick={() => removeDevice(device.id)}>{t('devices.remove')}</button>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>}
         </main>
       </Container>
     </div>
