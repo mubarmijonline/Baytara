@@ -206,9 +206,9 @@ function InstructorsSection() {
             key={instructor.id}
             to={`/instructors/${instructor.id}`}
             className="hover-card"
-            style={{ border: `1px solid ${colors.line}`, borderRadius: 16, padding: '22px 16px', textAlign: 'center', background: colors.surface, display: 'block' }}
+            style={{ border: `1px solid ${colors.line}`, borderRadius: 16, padding: '26px 18px', textAlign: 'center', background: colors.surface, display: 'block' }}
           >
-            <div style={{ width: 74, height: 74, borderRadius: '50%', margin: '0 auto 14px', overflow: 'hidden', background: gradients.avatar }}>
+            <div style={{ width: 132, height: 132, borderRadius: '50%', margin: '0 auto 16px', overflow: 'hidden', background: gradients.avatar }}>
               {instructor.avatar_url && (
                 <img src={instructor.avatar_url} alt={instructor.name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />

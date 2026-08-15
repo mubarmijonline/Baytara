@@ -100,13 +100,14 @@ it('renders learning paths from the API with real step and duration figures', as
   expect(window.location.pathname).toBe('/paths/herd-health');
 });
 
-it('shows the CMS trust chips and the featured card when signed out', async () => {
+it('shows the CMS trust chips and the hero photo when signed out', async () => {
   mockApi();
   renderHome();
 
   expect(await screen.findByText('Rated 4.8')).toBeVisible();
-  expect(screen.getByText('Featured label')).toBeVisible();
-  expect(screen.getByText('Featured course')).toBeVisible();
+  // Nothing personal to resume, so the hero carries the brand photograph.
+  const hero = document.querySelector('.home-hero-media img');
+  expect(hero).toHaveAttribute('src', '/images/hero.webp');
   // No token, so the authed summary endpoint is never called.
   expect(fetch.mock.calls.filter(([url]) => String(url).includes('/learning-summary'))).toHaveLength(0);
 });

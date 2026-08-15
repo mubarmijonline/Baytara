@@ -127,6 +127,10 @@ export default function Settings() {
               {field('hero', 'secondary_cta', label('زر الإجراء الثانوي', copy.fields.secondaryCta))}
               {field('hero', 'featured_label', label('وسم الدورة المميزة', copy.fields.featuredLabel))}
               {field('hero', 'featured_title', label('عنوان الدورة المميزة', copy.fields.featuredTitle))}
+              <Field label={copy.fields.heroImage}>
+                <input dir="ltr" placeholder="/images/hero.jpg" value={group('hero').image || ''}
+                  onChange={(event) => setGroup('hero', 'image', event.target.value)} />
+              </Field>
             </Section>
             <ListEditor title={copy.sections.trust} items={group('hero').trust} fields={TRUST_FIELDS} onChange={(value) => setGroup('hero', 'trust', value)} />
             <Section title={copy.sections.home}>

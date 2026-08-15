@@ -44,6 +44,11 @@ def admin_client(app):
     return client
 
 
+# Filled by the catalog_data fixture so create_video can default the now-required
+# category and instructor without every call site repeating them.
+CATALOG_DEFAULTS = {}
+
+
 @pytest.fixture
 def catalog_data(app):
     with app.app_context():
@@ -58,11 +63,15 @@ def catalog_data(app):
         ]
         db.session.add_all(courses)
         db.session.commit()
-        return {"category_id": category.id, "courses": [course.id for course in courses]}
+        CATALOG_DEFAULTS.update({"category_id": category.id, "instructor_id": instructor.id})
+        return {"category_id": category.id, "instructor_id": instructor.id,
+                "courses": [course.id for course in courses]}
 
 
 def create_video(client, **overrides):
     body = {"title": "Equine examination", "access_type": "free", **overrides}
+    body.setdefault("category_id", CATALOG_DEFAULTS.get("category_id"))
+    body.setdefault("instructor_id", CATALOG_DEFAULTS.get("instructor_id"))
     response = client.post("/api/v1/admin/videos", json=body)
     assert response.status_code == 201, response.get_json()
     return response.get_json()["video"]
@@ -89,7 +98,7 @@ def test_video_description_en_round_trips_through_admin_writes(admin_client, cat
     })
     imported = admin_client.post("/api/v1/admin/vdocipher/import", json={
         "video_id": "provider-description-en", "title": "Imported", "description": "Arabic",
-        "description_en": "Imported English", "sync_provider_metadata": True,
+        "description_en": "Imported English", "sync_provider_metadata": True, **CATALOG_DEFAULTS,
     })
     assert imported.status_code == 201
     assert imported.get_json()["video"]["description_en"] == "Imported English"
@@ -152,6 +161,7 @@ def test_video_catalog_validates_canonical_fields_and_provider_id(admin_client, 
 
     duplicate = admin_client.post("/api/v1/admin/videos", json={
         "title": "Duplicate", "access_type": "free", "vdocipher_video_id": "provider-duplicate",
+        **CATALOG_DEFAULTS,
     })
     assert duplicate.status_code == 409
     assert duplicate.get_json()["error"] == "duplicate_video"
@@ -163,7 +173,10 @@ def test_video_catalog_validates_canonical_fields_and_provider_id(admin_client, 
     assert invalid_category.get_json()["errors"] == ["invalid_category"]
 
     unpublished = create_video(admin_client, title="Publish me")
-    publish = admin_client.patch(f"/api/v1/admin/videos/{unpublished['id']}", json={"status": "published"})
+    # A category is now required at creation, so the way to lose one is to clear it —
+    # and that is refused whether or not the video is being published.
+    publish = admin_client.patch(f"/api/v1/admin/videos/{unpublished['id']}",
+                                 json={"status": "published", "category_id": None})
     assert publish.status_code == 422
     assert publish.get_json()["errors"] == ["category_required"]
 
@@ -173,13 +186,14 @@ def test_video_catalog_validates_canonical_fields_and_provider_id(admin_client, 
     assert published.status_code == 200
 
     invalid_status = admin_client.post("/api/v1/admin/videos", json={
-        "title": "Invalid status", "access_type": "free", "status": "encoding",
+        "title": "Invalid status", "access_type": "free", "status": "encoding", **CATALOG_DEFAULTS,
     })
     assert invalid_status.status_code == 422
     assert invalid_status.get_json()["errors"] == ["invalid_status"]
 
     untyped_criteria = admin_client.post("/api/v1/admin/videos", json={
         "title": "Untyped criteria", "access_type": "free", "criteria": {"level": "advanced"},
+        **CATALOG_DEFAULTS,
     })
     assert untyped_criteria.status_code == 422
     assert untyped_criteria.get_json()["errors"] == ["unsupported_criteria"]
@@ -204,7 +218,7 @@ def test_remove_assignment_and_reject_order_membership_mismatch(admin_client, ca
     assert malformed.get_json()["errors"] == ["invalid_course_ids"]
 
     malformed_create = admin_client.post("/api/v1/admin/videos", json={
-        "title": "Malformed course list", "access_type": "free", "course_ids": first,
+        "title": "Malformed course list", "access_type": "free", "course_ids": first, **CATALOG_DEFAULTS,
     })
     assert malformed_create.status_code == 422
     assert malformed_create.get_json()["errors"] == ["invalid_course_ids"]
@@ -244,7 +258,7 @@ def test_vdocipher_import_creates_and_reuses_canonical_course_assignments(
     monkeypatch.setattr(admin_api.vdocipher_admin, "ensure_course_folder", lambda course: f"course-{course.id}")
 
     created = admin_client.post("/api/v1/admin/vdocipher/import", json={
-        "video_id": "provider-canonical", "title": "Canonical import", "course_id": first,
+        "video_id": "provider-canonical", "title": "Canonical import", "course_id": first, **CATALOG_DEFAULTS,
     })
     assert created.status_code == 201, created.get_json()
     created_video = created.get_json()["video"]

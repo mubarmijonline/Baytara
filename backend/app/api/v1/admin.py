@@ -350,7 +350,20 @@ def course_delete(cid):
     c = db.session.get(Course, cid)
     if not c:
         return jsonify(error="not_found"), 404
-    db.session.delete(c)  # modules/lessons cascade
+
+    # Enrollments and payments point at courses without ON DELETE, so deleting a sold
+    # course used to fail with a raw integrity error. Refusing is also the right answer:
+    # a payment row has to keep naming what was bought, and a learner keeps their access.
+    # Unpublishing hides a course without destroying either.
+    enrollments = Enrollment.query.filter_by(course_id=cid).count()
+    payments = (Payment.query.filter_by(course_id=cid).count()
+                + InstapayPayment.query.filter_by(course_id=cid).count())
+    if enrollments or payments:
+        return jsonify(error="course_in_use", enrollments=enrollments, payments=payments), 409
+
+    # Standalone videos outlive the course; only the legacy direct link goes.
+    Lesson.query.filter_by(course_id=cid).update({"course_id": None})
+    db.session.delete(c)  # modules and course_videos cascade
     db.session.commit()
     return jsonify(deleted=cid)
 
@@ -866,8 +879,20 @@ def _catalog_video_fields(data, current=None):
         }, current=current)
     except CatalogValidationError as exc:
         return None, (jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422)
-    if catalog["category_id"] is not None and not db.session.get(Category, catalog["category_id"]):
+    # Every video must say which specialty it belongs to and who presents it — the
+    # library filters on one and the video page credits the other. On a PATCH the
+    # resolved value falls back to what is already stored, so a partial edit is fine.
+    if catalog["category_id"] is None:
+        return None, (jsonify(error="catalog_validation_failed", errors=["category_required"]), 422)
+    if not db.session.get(Category, catalog["category_id"]):
         return None, (jsonify(error="catalog_validation_failed", errors=["invalid_category"]), 422)
+
+    instructor_id = data.get("instructor_id", current.instructor_id if current else None)
+    if not instructor_id:
+        return None, (jsonify(error="catalog_validation_failed", errors=["instructor_required"]), 422)
+    if not User.query.filter_by(id=instructor_id, role="instructor").first():
+        return None, (jsonify(error="catalog_validation_failed", errors=["invalid_instructor"]), 422)
+    catalog["instructor_id"] = instructor_id
     return catalog, None
 
 
@@ -1106,7 +1131,8 @@ def video_create():
         course_id=None, module_id=None,
         title=d["title"], title_en=d.get("title_en"),
         description=d.get("description", ""), description_en=d.get("description_en"),
-        category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
+        category_id=catalog["category_id"], instructor_id=catalog["instructor_id"],
+        price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
         poster=d.get("poster") or None,
@@ -1146,7 +1172,7 @@ def video_update(vid):
     for f in ("title", "title_en", "description", "description_en", "duration_minutes", "poster", "vdocipher_video_id", "is_protected"):
         if f in d:
             setattr(l, f, (d[f] or None) if f == "vdocipher_video_id" else d[f])
-    for f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
+    for f in ("price", "currency", "category_id", "instructor_id", "access_days", "access_type", "status"):
         setattr(l, f, catalog[f])
     course_ids = d.get("course_ids")
     if course_ids is None and "course_id" in d:
@@ -1506,7 +1532,8 @@ def vdocipher_import():
         title=d.get("title") or d["video_id"],
         title_en=d.get("title_en"),
         description=d.get("description", ""), description_en=d.get("description_en"),
-        category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
+        category_id=catalog["category_id"], instructor_id=catalog["instructor_id"],
+        price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
         poster=d.get("poster") or None,

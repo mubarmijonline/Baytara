@@ -31,17 +31,16 @@ export default function ResumeCard({ summary }) {
   const settings = useSiteSettings();
   const resume = summary?.resume;
 
+  // Without a resume point there is nothing personal to show, so the hero carries the
+  // brand photograph rather than a featured-course card the visitor has no relation to.
   if (!resume) {
-    const hero = settings.hero || {};
     return (
-      <div style={panel} className="home-hero-media">
-        <div style={{ fontSize: 13, color: colors.gold, fontWeight: 700, marginBottom: 14 }}>
-          {hero.featured_label}
-        </div>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <div style={thumb} />
-          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.5 }}>{hero.featured_title}</div>
-        </div>
+      <div className="home-hero-media" style={{ borderRadius: 18, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.32)' }}>
+        <img
+          src={settings.hero?.image || '/images/hero.webp'}
+          alt=""
+          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover', aspectRatio: '16 / 10' }}
+        />
       </div>
     );
   }

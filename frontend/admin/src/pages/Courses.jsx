@@ -76,6 +76,14 @@ function payload(form) {
 }
 
 function errorMessage(error, language) {
+  // A sold course cannot be deleted without destroying enrolment and payment history,
+  // so say that plainly and point at the alternative.
+  if (error?.data?.error === 'course_in_use') {
+    const { enrollments = 0, payments = 0 } = error.data;
+    return language === 'en'
+      ? `This course cannot be deleted: ${enrollments} enrolment(s) and ${payments} payment(s) reference it. Unpublish it instead to hide it from the site.`
+      : `لا يمكن حذف هذه الدورة: مرتبطة بـ ${enrollments} اشتراك و ${payments} معاملة. أخفِها بدلاً من حذفها.`;
+  }
   const labels = {
     title_required: language === 'en' ? 'Arabic title is required.' : 'العنوان العربي مطلوب.',
     valid_instructor_required: language === 'en' ? 'Choose a valid instructor.' : 'اختر مدرّباً صحيحاً.',
