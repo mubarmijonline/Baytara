@@ -182,7 +182,7 @@ export default function Dashboard() {
   const isVerified = !!(baytarian?.is_baytarian || user?.is_baytarian);
   const hasActivity = totalCourses > 0 || watchedVideos.length > 0 || payments.length > 0 || !!latestRequest;
   const dashboardMode = modeOverride || (hasActivity ? 'active' : 'new');
-  const isOverview = pathname === '/dashboard';
+  const isOverview = pathname === '/dashboard/learning';
   const isCourses = pathname === '/dashboard/my-courses';
   const isPayments = pathname === '/dashboard/payments';
   const heroSubtitle = isCourses
@@ -246,7 +246,7 @@ export default function Dashboard() {
   const setupDone = setupItems.filter((item) => item.done).length;
   const setupProgress = Math.round(setupDone / setupItems.length * 100);
   const navItems = [
-    ['/dashboard', t('dashboard.nav.overview'), 0],
+    ['/dashboard/learning', t('dashboard.nav.overview'), 0],
     ['/dashboard/my-courses', t('dashboard.nav.courses'), totalCourses],
     ['/dashboard/payments', t('dashboard.nav.requests'), requestRows.length],
     ['/dashboard/profile', t('dashboard.nav.profile'), devices.length],

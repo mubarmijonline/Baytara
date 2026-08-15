@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Award, BadgeCheck, Play, ShoppingBag } from 'lucide-react';
+import { Award, BadgeCheck, ChevronLeft, Play, ShoppingBag } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { auth, getDeviceId, isAuthed, useFetch } from '../lib/api.js';
@@ -19,7 +19,7 @@ const input = {
   borderRadius: 10, height: 46, padding: '0 14px', fontSize: 14.5, color: colors.ink,
 };
 
-const TABS = ['overview', 'courses', 'certificates', 'devices', 'settings'];
+const TABS = ['overview', 'courses', 'certificates', 'payments', 'devices', 'settings'];
 
 const ACTIVITY_ICON = {
   lesson_completed: { Glyph: Play, bg: colors.accentSoft, fg: colors.accent },
@@ -191,6 +191,7 @@ export default function Profile() {
   const { data: certificateData } = useFetch(() => (isAuthed() ? auth.certificates() : Promise.resolve(null)), []);
   const { data: activityData } = useFetch(() => (isAuthed() ? auth.activity({ limit: 6 }) : Promise.resolve(null)), []);
   const { data: baytarian } = useFetch(() => (isAuthed() ? auth.baytarianMe().catch(() => null) : Promise.resolve(null)), []);
+  const { data: paymentData } = useFetch(() => (isAuthed() ? auth.myPayments().catch(() => null) : Promise.resolve(null)), []);
 
   const loadDevices = () => auth.devices().then((r) => setDevices(r.devices || [])).catch(() => setDevices([]));
   useEffect(() => { if (isAuthed()) loadDevices(); }, []);
@@ -216,6 +217,7 @@ export default function Profile() {
   const enrollments = enrollmentData?.enrollments || [];
   const certificates = certificateData?.certificates || [];
   const activity = activityData?.activity || [];
+  const payments = paymentData?.payments || [];
   const completedLessons = enrollments.reduce((sum, row) => sum + (row.progress?.completed_lessons || 0), 0);
   const verified = user.is_baytarian || baytarian?.is_baytarian;
   const thisDevice = getDeviceId();
@@ -351,6 +353,17 @@ export default function Profile() {
         <main style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           {tab === 'overview' && (
             <>
+              {/* The learning workspace — continue watching, onboarding, metrics — keeps its
+                  own path now that /dashboard is the profile. */}
+              <Link to="/dashboard/learning"
+                style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, color: 'inherit' }}>
+                <span>
+                  <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: colors.ink }}>{t('dashboard.nav.overview')}</span>
+                  <span style={{ display: 'block', fontSize: 12.5, color: colors.muted2, marginTop: 3 }}>{t('profile.learningHint')}</span>
+                </span>
+                <ChevronLeft size={18} aria-hidden="true" style={{ color: colors.accent, flex: 'none' }} />
+              </Link>
+
               <div className="grid-collapse-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
                 <Stat value={enrollments.length} label={t('profile.statCourses')} />
                 <Stat value={completedLessons} label={t('profile.statLessons')} />
@@ -440,6 +453,32 @@ export default function Profile() {
                 </div>
               </section>
             ) : <Empty>{t('profile.noCertificates')}</Empty>
+          )}
+
+          {tab === 'payments' && (
+            payments.length ? (
+              <section style={card}>
+                <h2 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700, color: DARK }}>{t('profile.tab.payments')}</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {payments.map((payment) => (
+                    <div key={payment.id} style={{ display: 'flex', alignItems: 'center', gap: 12, border: `1px solid ${colors.line2}`, borderRadius: 12, padding: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ fontSize: 14.5, fontWeight: 700, color: colors.ink }}>
+                          {payment.course?.title || payment.bundle?.title || payment.video?.title || payment.kind}
+                        </div>
+                        <div style={{ fontSize: 12.5, color: colors.muted2, marginTop: 3 }}>{dateLabel(payment.created_at, lang)}</div>
+                      </div>
+                      <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '6px 11px', fontSize: 12.5, fontWeight: 700, color: colors.ink }}>
+                        {payment.amount} {payment.currency}
+                      </span>
+                      <span style={{ background: payment.status === 'paid' ? '#e8f4ee' : colors.surfaceAlt, color: payment.status === 'paid' ? '#1a7f4b' : colors.muted, borderRadius: 8, padding: '6px 11px', fontSize: 12, fontWeight: 700 }}>
+                        {t(`dashboard.status.${payment.status || 'unknown'}`)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : <Empty>{t('profile.noPayments')}</Empty>
           )}
 
           {tab === 'devices' && (

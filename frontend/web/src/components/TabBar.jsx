@@ -1,11 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Signpost, MessageSquareText, CircleUser } from 'lucide-react';
+import { Home, GraduationCap, MessageSquareText, CircleUser } from 'lucide-react';
 import { colors } from '../theme/tokens.js';
 import { useI18n } from '../lib/i18n.jsx';
 
 const TABS = [
   ['/', 'tab.home', Home],
-  ['/paths', 'tab.paths', Signpost],
+  ['/courses', 'nav.courses', GraduationCap],
   ['/content', 'tab.consultations', MessageSquareText],
   ['/dashboard', 'tab.dashboard', CircleUser],
 ];

@@ -101,7 +101,7 @@ afterEach(() => {
 });
 
 it('shows the student learning, request, and verification overview from live account data', async () => {
-  renderRoute('/dashboard');
+  renderRoute('/dashboard/learning');
 
   expect(await screen.findByRole('heading', { name: /student dashboard/i })).toBeVisible();
   expect(screen.getAllByText('Verified as Pet Doctor').length).toBeGreaterThan(0);
@@ -140,7 +140,7 @@ it('shows an onboarding-first dashboard for a new student', async () => {
     return json({});
   });
 
-  renderRoute('/dashboard');
+  renderRoute('/dashboard/learning');
 
   expect(await screen.findByRole('heading', { name: 'Start your Baytara account' })).toBeVisible();
   expect(screen.getByText('Complete your setup')).toBeVisible();
