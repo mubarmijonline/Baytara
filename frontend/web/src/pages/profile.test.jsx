@@ -21,6 +21,11 @@ const certificates = [{
   learner_name: 'Dr Mohamed', course: { id: 1, slug: 'herd', title: 'Herd health' },
 }];
 
+const devices = [
+  { id: 1, device_id: 'this-one', label: 'Chrome · Windows', last_seen: '2026-08-15T00:00:00+00:00' },
+  { id: 2, device_id: 'other', label: 'iPhone · Baytara app', last_seen: '2026-08-14T00:00:00+00:00' },
+];
+
 const activity = [
   { type: 'lesson_completed', at: '2026-08-15T09:00:00+00:00', title: 'Core concepts', context: 'Cattle basics', href: '/learn/cattle/12' },
   { type: 'certificate', at: '2026-08-10T00:00:00+00:00', title: 'Herd health', context: 'BT-ABC1234567', href: '/certificates/BT-ABC1234567' },
@@ -54,6 +59,8 @@ function mockApi() {
         { id: 2, progress: { completed_lessons: 25 } },
       ] });
     }
+    if (url.includes('/auth/devices/')) return json({ deleted: 1 });
+    if (url.includes('/auth/devices')) return json({ devices });
     if (url.includes('/baytarian/me')) return json({ is_baytarian: true });
     if (url.includes('/settings')) return json({ settings: {} });
     return json({});
@@ -75,6 +82,7 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('baytara_lang', 'en');
   localStorage.setItem('baytara_token', 'viewer-token');
+  localStorage.setItem('baytara_device_id', 'this-one');
   window.scrollTo = vi.fn();
 });
 
@@ -102,6 +110,8 @@ it('saves the editable fields and never sends email or role', async () => {
   mockApi();
   renderProfile();
 
+  // The account form is behind the settings tab now.
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
   const name = await screen.findByRole('textbox', { name: 'Name' });
   fireEvent.change(name, { target: { value: 'Dr M. Rashidi' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -129,6 +139,7 @@ it('lists certificates and links each to its public verification page', async ()
   mockApi();
   renderProfile();
 
+  fireEvent.click(await screen.findByRole('button', { name: 'Certificates' }));
   expect(await screen.findByText('Herd health')).toBeVisible();
   expect(screen.getByText('BT-ABC1234567')).toBeVisible();
   expect(screen.getByRole('link', { name: 'View certificate' }))
@@ -141,4 +152,39 @@ it('renders the derived activity feed', async () => {
 
   expect(await screen.findByText('Completed the lesson “Core concepts”')).toBeVisible();
   expect(screen.getByText('Earned a certificate: Herd health')).toBeVisible();
+});
+
+it('lists devices and removes one', async () => {
+  mockApi();
+  renderProfile();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Devices' }));
+  expect(await screen.findByText('This device')).toBeVisible();
+  // the label shows as both the row title and its detail line
+  expect(screen.getAllByText(/iPhone/).length).toBeGreaterThan(0);
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0]);
+  await waitFor(() => expect(
+    fetch.mock.calls.some(([url, init]) => String(url).includes('/auth/devices/1') && init?.method === 'DELETE'),
+  ).toBe(true));
+});
+
+it('falls back to the overview for an unknown tab', async () => {
+  mockApi();
+  renderProfile('/dashboard/profile?tab=nonsense');
+
+  // overview content, not an empty pane
+  expect(await screen.findByText('37')).toBeVisible();
+});
+
+it('refuses to send the phone gate off-site', async () => {
+  mockApi();
+  renderProfile('/dashboard/profile?next=//evil.com');
+
+  const phone = await screen.findByRole('textbox', { name: 'Phone number' });
+  fireEvent.change(phone, { target: { value: '+201099999999' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save phone number' }));
+
+  // Landing on /dashboard is the proof: a protocol-relative target would have left the origin.
+  await waitFor(() => expect(window.location.pathname).toBe('/dashboard'));
 });

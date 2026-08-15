@@ -170,6 +170,9 @@ textarea {
   .profile-identity { margin-top: -40px !important; padding: 0 16px !important; gap: 14px !important; }
   .profile-identity > div:first-child { width: 104px !important; height: 104px !important; }
   .profile-body { padding: 16px !important; }
+  /* The five tabs scroll sideways rather than wrapping into a second row. */
+  .profile-tabs { padding: 0 16px !important; gap: 18px !important; }
+  .profile-photo-grid { grid-template-columns: 1fr !important; }
 }
 
 /* toast notifications */
