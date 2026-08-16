@@ -41,16 +41,21 @@ export default function PhoneField({ id, defaultValue = '', onChange, label, hin
           {label}
         </label>
       )}
-      <div style={{ display: 'flex', gap: 8, direction: 'ltr' }}>
+      {/* direction:ltr because a phone number reads left to right in both languages.
+          The row wraps rather than squeezing the number into a few characters. */}
+      <div style={{ display: 'flex', gap: 10, direction: 'ltr', flexWrap: 'wrap' }}>
         <select
           aria-label={t('auth.countryCode')}
           value={dial}
           onChange={(event) => emit(event.target.value, national)}
           style={{
-            // Capped so the number itself keeps room on a 360px phone; the closed
-            // state still shows the flag and the dial code, which is what is picked by.
-            flex: '0 1 auto', maxWidth: 148, border: '1px solid #e3e6ef', background: colors.surfaceMuted,
-            borderRadius: 10, height: 46, padding: '0 28px 0 10px', fontSize: 14.5, color: colors.ink,
+            flex: '0 0 auto', width: 186, height: 48, borderRadius: 10,
+            border: `1px solid ${colors.line}`, color: colors.ink, fontSize: 14.5, fontWeight: 600,
+            // Own chevron on the trailing edge. The global select rule paints one at
+            // the physical left and pads inline-start, which inside this LTR row puts
+            // the arrow and the flag on top of each other.
+            background: `${colors.surface} url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233048A0' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 12px center`,
+            padding: '0 34px 0 12px',
           }}
         >
           {COUNTRIES.map((item) => (
@@ -69,9 +74,9 @@ export default function PhoneField({ id, defaultValue = '', onChange, label, hin
           aria-invalid={incomplete || undefined}
           placeholder={country.example}
           style={{
-            flex: 1, minWidth: 0, border: `1px solid ${incomplete ? '#e0b4ae' : '#e3e6ef'}`,
-            background: colors.surfaceMuted, borderRadius: 10, height: 46, padding: '0 14px',
-            fontSize: 14.5, color: colors.ink, direction: 'ltr',
+            flex: '1 1 150px', minWidth: 0, border: `1px solid ${incomplete ? '#e0b4ae' : colors.line}`,
+            background: colors.surfaceMuted, borderRadius: 10, height: 48, padding: '0 14px',
+            fontSize: 16, letterSpacing: '.6px', color: colors.ink, direction: 'ltr',
           }}
         />
       </div>

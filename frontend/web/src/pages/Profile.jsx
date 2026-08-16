@@ -605,8 +605,12 @@ export default function Profile() {
                       <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: colors.ink, marginBottom: 8 }}>{t('profile.fieldEmail')}</span>
                       <input value={user.email} readOnly dir="ltr" style={{ ...input, background: '#f0f1f6', color: colors.muted2 }} />
                     </label>
-                    <PhoneField id="account-phone" label={t('auth.phone')} defaultValue={form.phone}
-                      onChange={(value) => { setForm((current) => ({ ...current, phone: value })); setSaved(false); }} />
+                    {/* Full width: a picker plus a ten-digit number does not fit in
+                        half a form row without squeezing the number to a few chars. */}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <PhoneField id="account-phone" label={t('auth.phone')} defaultValue={form.phone}
+                        onChange={(value) => { setForm((current) => ({ ...current, phone: value })); setSaved(false); }} />
+                    </div>
                     {field('location', t('profile.fieldLocation'), { full: true })}
                     <div style={{ gridColumn: '1 / -1' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
