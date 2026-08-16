@@ -350,3 +350,67 @@ def test_category_delete_protects_fixed_and_video_references(admin_client, app, 
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([str(Path(__file__).resolve()), "-q"]))
+
+
+def test_video_cannot_be_attached_to_another_instructors_course(admin_client, catalog_data, app):
+    """A video belongs to its instructor, so it may only join that person's courses."""
+    with app.app_context():
+        other = User(name="Other instructor", email="other-instructor@example.test",
+                     password_hash="hash", role="instructor")
+        db.session.add(other)
+        db.session.flush()
+        foreign = Course(title="Someone else's course", slug="foreign-video-catalog",
+                         instructor_id=other.id)
+        db.session.add(foreign)
+        db.session.commit()
+        foreign_id, other_id = foreign.id, other.id
+
+    video = create_video(admin_client)
+    rejected = admin_client.post(f"/api/v1/admin/videos/{video['id']}/courses",
+                                json={"course_ids": [foreign_id]})
+    assert rejected.status_code == 422, rejected.get_json()
+    assert "course_instructor_mismatch" in str(rejected.get_json())
+
+    # Its own instructor's course still attaches, and a mixed list is refused whole.
+    own = catalog_data["courses"][0]
+    assert admin_client.post(f"/api/v1/admin/videos/{video['id']}/courses",
+                            json={"course_ids": [own]}).status_code == 200
+    mixed = admin_client.post(f"/api/v1/admin/videos/{video['id']}/courses",
+                             json={"course_ids": [own, foreign_id]})
+    assert mixed.status_code == 422, mixed.get_json()
+
+    # Handing the video to the other instructor makes their course the legal one.
+    assert admin_client.patch(f"/api/v1/admin/videos/{video['id']}",
+                              json={"instructor_id": other_id}).status_code == 200
+    assert admin_client.post(f"/api/v1/admin/videos/{video['id']}/courses",
+                            json={"course_ids": [foreign_id]}).status_code == 200
+
+
+def test_user_listing_honours_per_page_and_the_active_filter(admin_client, catalog_data, app):
+    """The instructor pickers ask for 100 active people; the endpoint used to pin the
+    page at 20 and hand back deactivated accounts."""
+    with app.app_context():
+        db.session.add_all([
+            User(name=f"Instructor {n}", email=f"bulk-{n}@example.test",
+                 password_hash="hash", role="instructor", is_active=(n % 7 != 0))
+            for n in range(25)
+        ])
+        db.session.commit()
+
+    capped = admin_client.get("/api/v1/admin/users?role=instructor").get_json()
+    assert len(capped["users"]) == 20                     # the default page
+
+    full = admin_client.get("/api/v1/admin/users?role=instructor&per_page=100").get_json()
+    assert len(full["users"]) == full["total"] > 20
+
+    active = admin_client.get("/api/v1/admin/users?role=instructor&per_page=100&active=1").get_json()
+    assert active["users"], active
+    assert all(person["is_active"] for person in active["users"])
+    assert active["total"] < full["total"]                # the deactivated ones are gone
+
+    # ...but whoever a record already points at stays selectable.
+    disabled = next(p for p in full["users"] if not p["is_active"])
+    kept = admin_client.get(
+        f"/api/v1/admin/users?role=instructor&per_page=100&active=1&include={disabled['id']}",
+    ).get_json()
+    assert any(person["id"] == disabled["id"] for person in kept["users"])

@@ -30,6 +30,7 @@ const messages = {
     'common.create': 'إنشاء',
     'common.search': 'بحث',
     'common.refresh': 'تحديث',
+    'common.loadError': 'تعذّر التحميل.',
     'common.upload': 'رفع',
     'common.import': 'استيراد',
     'common.back': 'رجوع',
@@ -136,6 +137,17 @@ const messages = {
     'video.validation.instructor': 'المحاضر مطلوب.',
     'video.assignCourses': 'تعيين إلى دورات',
     'video.noCourses': 'لا دورات متاحة.',
+    'video.sectionIdentity': 'بيانات الفيديو',
+    'video.sectionOwnership': 'المحاضر والدورات',
+    'video.sectionAccess': 'الوصول والتسعير',
+    'video.instructorHint': 'المحاضرون النشطون فقط. الدورات المتاحة أدناه تخص المحاضر المختار.',
+    'video.pickInstructorFirst': 'اختر المحاضر أولاً لعرض دوراته.',
+    'video.noInstructorCourses': 'لا دورات لهذا المحاضر بعد.',
+    'video.coursesSelected': 'مختار: {n}',
+    'video.searchCourses': 'ابحث في الدورات…',
+    'video.coursesDropped': 'أُلغي تعيين {n} دورة لأنها لا تخص المحاضر الجديد.',
+    'video.inactiveInstructor': 'غير نشط',
+    'video.courseInstructorMismatch': 'لا يمكن تعيين الفيديو إلى دورة لا تخص محاضره.',
     'video.folder': 'معرّف المجلد',
     'video.file': 'ملف الفيديو',
     'video.providerTitle': 'عنوان المزوّد',
@@ -199,6 +211,7 @@ const messages = {
     'common.create': 'Create',
     'common.search': 'Search',
     'common.refresh': 'Refresh',
+    'common.loadError': 'Unable to load.',
     'common.upload': 'Upload',
     'common.import': 'Import',
     'common.back': 'Back',
@@ -305,6 +318,17 @@ const messages = {
     'video.validation.instructor': 'An instructor is required.',
     'video.assignCourses': 'Assign to courses',
     'video.noCourses': 'No courses available.',
+    'video.sectionIdentity': 'Video details',
+    'video.sectionOwnership': 'Instructor and courses',
+    'video.sectionAccess': 'Access and pricing',
+    'video.instructorHint': 'Active instructors only. The courses below belong to the chosen instructor.',
+    'video.pickInstructorFirst': 'Choose an instructor first to see their courses.',
+    'video.noInstructorCourses': 'This instructor has no courses yet.',
+    'video.coursesSelected': 'Selected: {n}',
+    'video.searchCourses': 'Search courses…',
+    'video.coursesDropped': '{n} course assignment(s) removed: they do not belong to the new instructor.',
+    'video.inactiveInstructor': 'inactive',
+    'video.courseInstructorMismatch': 'A video cannot be assigned to a course its instructor does not own.',
     'video.folder': 'Folder ID',
     'video.file': 'Video file',
     'video.providerTitle': 'Provider title',
@@ -353,8 +377,14 @@ function storedLanguage() {
   }
 }
 
-export function t(key, language = 'ar') {
-  return messages[language]?.[key] ?? messages.ar[key] ?? key;
+export function t(key, language = 'ar', values) {
+  const text = messages[language]?.[key] ?? messages.ar[key] ?? key;
+  if (!values) return text;
+  // t('video.coursesSelected', lang, { n: 3 }) -> "Selected: 3", so a sentence stays
+  // one translatable string instead of being glued together at the call site.
+  return Object.entries(values).reduce(
+    (result, [name, value]) => result.split(`{${name}}`).join(value), text,
+  );
 }
 
 export function LanguageProvider({ children }) {
@@ -373,7 +403,7 @@ export function LanguageProvider({ children }) {
   const setLanguage = useCallback((nextLanguage) => {
     setLanguageState(nextLanguage === 'en' ? 'en' : 'ar');
   }, []);
-  const translate = useCallback((key) => t(key, language), [language]);
+  const translate = useCallback((key, values) => t(key, language, values), [language]);
   const value = useMemo(() => ({
     language,
     direction: language === 'ar' ? 'rtl' : 'ltr',

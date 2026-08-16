@@ -20,7 +20,7 @@ const COPY = {
     englishDescription: 'الوصف الإنجليزي', chooseInstructor: 'اختر المدرّب', chooseCategory: 'اختر الفئة',
     status: 'الحالة', accessType: 'نوع الوصول', currency: 'العملة', accessDays: 'مدة الوصول بالأيام',
     lifetime: 'مدى الحياة', save: 'حفظ الدورة', cancel: 'إلغاء', titleRequired: 'العنوان العربي مطلوب.',
-    instructorRequired: 'اختر مدرّباً.', categoryPublished: 'الفئة مطلوبة قبل نشر الدورة.',
+    inactive: 'غير نشط', instructorRequired: 'اختر مدرّباً.', categoryPublished: 'الفئة مطلوبة قبل نشر الدورة.',
     deleteConfirm: 'حذف هذه الدورة؟', loadError: 'تعذّر تحميل بيانات الدورة.',
     level: 'المستوى', certificate: 'شهادة إتمام معتمدة', objectives: 'ماذا ستتعلّم',
     objectivesEn: 'ماذا ستتعلّم (إنجليزي)', objectiveHint: 'سطر لكل نقطة؛ الأسطر الفارغة تُهمل.',
@@ -34,7 +34,7 @@ const COPY = {
     englishDescription: 'English description', chooseInstructor: 'Choose instructor', chooseCategory: 'Choose category',
     status: 'Status', accessType: 'Access type', currency: 'Currency', accessDays: 'Access duration in days',
     lifetime: 'Lifetime', save: 'Save course', cancel: 'Cancel', titleRequired: 'Arabic title is required.',
-    instructorRequired: 'Choose an instructor.', categoryPublished: 'Choose a category before publishing.',
+    inactive: 'inactive', instructorRequired: 'Choose an instructor.', categoryPublished: 'Choose a category before publishing.',
     deleteConfirm: 'Delete this course?', loadError: 'Unable to load course details.',
     level: 'Level', certificate: 'Accredited certificate', objectives: 'What you will learn',
     objectivesEn: 'What you will learn (English)', objectiveHint: 'One bullet per line; blank lines are ignored.',
@@ -110,12 +110,18 @@ export function CourseEditor({ routeParams = {} }) {
   useEffect(() => {
     let active = true;
     Promise.all([
-      api.users({ role: 'instructor' }),
+      api.users({ role: 'instructor', per_page: 100, active: 1 }),
       api.categories(),
       editing ? api.course(courseId) : Promise.resolve(null),
     ]).then(([usersResult, categoryResult, courseResult]) => {
       if (!active) return;
       const nextInstructors = usersResult.users || [];
+      // Only active instructors may be picked, but a course already owned by a
+      // deactivated one must not render with an empty select.
+      const owner = courseResult?.course?.instructor;
+      if (owner && !nextInstructors.some((person) => person.id === owner.id)) {
+        nextInstructors.push({ ...owner, is_active: false });
+      }
       setInstructors(nextInstructors);
       setCategories(orderedCategories(categoryResult.categories || []));
       if (courseResult) setForm(courseForm(courseResult.course));
@@ -159,7 +165,7 @@ export function CourseEditor({ routeParams = {} }) {
       </section>
       <section className="catalog-panel">
         <div className="catalog-form-grid">
-          <Field label={c.instructor}><select value={form.instructor_id} onChange={set('instructor_id')}><option value="">{c.chooseInstructor}</option>{instructors.map((instructor) => <option key={instructor.id} value={instructor.id}>{instructor.name}</option>)}</select></Field>
+          <Field label={c.instructor}><select value={form.instructor_id} onChange={set('instructor_id')}><option value="">{c.chooseInstructor}</option>{instructors.map((instructor) => <option key={instructor.id} value={instructor.id}>{instructor.name}{instructor.is_active === false ? ` (${c.inactive})` : ''}</option>)}</select></Field>
           <Field label={c.category}><select value={form.category_id} onChange={set('category_id')}><option value="">{c.chooseCategory}</option>{categories.map((category) => <option key={category.id} value={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field>
           <Field label={c.accessType}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option key={access} value={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field>
           <Field label={c.status}><select value={form.status} onChange={set('status')}>{CATALOG_STATUSES.map((status) => <option key={status} value={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field>

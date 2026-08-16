@@ -100,8 +100,17 @@ def users_list():
     if search:
         like = f"%{search}%"
         q = q.filter(db.or_(User.name.ilike(like), User.email.ilike(like)))
+    # ?active=1 for the pickers that must only offer people who can still be assigned
+    # work; ?include=<id> keeps whoever a record already points at in the list, so
+    # editing a deactivated instructor's course does not show an empty select.
+    if request.args.get("active", type=int):
+        keep = request.args.get("include", type=int)
+        q = q.filter(db.or_(User.is_active.is_(True), User.id == keep) if keep else User.is_active.is_(True))
     page = max(request.args.get("page", 1, type=int), 1)
-    pg = db.paginate(q.order_by(User.created_at.desc()), page=page, per_page=20, error_out=False)
+    # per_page was pinned at 20 whatever the caller asked for, so every instructor
+    # dropdown silently stopped at the twentieth name.
+    per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
+    pg = db.paginate(q.order_by(User.created_at.desc()), page=page, per_page=per_page, error_out=False)
     return jsonify(users=[_user_json(u) for u in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
 
 
@@ -911,6 +920,13 @@ def set_video_courses(video, course_ids):
     courses = Course.query.filter(Course.id.in_(wanted)).all() if wanted else []
     if len(courses) != len(wanted):
         raise CatalogValidationError(["course_not_found"])
+    # A video belongs to its instructor, so it cannot be dropped into someone else's
+    # course. Every path that attaches a video routes through here, so the rule is
+    # enforced once rather than in each caller. Videos with no instructor yet (older
+    # rows) have no ownership to contradict.
+    if video.instructor_id:
+        if any(course.instructor_id != video.instructor_id for course in courses):
+            raise CatalogValidationError(["course_instructor_mismatch"])
     validate_video_bundle_compatibility(
         video, standalone=not wanted and not video.course_id and not video.module_id,
     )
