@@ -158,7 +158,24 @@ export default function Instructors() {
   async function del(u) {
     if (!await confirmDialog(copy.deleteConfirm(u.name))) return;
     try { await api.userDelete(u.id); load(); }
-    catch (e) { toast.error(apiError(e, common.loadError)); }
+    catch (e) {
+      // The API refuses to delete an instructor who still authors content, and says
+      // how much. Show that instead of a bare "something went wrong".
+      if (e.status === 409 && e.data?.error === 'user_has_courses') {
+        toast.error(copy.blockedByContent(e.data.courses ?? 0, e.data.videos ?? 0));
+        return;
+      }
+      toast.error(apiError(e, common.loadError));
+    }
+  }
+
+  // Deactivating is the right move for someone who has left: they keep authorship of
+  // their courses, but cannot sign in and stop appearing in the assignment pickers.
+  async function toggleActive(u) {
+    const confirmText = u.is_active ? copy.deactivateConfirm(u.name) : copy.activateConfirm(u.name);
+    if (!await confirmDialog(confirmText)) return;
+    try { await api.userUpdate(u.id, { is_active: !u.is_active }); load(); }
+    catch (e) { toast.error(apiError(e, copy.statusError)); }
   }
 
   const missing = (u) => [
@@ -204,6 +221,9 @@ export default function Instructors() {
                 <td><span className={`chip ${u.is_active ? 'chip-on' : 'chip-off'}`}>{u.is_active ? copy.active : copy.inactive}</span></td>
                 <td className="actions">
                   <button className="btn btn-tonal btn-sm" onClick={() => setEditing(u)}>{common.edit}</button>
+                  <button className="btn btn-tonal btn-sm" onClick={() => toggleActive(u)}>
+                    {u.is_active ? copy.deactivate : copy.activate}
+                  </button>
                   <button className="btn btn-error btn-sm" onClick={() => del(u)}>{common.delete}</button>
                 </td>
               </tr>

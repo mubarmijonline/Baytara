@@ -414,3 +414,54 @@ def test_user_listing_honours_per_page_and_the_active_filter(admin_client, catal
         f"/api/v1/admin/users?role=instructor&per_page=100&active=1&include={disabled['id']}",
     ).get_json()
     assert any(person["id"] == disabled["id"] for person in kept["users"])
+
+
+def test_deleting_an_instructor_reports_what_blocks_it_and_clears_their_own_rows(admin_client, catalog_data, app):
+    """Authored content blocks the delete with a count of what to reassign. The
+    account's own footprint (devices, entitlements, verification) is cleared, which
+    used to raise an IntegrityError and surface as a 500 instead of a message."""
+    from app.models import BaytarianRequest, UserDevice, VideoEntitlement
+
+    owner = catalog_data["instructor_id"]
+    video = create_video(admin_client)
+
+    blocked = admin_client.delete(f"/api/v1/admin/users/{owner}")
+    assert blocked.status_code == 409, blocked.get_json()
+    body = blocked.get_json()
+    assert body["error"] == "user_has_courses"
+    assert body["courses"] == 2 and body["videos"] >= 1, body
+
+    # A video with no course still blocks: it would otherwise lose its author silently.
+    with app.app_context():
+        loner = User(name="Video only", email="video-only@example.test",
+                     password_hash="hash", role="instructor")
+        db.session.add(loner)
+        db.session.commit()
+        loner_id = loner.id
+    admin_client.patch(f"/api/v1/admin/videos/{video['id']}", json={"instructor_id": loner_id})
+    only_videos = admin_client.delete(f"/api/v1/admin/users/{loner_id}")
+    assert only_videos.status_code == 409
+    assert only_videos.get_json()["courses"] == 0 and only_videos.get_json()["videos"] == 1
+
+    # Someone who authored nothing but has signed in, bought a video and asked to be
+    # verified deletes cleanly rather than tripping a foreign key.
+    with app.app_context():
+        learner = User(name="Learner", email="learner-delete@example.test",
+                       password_hash="hash", role="student")
+        db.session.add(learner)
+        db.session.flush()
+        db.session.add_all([
+            UserDevice(user_id=learner.id, device_id="browser-1", label="Chrome"),
+            VideoEntitlement(user_id=learner.id, video_id=video["id"], source="purchase"),
+            BaytarianRequest(user_id=learner.id, status="pending"),
+        ])
+        db.session.commit()
+        learner_id = learner.id
+
+    removed = admin_client.delete(f"/api/v1/admin/users/{learner_id}")
+    assert removed.status_code == 200, removed.get_json()
+    with app.app_context():
+        assert db.session.get(User, learner_id) is None
+        assert UserDevice.query.filter_by(user_id=learner_id).count() == 0
+        assert VideoEntitlement.query.filter_by(user_id=learner_id).count() == 0
+        assert BaytarianRequest.query.filter_by(user_id=learner_id).count() == 0

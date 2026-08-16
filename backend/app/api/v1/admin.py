@@ -8,7 +8,7 @@ from ...extensions import db
 from datetime import datetime, timezone
 
 from ...models import (
-    User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
+    User, UserDevice, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
     CourseReview, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
     push_notification, refresh_course_rating,
@@ -168,10 +168,19 @@ def users_delete(uid):
         return jsonify(error="not_found"), 404
     if u.id == _uid():
         return jsonify(error="cannot_delete_self"), 409
-    # instructors owning courses must have them reassigned/deleted first (FK is NOT NULL)
-    if Course.query.filter_by(instructor_id=uid).count():
-        return jsonify(error="user_has_courses"), 409
-    # clear/cascade the user's dependent rows so the delete doesn't hit FK constraints
+    # Authored content is not the account's to take with it: a course cannot exist
+    # without an instructor (FK is NOT NULL), and a video losing its author silently
+    # is worse than a refusal. Say exactly what blocks it so the admin can reassign
+    # those items, or deactivate the account instead.
+    owned_courses = Course.query.filter_by(instructor_id=uid).count()
+    owned_videos = Lesson.query.filter_by(instructor_id=uid).count()
+    if owned_courses or owned_videos:
+        return jsonify(error="user_has_courses", courses=owned_courses, videos=owned_videos), 409
+
+    # Clear the rows that are the account's own footprint so the delete doesn't hit a
+    # foreign key. Devices, entitlements and verification requests were missing here,
+    # so deleting anyone who had ever signed in raised an IntegrityError — a 500 with
+    # no message rather than the refusal above.
     for e in Enrollment.query.filter_by(user_id=uid).all():
         db.session.delete(e)  # cascades lesson_progress
     InstapayPayment.query.filter_by(user_id=uid).delete()
@@ -179,6 +188,10 @@ def users_delete(uid):
     Payment.query.filter_by(user_id=uid).delete()
     Article.query.filter_by(author_id=uid).update({"author_id": None})
     Notification.query.filter_by(user_id=uid).delete()
+    UserDevice.query.filter_by(user_id=uid).delete()
+    VideoEntitlement.query.filter_by(user_id=uid).delete()
+    BaytarianRequest.query.filter_by(reviewed_by=uid).update({"reviewed_by": None})
+    BaytarianRequest.query.filter_by(user_id=uid).delete()
     db.session.delete(u)
     db.session.commit()
     return jsonify(deleted=uid)

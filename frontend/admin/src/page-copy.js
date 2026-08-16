@@ -71,6 +71,12 @@ const COPY = {
       complete: 'مكتمل', missing: { photo: 'صورة', headline: 'مسمّى', bio: 'نبذة', expertise: 'خبرات', section: 'قسم' },
       active: 'مفعّل', inactive: 'معطّل', empty: 'لا محاضرين بعد.',
       deleteConfirm: (name) => `حذف ${name}؟`,
+      deactivate: 'تعطيل', activate: 'تفعيل',
+      deactivateConfirm: (name) => `تعطيل ${name}؟ لن يستطيع الدخول ولن يظهر في قوائم الإسناد، ويبقى محتواه كما هو.`,
+      activateConfirm: (name) => `تفعيل ${name}؟`,
+      statusError: 'تعذّر تغيير حالة الحساب.',
+      blockedByContent: (courses, videos) =>
+        `لا يمكن الحذف: هذا المحاضر يملك ${courses} دورة و${videos} فيديو. أعد إسنادها إلى محاضر آخر أولاً، أو عطّل الحساب بدلاً من حذفه.`,
     },
     users: {
       heading: 'المستخدمون', new: 'مستخدم جديد', edit: 'تعديل مستخدم',
@@ -168,6 +174,12 @@ const COPY = {
       complete: 'Complete', missing: { photo: 'photo', headline: 'title', bio: 'bio', expertise: 'expertise', section: 'section' },
       active: 'Active', inactive: 'Inactive', empty: 'No instructors yet.',
       deleteConfirm: (name) => `Delete ${name}?`,
+      deactivate: 'Deactivate', activate: 'Activate',
+      deactivateConfirm: (name) => `Deactivate ${name}? They cannot sign in and disappear from the assignment pickers; their content is untouched.`,
+      activateConfirm: (name) => `Activate ${name}?`,
+      statusError: 'Unable to change the account status.',
+      blockedByContent: (courses, videos) =>
+        `Cannot delete: this instructor owns ${courses} course(s) and ${videos} video(s). Reassign them to another instructor first, or deactivate the account instead of deleting it.`,
     },
     users: {
       heading: 'Users', new: 'New user', edit: 'Edit user',
