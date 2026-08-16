@@ -393,11 +393,17 @@ export default function Profile() {
               <div style={{ background: '#e8f4ee', borderRadius: 11, padding: '14px 15px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#1a7f4b' }}>{t('profile.verifiedTitle')}</div>
                 <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 4 }}>{t('profile.verifiedBody')}</div>
+                {user.vet_card_expires_at && (
+                  <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 8 }}>
+                    {t('verify.field.expires_at')}: {dateLabel(user.vet_card_expires_at, lang)}
+                    {user.vet_registration_no ? ` · ${t('verify.field.registration_no')} ${user.vet_registration_no}` : ''}
+                  </div>
+                )}
               </div>
             ) : (
               <>
                 <p style={{ margin: '0 0 12px', fontSize: 13.5, color: colors.muted, lineHeight: 1.8 }}>{t('profile.notVerified')}</p>
-                <Link to="/dashboard" style={{ display: 'block', border: `1.5px solid ${colors.accent}`, color: colors.accent, fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, textAlign: 'center' }}>
+                <Link to="/verify" style={{ display: 'block', border: `1.5px solid ${colors.accent}`, color: colors.accent, fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, textAlign: 'center' }}>
                   {t('membership.verify')}
                 </Link>
               </>
@@ -612,6 +618,18 @@ export default function Profile() {
                         onChange={(value) => { setForm((current) => ({ ...current, phone: value })); setSaved(false); }} />
                     </div>
                     {field('location', t('profile.fieldLocation'), { full: true })}
+                    <label style={{ display: 'block' }}>
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: colors.ink, marginBottom: 8 }}>
+                        {t('verify.field.national_id')}
+                      </span>
+                      {/* Write-once: set it here or during verification, then only support can change it. */}
+                      <input value={user.national_id || ''} readOnly dir="ltr"
+                        placeholder={t('profile.noNationalId')}
+                        style={{ ...input, background: '#f0f1f6', color: colors.muted2, letterSpacing: '1px' }} />
+                      <span style={{ display: 'block', fontSize: 12, color: colors.muted2, marginTop: 6, lineHeight: 1.7 }}>
+                        {user.national_id ? t('verify.idLocked') : t('profile.nationalIdHint')}
+                      </span>
+                    </label>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: colors.ink }}>{t('profile.fieldSpecialties')}</span>

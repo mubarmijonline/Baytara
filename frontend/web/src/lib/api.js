@@ -100,6 +100,19 @@ export const auth = {
   enroll: (course_id) => authFetch('/enrollments', { method: 'POST', body: JSON.stringify({ course_id }) }),
   // baytarian (verified pet-doctor) status + verification request
   baytarianMe: () => authFetch('/baytarian/me'),
+  // Card verification: preview reads the card without committing, submit verifies.
+  baytarianCard: (front, back, preview = false) => {
+    const fd = new FormData();
+    fd.append('front', front);
+    fd.append('back', back);
+    return fetch(`${BASE}/baytarian/card${preview ? '/preview' : ''}`, {
+      method: 'POST', headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}, body: fd,
+    }).then(async (r) => {
+      const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+      if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
+      return j;
+    });
+  },
   baytarianRequest: (files, note) => {
     const fd = new FormData();
     (files || []).forEach((f) => fd.append('documents', f));

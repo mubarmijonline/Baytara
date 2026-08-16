@@ -10,6 +10,7 @@ import Certificate from './pages/Certificate.jsx';
 import PathDetail from './pages/PathDetail.jsx';
 import Instructor from './pages/Instructor.jsx';
 import Pricing from './pages/Pricing.jsx';
+import VerifyVet from './pages/VerifyVet.jsx';
 import Business from './pages/Business.jsx';
 import Auth from './pages/Auth.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/payment/callback" element={<PaymentCallback />} />
         <Route path="/instructors/:id" element={<Instructor />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/verify" element={<VerifyVet />} />
         <Route path="/business" element={<Business />} />
         <Route path="/auth" element={<Auth />} />
         {/* The profile is the account home; the older dashboard views keep their own paths. */}

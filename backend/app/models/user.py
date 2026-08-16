@@ -22,6 +22,16 @@ class User(db.Model):
     # Baytarian = verified pet doctor (admin-approved via document upload). Gates
     # access to baytarian-tier courses (client البند3 revision).
     is_baytarian = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    # Identity for verification. The national ID is what ties a syndicate card to this
+    # account, so it is unique and write-once for the learner: once set, only an admin
+    # may change it. Never returned by public_profile() — this is not public data.
+    national_id = db.Column(db.String(14), unique=True, index=True)
+    # Read off the card at verification time and kept so the profile can show what was
+    # verified and when it lapses.
+    vet_registration_no = db.Column(db.String(20))
+    vet_license_no = db.Column(db.String(20))
+    vet_governorate = db.Column(db.String(40))
+    vet_card_expires_at = db.Column(db.Date)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # instructor public-profile fields (used when role == instructor)
@@ -78,6 +88,14 @@ class BaytarianRequest(db.Model):
     status = db.Column(db.String(20), nullable=False, default="pending", index=True)
     documents = db.Column(db.JSON)  # list[str] of stored file paths
     note = db.Column(db.String(500))  # applicant note (clinic, license no., etc.)
+    # Card verification evidence. Kept in full so an auto-approval can be re-examined
+    # or undone later: a decision made by a machine still has to be answerable.
+    card_front = db.Column(db.String(500))
+    card_back = db.Column(db.String(500))
+    ocr_text = db.Column(db.Text)
+    parsed = db.Column(db.JSON)      # every field read, with its verdict
+    auto_approved = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    spot_check = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     reject_reason = db.Column(db.String(300))
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     reviewed_at = db.Column(db.DateTime(timezone=True))
@@ -95,10 +113,14 @@ class BaytarianRequest(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
         }
+        d.update(auto_approved=self.auto_approved, spot_check=self.spot_check,
+                 parsed=self.parsed or None)
         if admin:
             d.update(user_id=self.user_id,
                      user={"id": self.user.id, "name": self.user.name, "email": self.user.email} if self.user else None,
-                     documents=self.documents or [])
+                     documents=self.documents or [],
+                     has_card=bool(self.card_front or self.card_back),
+                     ocr_text=self.ocr_text)
         return d
 
 

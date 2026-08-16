@@ -64,8 +64,9 @@ def demo():
     bay_for_student = c.get(f"/api/v1/courses/{bay_slug}", headers=sh).get_json()["course"]
     assert bay_for_student["lock_reason"] == "needs_baytarian"
 
-    # ---- free enroll works; vet_free requires verified Baytarian status ----
-    assert c.post("/api/v1/enrollments", json={"course_id": free_id}, headers=sh).status_code == 201
+    # ---- a free course needs no enrollment; vet_free still needs verified status ----
+    free = c.post("/api/v1/enrollments", json={"course_id": free_id}, headers=sh)
+    assert free.status_code == 200 and free.get_json() == {"enrollment": None, "free": True}, free.get_json()
     r = c.post("/api/v1/enrollments", json={"course_id": vet_id}, headers=sh)
     assert r.status_code == 403 and r.get_json()["error"] == "needs_baytarian", r.get_json()
     r = c.post("/api/v1/enrollments", json={"course_id": vet_id}, headers=ih)
@@ -105,7 +106,9 @@ def demo():
     assert c.get(f"/api/v1/courses/{bay_slug}", headers=sh).get_json()["course"]["lock_reason"] is None
     verified_slugs = {x["slug"] for x in c.get("/api/v1/courses?per_page=50", headers=sh).get_json()["courses"]}
     assert vet_slug in verified_slugs, "vet_free must be visible to verified Baytarians"
-    assert c.post("/api/v1/enrollments", json={"course_id": vet_id}, headers=sh).status_code == 201
+    # vet_free costs nothing either, so a verified Baytarian watches it without a seat
+    once_verified = c.post("/api/v1/enrollments", json={"course_id": vet_id}, headers=sh)
+    assert once_verified.status_code == 200 and once_verified.get_json()["free"] is True
 
     print("access + baytarian self-check OK")
 

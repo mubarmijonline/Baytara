@@ -16,6 +16,7 @@ from ...extensions import db
 from ...models import Category, User, UserDevice
 from ...security import hash_password, verify_password
 from ...services.phone import normalize_mobile
+from ...services.vet_card import only_digits, parse_national_id
 
 bp = Blueprint("auth", __name__)
 
@@ -87,6 +88,13 @@ def _user_json(user: User):
             "role": user.role, "locale": user.locale, "is_baytarian": user.is_baytarian,
             "headline": user.headline, "bio": user.bio, "location": user.location,
             "specialties": user.specialties or [],
+            # Own profile only. public_profile() must never carry these.
+            "national_id": user.national_id,
+            "national_id_locked": bool(user.national_id),
+            "vet_registration_no": user.vet_registration_no,
+            "vet_license_no": user.vet_license_no,
+            "vet_governorate": user.vet_governorate,
+            "vet_card_expires_at": user.vet_card_expires_at.isoformat() if user.vet_card_expires_at else None,
             "avatar_url": user.avatar_url, "cover_url": user.cover_url,
             "created_at": user.created_at.isoformat() if user.created_at else None}
 
@@ -186,6 +194,24 @@ def update_profile():
         user.phone = normalized
 
     errors = {}
+
+    # The national ID is the account's identity for verification: it is what a
+    # syndicate card is matched against. Write-once, because a learner who could edit
+    # it after verifying could point a verified account at someone else. Fourteen ASCII
+    # digits — Arabic-Indic input is converted rather than refused.
+    if "national_id" in data:
+        digits = only_digits(data.get("national_id"))
+        if user.national_id and digits != user.national_id:
+            errors["national_id"] = ["locked"]
+        elif not user.national_id:
+            decoded, why = parse_national_id(digits)
+            if not decoded:
+                errors["national_id"] = [why or "invalid"]
+            elif User.query.filter(User.national_id == digits, User.id != user.id).first():
+                # One person, one account: the card check downstream relies on this.
+                errors["national_id"] = ["already_used"]
+            else:
+                user.national_id = digits
 
     # Specialties are picked, not typed: anything that is not a live category slug
     # would show up as a chip nobody can filter or browse by.
