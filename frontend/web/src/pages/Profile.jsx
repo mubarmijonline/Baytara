@@ -177,6 +177,16 @@ export default function Profile() {
   const next = searchParams.get('next');
   const requestedTab = searchParams.get('tab');
   const tab = TABS.includes(requestedTab) ? requestedTab : 'overview';
+  // Switching tabs used to leave the viewer staring at the cover photo, with the new
+  // panel a full screen below. Scroll to it; scroll-margin-top clears the sticky bars.
+  const bodyRef = useRef(null);
+
+  function openTab(key) {
+    setSearchParams(key === 'overview' ? {} : { tab: key });
+    // Optional call: jsdom and older WebViews have no scrollIntoView, and the tab
+    // itself must still switch when the scroll cannot happen.
+    bodyRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  }
 
   const { t, lang } = useI18n();
   const { user, loading, updateProfile, uploadProfileImage } = useAuth();
@@ -255,9 +265,9 @@ export default function Profile() {
   return (
     <div style={{ background: '#f0f1f6', minHeight: '70vh' }}>
       {/* identity band */}
-      <div style={{ background: colors.surface, borderBottom: '1px solid #e3e6ef' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div style={{ position: 'relative', height: 280, background: '#dfe3ee' }}>
+      <div style={{ background: colors.surface }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', paddingBottom: 14 }}>
+          <div className="profile-cover" style={{ position: 'relative', height: 280, background: '#dfe3ee' }}>
             <ImagePicker kind="cover" url={user.cover_url} onPicked={uploadProfileImage} label={t('profile.editCover')} />
           </div>
 
@@ -292,31 +302,37 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* tab strip — the tab lives in the URL so it is linkable and survives reload */}
-          <nav className="profile-tabs" aria-label={t('profile.account')}
-            style={{ padding: '0 32px', marginTop: 14, display: 'flex', gap: 26, fontSize: 15, fontWeight: 700, color: colors.muted2, overflowX: 'auto' }}>
-            {TABS.map((key) => (
-              <button
-                key={key}
-                type="button"
-                aria-current={tab === key ? 'page' : undefined}
-                onClick={() => setSearchParams(key === 'overview' ? {} : { tab: key })}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                  padding: '14px 0', fontSize: 15, fontWeight: 700,
-                  color: tab === key ? DARK : colors.muted2,
-                  borderBottom: tab === key ? `3px solid ${colors.accent}` : '3px solid transparent',
-                }}
-              >
-                {t(`profile.tab.${key}`)}
-              </button>
-            ))}
-          </nav>
         </div>
       </div>
 
+      {/* Tab strip — the tab lives in the URL so it is linkable and survives reload.
+          It sits outside the identity band on purpose: a sticky element only travels
+          inside its own parent, and the band ends here, so nesting it above would
+          unstick it the moment the cover scrolled past. */}
+      <div className="profile-tabs-bar" style={{ background: colors.surface, borderBottom: '1px solid #e3e6ef' }}>
+        <nav className="profile-tabs" aria-label={t('profile.account')}
+          style={{ maxWidth: 1000, margin: '0 auto', padding: '0 32px', display: 'flex', gap: 26, fontSize: 15, fontWeight: 700, color: colors.muted2, overflowX: 'auto' }}>
+          {TABS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              aria-current={tab === key ? 'page' : undefined}
+              onClick={() => openTab(key)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                padding: '14px 0', fontSize: 15, fontWeight: 700,
+                color: tab === key ? DARK : colors.muted2,
+                borderBottom: tab === key ? `3px solid ${colors.accent}` : '3px solid transparent',
+              }}
+            >
+              {t(`profile.tab.${key}`)}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       {/* body */}
-      <div className="profile-body grid-collapse-2" style={{ maxWidth: 1000, margin: '0 auto', padding: '22px 32px 56px', display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
+      <div ref={bodyRef} className="profile-body grid-collapse-2" style={{ maxWidth: 1000, margin: '0 auto', padding: '22px 32px 56px', display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
         <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <section style={card}>
             <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 700, color: DARK }}>{t('profile.about')}</h2>

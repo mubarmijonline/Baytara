@@ -181,12 +181,26 @@ textarea {
   body { background: #fff !important; }
 }
 
+/* The tab strip pins under the site header so switching tabs never means scrolling
+   back past the cover photo. scroll-margin-top keeps the panel clear of both bars. */
+.profile-tabs-bar { position: sticky; top: 74px; z-index: 20; }
+.profile-body { scroll-margin-top: 132px; }
+
 @media (max-width: 760px) {
-  .profile-identity { margin-top: -40px !important; padding: 0 16px !important; gap: 14px !important; }
+  /* A 280px cover eats most of a phone screen before a single word of the profile.
+     150px is what the design gives the mobile frame. */
+  .profile-cover { height: 150px !important; }
+  /* Avatar above the name, as in the design — side by side pushes the name up over
+     the cover and squeezes it to one word per line. */
+  .profile-identity { flex-direction: column !important; align-items: flex-start !important;
+    margin-top: -46px !important; padding: 0 16px !important; gap: 12px !important; }
   .profile-identity > div:first-child { width: 104px !important; height: 104px !important; }
-  .profile-body { padding: 16px !important; }
-  /* The five tabs scroll sideways rather than wrapping into a second row. */
+  .profile-identity > div:last-child { padding-bottom: 0 !important; }
+  .profile-identity h1 { font-size: 22px !important; letter-spacing: 0 !important; }
+  .profile-body { padding: 16px !important; scroll-margin-top: 104px; }
+  /* The six tabs scroll sideways rather than wrapping into a second row. */
   .profile-tabs { padding: 0 16px !important; gap: 18px !important; }
+  .profile-tabs-bar { top: 54px; }
   .profile-photo-grid { grid-template-columns: 1fr !important; }
 }
 
