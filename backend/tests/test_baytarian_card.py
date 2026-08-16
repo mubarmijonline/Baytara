@@ -49,13 +49,29 @@ def _client(app, email="vet@example.test"):
 
 
 def _stub_vision(monkeypatch, back=SAMPLE_BACK, front=SAMPLE_FRONT):
-    """Vision reads whichever side it is handed; the filename says which."""
-    from app.services import instapay_ocr
+    """Stub Google's client, not extract_text, so the real upload-to-bytes path runs.
 
-    def fake(storage):
-        return front if "front" in getattr(storage, "filename", "") else back
+    Stubbing extract_text once hid a TypeError: the endpoint hands it an uploaded file
+    and it only accepted a path, so every card came back as "service unavailable".
+    """
+    import sys
+    import types
 
-    monkeypatch.setattr(instapay_ocr, "extract_text", fake)
+    class FakeResponse:
+        def __init__(self, text):
+            self.error = types.SimpleNamespace(message="")
+            self.text_annotations = [types.SimpleNamespace(description=text)]
+
+    class FakeClient:
+        def text_detection(self, image):
+            # The bytes must actually have arrived: b"...front" or b"...back".
+            assert image.content, "no image bytes reached Vision"
+            return FakeResponse(front if b"front" in image.content else back)
+
+    module = types.ModuleType("google.cloud.vision")
+    module.ImageAnnotatorClient = FakeClient
+    module.Image = lambda content: types.SimpleNamespace(content=content)
+    monkeypatch.setitem(sys.modules, "google.cloud.vision", module)
 
 
 def _sides():
@@ -186,15 +202,20 @@ def test_an_unreadable_card_blocks_submission(app, monkeypatch):
 
 
 def test_a_vision_outage_reports_itself_rather_than_failing(app, monkeypatch):
-    from app.services import instapay_ocr
+    import sys
+    import types
 
     with app.app_context():
         _account(national_id=NATIONAL_ID)
 
-    def boom(_storage):
-        raise RuntimeError("Vision error: quota")
+    class BoomClient:
+        def text_detection(self, image):
+            raise RuntimeError("Vision error: quota")
 
-    monkeypatch.setattr(instapay_ocr, "extract_text", boom)
+    module = types.ModuleType("google.cloud.vision")
+    module.ImageAnnotatorClient = BoomClient
+    module.Image = lambda content: types.SimpleNamespace(content=content)
+    monkeypatch.setitem(sys.modules, "google.cloud.vision", module)
     client = _client(app)
     response = client.post("/api/v1/baytarian/card", data=_sides(),
                            content_type="multipart/form-data")
@@ -240,3 +261,85 @@ def test_a_national_id_never_leaves_through_a_public_endpoint(app):
 
     body = app.test_client().get(f"/api/v1/instructors/{uid}").get_json()
     assert "national_id" not in str(body), body
+
+
+def test_the_id_card_photo_records_the_number_and_stays_private(app, monkeypatch, tmp_path):
+    """The learner uploads a photo of their national ID; the number is read off it and
+    mapped to the account, and the image is never served publicly."""
+    import sys
+    import types
+
+    ID_CARD = "بطاقة تحقيق الشخصية\nالرقم القومى ٢٧٨١١٢٩١٨٠١٥٣٦"
+
+    class Response:
+        def __init__(self):
+            self.error = types.SimpleNamespace(message="")
+            self.text_annotations = [types.SimpleNamespace(description=ID_CARD)]
+
+    class Client:
+        def text_detection(self, image):
+            assert image.content, "no image bytes reached Vision"
+            return Response()
+
+    module = types.ModuleType("google.cloud.vision")
+    module.ImageAnnotatorClient = Client
+    module.Image = lambda content: types.SimpleNamespace(content=content)
+    monkeypatch.setitem(sys.modules, "google.cloud.vision", module)
+
+    with app.app_context():
+        uid = _account()            # nothing recorded yet
+    client = _client(app)
+
+    card = {"file": (io.BytesIO(b"\xff\xd8idcard"), "id.jpg")}
+    response = client.post("/api/v1/auth/national-id", data=card, content_type="multipart/form-data")
+    assert response.status_code == 201, response.get_json()
+    body = response.get_json()
+    assert body["national_id"] == NATIONAL_ID
+    assert body["born"] == "1978-11-29" and body["governorate"] == "البحيرة"
+    assert body["user"]["national_id_locked"] and body["user"]["has_national_id_image"]
+
+    with app.app_context():
+        user = db.session.get(User, uid)
+        assert user.national_id == NATIONAL_ID
+        # stored with the verification documents, not in the public uploads folder
+        assert app.config["BAYTARIAN_DOC_DIR"] in user.national_id_image
+        assert "uploads" not in user.national_id_image
+
+    # the owner can see their own image back
+    assert client.get("/api/v1/auth/national-id/image").status_code == 200
+    # ...and a stranger cannot: the endpoint takes no user id at all
+    assert app.test_client().get("/api/v1/auth/national-id/image").status_code == 401
+
+    # a second account cannot claim the same number
+    with app.app_context():
+        _account(email="second@example.test")
+    second = _client(app, email="second@example.test")
+    clash = second.post("/api/v1/auth/national-id", data={"file": (io.BytesIO(b"\xff\xd8x"), "id.jpg")},
+                        content_type="multipart/form-data")
+    assert clash.status_code == 409 and clash.get_json()["error"] == "already_used"
+
+
+def test_an_id_photo_of_someone_else_is_refused(app, monkeypatch):
+    """Once a number is on file the photo has to be of that same person."""
+    import sys
+    import types
+
+    class Client:
+        def text_detection(self, image):
+            return types.SimpleNamespace(
+                error=types.SimpleNamespace(message=""),
+                text_annotations=[types.SimpleNamespace(description="الرقم القومى ٢٩٠٠١٠١١٨٠١٢٣٤")])
+
+    module = types.ModuleType("google.cloud.vision")
+    module.ImageAnnotatorClient = Client
+    module.Image = lambda content: types.SimpleNamespace(content=content)
+    monkeypatch.setitem(sys.modules, "google.cloud.vision", module)
+
+    with app.app_context():
+        _account(national_id=NATIONAL_ID)
+    client = _client(app)
+    response = client.post("/api/v1/auth/national-id",
+                           data={"file": (io.BytesIO(b"\xff\xd8x"), "id.jpg")},
+                           content_type="multipart/form-data")
+    assert response.status_code == 422
+    assert response.get_json()["error"] == "does_not_match_profile"

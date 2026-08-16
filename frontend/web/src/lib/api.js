@@ -137,6 +137,11 @@ export const auth = {
   learningSummary: () => authFetch('/learning-summary'),
   certificates: () => authFetch('/certificates'),
   activity: (params) => authFetch('/activity' + qs(params)),
+  nationalIdCard: (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authUpload('/auth/national-id', form);
+  },
   profileImage: (kind, file) => {
     const form = new FormData();
     form.append('kind', kind);

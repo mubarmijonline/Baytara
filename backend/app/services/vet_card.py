@@ -173,3 +173,20 @@ def governorate_agrees(decoded, printed):
     expected = decoded["governorate"]
     printed = printed.strip().replace("ال", "", 1)
     return expected.replace("ال", "", 1) in printed or printed in expected
+
+
+def read_national_id(text):
+    """Find a valid national ID in OCR text. The card prints it in Arabic-Indic digits
+    and Vision often splits it across groups, so digits are normalised and the runs are
+    tried in order until one decodes."""
+    normalized = normalize_digits(text or "")
+    labelled = NATIONAL_ID_RE.search(normalized)
+    candidates = ([labelled.group(1)] if labelled else []) + ANY_14_RE.findall(normalized)
+    # Vision sometimes spaces the number into groups; join everything and slide a window.
+    joined = re.sub(r"\D", "", normalized)
+    candidates += [joined[i:i + 14] for i in range(max(len(joined) - 13, 0))]
+    for candidate in candidates:
+        decoded, _ = parse_national_id(candidate)
+        if decoded:
+            return decoded
+    return None

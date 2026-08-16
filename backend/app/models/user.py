@@ -26,6 +26,9 @@ class User(db.Model):
     # account, so it is unique and write-once for the learner: once set, only an admin
     # may change it. Never returned by public_profile() — this is not public data.
     national_id = db.Column(db.String(14), unique=True, index=True)
+    # Photo of the ID card, stored with the verification documents rather than in
+    # the public uploads folder: it is served only to its owner and to admins.
+    national_id_image = db.Column(db.String(500))
     # Read off the card at verification time and kept so the profile can show what was
     # verified and when it lapses.
     vet_registration_no = db.Column(db.String(20))

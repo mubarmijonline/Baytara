@@ -125,6 +125,47 @@ function ImagePicker({ kind, url, onPicked, label, round = false }) {
   );
 }
 
+/* --------------------- national ID card --------------------- */
+
+// A photo of the ID card, read for its number and kept as evidence. Stored with the
+// verification documents, never in the public uploads folder.
+function NationalIdCard({ user, t }) {
+  const field = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+
+  async function accept(file) {
+    if (!file) return;
+    setBusy(true); setError(''); setDone(false);
+    try {
+      await auth.nationalIdCard(file);
+      setDone(true);
+      // The number now on file comes from the image, so the page has to reread it.
+      window.location.reload();
+    } catch (e) {
+      setError(t(`verify.error.${e.data?.error || 'generic'}`));
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button type="button" onClick={() => field.current?.click()} disabled={busy}
+        style={{ border: `1.5px solid ${colors.accent}`, background: 'transparent', color: colors.accent,
+          borderRadius: 10, padding: '10px 16px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+        {busy ? t('common.loading')
+          : user.has_national_id_image ? t('profile.replaceIdCard') : t('profile.uploadIdCard')}
+      </button>
+      <input ref={field} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }}
+        onChange={(event) => { const f = event.target.files?.[0]; event.target.value = ''; accept(f); }} />
+      <p style={{ margin: '6px 0 0', fontSize: 12, color: error ? '#b3261e' : colors.muted2, lineHeight: 1.7 }}>
+        {error || (user.national_id ? t('verify.idLocked') : t('profile.idCardHint'))}
+      </p>
+      {done && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#1a7f4b' }}>{t('verify.idSaved')}</p>}
+    </div>
+  );
+}
+
 /* --------------------- phone completion (gate) --------------------- */
 
 // Reached as /dashboard/profile?next=/videos/2 when a viewer has no phone on file.
@@ -622,13 +663,12 @@ export default function Profile() {
                       <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: colors.ink, marginBottom: 8 }}>
                         {t('verify.field.national_id')}
                       </span>
-                      {/* Write-once: set it here or during verification, then only support can change it. */}
+                      {/* Read off a photo of the card rather than typed: the number and
+                          the image have to agree, which is what makes the image evidence. */}
                       <input value={user.national_id || ''} readOnly dir="ltr"
                         placeholder={t('profile.noNationalId')}
                         style={{ ...input, background: '#f0f1f6', color: colors.muted2, letterSpacing: '1px' }} />
-                      <span style={{ display: 'block', fontSize: 12, color: colors.muted2, marginTop: 6, lineHeight: 1.7 }}>
-                        {user.national_id ? t('verify.idLocked') : t('profile.nationalIdHint')}
-                      </span>
+                      <NationalIdCard user={user} t={t} />
                     </label>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>

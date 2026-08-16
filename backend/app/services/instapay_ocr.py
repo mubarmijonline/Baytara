@@ -171,8 +171,24 @@ def parse_receipt(text, ogs_accounts=()):
         return r
 
 
-def extract_text(image_path):
-    """Run Google Vision OCR on the saved receipt. Returns full text or 'No text found'.
+def _image_bytes(source):
+    """Accept a path, raw bytes, or an open/uploaded file. Receipts arrive already saved
+    to disk; card sides arrive as an upload that has not been written yet."""
+    if isinstance(source, (bytes, bytearray)):
+        return bytes(source)
+    stream = getattr(source, "stream", None) or (source if hasattr(source, "read") else None)
+    if stream is not None:
+        try:
+            stream.seek(0)
+        except (AttributeError, OSError):
+            pass
+        return stream.read()
+    with open(source, "rb") as f:
+        return f.read()
+
+
+def extract_text(source):
+    """Run Google Vision OCR. Returns the full text or 'No text found'.
 
     Auth is the service-account JSON at env GOOGLE_APPLICATION_CREDENTIALS (google-cloud-vision
     reads it automatically). Imported lazily so this module loads without the lib/key present.
@@ -180,9 +196,7 @@ def extract_text(image_path):
     from google.cloud import vision  # lazy
 
     client = vision.ImageAnnotatorClient()
-    with open(image_path, "rb") as f:
-        image = vision.Image(content=f.read())
-    resp = client.text_detection(image=image)
+    resp = client.text_detection(image=vision.Image(content=_image_bytes(source)))
     if resp.error.message:
         raise RuntimeError(f"Vision error: {resp.error.message}")
     texts = resp.text_annotations

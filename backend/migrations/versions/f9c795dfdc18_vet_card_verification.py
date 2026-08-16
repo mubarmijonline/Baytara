@@ -21,6 +21,7 @@ def upgrade():
     # Nullable: almost nobody has one recorded yet, and an empty string would collide.
     with op.batch_alter_table("users", schema=None) as batch_op:
         batch_op.add_column(sa.Column("national_id", sa.String(length=14), nullable=True))
+        batch_op.add_column(sa.Column("national_id_image", sa.String(length=500), nullable=True))
         batch_op.add_column(sa.Column("vet_registration_no", sa.String(length=20), nullable=True))
         batch_op.add_column(sa.Column("vet_license_no", sa.String(length=20), nullable=True))
         batch_op.add_column(sa.Column("vet_governorate", sa.String(length=40), nullable=True))
@@ -47,5 +48,5 @@ def downgrade():
     with op.batch_alter_table("users", schema=None) as batch_op:
         batch_op.drop_index("ix_users_national_id")
         for column in ("vet_card_expires_at", "vet_governorate", "vet_license_no",
-                       "vet_registration_no", "national_id"):
+                       "vet_registration_no", "national_id_image", "national_id"):
             batch_op.drop_column(column)

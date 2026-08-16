@@ -2,7 +2,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, send_file
 from marshmallow import EXCLUDE, Schema, ValidationError, fields, validate
 from flask_jwt_extended import (
     create_access_token,
@@ -91,6 +91,7 @@ def _user_json(user: User):
             # Own profile only. public_profile() must never carry these.
             "national_id": user.national_id,
             "national_id_locked": bool(user.national_id),
+            "has_national_id_image": bool(user.national_id_image),
             "vet_registration_no": user.vet_registration_no,
             "vet_license_no": user.vet_license_no,
             "vet_governorate": user.vet_governorate,
@@ -326,3 +327,72 @@ def remove_device(did):
     db.session.delete(dev)
     db.session.commit()
     return jsonify(deleted=did)
+
+
+# ------------------------- national ID card (private) -------------------------
+
+@bp.post("/national-id")
+@jwt_required()
+def upload_national_id():
+    """Read the learner's national ID from a photo of their card and record both.
+
+    The image is evidence, so it is stored with the verification documents rather than
+    in the public uploads folder — it is served back only to its owner and to admins.
+    """
+    from ...services.instapay_ocr import extract_text
+    from ...services.vet_card import read_national_id
+
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not user.is_active:
+        return jsonify(error="invalid_user"), 401
+
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="file_required"), 400
+    ext = PROFILE_IMAGE_TYPES.get(f.mimetype)
+    if not ext:
+        return jsonify(error="unsupported_media_type", allowed=sorted(PROFILE_IMAGE_TYPES)), 415
+    f.stream.seek(0, os.SEEK_END)
+    if f.stream.tell() > PROFILE_IMAGE_MAX_BYTES:
+        return jsonify(error="file_too_large", max_bytes=PROFILE_IMAGE_MAX_BYTES), 413
+    f.stream.seek(0)
+
+    try:
+        decoded = read_national_id(extract_text(f))
+    except Exception:  # noqa: BLE001 — a Vision outage is not a validation failure
+        current_app.logger.exception("vision failed reading a national ID card")
+        return jsonify(error="ocr_unavailable"), 503
+    if not decoded:
+        return jsonify(error="national_id_unreadable"), 422
+
+    number = decoded["national_id"]
+    # Already on file: the photo has to be of that same person, which is what makes
+    # the image evidence rather than decoration.
+    if user.national_id and number != user.national_id:
+        return jsonify(error="does_not_match_profile"), 422
+    if User.query.filter(User.national_id == number, User.id != user.id).first():
+        return jsonify(error="already_used"), 409
+
+    folder = os.path.join(current_app.config["BAYTARIAN_DOC_DIR"], str(user.id))
+    os.makedirs(folder, exist_ok=True)
+    # Generated name: a crafted filename must not escape the folder.
+    path = os.path.join(folder, f"nid_{uuid.uuid4().hex[:8]}{ext}")
+    f.stream.seek(0)
+    f.save(path)
+
+    user.national_id = number
+    user.national_id_image = path
+    db.session.commit()
+    return jsonify(user=_user_json(user), national_id=number, born=decoded["born"],
+                   governorate=decoded["governorate"]), 201
+
+
+@bp.get("/national-id/image")
+@jwt_required()
+def my_national_id_image():
+    """The owner's own card image. There is no user_id parameter, so this cannot be
+    pointed at anybody else's."""
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not user.national_id_image or not os.path.exists(user.national_id_image):
+        return jsonify(error="not_found"), 404
+    return send_file(os.path.abspath(user.national_id_image))
