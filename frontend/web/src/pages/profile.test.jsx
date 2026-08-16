@@ -62,6 +62,12 @@ function mockApi() {
     if (url.includes('/auth/devices/')) return json({ deleted: 1 });
     if (url.includes('/auth/devices')) return json({ devices });
     if (url.includes('/baytarian/me')) return json({ is_baytarian: true });
+    if (url.includes('/categories')) {
+      return json({ categories: [
+        { id: 1, name: 'Ruminants', slug: 'large-animals' },
+        { id: 2, name: 'Poultry', slug: 'poultry' },
+      ] });
+    }
     if (url.includes('/settings')) return json({ settings: {} });
     return json({});
   }));
@@ -202,4 +208,40 @@ it('keeps the sidebar beside the overview but out of the stacked tabs', async ()
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   const settingsAside = (await screen.findByRole('heading', { name: 'About', level: 2 })).closest('aside');
   expect(settingsAside).toHaveClass('hide-md');
+});
+
+it('refuses to save a number that is not a real mobile', async () => {
+  mockApi();
+  renderProfile();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+  const phone = await screen.findByRole('textbox', { name: 'Phone number' });
+
+  // A Cairo landline is 10 digits and looks plausible; it cannot carry a watermark.
+  fireEvent.change(phone, { target: { value: '0221234567' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  expect(await screen.findByText(/valid mobile number/i)).toBeVisible();
+  expect(patched).toHaveLength(0);
+
+  // A local Egyptian number is accepted and sent in canonical form.
+  fireEvent.change(phone, { target: { value: '0102 452 7770' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(patched).toHaveLength(1));
+  expect(patched[0].phone).toBe('+201024527770');
+});
+
+it('picks specialties from the live categories and sends their slugs', async () => {
+  mockApi();
+  renderProfile();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+  const poultry = await screen.findByRole('button', { name: 'Poultry', pressed: false });
+  fireEvent.click(poultry);
+  expect(screen.getByRole('button', { name: 'Poultry', pressed: true })).toBeVisible();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(patched).toHaveLength(1));
+  expect(patched[0].specialties).toEqual(['poultry']);
+  // The free-text job title rides along untouched.
+  expect(patched[0].headline).toBe('Cattle disease');
 });

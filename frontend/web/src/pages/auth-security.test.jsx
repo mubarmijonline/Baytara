@@ -57,7 +57,27 @@ afterEach(() => {
 it('requires a phone number in public registration', async () => {
   renderRoute('/auth?next=/videos/2');
   fireEvent.click(await screen.findByRole('button', { name: 'حساب جديد' }));
-  expect(screen.getByPlaceholderText('+2010xxxxxxxx')).toBeRequired();
+  expect(screen.getByPlaceholderText('01xxxxxxxxx')).toBeRequired();
+});
+
+it('blocks a signup with a bad email or a number that is not a mobile', async () => {
+  renderRoute('/auth');
+  fireEvent.click(await screen.findByRole('button', { name: 'حساب جديد' }));
+  const submit = screen.getByRole('button', { name: 'إنشاء حساب جديد' });
+
+  fireEvent.change(screen.getByPlaceholderText('you@email.com'), { target: { value: 'not-an-email' } });
+  fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01024527770' } });
+  fireEvent.click(submit);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Enter a valid email address.');
+
+  // A Cairo landline passes "required" but cannot carry the video watermark.
+  fireEvent.change(screen.getByPlaceholderText('you@email.com'), { target: { value: 'vet@example.test' } });
+  fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '0221234567' } });
+  fireEvent.click(submit);
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/valid mobile number/i));
+
+  // Neither attempt reached the API.
+  expect(fetch.mock.calls.some(([url]) => String(url).includes('/auth/register'))).toBe(false);
 });
 
 it('sends the stable registered device on authenticated profile updates', async () => {

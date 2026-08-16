@@ -85,7 +85,7 @@ def demo():
     # categories + instructor scoping (only published)
     assert any(x["slug"] == cat_slug for x in c.get("/api/v1/categories").get_json()["categories"])
     ins = c.get(f"/api/v1/instructors/{instr_id}").get_json()
-    assert [x["slug"] for x in ins["courses"]] == [f"pub-{tag}"]
+    assert sorted(x["slug"] for x in ins["courses"]) == sorted([f"pub-{tag}", f"adv-{tag}"]), ins
 
     print("catalog self-check OK")
 

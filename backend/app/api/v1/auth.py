@@ -13,8 +13,9 @@ from flask_jwt_extended import (
 )
 
 from ...extensions import db
-from ...models import User, UserDevice
+from ...models import Category, User, UserDevice
 from ...security import hash_password, verify_password
+from ...services.phone import normalize_mobile
 
 bp = Blueprint("auth", __name__)
 
@@ -43,9 +44,13 @@ def _register_device(user, device_id, label):
     return True
 
 
-def _nonblank_phone(value):
+def _mobile(value):
+    """A blank number and a made-up one are the same problem: the watermark needs
+    a real line behind it."""
     if not value.strip():
         raise ValidationError("phone_required")
+    if not normalize_mobile(value):
+        raise ValidationError("phone_invalid")
 
 
 class RegisterSchema(Schema):
@@ -54,7 +59,7 @@ class RegisterSchema(Schema):
 
     name = fields.Str(required=True, validate=validate.Length(min=1, max=120))
     email = fields.Email(required=True)
-    phone = fields.Str(required=True, validate=validate.And(validate.Length(max=40), _nonblank_phone))
+    phone = fields.Str(required=True, validate=validate.And(validate.Length(max=40), _mobile))
     password = fields.Str(required=True, validate=validate.Length(min=8, max=128))
 
 
@@ -81,6 +86,7 @@ def _user_json(user: User):
     return {"id": user.id, "name": user.name, "email": user.email, "phone": user.phone,
             "role": user.role, "locale": user.locale, "is_baytarian": user.is_baytarian,
             "headline": user.headline, "bio": user.bio, "location": user.location,
+            "specialties": user.specialties or [],
             "avatar_url": user.avatar_url, "cover_url": user.cover_url,
             "created_at": user.created_at.isoformat() if user.created_at else None}
 
@@ -101,7 +107,7 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify(error="email_taken"), 409
 
-    user = User(name=data["name"], email=email, phone=data["phone"].strip(),
+    user = User(name=data["name"], email=email, phone=normalize_mobile(data["phone"]),
                 password_hash=hash_password(data["password"]), role="student")
     db.session.add(user)
     db.session.commit()
@@ -174,9 +180,31 @@ def update_profile():
         phone = data.get("phone")
         if not isinstance(phone, str) or not phone.strip() or len(phone.strip()) > 40:
             return jsonify(error="validation", messages={"phone": ["phone_required"]}), 422
-        user.phone = phone.strip()
+        normalized = normalize_mobile(phone)
+        if not normalized:
+            return jsonify(error="validation", messages={"phone": ["phone_invalid"]}), 422
+        user.phone = normalized
 
     errors = {}
+
+    # Specialties are picked, not typed: anything that is not a live category slug
+    # would show up as a chip nobody can filter or browse by.
+    if "specialties" in data:
+        picked = data.get("specialties") or []
+        if not isinstance(picked, list) or not all(isinstance(s, str) for s in picked):
+            errors["specialties"] = ["invalid"]
+        else:
+            known = {c.slug for c in Category.query.all()}
+            # dict.fromkeys: drop duplicates, keep the order the learner picked.
+            cleaned = list(dict.fromkeys(s.strip() for s in picked if s.strip()))
+            unknown = [s for s in cleaned if s not in known]
+            if unknown:
+                errors["specialties"] = ["unknown_category"]
+            elif len(cleaned) > len(known):
+                errors["specialties"] = ["too_many"]
+            else:
+                user.specialties = cleaned or None
+
     for field, limit in EDITABLE_PROFILE_FIELDS.items():
         if field not in data:
             continue

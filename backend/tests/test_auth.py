@@ -37,6 +37,17 @@ def test_registration_requires_phone_and_tokens_are_bound_to_device(auth_app):
     blank = client.post("/api/v1/auth/register", json={**base, "phone": "   "})
     assert blank.status_code == 422
 
+    # A number that is not a mobile we can watermark is refused at the door.
+    for bad in ("01312345678", "0221234567", "0512345678", "12345"):
+        rejected = client.post("/api/v1/auth/register", json={**base, "phone": bad})
+        assert rejected.status_code == 422, (bad, rejected.get_json())
+        assert rejected.get_json()["messages"]["phone"] == ["phone_invalid"], rejected.get_json()
+
+    # A local Egyptian number is stored in the same canonical form as an E.164 one.
+    local = client.post("/api/v1/auth/register",
+                        json={**base, "email": "local@example.test", "phone": "01024527770"})
+    assert local.status_code == 201 and local.get_json()["user"]["phone"] == "+201024527770"
+
     created = client.post("/api/v1/auth/register", json={**base, "phone": "  +201000000000  "})
     assert created.status_code == 201
     assert created.get_json()["user"]["phone"] == "+201000000000"

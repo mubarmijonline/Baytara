@@ -79,6 +79,28 @@ def demo():
     assert c.patch("/api/v1/auth/profile", headers=h, json={"phone": "+201111111111"}).status_code == 200
     assert c.patch("/api/v1/auth/profile", headers=h, json={"phone": "  "}).status_code == 422
 
+    # the number is the watermark, so a made-up one is refused like a missing one,
+    # and whatever spelling is accepted comes back in one canonical form
+    for bad in ("01312345678", "0221234567", "02120674538428", "0512345678", "+9665123456"):
+        r = c.patch("/api/v1/auth/profile", headers=h, json={"phone": bad})
+        assert r.status_code == 422, (bad, r.get_json())
+        assert r.get_json()["messages"]["phone"] == ["phone_invalid"], r.get_json()
+    r = c.patch("/api/v1/auth/profile", headers=h, json={"phone": "0102 452 7770"})
+    assert r.get_json()["user"]["phone"] == "+201024527770", r.get_json()
+    r = c.patch("/api/v1/auth/profile", headers=h, json={"phone": "00971501234567"})
+    assert r.get_json()["user"]["phone"] == "+971501234567", r.get_json()
+
+    # ---- specialties: picked from the live categories, never typed ----
+    r = c.patch("/api/v1/auth/profile", headers=h, json={"specialties": [f"cat-{tag}", f"cat-{tag}", "  "]})
+    assert r.status_code == 200, r.get_json()
+    assert r.get_json()["user"]["specialties"] == [f"cat-{tag}"], r.get_json()
+    r = c.patch("/api/v1/auth/profile", headers=h, json={"specialties": ["made-up-slug"]})
+    assert r.status_code == 422 and r.get_json()["messages"]["specialties"] == ["unknown_category"]
+    assert c.patch("/api/v1/auth/profile", headers=h, json={"specialties": "not-a-list"}).status_code == 422
+    # clearing is allowed; the free-text job title is untouched by any of this
+    r = c.patch("/api/v1/auth/profile", headers=h, json={"specialties": []})
+    assert r.get_json()["user"]["specialties"] == [] and r.get_json()["user"]["headline"] == "أمراض الماشية"
+
     # ---- profile images ----
     png = (io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"0" * 64), "me.png")
     r = c.post("/api/v1/auth/profile/image", headers=h,

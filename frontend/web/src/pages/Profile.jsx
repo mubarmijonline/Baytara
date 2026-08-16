@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Award, BadgeCheck, ChevronLeft, Play, ShoppingBag } from 'lucide-react';
+import { Award, BadgeCheck, Check, ChevronLeft, Play, ShoppingBag } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
-import { auth, getDeviceId, isAuthed, useFetch } from '../lib/api.js';
+import { auth, getDeviceId, isAuthed, useFetch, webapi } from '../lib/api.js';
+import { normalizeMobile } from '../lib/validate.js';
 // gradients: certificate + course thumbnails; getDeviceId: marks the current device
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
@@ -137,13 +138,18 @@ function PhoneGate({ next }) {
 
   async function submit(event) {
     event.preventDefault();
+    const mobile = normalizeMobile(phone);
+    if (!mobile) {
+      setError(t('validation.phone'));
+      return;
+    }
     setBusy(true);
     setError('');
     try {
-      await updateProfile({ phone });
+      await updateProfile({ phone: mobile });
       navigate(safeNext(next));
-    } catch {
-      setError(t('profile.phoneError'));
+    } catch (e) {
+      setError(e.data?.messages?.phone?.[0] === 'phone_invalid' ? t('validation.phone') : t('profile.phoneError'));
     } finally { setBusy(false); }
   }
 
@@ -156,8 +162,9 @@ function PhoneGate({ next }) {
           <label htmlFor="profile-phone" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: colors.ink, marginBottom: 8 }}>
             {t('auth.phone')}
           </label>
-          <input id="profile-phone" required dir="ltr" value={phone} placeholder="+2010xxxxxxxx"
-            onChange={(event) => setPhone(event.target.value)} style={{ ...input, marginBottom: 14 }} />
+          <input id="profile-phone" required dir="ltr" inputMode="tel" value={phone} placeholder="01xxxxxxxxx"
+            onChange={(event) => setPhone(event.target.value)} style={{ ...input, marginBottom: 8 }} />
+          <p style={{ margin: '0 0 14px', fontSize: 12, color: colors.muted2, lineHeight: 1.7 }}>{t('validation.phone')}</p>
           {error && <p role="alert" style={{ color: '#b3261e', fontSize: 13, marginBottom: 12 }}>{error}</p>}
           <button type="submit" disabled={busy}
             style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14.5, fontWeight: 700, padding: '13px 24px', cursor: 'pointer' }}>
@@ -201,6 +208,9 @@ export default function Profile() {
   const { data: certificateData } = useFetch(() => (isAuthed() ? auth.certificates() : Promise.resolve(null)), []);
   const { data: activityData } = useFetch(() => (isAuthed() ? auth.activity({ limit: 6 }) : Promise.resolve(null)), []);
   const { data: baytarian } = useFetch(() => (isAuthed() ? auth.baytarianMe().catch(() => null) : Promise.resolve(null)), []);
+  // Specialties are picked from the live catalogue, so the profile and the course
+  // filters can never drift apart on what a specialty is called.
+  const { data: categoryData } = useFetch(() => webapi.categories(), []);
   const { data: paymentData } = useFetch(() => (isAuthed() ? auth.myPayments().catch(() => null) : Promise.resolve(null)), []);
 
   const loadDevices = () => auth.devices().then((r) => setDevices(r.devices || [])).catch(() => setDevices([]));
@@ -210,7 +220,7 @@ export default function Profile() {
     if (!user || form) return;
     setForm({
       name: user.name || '', headline: user.headline || '', location: user.location || '',
-      phone: user.phone || '', bio: user.bio || '',
+      phone: user.phone || '', bio: user.bio || '', specialties: user.specialties || [],
     });
   }, [user, form]);
 
@@ -231,6 +241,8 @@ export default function Profile() {
   const completedLessons = enrollments.reduce((sum, row) => sum + (row.progress?.completed_lessons || 0), 0);
   const verified = user.is_baytarian || baytarian?.is_baytarian;
   const thisDevice = getDeviceId();
+  const categories = categoryData?.categories || [];
+  const categoryName = (slug) => categories.find((c) => c.slug === slug)?.name || slug;
 
   const set = (key) => (event) => {
     setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -239,14 +251,32 @@ export default function Profile() {
 
   async function save(event) {
     event.preventDefault();
+    // The number is the video watermark, so it is checked here before the request
+    // rather than only being bounced by the server with a generic message.
+    if (!normalizeMobile(form.phone)) {
+      setSaveError(t('validation.phone'));
+      return;
+    }
     setSaving(true);
     setSaveError('');
     try {
-      await updateProfile(form);
+      await updateProfile({ ...form, phone: normalizeMobile(form.phone) });
       setSaved(true);
     } catch (e) {
-      setSaveError(e.data?.messages?.phone ? t('profile.phoneError') : t('profile.saveError'));
+      const phoneError = e.data?.messages?.phone?.[0];
+      setSaveError(phoneError === 'phone_invalid' ? t('validation.phone')
+        : phoneError ? t('profile.phoneError') : t('profile.saveError'));
     } finally { setSaving(false); }
+  }
+
+  function toggleSpecialty(slug) {
+    setForm((current) => ({
+      ...current,
+      specialties: current.specialties.includes(slug)
+        ? current.specialties.filter((s) => s !== slug)
+        : current.specialties.concat(slug),
+    }));
+    setSaved(false);
   }
 
   async function removeDevice(id) {
@@ -298,6 +328,11 @@ export default function Profile() {
                 <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
                   {t('profile.coursesCount', { n: enrollments.length })}
                 </span>
+                {(user.specialties || []).map((slug) => (
+                  <span key={slug} style={{ background: colors.accentSoft, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.accent, fontWeight: 700 }}>
+                    {categoryName(slug)}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -574,6 +609,34 @@ export default function Profile() {
                     </label>
                     {field('phone', t('auth.phone'), { required: true, dir: 'ltr', placeholder: '+2010xxxxxxxx' })}
                     {field('location', t('profile.fieldLocation'), { full: true })}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: colors.ink }}>{t('profile.fieldSpecialties')}</span>
+                        <span style={{ fontSize: 12, color: colors.muted2 }}>{t('profile.specialtiesHint')}</span>
+                      </div>
+                      {/* Picked from the catalogue, not typed: a free-text specialty
+                          cannot be browsed or filtered by anywhere else on the site. */}
+                      <div role="group" aria-label={t('profile.fieldSpecialties')}
+                        style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {categories.map((category) => {
+                          const picked = form.specialties.includes(category.slug);
+                          return (
+                            <button key={category.id} type="button" aria-pressed={picked}
+                              onClick={() => toggleSpecialty(category.slug)}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
+                                border: `1.5px solid ${picked ? colors.accent : '#d6d9e4'}`,
+                                background: picked ? colors.accentSoft : colors.surface,
+                                color: picked ? colors.accent : colors.ink,
+                                borderRadius: 100, padding: '9px 15px', fontSize: 13.5, fontWeight: 600,
+                              }}>
+                              {picked && <Check size={14} aria-hidden="true" />}
+                              {category.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                     <label style={{ display: 'block', gridColumn: '1 / -1' }}>
                       <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: colors.ink, marginBottom: 8 }}>{t('profile.about')}</span>
                       <textarea value={form.bio} onChange={set('bio')} rows="4"

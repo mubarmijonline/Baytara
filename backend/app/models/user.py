@@ -31,6 +31,10 @@ class User(db.Model):
     cover_url = db.Column(db.String(500))
     location = db.Column(db.String(120))
     expertise = db.Column(db.JSON)  # list[str]
+    # Self-service specialties, held as category slugs rather than free text so the
+    # profile and the catalogue always name a specialty the same way. `expertise`
+    # stays as it is: admins write prose there ("استشاري كبرى مزارع الدواجن").
+    specialties = db.Column(db.JSON)  # list[str] of Category.slug
     # Per-account device allowance. NULL = the contract default (UserDevice.MAX_DEVICES).
     # Raised only for staff/testing accounts, never as a way around البند2 for buyers.
     max_devices = db.Column(db.Integer)
@@ -52,6 +56,7 @@ class User(db.Model):
             "bio": self.bio,
             "avatar_url": self.avatar_url,
             "expertise": self.expertise or [],
+            "specialties": self.specialties or [],
             "category": self.category.to_dict(lang) if self.category else None,
         }
 
