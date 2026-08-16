@@ -532,6 +532,13 @@ def course_delete(cid):
     if enrollments or payments:
         return jsonify(error="course_in_use", enrollments=enrollments, payments=payments), 409
 
+    # Cancelled seats no longer block the delete, but they still point at the course
+    # and enrollments.course_id is NO ACTION, so leaving them turns an allowed delete
+    # into a foreign-key error. They are revoked already; they go with it. Deleting
+    # through the ORM takes their lesson_progress rows with them.
+    for revoked in Enrollment.query.filter_by(course_id=cid, status="cancelled").all():
+        db.session.delete(revoked)
+
     # Standalone videos outlive the course; only the legacy direct link goes.
     Lesson.query.filter_by(course_id=cid).update({"course_id": None})
     db.session.delete(c)  # modules and course_videos cascade

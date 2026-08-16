@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import tempfile
 import uuid
 
+from tests import without_sqlite_foreign_keys
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
@@ -503,7 +504,10 @@ def test_canonical_video_schema_has_no_untyped_criteria_column():
 
 
 def test_duplicate_legacy_vdocipher_ids_abort_before_schema_mutation():
-    with tempfile.TemporaryDirectory(prefix="baytara-catalog-migration-") as temp_dir:
+    # Alembic's batch mode drops and rebuilds tables, which SQLite refuses to do while
+    # it is enforcing foreign keys. Postgres migrates without needing this.
+    with without_sqlite_foreign_keys(), \
+            tempfile.TemporaryDirectory(prefix="baytara-catalog-migration-") as temp_dir:
         database_url = f"sqlite:///{Path(temp_dir) / 'catalog.sqlite'}"
         config = type("MigrationTestConfig", (BaseConfig,), {
             "SQLALCHEMY_DATABASE_URI": database_url,

@@ -212,3 +212,23 @@ def test_a_free_course_records_no_enrollment_and_never_blocks_a_delete(app):
     assert admin_client.delete(f"/api/v1/admin/users/{instructor_id}").status_code == 200
     with app.app_context():
         assert db.session.get(Lesson, video_id).instructor_id is None
+
+
+def test_a_course_deletes_once_its_only_seat_is_cancelled(admin_client, seeded, app):
+    """The reported case: un-enroll the only learner, then delete the course. The
+    guard already ignored the cancelled seat, but the row still pointed at the course
+    and enrollments.course_id is NO ACTION, so the delete died on a foreign key."""
+    eid = _only(admin_client, course_id=seeded["course"])[0]["id"]
+    assert admin_client.post(f"/api/v1/admin/enrollments/{eid}/cancel",
+                             json={"reason": "It only for test"}).status_code == 200
+
+    with app.app_context():
+        # the paid seat's payment still names what was bought, so it still blocks
+        Payment.query.filter_by(course_id=seeded["course"]).delete()
+        db.session.commit()
+
+    removed = admin_client.delete(f"/api/v1/admin/courses/{seeded['course']}")
+    assert removed.status_code == 200, removed.get_json()
+    with app.app_context():
+        assert db.session.get(Course, seeded["course"]) is None
+        assert Enrollment.query.filter_by(course_id=seeded["course"]).count() == 0
