@@ -53,6 +53,11 @@ class Enrollment(db.Model):
     enrolled_at = db.Column(db.DateTime(timezone=True), default=_now)
     # Access Duration (contract البند3): NULL = lifetime; else access ends at this instant.
     expires_at = db.Column(db.DateTime(timezone=True))
+    # Admin un-enrollment. The row survives so the learner's progress is still there if
+    # they are reinstated, and so there is a record of who removed them and why.
+    cancelled_at = db.Column(db.DateTime(timezone=True))
+    cancel_reason = db.Column(db.Text)
+    cancelled_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     course = db.relationship("Course")
     progress = db.relationship("LessonProgress", back_populates="enrollment", cascade="all, delete-orphan")

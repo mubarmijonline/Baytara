@@ -86,6 +86,8 @@ export const api = {
 
   // courses
   courses: (params) => req('/admin/courses' + qs(params)),
+  enrollments: (params) => req('/admin/enrollments' + qs(params)),
+  enrollmentCancel: (id, body) => req(`/admin/enrollments/${id}/cancel`, { method: 'POST', body: JSON.stringify(body) }),
   course: (id) => req(`/admin/courses/${id}`),
   courseCreate: (body) => req('/admin/courses', { method: 'POST', body: JSON.stringify(body) }),
   courseUpdate: (id, body) => req(`/admin/courses/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),

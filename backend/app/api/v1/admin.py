@@ -54,8 +54,13 @@ def stats():
         enrollments=Enrollment.query.filter_by(status="active").count(),
         payments={
             "paid": Payment.query.filter_by(status="paid").count(),
-            "revenue": float(db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0))
-                             .filter(Payment.status == "paid").scalar() or 0),
+            # Net of refunds: a partially refunded seat still earned the difference,
+            # and a fully refunded one earned nothing.
+            "revenue": float(db.session.query(
+                db.func.coalesce(db.func.sum(Payment.amount - db.func.coalesce(Payment.refunded_amount, 0)), 0),
+            ).filter(Payment.status.in_(("paid", "partially_refunded"))).scalar() or 0),
+            "refunded": float(db.session.query(db.func.coalesce(db.func.sum(Payment.refunded_amount), 0))
+                              .scalar() or 0),
         },
         baytarian={"pending": BaytarianRequest.query.filter_by(status="pending").count()},
     )
@@ -195,6 +200,140 @@ def users_delete(uid):
     db.session.delete(u)
     db.session.commit()
     return jsonify(deleted=uid)
+
+
+# ------------------------------ enrollments ------------------------------
+
+def _enrollment_json(e, payment=None):
+    learner = e.user if hasattr(e, "user") else db.session.get(User, e.user_id)
+    return {
+        "id": e.id,
+        "status": e.status,
+        "source": e.source,
+        "enrolled_at": e.enrolled_at.isoformat() if e.enrolled_at else None,
+        "expires_at": e.expires_at.isoformat() if e.expires_at else None,
+        "is_expired": e.is_expired(),
+        "cancelled_at": e.cancelled_at.isoformat() if e.cancelled_at else None,
+        "cancel_reason": e.cancel_reason,
+        "learner": {"id": learner.id, "name": learner.name, "email": learner.email} if learner else None,
+        "course": {"id": e.course.id, "title": e.course.title, "slug": e.course.slug,
+                   "price": float(e.course.price), "currency": e.course.currency} if e.course else None,
+        "payment": payment.to_dict(admin=True) if payment else None,
+    }
+
+
+def _enrollment_payment(e):
+    """The paid seat behind an enrollment, if there is one. Renewals are later rows for
+    the same course, so the first paid enrol is what a refund is measured against."""
+    return (Payment.query
+            .filter(Payment.user_id == e.user_id, Payment.course_id == e.course_id,
+                    Payment.kind.in_(("enroll", "renewal")),
+                    Payment.status.in_(("paid", "partially_refunded")))
+            .order_by(Payment.paid_at.asc().nullslast(), Payment.id.asc())
+            .first())
+
+
+@bp.get("/enrollments")
+@require_role("admin")
+def enrollments_list():
+    q = Enrollment.query.join(User, Enrollment.user_id == User.id).join(Course, Enrollment.course_id == Course.id)
+    course_id = request.args.get("course_id", type=int)
+    if course_id:
+        q = q.filter(Enrollment.course_id == course_id)
+    user_id = request.args.get("user_id", type=int)
+    if user_id:
+        q = q.filter(Enrollment.user_id == user_id)
+    status = request.args.get("status")
+    if status:
+        q = q.filter(Enrollment.status == status)
+    search = request.args.get("q")
+    if search:
+        like = f"%{search}%"
+        q = q.filter(db.or_(User.name.ilike(like), User.email.ilike(like), Course.title.ilike(like)))
+
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
+    pg = db.paginate(q.order_by(Enrollment.enrolled_at.desc(), Enrollment.id.desc()),
+                     page=page, per_page=per_page, error_out=False)
+    rows = [_enrollment_json(e, _enrollment_payment(e)) for e in pg.items]
+    return jsonify(enrollments=rows, total=pg.total, page=pg.page, pages=pg.pages, per_page=pg.per_page)
+
+
+@bp.post("/enrollments/<int:eid>/cancel")
+@require_role("admin")
+def enrollment_cancel(eid):
+    """Un-enroll a learner, with a reason they are told and an optional recorded refund.
+
+    No money moves here: there is no gateway refund call in this codebase, so the
+    refund fields are the book that says what was agreed and someone returns it by
+    hand. Saying so is the point — a silent 'refunded' flag would be a lie.
+    """
+    e = db.session.get(Enrollment, eid)
+    if not e:
+        return jsonify(error="not_found"), 404
+    if e.status == "cancelled":
+        return jsonify(error="already_cancelled"), 409
+
+    d = request.get_json(silent=True) or {}
+    reason = (d.get("reason") or "").strip()
+    if not reason:
+        return jsonify(error="reason_required"), 422
+    if len(reason) > 2000:
+        return jsonify(error="reason_too_long"), 422
+
+    payment = _enrollment_payment(e)
+    refund = d.get("refund")
+    refund_amount = None
+    if refund:
+        if not payment:
+            return jsonify(error="no_payment_to_refund"), 409
+        charged = float(payment.amount or 0)
+        already = float(payment.refunded_amount or 0)
+        remaining = round(charged - already, 2)
+        if "amount" in refund and refund.get("amount") is not None:
+            try:
+                refund_amount = round(float(refund["amount"]), 2)
+            except (TypeError, ValueError):
+                return jsonify(error="invalid_refund_amount"), 422
+        elif refund.get("percent") is not None:
+            try:
+                percent = float(refund["percent"])
+            except (TypeError, ValueError):
+                return jsonify(error="invalid_refund_percent"), 422
+            if percent <= 0 or percent > 100:
+                return jsonify(error="invalid_refund_percent"), 422
+            refund_amount = round(charged * percent / 100.0, 2)
+        else:
+            return jsonify(error="invalid_refund_amount"), 422
+        if refund_amount <= 0 or refund_amount > remaining:
+            return jsonify(error="refund_exceeds_payment", remaining=remaining), 422
+
+    e.status = "cancelled"
+    e.cancelled_at = datetime.now(timezone.utc)
+    e.cancel_reason = reason
+    e.cancelled_by = _uid()
+    # enrolled_count is what the course card advertises and what the "popular" sort
+    # reads, so a removed learner comes back off it. Floored: the counter predates
+    # this and some rows were bumped without a matching enrollment.
+    course = e.course
+    if course:
+        course.enrolled_count = max((course.enrolled_count or 0) - 1, 0)
+
+    if refund_amount:
+        payment.refunded_amount = round(float(payment.refunded_amount or 0) + refund_amount, 2)
+        payment.refunded_at = datetime.now(timezone.utc)
+        payment.refunded_by = _uid()
+        payment.refund_reason = reason
+        payment.status = ("refunded" if float(payment.refunded_amount) >= float(payment.amount or 0)
+                          else "partially_refunded")
+
+    push_notification(
+        e.user_id, "enrollment_cancelled",
+        f"تم إلغاء تسجيلك في «{course.title}»" if course else "تم إلغاء تسجيلك",
+        reason,
+    )
+    db.session.commit()
+    return jsonify(enrollment=_enrollment_json(e, payment))
 
 
 # ------------------------------ categories ------------------------------

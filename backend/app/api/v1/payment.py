@@ -120,6 +120,11 @@ def _enroll_course(uid, course, access_days):
     enr = Enrollment.query.filter_by(user_id=uid, course_id=course.id).first()
     if enr:
         expires_at = merge_access_expiry(enr.status, enr.expires_at, access_days)
+        # Buying back a seat an admin removed puts the learner on the counter again;
+        # cancelling took them off it, so without this the course would undercount.
+        if enr.status == "cancelled":
+            course.enrolled_count = (course.enrolled_count or 0) + 1
+            enr.cancelled_at = enr.cancel_reason = enr.cancelled_by = None
         enr.status = "active"
         enr.expires_at = expires_at
     else:

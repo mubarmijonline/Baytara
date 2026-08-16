@@ -40,7 +40,7 @@ def enroll():
         return jsonify(error="course_not_found"), 404
 
     existing = Enrollment.query.filter_by(user_id=_uid(), course_id=course.id).first()
-    if existing:
+    if existing and existing.status != "cancelled":
         return jsonify(enrollment=existing.to_dict()), 200
 
     # Only free-tier courses self-enroll here. Paid tiers (baytarian/general) go
@@ -52,9 +52,18 @@ def enroll():
     if reason:  # e.g. vet_free for a non-instructor
         return jsonify(error=reason), 403
 
-    enrollment = Enrollment(user_id=_uid(), course_id=course.id, source="free", status="active",
-                            expires_at=Enrollment.compute_expiry(course.access_days))
-    db.session.add(enrollment)
+    # A cancelled row is reused rather than replaced: the unique (user, course) index
+    # would refuse a second one, and the learner's old progress is still attached.
+    # Re-enrolling on a free course is self-service, so an admin removal is not a ban.
+    if existing:
+        existing.status = "active"
+        existing.expires_at = Enrollment.compute_expiry(course.access_days)
+        existing.cancelled_at = existing.cancel_reason = existing.cancelled_by = None
+        enrollment = existing
+    else:
+        enrollment = Enrollment(user_id=_uid(), course_id=course.id, source="free", status="active",
+                                expires_at=Enrollment.compute_expiry(course.access_days))
+        db.session.add(enrollment)
     course.enrolled_count = (course.enrolled_count or 0) + 1
     db.session.commit()
     return jsonify(enrollment=enrollment.to_dict()), 201

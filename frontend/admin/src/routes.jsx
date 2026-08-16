@@ -8,6 +8,7 @@ import Categories from './pages/Categories.jsx';
 import Courses from './pages/Courses.jsx';
 import CourseContent from './pages/CourseContent.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Enrollments from './pages/Enrollments.jsx';
 import Hierarchy from './pages/Hierarchy.jsx';
 import Messages from './pages/Messages.jsx';
 import Paths from './pages/Paths.jsx';
@@ -41,6 +42,7 @@ const sectionRoutes = [
   ['paths', Paths],
   ['paths/new', Paths],
   ['paths/:pathId/edit', Paths],
+  ['enrollments', Enrollments],
   ['reviews', Reviews],
   ['hierarchy', Hierarchy],
   ['categories', Categories],
