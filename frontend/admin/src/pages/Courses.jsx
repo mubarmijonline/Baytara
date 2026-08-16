@@ -194,11 +194,12 @@ export function CourseEditor({ routeParams = {} }) {
   </section>;
 }
 
-function CourseList() {
+function CourseList({ initialStatus = '' }) {
   const { language, t } = useAdminLanguage();
   const c = COPY[language];
   const [rows, setRows] = useState(null);
-  const [status, setStatus] = useState('');
+  // Seeded from the URL so a dashboard tile lands on the rows it counted.
+  const [status, setStatus] = useState(() => initialStatus || '');
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const visibleRows = useMemo(() => rows || [], [rows]);
@@ -247,10 +248,10 @@ function CourseList() {
   </section>;
 }
 
-export default function Courses({ routeParams = {} }) {
+export default function Courses({ routeParams = {}, searchParams }) {
   const location = useLocation();
   if (location.pathname.endsWith('/new') || location.pathname.endsWith('/edit')) {
     return <CourseEditor routeParams={routeParams} />;
   }
-  return <CourseList />;
+  return <CourseList initialStatus={searchParams?.get('status') || ''} />;
 }

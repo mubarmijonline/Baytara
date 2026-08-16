@@ -8,12 +8,13 @@ import { pageCopy } from '../page-copy.js';
 
 const statusChip = (s) => ({ pending: 'draft', approved: 'published', rejected: 'unpublished' }[s] || 'role');
 
-export default function Baytarian() {
+export default function Baytarian({ searchParams }) {
   const { language } = useAdminLanguage();
   const copy = pageCopy('baytarian', language);
   const common = pageCopy('common', language);
   const [rows, setRows] = useState(null);
-  const [status, setStatus] = useState('pending');
+  // Seeded from the URL so a dashboard tile lands on the rows it counted.
+  const [status, setStatus] = useState(() => searchParams.get('status') || 'pending');
   const [err, setErr] = useState('');
 
   async function load() {

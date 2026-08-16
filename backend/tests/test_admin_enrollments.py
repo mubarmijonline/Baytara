@@ -136,7 +136,10 @@ def test_refund_is_recorded_against_the_payment(admin_client, seeded, app):
         # revenue nets the refund off rather than dropping the whole sale
         stats = admin_client.get("/api/v1/admin/stats").get_json()
         assert stats["payments"]["revenue"] == 300
-        assert stats["payments"]["refunded"] == 100
+        # `refunded` counts fully-refunded payments; the money lives in refunded_amount
+        assert stats["payments"]["refunded_amount"] == 100
+        assert stats["payments"]["partially_refunded"] == 1
+        assert stats["payments"]["refunded"] == 0
 
 
 def test_a_full_refund_marks_the_payment_refunded(admin_client, seeded):

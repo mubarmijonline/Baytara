@@ -62,13 +62,18 @@ function InstructorForm({ user, categories, onClose, onSaved }) {
       category_id: f.category_id || null, avatar_url: f.avatar_url || null,
       can_add_video: f.can_add_video, can_edit_video: f.can_edit_video, can_delete_video: f.can_delete_video,
     };
+    // Checked here too: pasting "email: someone@yahoo.com" used to be stored verbatim,
+    // and the address is the account's login, so a typo locks the person out.
+    const email = f.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setErr(copy.invalidEmail); setBusy(false); return; }
     try {
       if (editing) {
         if (f.password) body.password = f.password;
         body.is_active = f.is_active;
+        body.email = email;
         await api.userUpdate(user.id, body);
       } else {
-        await api.userCreate({ ...body, email: f.email, password: f.password, role: 'instructor' });
+        await api.userCreate({ ...body, email, password: f.password, role: 'instructor' });
       }
       onSaved();
     } catch (e) { setErr(apiError(e, common.loadError)); setBusy(false); }
@@ -87,7 +92,9 @@ function InstructorForm({ user, categories, onClose, onSaved }) {
         </div>
       </div>
       <Field label={copy.name}><input value={f.name} onChange={set('name')} /></Field>
-      {!editing && <Field label={copy.email}><input type="email" value={f.email} onChange={set('email')} /></Field>}
+      <Field label={copy.email}>
+        <input type="email" dir="ltr" value={f.email} onChange={set('email')} placeholder="name@example.com" />
+      </Field>
       <Field label={editing ? copy.newPassword : copy.password}>
         <input type="password" value={f.password} onChange={set('password')} />
       </Field>

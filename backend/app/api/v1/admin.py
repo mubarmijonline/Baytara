@@ -2,6 +2,7 @@ import os
 import uuid
 
 from flask import Blueprint, jsonify, request, send_file, current_app
+from marshmallow import ValidationError, validate
 from werkzeug.utils import secure_filename
 
 from ...extensions import db
@@ -10,7 +11,7 @@ from datetime import datetime, timezone
 from ...models import (
     User, UserDevice, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
-    CourseReview, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
+    CourseReview, Certificate, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
     push_notification, refresh_course_rating,
 )
 from ...models.catalog import ACCESS_TYPES
@@ -37,32 +38,65 @@ def _uid():
 @bp.get("/stats")
 @require_role("admin")
 def stats():
-    def n(q):
-        return db.session.query(q).count()
+    """Every figure the dashboard shows. One grouped query per dimension rather than
+    a count per tile: the dashboard is the first screen an admin opens."""
+
+    def grouped(model, column, keys):
+        rows = dict(db.session.query(column, db.func.count(model.id)).group_by(column).all())
+        counts = {key: rows.get(key, 0) for key in keys}
+        counts["total"] = sum(rows.values())
+        return counts
+
+    now = datetime.now(timezone.utc)
+    enrollments = grouped(Enrollment, Enrollment.status, ("active", "cancelled"))
+    # Expired seats still read as active in the row; they are the ones whose window
+    # has closed, which is a different queue from a cancelled one.
+    enrollments["expired"] = (Enrollment.query
+                              .filter(Enrollment.status == "active",
+                                      Enrollment.expires_at.isnot(None), Enrollment.expires_at <= now)
+                              .count())
+
+    payments = grouped(Payment, Payment.status,
+                       ("pending", "paid", "failed", "expired", "refunded", "partially_refunded"))
+    # Net of refunds: a partially refunded seat still earned the difference, and a
+    # fully refunded one earned nothing.
+    payments["revenue"] = float(db.session.query(
+        db.func.coalesce(db.func.sum(Payment.amount - db.func.coalesce(Payment.refunded_amount, 0)), 0),
+    ).filter(Payment.status.in_(("paid", "partially_refunded"))).scalar() or 0)
+    payments["refunded_amount"] = float(
+        db.session.query(db.func.coalesce(db.func.sum(Payment.refunded_amount), 0)).scalar() or 0)
+
+    videos = grouped(Lesson, Lesson.status, ("draft", "published", "unpublished"))
+    # A video nobody put in a course is the one an admin has to chase.
+    videos["unassigned"] = (Lesson.query
+                            .filter(~Lesson.id.in_(db.select(CourseVideo.video_id)),
+                                    Lesson.course_id.is_(None))
+                            .count())
+    videos["no_provider"] = Lesson.query.filter(Lesson.vdocipher_video_id.is_(None)).count()
+
+    users = grouped(User, User.role, ("student", "instructor", "admin"))
+    users["inactive"] = User.query.filter_by(is_active=False).count()
 
     return jsonify(
-        users={
-            "total": User.query.count(),
-            "students": User.query.filter_by(role="student").count(),
-            "instructors": User.query.filter_by(role="instructor").count(),
-            "admins": User.query.filter_by(role="admin").count(),
+        users=users,
+        courses=grouped(Course, Course.status, ("draft", "published", "unpublished")),
+        videos=videos,
+        enrollments=enrollments,
+        payments=payments,
+        instapay=grouped(InstapayPayment, InstapayPayment.status, ("pending", "approved", "rejected")),
+        baytarian=grouped(BaytarianRequest, BaytarianRequest.status, ("pending", "approved", "rejected")),
+        catalog={
+            "bundles": Bundle.query.count(),
+            "paths": LearningPath.query.count(),
+            "categories": Category.query.count(),
+            "articles": Article.query.count(),
+            "reviews": CourseReview.query.count(),
+            "certificates": Certificate.query.count(),
         },
-        courses={
-            "total": Course.query.count(),
-            "published": Course.query.filter_by(status="published").count(),
+        messages={
+            "total": ContactMessage.query.count(),
+            "unread": ContactMessage.query.filter_by(is_read=False).count(),
         },
-        enrollments=Enrollment.query.filter_by(status="active").count(),
-        payments={
-            "paid": Payment.query.filter_by(status="paid").count(),
-            # Net of refunds: a partially refunded seat still earned the difference,
-            # and a fully refunded one earned nothing.
-            "revenue": float(db.session.query(
-                db.func.coalesce(db.func.sum(Payment.amount - db.func.coalesce(Payment.refunded_amount, 0)), 0),
-            ).filter(Payment.status.in_(("paid", "partially_refunded"))).scalar() or 0),
-            "refunded": float(db.session.query(db.func.coalesce(db.func.sum(Payment.refunded_amount), 0))
-                              .scalar() or 0),
-        },
-        baytarian={"pending": BaytarianRequest.query.filter_by(status="pending").count()},
     )
 
 
@@ -119,6 +153,19 @@ def users_list():
     return jsonify(users=[_user_json(u) for u in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
 
 
+# Public registration runs every address through marshmallow's Email field; the admin
+# path only checked the box was non-empty, so "email: someone@yahoo.com" was stored
+# verbatim, prefix and all. Same rule both ways now, and trimmed and lowercased so one
+# person cannot arrive twice as " A@x.com " and "a@x.com".
+_validate_email = validate.Email(error="invalid_email")
+
+
+def _clean_email(raw):
+    value = (raw or "").strip().lower()
+    _validate_email(value)
+    return value
+
+
 @bp.post("/users")
 @require_role("admin")
 def users_create():
@@ -128,7 +175,10 @@ def users_create():
             return jsonify(error=f"{f}_required"), 422
     if d.get("role", "student") not in ROLES:
         return jsonify(error="bad_role"), 422
-    email = d["email"].lower()
+    try:
+        email = _clean_email(d["email"])
+    except ValidationError:
+        return jsonify(error="invalid_email"), 422
     if User.query.filter_by(email=email).first():
         return jsonify(error="email_taken"), 409
     u = User(name=d["name"], email=email, password_hash=hash_password(d["password"]),
@@ -154,6 +204,15 @@ def users_update(uid):
         u.role = d["role"]
     if "name" in d:
         u.name = d["name"]
+    if "email" in d:
+        try:
+            email = _clean_email(d["email"])
+        except ValidationError:
+            return jsonify(error="invalid_email"), 422
+        clash = User.query.filter(User.email == email, User.id != u.id).first()
+        if clash:
+            return jsonify(error="email_taken"), 409
+        u.email = email
     if "is_active" in d:
         if u.id == _uid() and not d["is_active"]:
             return jsonify(error="cannot_disable_self"), 409

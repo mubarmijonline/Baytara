@@ -472,3 +472,28 @@ def test_deleting_an_instructor_reports_what_blocks_it_and_clears_their_own_rows
         assert UserDevice.query.filter_by(user_id=learner_id).count() == 0
         assert VideoEntitlement.query.filter_by(user_id=learner_id).count() == 0
         assert BaytarianRequest.query.filter_by(user_id=learner_id).count() == 0
+
+
+def test_admin_user_email_is_validated_and_normalised(admin_client, app):
+    """The reported case: "email: someone@yahoo.com" was pasted into the address box
+    and stored verbatim, because the admin path only checked the field was non-empty."""
+    base = {"name": "Prof", "password": "secret12", "role": "instructor"}
+
+    for bad in ("email: ahmedragabm2005@yahoo.com", "not-an-email", "a@b", "  ", "two@@x.com"):
+        response = admin_client.post("/api/v1/admin/users", json={**base, "email": bad})
+        assert response.status_code == 422, (bad, response.get_json())
+
+    # Stored trimmed and lowercased, so one person cannot arrive as two accounts.
+    created = admin_client.post("/api/v1/admin/users",
+                                json={**base, "email": "  AhmedRagab@Yahoo.COM  "})
+    assert created.status_code == 201, created.get_json()
+    uid = created.get_json()["user"]["id"]
+    assert created.get_json()["user"]["email"] == "ahmedragab@yahoo.com"
+    assert admin_client.post("/api/v1/admin/users",
+                             json={**base, "email": "ahmedragab@yahoo.com"}).status_code == 409
+
+    # A mistyped address can be corrected in place rather than needing a database edit.
+    assert admin_client.patch(f"/api/v1/admin/users/{uid}",
+                              json={"email": "email: x@y.com"}).status_code == 422
+    fixed = admin_client.patch(f"/api/v1/admin/users/{uid}", json={"email": "Correct@Yahoo.com"})
+    assert fixed.status_code == 200 and fixed.get_json()["user"]["email"] == "correct@yahoo.com"

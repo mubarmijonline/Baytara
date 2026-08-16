@@ -409,3 +409,13 @@ select option { font-weight: 600; }
 .settings-success { color: var(--success); font-weight: 700; padding-block: 8px; }
 @media (max-width: 1050px) { .site-settings-layout { grid-template-columns: 1fr; } .site-preview-panel { position: static; } .site-preview-panel iframe { min-height: 620px; } }
 @media (max-width: 620px) { .site-settings-header { flex-direction: column; } .localized-field-grid, .site-preview-toolbar { grid-template-columns: 1fr; } }
+
+/* Dashboard: grouped, clickable figures. Every tile is a link to the rows it counts. */
+.stat-group { margin-bottom: 22px; }
+.stat-group h3 { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--muted, #5A6180); }
+.stat-link { display: block; color: inherit; text-decoration: none; transition: border-color .12s, transform .12s; }
+.stat-link:hover { border-color: #3048A0; transform: translateY(-1px); }
+.stat-link:focus-visible { outline: 2px solid #3048A0; outline-offset: 2px; }
+/* A queue with something in it should read as work, not decoration. */
+.stat-warn .num { color: #8a6d1f; }
+.stat-warn { background: #fffdf6; }

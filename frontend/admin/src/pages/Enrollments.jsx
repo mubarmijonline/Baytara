@@ -96,12 +96,13 @@ function CancelDialog({ row, copy, common, onClose, onDone }) {
   );
 }
 
-export default function Enrollments() {
+export default function Enrollments({ searchParams }) {
   const { language } = useAdminLanguage();
   const copy = pageCopy('enrollments', language);
   const common = pageCopy('common', language);
   const [rows, setRows] = useState(null);
-  const [status, setStatus] = useState('');
+  // Seeded from the URL so a dashboard tile lands on the rows it counted.
+  const [status, setStatus] = useState(() => searchParams?.get('status') || '');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
