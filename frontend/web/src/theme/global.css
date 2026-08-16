@@ -134,7 +134,10 @@ textarea {
 
 @media (max-width: 900px) {
   .grid-collapse-2 {
-    grid-template-columns: 1fr !important;
+    /* minmax(0,…), not 1fr: a bare 1fr is minmax(auto,1fr), so a wide child's
+       min-content pushes the track past the viewport and the layout's
+       overflow-x:hidden then clips the form off the side of the screen. */
+    grid-template-columns: minmax(0, 1fr) !important;
   }
   .grid-3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));

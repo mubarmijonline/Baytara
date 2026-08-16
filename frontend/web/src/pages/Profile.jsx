@@ -5,6 +5,7 @@ import { Container } from '../components/Primitives.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { auth, getDeviceId, isAuthed, useFetch, webapi } from '../lib/api.js';
 import { normalizeMobile } from '../lib/validate.js';
+import PhoneField from '../components/PhoneField.jsx';
 // gradients: certificate + course thumbnails; getDeviceId: marks the current device
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
@@ -159,12 +160,9 @@ function PhoneGate({ next }) {
         <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: DARK }}>{t('profile.phoneTitle')}</h1>
         <p style={{ margin: '0 0 18px', fontSize: 14, color: colors.muted, lineHeight: 1.8 }}>{t('profile.phoneDescription')}</p>
         <form onSubmit={submit}>
-          <label htmlFor="profile-phone" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: colors.ink, marginBottom: 8 }}>
-            {t('auth.phone')}
-          </label>
-          <input id="profile-phone" required dir="ltr" inputMode="tel" value={phone} placeholder="01xxxxxxxxx"
-            onChange={(event) => setPhone(event.target.value)} style={{ ...input, marginBottom: 8 }} />
-          <p style={{ margin: '0 0 14px', fontSize: 12, color: colors.muted2, lineHeight: 1.7 }}>{t('validation.phone')}</p>
+          <div style={{ marginBottom: 14 }}>
+            <PhoneField id="profile-phone" label={t('auth.phone')} defaultValue={phone} onChange={setPhone} autoFocus />
+          </div>
           {error && <p role="alert" style={{ color: '#b3261e', fontSize: 13, marginBottom: 12 }}>{error}</p>}
           <button type="submit" disabled={busy}
             style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14.5, fontWeight: 700, padding: '13px 24px', cursor: 'pointer' }}>
@@ -607,7 +605,8 @@ export default function Profile() {
                       <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: colors.ink, marginBottom: 8 }}>{t('profile.fieldEmail')}</span>
                       <input value={user.email} readOnly dir="ltr" style={{ ...input, background: '#f0f1f6', color: colors.muted2 }} />
                     </label>
-                    {field('phone', t('auth.phone'), { required: true, dir: 'ltr', placeholder: '+2010xxxxxxxx' })}
+                    <PhoneField id="account-phone" label={t('auth.phone')} defaultValue={form.phone}
+                      onChange={(value) => { setForm((current) => ({ ...current, phone: value })); setSaved(false); }} />
                     {field('location', t('profile.fieldLocation'), { full: true })}
                     <div style={{ gridColumn: '1 / -1' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>

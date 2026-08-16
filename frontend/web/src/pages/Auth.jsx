@@ -5,6 +5,7 @@ import { authPerks } from '../data/mock.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 import { isEmail, normalizeMobile } from '../lib/validate.js';
+import PhoneField from '../components/PhoneField.jsx';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -154,7 +155,8 @@ export default function Auth() {
           {field('البريد الإلكتروني', <input type="email" inputMode="email" placeholder="you@email.com" style={inputStyle} value={f.email} onChange={set('email')} />)}
           {isSignup && field(t('auth.phone'),
             <>
-              <input required inputMode="tel" placeholder="01xxxxxxxxx" style={inputStyle} value={f.phone} onChange={set('phone')} />
+              <PhoneField id="signup-phone" defaultValue={f.phone}
+                onChange={(value) => setF((current) => ({ ...current, phone: value }))} />
               <div style={{ fontSize: 12, color: colors.muted, marginTop: 6, lineHeight: 1.7 }}>{t('auth.phoneHint')}</div>
             </>)}
           {field('كلمة المرور', <input type="password" placeholder="••••••••" style={inputStyle} value={f.password} onChange={set('password')} onKeyDown={(e) => e.key === 'Enter' && submit()} />)}

@@ -54,10 +54,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it('requires a phone number in public registration', async () => {
+it('defaults public registration to Egypt and shows the Egyptian format', async () => {
   renderRoute('/auth?next=/videos/2');
   fireEvent.click(await screen.findByRole('button', { name: 'حساب جديد' }));
-  expect(screen.getByPlaceholderText('01xxxxxxxxx')).toBeRequired();
+
+  expect(screen.getByRole('combobox', { name: 'Country code' })).toHaveValue('20');
+  // The placeholder is the national number for the picked country, with no trunk zero.
+  expect(screen.getByPlaceholderText('1024527770')).toBeVisible();
+  expect(screen.getByText(/without the leading zero/i)).toBeVisible();
+});
+
+it('drops a typed leading zero and follows the picked country', async () => {
+  renderRoute('/auth');
+  fireEvent.click(await screen.findByRole('button', { name: 'حساب جديد' }));
+  const number = screen.getByPlaceholderText('1024527770');
+
+  fireEvent.change(number, { target: { value: '01024527770' } });
+  expect(number).toHaveValue('1024527770');
+
+  // Switching country re-labels the field with that country's own example.
+  fireEvent.change(screen.getByRole('combobox', { name: 'Country code' }), { target: { value: '966' } });
+  expect(screen.getByPlaceholderText('512345678')).toBeVisible();
 });
 
 it('blocks a signup with a bad email or a number that is not a mobile', async () => {
@@ -66,13 +83,13 @@ it('blocks a signup with a bad email or a number that is not a mobile', async ()
   const submit = screen.getByRole('button', { name: 'إنشاء حساب جديد' });
 
   fireEvent.change(screen.getByPlaceholderText('you@email.com'), { target: { value: 'not-an-email' } });
-  fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01024527770' } });
+  fireEvent.change(screen.getByPlaceholderText('1024527770'), { target: { value: '01024527770' } });
   fireEvent.click(submit);
   expect(await screen.findByRole('alert')).toHaveTextContent('Enter a valid email address.');
 
   // A Cairo landline passes "required" but cannot carry the video watermark.
   fireEvent.change(screen.getByPlaceholderText('you@email.com'), { target: { value: 'vet@example.test' } });
-  fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '0221234567' } });
+  fireEvent.change(screen.getByPlaceholderText('1024527770'), { target: { value: '221234567' } });
   fireEvent.click(submit);
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/valid mobile number/i));
 
