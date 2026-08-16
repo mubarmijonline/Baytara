@@ -36,7 +36,7 @@ function dateLabel(iso, lang) {
 
 /* --------------------------- purchase card --------------------------- */
 
-function PurchaseCard({ course, slug, preview }) {
+function PurchaseCard({ course, slug, preview, firstLessonId }) {
   const navigate = useNavigate();
   const { t } = useI18n();
   const isPaid = course.is_paid ?? course.price > 0;
@@ -101,12 +101,17 @@ function PurchaseCard({ course, slug, preview }) {
             </button>
           </>
         ) : (
+          /* A course with no fee is not joined: there is nothing to buy and no seat to
+             record, so the button opens the first lesson instead of a checkout. */
           <button
             type="button"
-            onClick={() => navigate(`/buy/${slug}`)}
-            style={{ width: '100%', background: colors.accent, border: 'none', borderRadius: 11, color: '#fff', fontSize: 15.5, fontWeight: 700, padding: 15, cursor: 'pointer', marginBottom: 18 }}
+            onClick={() => (isPaid
+              ? navigate(`/buy/${slug}`)
+              : navigate(firstLessonId ? `/learn/${course.id}/${firstLessonId}` : `/courses/${slug}`))}
+            disabled={!isPaid && !firstLessonId}
+            style={{ width: '100%', background: colors.accent, border: 'none', borderRadius: 11, color: '#fff', fontSize: 15.5, fontWeight: 700, padding: 15, cursor: 'pointer', marginBottom: 18, opacity: (!isPaid && !firstLessonId) ? 0.6 : 1 }}
           >
-            {isPaid ? t('course.buyAndStart') : t('course.enrollFree')}
+            {isPaid ? t('course.buyAndStart') : t('course.watchFree')}
           </button>
         )}
 
@@ -149,6 +154,7 @@ export default function CourseDetail() {
   const modules = course.modules || [];
   const videos = course.videos || [];
   const preview = videos.find((v) => v.access_type === 'free' && v.has_video) || null;
+  const firstLessonId = videos.find((v) => v.has_video)?.id || null;
   // public_profile already merges the real course/student counts into the instructor object
   const instructor = instructorData?.instructor;
   const related = (relatedData?.courses || []).filter((c) => c.slug !== slug).slice(0, 3);
@@ -218,7 +224,7 @@ export default function CourseDetail() {
             </div>
           </div>
 
-          <PurchaseCard course={course} slug={slug} preview={preview} />
+          <PurchaseCard course={course} slug={slug} preview={preview} firstLessonId={firstLessonId} />
         </Container>
       </div>
 

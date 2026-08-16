@@ -16,7 +16,7 @@ from ...models import (
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
 from ...services.catalog_access import (
-    CatalogValidationError, access_is_paid, validate_bundle_compatibility, validate_catalog_item,
+    FREE_ACCESS, CatalogValidationError, access_is_paid, validate_bundle_compatibility, validate_catalog_item,
     validate_course_bundle_compatibility, validate_video_bundle_compatibility,
 )
 from ...utils import slugify
@@ -177,10 +177,16 @@ def users_delete(uid):
     # without an instructor (FK is NOT NULL), and a video losing its author silently
     # is worse than a refusal. Say exactly what blocks it so the admin can reassign
     # those items, or deactivate the account instead.
+    # A course cannot exist without an instructor (FK is NOT NULL), so it always blocks.
+    # A paid video does too — it was sold on that person's name. A free video is open
+    # content: it is released rather than defended, so it is handed to nobody instead.
     owned_courses = Course.query.filter_by(instructor_id=uid).count()
-    owned_videos = Lesson.query.filter_by(instructor_id=uid).count()
-    if owned_courses or owned_videos:
-        return jsonify(error="user_has_courses", courses=owned_courses, videos=owned_videos), 409
+    paid_videos = (Lesson.query
+                   .filter(Lesson.instructor_id == uid, Lesson.access_type.notin_(FREE_ACCESS))
+                   .count())
+    if owned_courses or paid_videos:
+        return jsonify(error="user_has_courses", courses=owned_courses, videos=paid_videos), 409
+    Lesson.query.filter_by(instructor_id=uid).update({"instructor_id": None})
 
     # Clear the rows that are the account's own footprint so the delete doesn't hit a
     # foreign key. Devices, entitlements and verification requests were missing here,
@@ -516,7 +522,11 @@ def course_delete(cid):
     # course used to fail with a raw integrity error. Refusing is also the right answer:
     # a payment row has to keep naming what was bought, and a learner keeps their access.
     # Unpublishing hides a course without destroying either.
-    enrollments = Enrollment.query.filter_by(course_id=cid).count()
+    # Only seats someone actually holds count: a cancelled one is already revoked, and
+    # a free course records none at all, so neither is a reason to keep a course alive.
+    enrollments = (Enrollment.query
+                   .filter(Enrollment.course_id == cid, Enrollment.status != "cancelled")
+                   .count())
     payments = (Payment.query.filter_by(course_id=cid).count()
                 + InstapayPayment.query.filter_by(course_id=cid).count())
     if enrollments or payments:

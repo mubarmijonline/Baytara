@@ -429,19 +429,26 @@ def test_deleting_an_instructor_reports_what_blocks_it_and_clears_their_own_rows
     assert blocked.status_code == 409, blocked.get_json()
     body = blocked.get_json()
     assert body["error"] == "user_has_courses"
-    assert body["courses"] == 2 and body["videos"] >= 1, body
+    # The seeded video is free, and free videos are open content: they are handed to
+    # nobody rather than keeping the account alive. The courses still block.
+    assert body["courses"] == 2 and body["videos"] == 0, body
 
-    # A video with no course still blocks: it would otherwise lose its author silently.
+    # A paid video with no course does block: it was sold on that person's name.
     with app.app_context():
         loner = User(name="Video only", email="video-only@example.test",
                      password_hash="hash", role="instructor")
         db.session.add(loner)
         db.session.commit()
         loner_id = loner.id
-    admin_client.patch(f"/api/v1/admin/videos/{video['id']}", json={"instructor_id": loner_id})
+    admin_client.patch(f"/api/v1/admin/videos/{video['id']}",
+                       json={"instructor_id": loner_id, "access_type": "general", "price": 50})
     only_videos = admin_client.delete(f"/api/v1/admin/users/{loner_id}")
-    assert only_videos.status_code == 409
+    assert only_videos.status_code == 409, only_videos.get_json()
     assert only_videos.get_json()["courses"] == 0 and only_videos.get_json()["videos"] == 1
+
+    # Back to free, and the same account deletes with the video released to nobody.
+    admin_client.patch(f"/api/v1/admin/videos/{video['id']}", json={"access_type": "free", "price": 0})
+    assert admin_client.delete(f"/api/v1/admin/users/{loner_id}").status_code == 200
 
     # Someone who authored nothing but has signed in, bought a video and asked to be
     # verified deletes cleanly rather than tripping a foreign key.

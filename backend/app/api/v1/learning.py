@@ -43,8 +43,7 @@ def enroll():
     if existing and existing.status != "cancelled":
         return jsonify(enrollment=existing.to_dict()), 200
 
-    # Only free-tier courses self-enroll here. Paid tiers (baytarian/general) go
-    # through the payment flow; vet_free is free but instructor-only.
+    # Paid tiers (baytarian/general) go through the payment flow.
     if course.is_paid():
         return jsonify(error="payment_required"), 402
     user = db.session.get(User, _uid())
@@ -52,21 +51,11 @@ def enroll():
     if reason:  # e.g. vet_free for a non-instructor
         return jsonify(error=reason), 403
 
-    # A cancelled row is reused rather than replaced: the unique (user, course) index
-    # would refuse a second one, and the learner's old progress is still attached.
-    # Re-enrolling on a free course is self-service, so an admin removal is not a ban.
-    if existing:
-        existing.status = "active"
-        existing.expires_at = Enrollment.compute_expiry(course.access_days)
-        existing.cancelled_at = existing.cancel_reason = existing.cancelled_by = None
-        enrollment = existing
-    else:
-        enrollment = Enrollment(user_id=_uid(), course_id=course.id, source="free", status="active",
-                                expires_at=Enrollment.compute_expiry(course.access_days))
-        db.session.add(enrollment)
-    course.enrolled_count = (course.enrolled_count or 0) + 1
-    db.session.commit()
-    return jsonify(enrollment=enrollment.to_dict()), 201
+    # A course with no fee is not joined at all: nothing is recorded and the learner
+    # simply watches. An enrollment only ever means "this seat was bought", which is
+    # what makes it worth blocking a delete or refunding. Free courses therefore have
+    # no progress, no certificate and no row in «كورساتي» — they are open content.
+    return jsonify(enrollment=None, free=True), 200
 
 
 # ------------------------------ home summary ------------------------------

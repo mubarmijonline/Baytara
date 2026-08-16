@@ -9,7 +9,7 @@ import pytest
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
-from app.models import Category, Course, Enrollment, Notification, Payment, User
+from app.models import Category, Course, CourseVideo, Enrollment, Notification, Payment, User
 from app.security import hash_password
 
 
@@ -154,3 +154,61 @@ def demo():
 
 if __name__ == "__main__":
     demo()
+
+
+def test_a_free_course_records_no_enrollment_and_never_blocks_a_delete(app):
+    """A course with no fee is watched, not joined. Nothing is recorded, so nothing
+    is left behind to keep the course or its instructor alive."""
+    from app.models import Lesson
+    from app.services.catalog_access import video_access
+
+    with app.app_context():
+        instructor = User(name="Free instructor", email="free-ins@example.test",
+                          password_hash="hash", role="instructor")
+        learner = User(name="Watcher", email="watcher@example.test",
+                       password_hash=hash_password("secret12"), role="student")
+        admin = User(name="Admin2", email="admin-free@example.test",
+                     password_hash=hash_password("secret12"), role="admin")
+        db.session.add_all([instructor, learner, admin])
+        db.session.flush()
+        course = Course(title="Open course", slug="open-course-enr", price=0,
+                        instructor_id=instructor.id, status="published", access_type="free")
+        db.session.add(course)
+        db.session.flush()
+        video = Lesson(title="Open lesson", position=0, access_type="free", status="published",
+                       instructor_id=instructor.id, vdocipher_video_id="vid-open")
+        db.session.add(video)
+        db.session.flush()
+        db.session.add(CourseVideo(course_id=course.id, video_id=video.id, position=0))
+        db.session.commit()
+        course_id, learner_id, instructor_id, video_id = course.id, learner.id, instructor.id, video.id
+
+    client = app.test_client()
+    token = client.post("/api/v1/auth/login", json={
+        "email": "watcher@example.test", "password": "secret12"}).get_json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Asking to enrol is answered, but nothing is written down.
+    joined = client.post("/api/v1/enrollments", headers=headers, json={"course_id": course_id})
+    assert joined.status_code == 200, joined.get_json()
+    assert joined.get_json() == {"enrollment": None, "free": True}
+    with app.app_context():
+        assert Enrollment.query.filter_by(course_id=course_id).count() == 0
+        # ...and the lesson still plays, which is the whole point.
+        allowed, reason = video_access(db.session.get(User, learner_id), db.session.get(Lesson, video_id))
+        assert allowed and reason is None, reason
+
+    admin_client = app.test_client()
+    admin_token = admin_client.post("/api/v1/auth/login", json={
+        "email": "admin-free@example.test", "password": "secret12"}).get_json()["access_token"]
+    admin_client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {admin_token}"
+
+    # A free video is released rather than defended: it stops blocking the instructor
+    # and is handed to nobody. The course still blocks — its FK cannot be null.
+    blocked = admin_client.delete(f"/api/v1/admin/users/{instructor_id}")
+    assert blocked.status_code == 409 and blocked.get_json()["videos"] == 0
+
+    assert admin_client.delete(f"/api/v1/admin/courses/{course_id}").status_code == 200
+    assert admin_client.delete(f"/api/v1/admin/users/{instructor_id}").status_code == 200
+    with app.app_context():
+        assert db.session.get(Lesson, video_id).instructor_id is None
