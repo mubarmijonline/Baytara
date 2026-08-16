@@ -333,7 +333,13 @@ export default function Profile() {
 
       {/* body */}
       <div ref={bodyRef} className="profile-body grid-collapse-2" style={{ maxWidth: 1000, margin: '0 auto', padding: '22px 32px 56px', display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Desktop keeps the sidebar beside every tab, as the design has it. Once the
+            grid stacks it lands on top of whichever panel is open, so the bio and
+            verification cards would repeat above the courses, payments and settings
+            tabs — and the settings form already edits the same bio. Overview owns
+            them on a phone; hide-md and grid-collapse-2 share the 900px breakpoint. */}
+        <aside className={tab === 'overview' ? undefined : 'hide-md'}
+          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <section style={card}>
             <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 700, color: DARK }}>{t('profile.about')}</h2>
             {user.bio

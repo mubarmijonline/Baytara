@@ -188,3 +188,18 @@ it('refuses to send the phone gate off-site', async () => {
   // Landing on /dashboard is the proof: a protocol-relative target would have left the origin.
   await waitFor(() => expect(window.location.pathname).toBe('/dashboard'));
 });
+
+it('keeps the sidebar beside the overview but out of the stacked tabs', async () => {
+  mockApi();
+  renderProfile();
+
+  // Overview owns the bio and verification cards on every viewport.
+  const overviewAside = (await screen.findByRole('heading', { name: 'About', level: 2 })).closest('aside');
+  expect(overviewAside).not.toHaveClass('hide-md');
+
+  // On another tab the same cards would stack above that tab's own panel, so the
+  // stacked layout drops them; the desktop grid still shows them.
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  const settingsAside = (await screen.findByRole('heading', { name: 'About', level: 2 })).closest('aside');
+  expect(settingsAside).toHaveClass('hide-md');
+});
