@@ -203,6 +203,7 @@ export function mapCourse(c, i = 0) {
     description: c.description,
     image: c.image,
     access_type: c.access_type,
+    level: c.level || 'beginner',
     is_paid: c.is_paid,
     lock_reason: c.lock_reason,
     _api: true,

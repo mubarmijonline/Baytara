@@ -5,42 +5,11 @@
 
 import { thumbGradients as g, categoryGradients as cg } from '../theme/tokens.js';
 
-// slugify helper for course routes
-export const slugify = (s) =>
-  s
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^؀-ۿ\w-]/g, '')
-    .toLowerCase();
-
-export const rawCourses = [
-  { title: 'أساسيات تشخيص وعلاج أمراض الماشية', instructor: 'د. أحمد الشريف', mentorIdx: 0, ini: 'أ', cat: 'الإنتاج الحيواني', rating: '4.9', lessons: 24, hours: 6, learners: '18.4k', grad: g[0] },
-  { title: 'جراحة الحيوانات الصغيرة خطوة بخطوة', instructor: 'د. سارة منصور', mentorIdx: 1, ini: 'س', cat: 'الجراحة البيطرية', rating: '4.8', lessons: 18, hours: 5, learners: '12.1k', grad: g[1] },
-  { title: 'التغذية العلاجية للحيوانات المزرعية', instructor: 'د. كريم عادل', mentorIdx: 2, ini: 'ك', cat: 'التغذية', rating: '4.7', lessons: 32, hours: 9, learners: '9.7k', grad: g[2] },
-  { title: 'أمراض الدواجن والوقاية منها', instructor: 'د. ليلى حسن', mentorIdx: 3, ini: 'ل', cat: 'الدواجن', rating: '4.9', lessons: 26, hours: 7, learners: '21.3k', grad: g[3] },
-  { title: 'التلقيح الاصطناعي وإدارة التكاثر', instructor: 'د. طارق يوسف', mentorIdx: 4, ini: 'ط', cat: 'التكاثر', rating: '4.8', lessons: 15, hours: 4, learners: '15.6k', grad: g[4] },
-  { title: 'التصوير التشخيصي والأشعة البيطرية', instructor: 'د. نور الدين', mentorIdx: 2, ini: 'ن', cat: 'التشخيص', rating: '4.9', lessons: 20, hours: 6, learners: '4.2k', grad: g[2] },
-  { title: 'صحة القطيع وبرامج المكافحة', instructor: 'د. هبة رمزي', mentorIdx: 4, ini: 'ه', cat: 'الصحة العامة', rating: '4.8', lessons: 14, hours: 4, learners: '3.1k', grad: g[4] },
-  { title: 'أساسيات الصيدلة والعلاج البيطري', instructor: 'د. سامي فؤاد', mentorIdx: 0, ini: 'س', cat: 'الأدوية', rating: '4.6', lessons: 28, hours: 8, learners: '2.8k', grad: g[0] },
-  { title: 'طب وتربية الخيول العربية', instructor: 'د. دينا خالد', mentorIdx: 1, ini: 'د', cat: 'الخيول', rating: '4.9', lessons: 30, hours: 10, learners: '5.5k', grad: g[1] },
-].map((c, i) => ({ ...c, id: i, slug: slugify(c.title) }));
-
 export const stats = [
   { num: '+2000', label: 'دورة بيطرية' },
   { num: '+700', label: 'طبيب وخبير' },
   { num: '+2 مليون', label: 'متعلّم عربي' },
   { num: '+19', label: 'تخصّص بيطري' },
-];
-
-export const categories = [
-  { name: 'الإنتاج الحيواني', letter: 'إ', count: 320, bg: cg.red },
-  { name: 'الجراحة البيطرية', letter: 'ج', count: 280, bg: cg.purple },
-  { name: 'أمراض الدواجن', letter: 'د', count: 240, bg: cg.teal },
-  { name: 'التغذية والأعلاف', letter: 'ت', count: 190, bg: cg.amber },
-  { name: 'التشخيص والمختبرات', letter: 'ت', count: 165, bg: cg.pink },
-  { name: 'الصيدلة البيطرية', letter: 'ص', count: 140, bg: cg.blue },
-  { name: 'الصحة العامة', letter: 'ص', count: 120, bg: cg.green },
-  { name: 'طب الخيول', letter: 'خ', count: 98, bg: cg.violet },
 ];
 
 // Removed with the home-page rebuild: bizStats, rawInstructors and testimonials now come
@@ -50,9 +19,9 @@ export const categories = [
 // expertise are all real data now — course_reviews, courses.objectives, the modules array,
 // derived access rows, and users.expertise respectively.
 
-// Still filter chrome for the course listing, which the next design file covers.
-export const levels = ['مبتدئ', 'متوسط', 'متقدّم'];
-export const ratingFilters = ['4.5', '4.0', '3.5'];
+// Removed with the course catalogue rebuild: the course list, the category tiles and the
+// level/rating filter chrome are all real now — /api/v1/courses, /api/v1/categories, and
+// the level and min_rating filters that listing accepts.
 
 export const plansData = (annual, accent = '#3048A0') => [
   { name: 'الأساسية', tagline: 'للمتعلّم الفردي', featured: false,
@@ -111,11 +80,7 @@ export const dashStats = [
   { num: '7', label: 'أيام متتالية', color: '#8a6d1f' },
 ];
 
-export const inProgress = [
-  { ...rawCourses[0], progress: '65%', remaining: 'باقٍ 8 دروس' },
-  { ...rawCourses[3], progress: '30%', remaining: 'باقٍ 18 درس' },
-  { ...rawCourses[2], progress: '85%', remaining: 'باقٍ 5 دروس' },
-];
+// inProgress went with rawCourses: the dashboard reads real enrollments now.
 
 // footerCols and socials were removed: the footer now links to real routes and reads
 // its social URLs from the settings CMS.

@@ -144,6 +144,13 @@ export default function Settings() {
               {field('home', 'cta_title', label('عنوان دعوة الاشتراك', copy.fields.ctaTitle))}
               {field('home', 'cta_subtitle', label('وصف دعوة الاشتراك', copy.fields.ctaSubtitle), true)}
             </Section>
+            <Section title={copy.sections.courses}>
+              {field('courses', 'title', label('العنوان', copy.fields.title))}
+              {field('courses', 'subtitle', label('العنوان الفرعي', copy.fields.subtitle), true)}
+              {field('courses', 'bar_title', label('عنوان الشريط السفلي', copy.fields.barTitle))}
+              {field('courses', 'bar_subtitle', label('وصف الشريط السفلي', copy.fields.barSubtitle), true)}
+              {field('courses', 'bar_cta', label('زر الشريط السفلي', copy.fields.barCta))}
+            </Section>
             <ListEditor title={copy.sections.stats} items={draft.stats} fields={STAT_FIELDS} onChange={(value) => setKey('stats', value)} />
             <ListEditor title={copy.sections.testimonials} items={draft.testimonials} fields={TESTIMONIAL_FIELDS} onChange={(value) => setKey('testimonials', value)} />
           </>}

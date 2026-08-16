@@ -3,13 +3,58 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
 from ...models import (
-    Category, Course, Bundle, CourseReview, Enrollment, LearningPath, Lesson, User,
+    Category, Course, CourseVideo, Bundle, CourseReview, Enrollment, LearningPath, Lesson, User,
     refresh_course_rating,
 )
-from ...services.catalog_access import audience_error
+from ...services.catalog_access import ACCESS_TYPES, audience_error
+from ...models.catalog import LEVELS
 from ...utils import req_lang
 
 bp = Blueprint("courses", __name__)
+
+# Course length in minutes, matching exactly what the card prints: the summed length of
+# the attached videos, falling back to the admin-typed duration when none are attached.
+# Both membership sources count, like Course.content_videos(); scanning lessons once with
+# an OR dedupes a video that is attached canonically *and* left on the legacy column.
+COURSE_MINUTES = db.func.coalesce(
+    db.func.nullif(
+        db.select(db.func.coalesce(db.func.sum(Lesson.duration_minutes), 0))
+        .where(
+            db.or_(
+                Lesson.course_id == Course.id,
+                Lesson.id.in_(db.select(CourseVideo.video_id).where(CourseVideo.course_id == Course.id)),
+            )
+        )
+        .correlate(Course)
+        .scalar_subquery(),
+        0,
+    ),
+    Course.duration_minutes,
+    0,
+)
+
+# Hour bands rather than a minutes range: the sidebar offers three buckets.
+DURATION_BANDS = {
+    "short": (None, 180),
+    "medium": (180, 480),
+    "long": (480, None),
+}
+
+# Average score as a filterable expression. rating() on the model divides in Python;
+# the listing needs it in SQL. Unrated courses (count 0) never match a minimum.
+COURSE_RATING = db.case(
+    (Course.rating_count > 0, db.cast(Course.rating_sum, db.Float) / Course.rating_count),
+    else_=None,
+)
+
+COURSE_SORTS = {
+    "popular": (Course.enrolled_count.desc(), Course.id.desc()),
+    "newest": (Course.created_at.desc(), Course.id.desc()),
+    "oldest": (Course.created_at.asc(), Course.id.asc()),
+    "rating": (COURSE_RATING.desc().nullslast(), Course.id.desc()),
+    "price_asc": (Course.price.asc(), Course.id.desc()),
+    "price_desc": (Course.price.desc(), Course.id.desc()),
+}
 
 
 def _current_user():
@@ -37,36 +82,68 @@ def list_categories():
 @jwt_required(optional=True)
 def list_courses():
     """Public course listing: only published. Filter by ?category=<slug>, ?q=<search>,
-    ?access_type=<t>, paginated. Audience-restricted courses are shown only when
-    the shared policy permits public visibility."""
+    ?access_type=<t>, ?level=<l>, ?duration=short|medium|long, ?min_rating=<n>,
+    ordered by ?sort=, paginated. Audience-restricted courses are shown only when
+    the shared policy permits public visibility.
+
+    Also returns `facets`: how many courses each level and access type would yield.
+    Each facet excludes its own dimension, so ticking «مبتدئ» does not zero out the
+    other level counts the way a naive count over the final query would.
+    """
     user = _current_user()
     page = max(request.args.get("page", 1, type=int), 1)
     per_page = min(max(request.args.get("per_page", 12, type=int), 1), 50)
 
-    q = Course.query.filter_by(status="published")
+    base = Course.query.filter_by(status="published")
     cat_slug = request.args.get("category")
     if cat_slug:
-        q = q.join(Category).filter(Category.slug == cat_slug)
-    atype = request.args.get("access_type")
-    if atype:
-        q = q.filter(Course.access_type == atype)
+        base = base.join(Category).filter(Category.slug == cat_slug)
     search = request.args.get("q")
     if search:
-        q = q.filter(Course.title.ilike(f"%{search}%"))
+        base = base.filter(Course.title.ilike(f"%{search}%"))
+    band = DURATION_BANDS.get(request.args.get("duration"))
+    if band:
+        low, high = band
+        # A course with nothing attached measures 0 minutes; that is "unknown length",
+        # not "under three hours", so it stays out of every band.
+        base = base.filter(COURSE_MINUTES > 0)
+        if low is not None:
+            base = base.filter(COURSE_MINUTES >= low)
+        if high is not None:
+            base = base.filter(COURSE_MINUTES < high)
+    min_rating = request.args.get("min_rating", type=float)
+    if min_rating:
+        base = base.filter(COURSE_RATING >= min_rating)
 
     if audience_error(user, "vet_free"):
-        q = q.filter(Course.access_type != "vet_free")
+        base = base.filter(Course.access_type != "vet_free")
 
-    q = q.order_by(Course.created_at.desc())
+    level = request.args.get("level")
+    atype = request.args.get("access_type")
+    with_level = base.filter(Course.level == level) if level in LEVELS else base
+    with_access = base.filter(Course.access_type == atype) if atype in ACCESS_TYPES else base
+    q = with_level.filter(Course.access_type == atype) if atype in ACCESS_TYPES else with_level
+
+    order = COURSE_SORTS.get(request.args.get("sort"), COURSE_SORTS["newest"])
     lang = req_lang()
-    pg = db.paginate(q, page=page, per_page=per_page, error_out=False)
+    pg = db.paginate(q.order_by(*order), page=page, per_page=per_page, error_out=False)
     return jsonify(
         courses=[c.to_dict(lang=lang, user=user) for c in pg.items],
         total=pg.total,
         page=pg.page,
         per_page=pg.per_page,
         pages=pg.pages,
+        facets={
+            "level": _facet(with_access, Course.level, LEVELS),
+            "access_type": _facet(with_level, Course.access_type, ACCESS_TYPES),
+        },
     )
+
+
+def _facet(query, column, keys):
+    """{value: count} over `query`, one grouped query, zero-filled for every key."""
+    rows = dict(query.with_entities(column, db.func.count(Course.id)).group_by(column).all())
+    return {key: rows.get(key, 0) for key in keys}
 
 
 @bp.get("/courses/<slug>")

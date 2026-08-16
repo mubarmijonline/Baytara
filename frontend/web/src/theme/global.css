@@ -214,6 +214,16 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 /* Chips scroll sideways rather than wrapping the filter bar onto three rows. */
 .videos-chip-row { scrollbar-width: none; }
 .videos-chip-row::-webkit-scrollbar { display: none; }
+/* Course catalogue rows: thumbnail, details, price/CTA column. Below 640px the price
+   column would squeeze the title to one word per line, so it drops under the details. */
+@media (max-width: 640px) {
+  .catalog-row { flex-wrap: wrap; }
+  .catalog-row > button:first-child { width: 108px; height: 78px; }
+  .catalog-row-side { flex-direction: row !important; align-items: center !important;
+    width: 100%; justify-content: space-between; }
+  .catalog-search { flex-direction: column; }
+  .catalog-search button { width: 100%; }
+}
 .video-detail-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr); gap: 34px; align-items: start; }
 .video-status-icon { position: relative; display: inline-block; width: 22px; height: 22px; color: #3048A0; }
 .video-status-icon::before { content: ""; position: absolute; inset-inline-start: 4px; bottom: 2px; width: 15px; height: 12px; border: 2px solid currentColor; border-radius: 3px; background: transparent; }

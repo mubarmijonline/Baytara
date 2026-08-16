@@ -58,6 +58,18 @@ SITE_SETTING_DEFAULTS = {
             "Unlimited access to every course and path on all your devices. Cancel anytime.",
         ),
     },
+    # Course catalogue page. The counts under the title come from the database; only
+    # the wording is editable here.
+    "courses": {
+        "title": _text("ماذا تريد أن تتعلّم اليوم؟", "What do you want to learn today?"),
+        "subtitle": _text("ابحث بالحالة أو المرض أو التخصّص", "Search by case, disease, or specialty"),
+        "bar_title": _text("الدفع لكل دورة — لا اشتراك شهري", "Pay per course, no monthly subscription"),
+        "bar_subtitle": _text(
+            "اشترِ ما تحتاجه فقط · وصول مدى الحياة · وفّر أكثر مع الحزم",
+            "Buy only what you need. Lifetime access. Save more with bundles.",
+        ),
+        "bar_cta": _text("الحزم التعليمية", "Learning bundles"),
+    },
     "stats": [
         {"num": "+120", "label": _text("دورة متخصصة", "Specialist courses")},
         {"num": "+45", "label": _text("خبير ومدرب", "Experts and instructors")},
