@@ -187,9 +187,10 @@ function InstructorsSection() {
             className="hover-card"
             style={{ border: `1px solid ${colors.line}`, borderRadius: 16, overflow: 'hidden', background: colors.surface, display: 'block' }}
           >
-            {/* Full-bleed but shallow: 4/5 made the card mostly photo. Still wide
-                enough to keep the face, unlike the small circle this replaced. */}
-            <Avatar src={instructor.avatar_url} name={instructor.name} ratio="16 / 10" iconSize={52} />
+            {/* Square. 4/5 made the card mostly photo; 16/10 was shallow enough to cut
+                the chin off a portrait, since these are all tall studio shots (roughly
+                0.65–0.9 wide-to-tall) and `cover` crops from the top. */}
+            <Avatar src={instructor.avatar_url} name={instructor.name} ratio="1 / 1" iconSize={52} />
             <div style={{ padding: '18px 16px', textAlign: 'center' }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: colors.ink, lineHeight: 1.45 }}>{instructor.name}</div>
               {instructor.headline && (
