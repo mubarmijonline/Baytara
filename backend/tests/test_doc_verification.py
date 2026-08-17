@@ -53,7 +53,7 @@ def _verdict(**over):
     base = {"document_type": "veterinary college student ID", "issuer": "جامعة القاهرة",
             "holder_name": "محمد غريب محمد خضر", "national_id": "", "occupation": "",
             "occupation_is_veterinarian": False, "is_veterinary_student": False,
-            "expired": False, "name_matches": True, "tampered": False,
+            "expired": False, "name_match": "same", "tampered": False,
             "confidence": "high", "reason": "بطاقة طالب سارية"}
     base.update(over)
     return base
@@ -74,17 +74,18 @@ def _upload(client, route="other", sides=("front",)):
                        content_type="multipart/form-data")
 
 
-def test_student_card_grants_the_student_status_not_the_doctor_one(app, monkeypatch):
+def test_a_student_card_verifies_the_account_and_records_the_kind(app, monkeypatch):
     uid = _account()
     _stub_judge(monkeypatch, _verdict(is_veterinary_student=True))
     response = _upload(_client(app))
 
     assert response.status_code == 201, response.get_json()
     body = response.get_json()
+    # One verified status. Both kinds are veterinarians; only the marker differs.
+    assert body["is_baytarian"] is True
     assert body["is_vet_student"] is True
-    assert body["is_baytarian"] is False          # the badge keeps meaning "licensed"
     user = db.session.get(User, uid)
-    assert user.is_vet_student and not user.is_baytarian
+    assert user.is_baytarian and user.is_vet_student
 
     request_row = BaytarianRequest.query.filter_by(user_id=uid).one()
     assert (request_row.status, request_row.grant, request_row.route) == (
@@ -93,16 +94,19 @@ def test_student_card_grants_the_student_status_not_the_doctor_one(app, monkeypa
     assert request_row.ai_verdict["document_type"] == "veterinary college student ID"
 
 
-def test_a_student_reaches_free_vet_content_but_not_the_paid_tier(app):
+def test_a_verified_student_reaches_the_same_content_as_a_licensed_vet(app):
     from app.services.catalog_access import audience_error
 
-    student = User(name="s", email="s@example.test", password_hash="x", is_vet_student=True)
+    student = User(name="s", email="s@example.test", password_hash="x",
+                   is_baytarian=True, is_vet_student=True)
+    licensed = User(name="l", email="l@example.test", password_hash="x", is_baytarian=True)
     outsider = User(name="o", email="o@example.test", password_hash="x")
-    assert audience_error(student, "vet_free") is None
-    assert audience_error(student, "baytarian") == "needs_baytarian"
-    assert audience_error(outsider, "vet_free") == "needs_baytarian"
-    # Not being a licensed vet, a student may still buy the general-audience content.
-    assert audience_error(student, "general") is None
+    for tier in ("vet_free", "baytarian"):
+        assert audience_error(student, tier) is None, tier
+        assert audience_error(licensed, tier) is None, tier
+        assert audience_error(outsider, tier) == "needs_baytarian", tier
+    # Being verified veterinarians, neither belongs to the non-vet audience.
+    assert audience_error(student, "general") == "non_veterinarians_only"
 
 
 def test_a_national_id_reading_veterinarian_verifies_and_tells_the_admins(app, monkeypatch):
@@ -216,7 +220,7 @@ def test_admin_approval_of_a_student_request_grants_the_student_status(app, monk
 
     assert response.status_code == 200, response.get_json()
     user = db.session.get(User, uid)
-    assert user.is_vet_student and not user.is_baytarian
+    assert user.is_baytarian and user.is_vet_student
 
 
 def test_revoking_an_auto_approval_takes_the_status_back(app, monkeypatch):
@@ -225,14 +229,15 @@ def test_revoking_an_auto_approval_takes_the_status_back(app, monkeypatch):
     _stub_judge(monkeypatch, _verdict(is_veterinary_student=True))
     _upload(_client(app))
     rid = BaytarianRequest.query.one().id
-    assert db.session.get(User, uid).is_vet_student
+    assert db.session.get(User, uid).is_baytarian
 
     admin = _client(app, email="admin@example.test")
     response = admin.post(f"/api/v1/admin/baytarian-requests/{rid}/revoke",
                           json={"reason": "بطاقة غير مقروءة"})
 
     assert response.status_code == 200, response.get_json()
-    assert not db.session.get(User, uid).is_vet_student
+    revoked = db.session.get(User, uid)
+    assert not revoked.is_baytarian and not revoked.is_vet_student
     row = db.session.get(BaytarianRequest, rid)
     assert row.status == "rejected" and row.reject_reason == "بطاقة غير مقروءة"
     assert Notification.query.filter_by(user_id=uid, type="baytarian_revoked").count() == 1
@@ -245,6 +250,94 @@ def test_a_verified_veterinarian_is_not_sent_round_again(app, monkeypatch):
     _stub_judge(monkeypatch, _verdict(is_veterinary_student=True))
 
     assert _upload(_client(app)).status_code == 409
+
+
+def test_a_name_belonging_to_someone_else_is_refused_outright(app, monkeypatch):
+    """Positively the wrong person is a rejection, not a review — and it outranks a
+    document that is otherwise perfect."""
+    uid = _account(national_id=NATIONAL_ID)
+    _stub_judge(monkeypatch, _verdict(
+        document_type="Egyptian national ID card", national_id=NATIONAL_ID,
+        occupation="طبيب بيطري", occupation_is_veterinarian=True, name_match="different"))
+
+    response = _upload(_client(app), route="national_id")
+
+    assert response.status_code == 422
+    assert response.get_json()["error"] == "name_does_not_match"
+    assert BaytarianRequest.query.count() == 0
+    assert not db.session.get(User, uid).is_baytarian
+
+
+def test_a_name_written_differently_is_the_same_person(app, monkeypatch):
+    uid = _account()
+    _stub_judge(monkeypatch, _verdict(is_veterinary_student=True, name_match="similar"))
+
+    assert _upload(_client(app)).status_code == 201
+    assert db.session.get(User, uid).is_baytarian
+
+
+def test_a_name_that_cannot_be_read_is_reviewed_rather_than_refused(app, monkeypatch):
+    """The difference that matters: the document says the wrong thing (refuse) versus
+    the document says nothing legible (review)."""
+    _account()
+    _stub_judge(monkeypatch, _verdict(is_veterinary_student=True, name_match="unreadable"))
+
+    assert _upload(_client(app)).status_code == 202
+    assert BaytarianRequest.query.one().status == "pending"
+
+
+def test_a_national_id_whose_occupation_box_is_illegible_is_reviewed(app, monkeypatch):
+    _account(national_id=NATIONAL_ID)
+    _stub_judge(monkeypatch, _verdict(
+        document_type="Egyptian national ID card", national_id=NATIONAL_ID, occupation=""))
+
+    assert _upload(_client(app), route="national_id").status_code == 202
+    assert BaytarianRequest.query.one().status == "pending"
+
+
+def test_only_one_request_may_be_open_at_a_time(app, monkeypatch):
+    """A second submission while one is still being reviewed would give an admin two
+    versions of the same person to decide between."""
+    _account()
+    _stub_judge(monkeypatch, _verdict(confidence="low"))
+    client = _client(app)
+    assert _upload(client).status_code == 202
+
+    for second in (_upload(client), _upload(client, route="national_id")):
+        assert second.status_code == 409
+        assert second.get_json()["error"] == "request_pending"
+    # The manual upload path is the same queue and is blocked too.
+    manual = client.post("/api/v1/baytarian/request", content_type="multipart/form-data",
+                         data={"documents": (io.BytesIO(b"x"), "a.png", "image/png")})
+    assert manual.status_code == 409
+    assert BaytarianRequest.query.count() == 1
+
+
+def test_a_request_may_be_resubmitted_once_it_has_been_rejected(app, monkeypatch):
+    uid = _account()
+    _account(email="admin@example.test", role="admin")
+    _stub_judge(monkeypatch, _verdict(confidence="low"))
+    assert _upload(_client(app)).status_code == 202
+    rid = BaytarianRequest.query.one().id
+    admin = _client(app, email="admin@example.test")
+    admin.post(f"/api/v1/admin/baytarian-requests/{rid}/reject", json={"reason": "غير واضح"})
+
+    _stub_judge(monkeypatch, _verdict(is_veterinary_student=True))
+    assert _upload(_client(app)).status_code == 201
+    assert db.session.get(User, uid).is_baytarian
+
+
+def test_the_learner_can_see_where_their_request_stands(app, monkeypatch):
+    _account()
+    _stub_judge(monkeypatch, _verdict(confidence="low"))
+    client = _client(app)
+    _upload(client)
+
+    body = client.get("/api/v1/baytarian/me").get_json()
+
+    assert body["is_baytarian"] is False
+    assert body["request"]["status"] == "pending"
+    assert body["request"]["route"] == "other"
 
 
 def test_a_document_is_required(app, monkeypatch):

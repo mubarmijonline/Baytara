@@ -150,7 +150,8 @@ export default function VerifyVet() {
         if (response.pending) {
           toast.success(t('verify.sentToReview'));
         } else {
-          toast.success(t(response.is_baytarian ? 'verify.approved' : 'verify.approvedStudent'));
+          // Both verify the account; the wording just names which kind it read.
+          toast.success(t(response.is_vet_student ? 'verify.approvedStudent' : 'verify.approved'));
         }
       }
       await refresh?.();
@@ -162,9 +163,8 @@ export default function VerifyVet() {
     }
   }
 
-  // A verified student may still go on to verify as a veterinarian, so only the
-  // doctor's badge ends the journey here; a student is told where they stand and
-  // left with the routes that would upgrade them.
+  // One verified status covers both kinds, so being verified ends the journey here
+  // whichever document got them there.
   if (user?.is_baytarian) {
     return (
       <Container style={{ padding: '48px 24px', maxWidth: 640 }}>
@@ -198,15 +198,6 @@ export default function VerifyVet() {
       </div>
 
       <Container style={{ maxWidth: 720, padding: '24px 24px 70px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {user?.is_vet_student && (
-          <section style={{ ...card, display: 'flex', gap: 12, alignItems: 'center', background: '#f2faf5', borderColor: '#cfe8da' }}>
-            <BadgeCheck size={20} aria-hidden="true" style={{ color: '#1a7f4b', flex: 'none' }} />
-            <p style={{ margin: 0, fontSize: 13.5, color: colors.ink2, lineHeight: 1.8 }}>
-              {t('verify.studentBanner')}
-            </p>
-          </section>
-        )}
-
         {/* Which document they have. A student has none of the first two. */}
         <section style={card}>
           <h2 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: colors.ink }}>{t('verify.step0')}</h2>

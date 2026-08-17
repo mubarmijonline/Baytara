@@ -259,13 +259,21 @@ def submit_card():
 
 DOC_ROUTES = {"national_id", "other"}
 
-# What each route can grant, and what the learner is told when it lands.
+# There is one verified status — بيطريّ موثّق — and both grants confer it. What differs
+# is the kind recorded against it: a student or a licensed doctor. They reach the same
+# content; the distinction is there so the platform knows who it is talking to.
 GRANT_COPY = {
     "baytarian": ("baytarian_approved", "تم توثيق حسابك كطبيب بيطري ✅",
                   "قرأنا المستند وتم توثيقك تلقائياً. أصبح بإمكانك الوصول إلى محتوى الأطباء الموثّقين."),
-    "vet_student": ("vet_student_approved", "تم توثيقك كطالب طب بيطري ✅",
-                    "قرأنا المستند وتم توثيقك كطالب. أصبح بإمكانك الوصول إلى المحتوى المجاني المخصص للأطباء والطلاب."),
+    "vet_student": ("baytarian_approved", "تم توثيق حسابك كطالب طب بيطري ✅",
+                    "قرأنا المستند وتم توثيقك تلقائياً. أصبح بإمكانك الوصول إلى محتوى الأطباء الموثّقين."),
 }
+
+
+def _grant_status(user, grant):
+    """Apply a grant. Both kinds verify the account; only the marker differs."""
+    user.is_baytarian = True
+    user.is_vet_student = grant == "vet_student"
 
 
 def _tell_admins(type_, title, body):
@@ -382,10 +390,7 @@ def submit_document():
     db.session.flush()
     req.spot_check = req.id % SPOT_CHECK_EVERY == 0
 
-    if grant == "baytarian":
-        user.is_baytarian = True
-    else:
-        user.is_vet_student = True
+    _grant_status(user, grant)
     if claimed and not user.national_id:
         # Write-once, same as the profile field: it is now the account's identity, and
         # what stops this document verifying a second account.

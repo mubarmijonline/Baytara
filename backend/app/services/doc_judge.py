@@ -60,10 +60,17 @@ VERDICT_SCHEMA = {
             "type": "boolean",
             "description": "True if a printed expiry or academic year has clearly passed.",
         },
-        "name_matches": {
-            "type": "boolean",
-            "description": "Whether the printed name is the same person as the expected name, "
-                           "allowing for dropped middle names, transliteration and spelling variants.",
+        "name_match": {
+            "type": "string",
+            "enum": ["same", "similar", "different", "unreadable"],
+            "description": "How the printed name compares with the expected name. "
+                           "'same' — the same name. "
+                           "'similar' — the same person written differently: dropped or added "
+                           "middle names, a different transliteration or script, a spelling "
+                           "variant, an abbreviation, an added or missing title. "
+                           "'different' — a different first or family name, i.e. another person. "
+                           "'unreadable' — the name on the document cannot be made out, or no "
+                           "expected name was given to compare against.",
         },
         "tampered": {
             "type": "boolean",
@@ -84,7 +91,7 @@ VERDICT_SCHEMA = {
     },
     "required": ["document_type", "issuer", "holder_name", "national_id", "occupation",
                  "occupation_is_veterinarian", "is_veterinary_student", "expired",
-                 "name_matches", "tampered", "confidence", "reason"],
+                 "name_match", "tampered", "confidence", "reason"],
     "additionalProperties": False,
 }
 
@@ -99,10 +106,13 @@ SYSTEM = (
     "answer in both directions.\n\n"
     "Documents are Egyptian and mostly Arabic. Note two distinctions that decide the "
     "outcome: an occupation of طبيب بيطري on a national ID means a qualified veterinarian, "
-    "whereas a student card from كلية الطب البيطري means a student and not a veterinarian. "
-    "Egyptian names run to four parts and people routinely give fewer, so treat a shorter "
-    "name, a different transliteration, or a spelling variant as the same person; treat a "
-    "different first or family name as a different person."
+    "whereas a student card from كلية الطب البيطري means a student and not a veterinarian.\n\n"
+    "Names need care, because a rejection on a name turns away a real applicant. Egyptian "
+    "names run to four parts and people routinely register with fewer, in either script, so "
+    "a name that is written differently but points at the same person is 'similar' and is "
+    "as good as an exact match. Reserve 'different' for a name that is genuinely somebody "
+    "else — a different first or family name. If you cannot read the name, say 'unreadable' "
+    "rather than guessing in either direction."
 )
 
 
@@ -178,30 +188,52 @@ def judge(images, expect):
 def decide(verdict, route, expect):
     """(grant, problem) — grant is 'baytarian', 'vet_student' or None.
 
-    A None grant with a None problem means nobody could tell: it goes to an admin.
+    Three outcomes, and which one a case lands in is the whole policy:
+
+    * a **problem** is a definite no, told to the applicant straight away;
+    * a **grant** is a definite yes, taken without a person;
+    * neither is "I cannot tell", which is the only thing that reaches the queue.
+
+    The rule for choosing between them: reject when the document positively says the
+    wrong thing, and defer only when it says nothing readable. A card naming another
+    person is a rejection; a card too blurry to name anyone is a review.
     """
     if verdict is None:
         return None, None
+
+    # A doctored image is never worth reading further, whatever it claims.
     if verdict.get("tampered"):
         return None, "looks_edited"
-    if verdict.get("confidence") == "low":
+
+    name = verdict.get("name_match")
+    if name == "different":
+        # Positively somebody else. No amount of the rest being right fixes that, so it
+        # is refused before anything else is weighed.
+        return None, "name_does_not_match"
+
+    # A national ID that disagrees with the one on file is the same kind of no: the
+    # document belongs to a real person who is not the one holding this account.
+    claimed = (verdict.get("national_id") or "").strip()
+    if claimed and expect.get("national_id") and claimed != expect["national_id"]:
+        return None, "national_id_does_not_match"
+
+    # Everything from here needs the document to have been read at all.
+    if verdict.get("confidence") == "low" or name == "unreadable":
         return None, None
     if verdict.get("expired"):
         return None, "expired"
-    if not verdict.get("name_matches"):
-        return None, "does_not_match_profile"
-
-    claimed = (verdict.get("national_id") or "").strip()
-    if claimed and expect.get("national_id") and claimed != expect["national_id"]:
-        return None, "does_not_match_profile"
 
     if route == "national_id":
         if not claimed:
             # No national ID printed on it means it is not a national ID card.
             return None, "not_a_national_id"
+        # The occupation box is the whole question this route asks. It either says
+        # veterinarian or it does not, and either way that is an answer.
         if verdict.get("occupation_is_veterinarian"):
             return "baytarian", None
-        return None, "occupation_not_veterinarian"
+        if verdict.get("occupation"):
+            return None, "occupation_not_veterinarian"
+        return None, None          # the box could not be read — a person looks
 
     # Any other document: a student card, a faculty letter, an enrolment certificate.
     if verdict.get("occupation_is_veterinarian"):
@@ -224,22 +256,25 @@ def demo():
     def verdict(**over):
         base = {"document_type": "x", "issuer": "", "holder_name": "", "national_id": "",
                 "occupation": "", "occupation_is_veterinarian": False,
-                "is_veterinary_student": False, "expired": False, "name_matches": True,
+                "is_veterinary_student": False, "expired": False, "name_match": "same",
                 "tampered": False, "confidence": "high", "reason": ""}
         base.update(over)
         return base
 
-    # national ID route: only a vet occupation grants, and only for this person
-    assert decide(verdict(national_id="27811291801536", occupation_is_veterinarian=True),
+    # national ID route: the occupation box is the question, and it answers either way
+    assert decide(verdict(national_id="27811291801536", occupation="طبيب بيطري",
+                          occupation_is_veterinarian=True),
                   "national_id", expect) == ("baytarian", None)
-    assert decide(verdict(national_id="27811291801536"), "national_id", expect) == (
-        None, "occupation_not_veterinarian")
+    assert decide(verdict(national_id="27811291801536", occupation="مهندس"),
+                  "national_id", expect) == (None, "occupation_not_veterinarian")
+    # ...unless the box itself could not be read, which is not an answer
+    assert decide(verdict(national_id="27811291801536"), "national_id", expect) == (None, None)
     assert decide(verdict(national_id="10000000000000", occupation_is_veterinarian=True),
-                  "national_id", expect) == (None, "does_not_match_profile")
+                  "national_id", expect) == (None, "national_id_does_not_match")
     assert decide(verdict(occupation_is_veterinarian=True), "national_id", expect) == (
         None, "not_a_national_id")
 
-    # other documents: student card grants the student tier, not the vet one
+    # other documents: a student card grants the student kind, a licence the licensed one
     assert decide(verdict(is_veterinary_student=True), "other", expect) == ("vet_student", None)
     assert decide(verdict(), "other", expect) == (None, None)          # unsure -> a person
     assert decide(verdict(confidence="low", is_veterinary_student=True),
@@ -248,9 +283,23 @@ def demo():
                   "other", expect) == (None, "looks_edited")
     assert decide(verdict(expired=True, is_veterinary_student=True),
                   "other", expect) == (None, "expired")
-    assert decide(verdict(name_matches=False, is_veterinary_student=True),
-                  "other", expect) == (None, "does_not_match_profile")
     assert decide(None, "other", expect) == (None, None)               # no key -> a person
+
+    # ---- names: written differently is the same person; someone else is a refusal ----
+    for match in ("same", "similar"):
+        assert decide(verdict(name_match=match, is_veterinary_student=True),
+                      "other", expect) == ("vet_student", None), match
+    assert decide(verdict(name_match="different", is_veterinary_student=True),
+                  "other", expect) == (None, "name_does_not_match")
+    assert decide(verdict(name_match="unreadable", is_veterinary_student=True),
+                  "other", expect) == (None, None)
+    # a wrong name is refused even when everything else on the card is right
+    assert decide(verdict(name_match="different", national_id="27811291801536",
+                          occupation="طبيب بيطري", occupation_is_veterinarian=True),
+                  "national_id", expect) == (None, "name_does_not_match")
+    # ...and an unreadable one is not held against an applicant with no name on file
+    assert decide(verdict(name_match="unreadable", is_veterinary_student=True),
+                  "other", {"name": "", "national_id": ""}) == (None, None)
 
     class _Refused:
         stop_reason = "refusal"

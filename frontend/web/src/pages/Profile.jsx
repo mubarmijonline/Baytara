@@ -279,6 +279,7 @@ export default function Profile() {
   const payments = paymentData?.payments || [];
   const completedLessons = enrollments.reduce((sum, row) => sum + (row.progress?.completed_lessons || 0), 0);
   const verified = user.is_baytarian || baytarian?.is_baytarian;
+  const request = baytarian?.request;
   const thisDevice = getDeviceId();
   const categories = categoryData?.categories || [];
   const categoryName = (slug) => categories.find((c) => c.slug === slug)?.name || slug;
@@ -439,6 +440,32 @@ export default function Profile() {
                     {t('verify.field.expires_at')}: {dateLabel(user.vet_card_expires_at, lang)}
                     {user.vet_registration_no ? ` · ${t('verify.field.registration_no')} ${user.vet_registration_no}` : ''}
                   </div>
+                )}
+              </div>
+            ) : request ? (
+              // A request in flight is the answer to "what happened to my upload?".
+              // Without it the page just says "not verified" and looks like nothing was sent.
+              <div style={{
+                borderRadius: 11, padding: '14px 15px',
+                background: request.status === 'rejected' ? '#fdf3f2' : '#fff8e8',
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: request.status === 'rejected' ? '#b3261e' : '#8a6116' }}>
+                  {t(`profile.request.${request.status}`)}
+                </div>
+                <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 6, lineHeight: 1.8 }}>
+                  {t(`verify.route.${{ syndicate_card: 'card', national_id: 'national_id', other: 'other' }[request.route] || 'other'}`)}
+                  {request.created_at ? ` · ${dateLabel(request.created_at, lang)}` : ''}
+                </div>
+                {request.status === 'rejected' && request.reject_reason && (
+                  <div style={{ fontSize: 12.5, color: '#b3261e', marginTop: 6, lineHeight: 1.8 }}>{request.reject_reason}</div>
+                )}
+                {request.status === 'pending' && (
+                  <div style={{ fontSize: 12.5, color: colors.muted2, marginTop: 6, lineHeight: 1.8 }}>{t('profile.request.pendingHint')}</div>
+                )}
+                {request.status === 'rejected' && (
+                  <Link to="/verify" style={{ display: 'block', marginTop: 12, border: `1.5px solid ${colors.accent}`, color: colors.accent, fontSize: 14, fontWeight: 700, padding: 11, borderRadius: 10, textAlign: 'center' }}>
+                    {t('profile.request.retry')}
+                  </Link>
                 )}
               </div>
             ) : (

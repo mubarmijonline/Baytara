@@ -747,8 +747,8 @@ def baytarian_approve(rid):
         return jsonify(error="not_found"), 404
     if r.status != "pending":
         return jsonify(error="not_pending", status=r.status), 409
-    # A student card proves a student, so approving one must not hand out the doctor's
-    # badge. The admin says which, defaulting to whatever the request already asked for.
+    # Both kinds verify the account; the admin only says whether this is a student or a
+    # licensed doctor, defaulting to whatever the request already read.
     grant = (request.get_json(silent=True) or {}).get("grant") or r.grant or "baytarian"
     if grant not in ("baytarian", "vet_student"):
         return jsonify(error="invalid_grant"), 400
@@ -758,14 +758,13 @@ def baytarian_approve(rid):
         r.reviewed_by = _uid()
         r.reviewed_at = datetime.now(timezone.utc)
         user = db.session.get(User, r.user_id)
-        if grant == "baytarian":
-            user.is_baytarian = True
-            push_notification(r.user_id, "baytarian_approved", "تم توثيق حسابك كطبيب بيطري ✅",
-                              "أصبح بإمكانك الآن الوصول إلى محتوى «بيطريّ» المخصّص للأطباء.")
-        else:
-            user.is_vet_student = True
-            push_notification(r.user_id, "vet_student_approved", "تم توثيقك كطالب طب بيطري ✅",
-                              "أصبح بإمكانك الوصول إلى المحتوى المجاني المخصّص للأطباء والطلاب.")
+        user.is_baytarian = True
+        user.is_vet_student = grant == "vet_student"
+        push_notification(
+            r.user_id, "baytarian_approved",
+            "تم توثيقك كطالب طب بيطري ✅" if grant == "vet_student"
+            else "تم توثيق حسابك كطبيب بيطري ✅",
+            "أصبح بإمكانك الآن الوصول إلى محتوى «بيطريّ» المخصّص للأطباء.")
         db.session.commit()
     except Exception:  # noqa: BLE001
         db.session.rollback()
@@ -792,13 +791,11 @@ def baytarian_revoke(rid):
     r.reviewed_by = _uid()
     r.reviewed_at = datetime.now(timezone.utc)
     user = db.session.get(User, r.user_id)
-    if r.grant == "vet_student":
-        user.is_vet_student = False
-    else:
-        user.is_baytarian = False
-        user.vet_registration_no = user.vet_license_no = None
-        user.vet_governorate = None
-        user.vet_card_expires_at = None
+    user.is_baytarian = False
+    user.is_vet_student = False
+    user.vet_registration_no = user.vet_license_no = None
+    user.vet_governorate = None
+    user.vet_card_expires_at = None
     push_notification(r.user_id, "baytarian_revoked", "تم سحب التوثيق",
                       r.reject_reason)
     db.session.commit()
