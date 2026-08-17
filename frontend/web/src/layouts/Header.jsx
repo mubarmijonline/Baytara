@@ -66,6 +66,16 @@ function NotificationBell() {
 
   async function markAll() { try { await auth.notifReadAll(); load(); } catch { /* noop */ } }
 
+  // Reading one is a click on the row itself. Applied locally first so the badge
+  // and the highlight react immediately; the server call reconciles after.
+  async function markRead(id) {
+    const target = items.find((n) => n.id === id);
+    if (!target || target.is_read) return;
+    setItems((rows) => rows.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    setUnread((count) => Math.max(0, count - 1));
+    try { await auth.notifRead(id); } catch { load(); }
+  }
+
   return (
     <div style={{ position: 'relative' }} ref={ref}>
       <button
@@ -82,21 +92,43 @@ function NotificationBell() {
         )}
       </button>
       {open && (
-        <div style={{ position: 'absolute', insetInlineEnd: 0, top: 44, width: 320, maxHeight: 420, overflowY: 'auto',
+        // Wide enough for a full sentence of body text, but never wider than the
+        // viewport on a phone, where the bell sits close to the screen edge.
+        <div style={{ position: 'absolute', insetInlineEnd: 0, top: 44, width: 'min(420px, calc(100vw - 28px))',
+          maxHeight: 'min(70vh, 520px)', overflowY: 'auto',
           background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 14, boxShadow: '0 18px 44px rgba(20,20,43,.18)', zIndex: 60 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderBottom: `1px solid ${colors.line2}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: `1px solid ${colors.line2}` }}>
             <b style={{ fontSize: 14 }}>{t('nav.notifications')}</b>
-            {unread > 0 && <span onClick={markAll} style={{ fontSize: 12, color: colors.accent, cursor: 'pointer', fontWeight: 700 }}>{t('nav.markAllRead')}</span>}
+            {unread > 0 && (
+              <button type="button" onClick={markAll}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: colors.accent, cursor: 'pointer', fontWeight: 700 }}>
+                {t('nav.markAllRead')}
+              </button>
+            )}
           </div>
           {items.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: colors.muted, fontSize: 13 }}>{t('nav.noNotifications')}</div>
           ) : items.map((n) => (
-            <div key={n.id} style={{ padding: '12px 14px', borderBottom: `1px solid ${colors.line2}`,
-              background: n.is_read ? '#fff' : colors.accentSoft }}>
-              <div style={{ fontSize: 14, fontWeight: 800 }}>{n.title}</div>
-              {n.body && <div style={{ fontSize: 13, color: colors.muted, marginTop: 3 }}>{n.body}</div>}
-              <div style={{ fontSize: 11, color: colors.muted2, marginTop: 4 }}>{(n.created_at || '').slice(0, 16).replace('T', ' ')}</div>
-            </div>
+            <button
+              key={n.id}
+              type="button"
+              onClick={() => markRead(n.id)}
+              aria-label={n.is_read ? n.title : `${n.title} — ${t('nav.unread')}`}
+              style={{ display: 'block', width: '100%', textAlign: 'inherit', font: 'inherit', border: 'none',
+                borderBottom: `1px solid ${colors.line2}`, padding: '13px 16px', cursor: n.is_read ? 'default' : 'pointer',
+                background: n.is_read ? '#fff' : colors.accentSoft }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                {/* The dot is the only unread cue left once the row is read and loses its tint. */}
+                <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', marginTop: 6, flex: 'none',
+                  background: n.is_read ? 'transparent' : colors.accent }} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: n.is_read ? 700 : 800 }}>{n.title}</div>
+                  {n.body && <div style={{ fontSize: 13, color: colors.muted, marginTop: 4, lineHeight: 1.7 }}>{n.body}</div>}
+                  <div style={{ fontSize: 11, color: colors.muted2, marginTop: 6 }}>{(n.created_at || '').slice(0, 16).replace('T', ' ')}</div>
+                </div>
+              </div>
+            </button>
           ))}
         </div>
       )}
