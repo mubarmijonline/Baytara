@@ -3,6 +3,7 @@ import { notifyAdminDataChanged, shouldNotifyAdminDataChanged } from './admin-da
 
 const BASE = '/api/v1';
 let token = localStorage.getItem('baytara_admin_token') || '';
+let refreshToken = localStorage.getItem('baytara_admin_refresh') || '';
 
 export const getToken = () => token;
 export function setToken(t) {
@@ -10,8 +11,35 @@ export function setToken(t) {
   if (t) localStorage.setItem('baytara_admin_token', t);
   else localStorage.removeItem('baytara_admin_token');
 }
+export function setRefreshToken(t) {
+  refreshToken = t || '';
+  if (t) localStorage.setItem('baytara_admin_refresh', t);
+  else localStorage.removeItem('baytara_admin_refresh');
+}
+export function clearSession() { setToken(''); setRefreshToken(''); }
 
-async function req(path, opts = {}) {
+// The access token lasts fifteen minutes, and nothing renewed it: an admin working
+// through the queue was signed out between one request and the next. The API has
+// always issued a thirty-day refresh token, so the session is renewed rather than
+// dropped. One refresh at a time, or simultaneous expiries race each other.
+let refreshing = null;
+async function renewAccessToken() {
+  if (!refreshToken) return '';
+  if (!refreshing) {
+    refreshing = fetch(BASE + '/auth/refresh', {
+      method: 'POST', headers: { Authorization: `Bearer ${refreshToken}` },
+    }).then(async (r) => {
+      if (!r.ok) { clearSession(); return ''; }
+      const body = await r.json();
+      if (body.access_token) setToken(body.access_token);
+      if (body.refresh_token) setRefreshToken(body.refresh_token);
+      return body.access_token || '';
+    }).catch(() => '').finally(() => { refreshing = null; });
+  }
+  return refreshing;
+}
+
+async function req(path, opts = {}, retried = false) {
   const { clearTokenOn401 = true, skipAdminDataChanged = false, ...fetchOptions } = opts;
   const r = await fetch(BASE + path, {
     ...fetchOptions,
@@ -21,10 +49,15 @@ async function req(path, opts = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
+  // An expired access token renews itself and the call is replayed once. Only a
+  // refresh that fails means signing in again.
+  if (r.status === 401 && !retried && refreshToken) {
+    if (await renewAccessToken()) return req(path, opts, true);
+  }
   const isJson = (r.headers.get('content-type') || '').includes('json');
   const data = isJson ? await r.json() : null;
   if (r.status === 401) {
-    if (clearTokenOn401) setToken('');
+    if (clearTokenOn401) clearSession();
     throw Object.assign(new Error('unauthorized'), { status: 401 });
   }
   if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
@@ -39,12 +72,15 @@ const qs = (params) => {
   return s ? `?${s}` : '';
 };
 
-async function blobReq(path) {
+async function blobReq(path, retried = false) {
   const response = await fetch(BASE + path, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+  if (response.status === 401 && !retried && refreshToken) {
+    if (await renewAccessToken()) return blobReq(path, true);
+  }
   if (response.status === 401) {
-    setToken('');
+    clearSession();
     throw Object.assign(new Error('unauthorized'), { status: 401 });
   }
   if (!response.ok) throw Object.assign(new Error('download_failed'), { status: response.status });
@@ -215,10 +251,13 @@ export async function fetchReceipt(id) {
 }
 
 // Baytarian verification document (PDF/image) — auth-gated, returned as an object URL.
-export async function fetchBaytarianDoc(rid, idx) {
+export async function fetchBaytarianDoc(rid, idx, retried = false) {
   const r = await fetch(`${BASE}/admin/baytarian-requests/${rid}/doc/${idx}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+  if (r.status === 401 && !retried && refreshToken) {
+    if (await renewAccessToken()) return fetchBaytarianDoc(rid, idx, true);
+  }
   if (!r.ok) throw new Error('doc_failed');
   return URL.createObjectURL(await r.blob());
 }

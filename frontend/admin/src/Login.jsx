@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api, setToken } from './api.js';
+import { api, setRefreshToken, setToken } from './api.js';
 import { useAdminLanguage } from './i18n.jsx';
 
 export default function Login({ onLogin }) {
@@ -20,6 +20,8 @@ export default function Login({ onLogin }) {
         return;
       }
       setToken(res.access_token);
+      // Kept so the session outlives the fifteen-minute access token.
+      setRefreshToken(res.refresh_token);
       onLogin(res.user);
     } catch (e2) {
       setErr(e2.status === 401 ? t('login.invalid') : t('login.failed'));

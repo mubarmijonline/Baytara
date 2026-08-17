@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth, getToken, setToken } from './api.js';
+import { auth, getToken, logout as clearTokens, setRefreshToken, setToken } from './api.js';
 
 const AuthCtx = createContext(null);
 
@@ -12,19 +12,22 @@ export function AuthProvider({ children }) {
     if (!getToken()) return;
     auth.me()
       .then((r) => setUser(r.user))
-      .catch(() => setToken(''))
+      .catch(() => clearTokens())
       .finally(() => setLoading(false));
   }, []);
 
   async function login(email, password) {
     const res = await auth.login({ email, password });
     setToken(res.access_token);
+    // Kept so the session outlives the fifteen-minute access token.
+    setRefreshToken(res.refresh_token);
     setUser(res.user);
     return res.user;
   }
   async function register(name, email, password, phone) {
     const res = await auth.register({ name, email, password, phone });
     setToken(res.access_token);
+    setRefreshToken(res.refresh_token);
     setUser(res.user);
     return res.user;
   }
@@ -49,7 +52,7 @@ export function AuthProvider({ children }) {
   }
   function logout() {
     auth.logoutServer();
-    setToken('');
+    clearTokens();
     setUser(null);
   }
 

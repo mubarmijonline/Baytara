@@ -39,21 +39,55 @@ async function get(path, includeAuth = false) {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   } });
   if (includeAuth && token && r.status === 401) {
-    setToken('');
-    r = await fetch(url, { headers: { 'Accept-Language': getLang() } });
+    // Renew if we can; a token that cannot be renewed is stale and worth dropping,
+    // so the page falls back to the public view instead of retrying it forever.
+    const renewed = getRefreshToken() ? await refreshAccessToken() : '';
+    if (!renewed) logout();
+    r = await fetch(url, { headers: {
+      'Accept-Language': getLang(),
+      ...(renewed ? { Authorization: `Bearer ${renewed}` } : {}),
+    } });
   }
   if (!r.ok) throw Object.assign(new Error('http'), { status: r.status });
   return r.json();
 }
 
 // ---- student auth (JWT in localStorage) ----
+//
+// The access token lasts fifteen minutes. Nothing was renewing it, so a learner who
+// read a lesson for a quarter of an hour was thrown out mid-video and had to sign in
+// again. The API has issued a thirty-day refresh token from the start; this uses it.
 const TOKEN_KEY = 'baytara_token';
+const REFRESH_KEY = 'baytara_refresh';
 export const getToken = () => localStorage.getItem(TOKEN_KEY) || '';
 export const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
-export const logout = () => setToken('');
+export const getRefreshToken = () => localStorage.getItem(REFRESH_KEY) || '';
+export const setRefreshToken = (t) => (t ? localStorage.setItem(REFRESH_KEY, t) : localStorage.removeItem(REFRESH_KEY));
+export const logout = () => { setToken(''); setRefreshToken(''); };
 export const isAuthed = () => !!getToken();
 
-async function authFetch(path, opts = {}) {
+// One refresh at a time. Several requests expiring together must not each start their
+// own, or they race and all but one of the new tokens is discarded.
+let refreshing = null;
+async function refreshAccessToken() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return '';
+  if (!refreshing) {
+    refreshing = fetch(BASE + '/auth/refresh', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${refreshToken}`, 'X-Baytara-Device-ID': getDeviceId() },
+    }).then(async (r) => {
+      if (!r.ok) { logout(); return ''; }
+      const body = await r.json();
+      if (body.access_token) setToken(body.access_token);
+      if (body.refresh_token) setRefreshToken(body.refresh_token);
+      return body.access_token || '';
+    }).catch(() => '').finally(() => { refreshing = null; });
+  }
+  return refreshing;
+}
+
+async function authFetch(path, opts = {}, retried = false) {
   const t = getToken();
   const r = await fetch(BASE + path, {
     ...opts,
@@ -64,15 +98,20 @@ async function authFetch(path, opts = {}) {
       ...(t ? { Authorization: `Bearer ${t}` } : {}),
     },
   });
+  // An expired access token is not the end of the session: renew it and replay the
+  // call once. Only a refresh that itself fails means signing in again.
+  if (r.status === 401 && !retried && getRefreshToken()) {
+    if (await refreshAccessToken()) return authFetch(path, opts, true);
+  }
   const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
-  if (r.status === 401) { setToken(''); throw Object.assign(new Error('unauthorized'), { status: 401 }); }
+  if (r.status === 401) { logout(); throw Object.assign(new Error('unauthorized'), { status: 401 }); }
   if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
   return j;
 }
 
 // Multipart: the browser has to set Content-Type itself so the boundary is right,
 // which is why this cannot go through authFetch.
-async function authUpload(path, formData) {
+async function authUpload(path, formData, retried = false) {
   const t = getToken();
   const r = await fetch(BASE + path, {
     method: 'POST',
@@ -82,8 +121,11 @@ async function authUpload(path, formData) {
       ...(t ? { Authorization: `Bearer ${t}` } : {}),
     },
   });
+  if (r.status === 401 && !retried && getRefreshToken()) {
+    if (await refreshAccessToken()) return authUpload(path, formData, true);
+  }
   const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
-  if (r.status === 401) { setToken(''); throw Object.assign(new Error('unauthorized'), { status: 401 }); }
+  if (r.status === 401) { logout(); throw Object.assign(new Error('unauthorized'), { status: 401 }); }
   if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
   return j;
 }
@@ -105,13 +147,9 @@ export const auth = {
     const fd = new FormData();
     fd.append('front', front);
     fd.append('back', back);
-    return fetch(`${BASE}/baytarian/card${preview ? '/preview' : ''}`, {
-      method: 'POST', headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}, body: fd,
-    }).then(async (r) => {
-      const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
-      if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
-      return j;
-    });
+    // Through authUpload so an expired token renews itself: reading a card can take
+    // a while, and losing the upload to a timed-out session is the worst moment for it.
+    return authUpload(`/baytarian/card${preview ? '/preview' : ''}`, fd);
   },
   // Any other document — national ID or a college card. One or two images; the back
   // is optional because a student card often has nothing worth photographing on it.
@@ -120,13 +158,7 @@ export const auth = {
     fd.append('route', route);
     fd.append('front', front);
     if (back) fd.append('back', back);
-    return fetch(`${BASE}/baytarian/document`, {
-      method: 'POST', headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}, body: fd,
-    }).then(async (r) => {
-      const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
-      if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
-      return j;
-    });
+    return authUpload('/baytarian/document', fd);
   },
   baytarianRequest: (files, note) => {
     const fd = new FormData();
