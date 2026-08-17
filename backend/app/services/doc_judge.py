@@ -125,6 +125,71 @@ def _block(image):
     }}
 
 
+# ------------------------------- orientation -------------------------------
+#
+# A phone photographed a landscape card in portrait, so every line of Arabic ran
+# vertically up the side of the frame. The model read a national ID with two digits
+# transposed, could not read the name or the occupation at all, and said so: "الصورة
+# مقلوبة". Rotated a quarter turn the same photograph read every field at high
+# confidence. So orientation is not a detail of the image — it decides whether the
+# document can be read, and asking the applicant to retake a photograph that was
+# perfectly good is not the answer.
+
+def _rotate(data, degrees):
+    """Rotate JPEG/PNG bytes. Returns the original bytes if the image cannot be read."""
+    import io
+
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:      # Pillow absent: fall back to sending it as it came
+        return data
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            # Phones usually record rotation as an EXIF flag rather than in the pixels.
+            # Honouring it first is free and fixes the common case outright.
+            image = ImageOps.exif_transpose(image)
+            if degrees:
+                image = image.rotate(degrees, expand=True)
+            out = io.BytesIO()
+            image.convert("RGB").save(out, format="JPEG", quality=90)
+            return out.getvalue()
+    except Exception:        # noqa: BLE001 — an unreadable image is the model's problem
+        return data
+
+
+def _is_portrait(data):
+    import io
+
+    try:
+        from PIL import Image, ImageOps
+
+        with Image.open(io.BytesIO(data)) as image:
+            image = ImageOps.exif_transpose(image)
+            return image.height > image.width
+    except Exception:        # noqa: BLE001
+        return False
+
+
+def orientations(images):
+    """The orientations worth trying, best guess first.
+
+    An identity card is wider than it is tall, so a portrait photograph of one is
+    lying on its side — but which side depends on which way the phone was held, and
+    nothing in the file says. Both quarter turns are tried; the upright image is
+    tried first so a photograph that was already straight costs one call.
+    """
+    yield [(_rotate(data, 0), "image/jpeg") for data, _ in images]
+    if not any(_is_portrait(data) for data, _ in images):
+        return
+    for degrees in (90, -90):        # counter-clockwise, then clockwise
+        yield [(_rotate(data, degrees), "image/jpeg") for data, _ in images]
+
+
+def readable(verdict):
+    """Whether a verdict is worth stopping on, or whether to try another orientation."""
+    return bool(verdict) and verdict.get("confidence") != "low"
+
+
 def build_request(images, expect):
     """The request body, built without touching the network so it can be tested.
 
@@ -170,14 +235,23 @@ def available():
 
 def judge(images, expect):
     """Ask Claude what the document is. Returns the verdict dict, or None if the
-    service is unavailable or declined — either way the request goes to a human."""
+    service is unavailable or declined — either way the request goes to a human.
+
+    Tries the photograph the right way up before giving up on it: an unreadable
+    answer from a sideways card is a fact about the frame, not about the document.
+    """
     if not available():
         return None
     import anthropic
 
     client = anthropic.Anthropic()
-    response = client.messages.create(**build_request(images, expect))
-    return read_verdict(response)
+    best = None
+    for turned in orientations(images):
+        verdict = read_verdict(client.messages.create(**build_request(turned, expect)))
+        best = verdict or best
+        if readable(verdict):
+            return verdict
+    return best
 
 
 # ------------------------------- deciding on it -------------------------------
@@ -312,6 +386,37 @@ def demo():
         content = [type("B", (), {"type": "text", "text": '{"confidence": "high"}'})()]
 
     assert read_verdict(_Text()) == {"confidence": "high"}
+
+    # ---- orientation ----
+    assert readable({"confidence": "high"}) and readable({"confidence": "medium"})
+    assert not readable({"confidence": "low"}) and not readable(None)
+
+    import io
+
+    from PIL import Image
+
+    def jpeg(width, height):
+        out = io.BytesIO()
+        Image.new("RGB", (width, height), "white").save(out, format="JPEG")
+        return out.getvalue()
+
+    # A card photographed upright is read once; nothing is gained by turning it.
+    assert len(list(orientations([(jpeg(1600, 900), "image/jpeg")]))) == 1
+    # A portrait photograph of a landscape card is tried both ways round.
+    turns = list(orientations([(jpeg(900, 1600), "image/jpeg")]))
+    assert len(turns) == 3, len(turns)
+    assert all(len(t) == 1 for t in turns)
+    # ...and the turned frames really are landscape, not just re-encoded.
+    for candidate in turns[1:]:
+        with Image.open(io.BytesIO(candidate[0][0])) as turned:
+            assert turned.width > turned.height, turned.size
+    # Both sides turn together, so the pair still describes one card.
+    pair = list(orientations([(jpeg(900, 1600), "image/jpeg"), (jpeg(900, 1600), "image/jpeg")]))
+    assert len(pair) == 3 and all(len(p) == 2 for p in pair)
+    # Bytes that are not an image at all are passed through rather than raising.
+    assert _rotate(b"not an image", 90) == b"not an image"
+    assert _is_portrait(b"not an image") is False
+
     print("doc judge self-check OK")
 
 
