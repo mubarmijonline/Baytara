@@ -39,6 +39,14 @@ export function AuthProvider({ children }) {
     setUser(res.user);
     return res.user;
   }
+  // Re-read the account after something server-side changed it — verification grants a
+  // status the client never sent, so the local copy is stale until it asks.
+  async function refresh() {
+    if (!getToken()) return null;
+    const res = await auth.me();
+    setUser(res.user);
+    return res.user;
+  }
   function logout() {
     auth.logoutServer();
     setToken('');
@@ -46,7 +54,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, loading, login, register, updateProfile, uploadProfileImage, logout }}>
+    <AuthCtx.Provider value={{ user, loading, login, register, updateProfile, uploadProfileImage, refresh, logout }}>
       {children}
     </AuthCtx.Provider>
   );

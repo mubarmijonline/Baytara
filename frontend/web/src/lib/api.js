@@ -113,6 +113,21 @@ export const auth = {
       return j;
     });
   },
+  // Any other document — national ID or a college card. One or two images; the back
+  // is optional because a student card often has nothing worth photographing on it.
+  baytarianDocument: (route, front, back) => {
+    const fd = new FormData();
+    fd.append('route', route);
+    fd.append('front', front);
+    if (back) fd.append('back', back);
+    return fetch(`${BASE}/baytarian/document`, {
+      method: 'POST', headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}, body: fd,
+    }).then(async (r) => {
+      const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+      if (!r.ok) throw Object.assign(new Error((j && j.error) || 'error'), { status: r.status, data: j });
+      return j;
+    });
+  },
   baytarianRequest: (files, note) => {
     const fd = new FormData();
     (files || []).forEach((f) => fd.append('documents', f));

@@ -136,11 +136,16 @@ export const api = {
 
   // baytarian verification requests
   baytarianRequests: (status) => req('/admin/baytarian-requests' + (status ? `?status=${status}` : '')),
-  baytarianApprove: (id) => withAdminStatsInvalidation(
-    () => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST' }),
+  // `grant` decides what approving hands out: the doctor's badge or the student status.
+  baytarianApprove: (id, grant = 'baytarian') => withAdminStatsInvalidation(
+    () => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST', body: JSON.stringify({ grant }) }),
   ),
   baytarianReject: (id, reason) => withAdminStatsInvalidation(
     () => req(`/admin/baytarian-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  ),
+  // Undo an approval — the answer to a machine having made the decision.
+  baytarianRevoke: (id, reason) => withAdminStatsInvalidation(
+    () => req(`/admin/baytarian-requests/${id}/revoke`, { method: 'POST', body: JSON.stringify({ reason }) }),
   ),
 
   // bundles (course bundling)

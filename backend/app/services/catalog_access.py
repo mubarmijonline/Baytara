@@ -41,7 +41,13 @@ def audience_error(user, access_type):
         return None
 
     is_vet = bool(getattr(user, "is_baytarian", False))
-    if access_type in {"vet_free", "baytarian"} and not is_vet:
+    # A verified veterinary student reaches the free vet tier but not the paid one. That
+    # is the whole point of the student status: the free content is what brings students
+    # in, and the licensed-doctor content stays licensed-doctors-only.
+    is_student = bool(getattr(user, "is_vet_student", False))
+    if access_type == "baytarian" and not is_vet:
+        return "needs_baytarian"
+    if access_type == "vet_free" and not (is_vet or is_student):
         return "needs_baytarian"
     if access_type == "general" and is_vet:
         return "non_veterinarians_only"

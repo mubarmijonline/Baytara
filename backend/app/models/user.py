@@ -22,6 +22,10 @@ class User(db.Model):
     # Baytarian = verified pet doctor (admin-approved via document upload). Gates
     # access to baytarian-tier courses (client البند3 revision).
     is_baytarian = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    # A veterinary student is not a veterinarian, and the badge must keep meaning what it
+    # says. Students get their own status: it opens the free vet-tier content that brings
+    # them to the platform, and nothing that is sold to licensed doctors.
+    is_vet_student = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     # Identity for verification. The national ID is what ties a syndicate card to this
     # account, so it is unique and write-once for the learner: once set, only an admin
     # may change it. Never returned by public_profile() — this is not public data.
@@ -97,6 +101,12 @@ class BaytarianRequest(db.Model):
     card_back = db.Column(db.String(500))
     ocr_text = db.Column(db.Text)
     parsed = db.Column(db.JSON)      # every field read, with its verdict
+    # Which door the applicant came through, what a model made of their document, and
+    # what the decision granted. Stored even when the answer was "I cannot tell", so the
+    # admin reviewing it by hand sees what was already read rather than starting cold.
+    route = db.Column(db.String(20), nullable=False, default="manual", server_default="manual")
+    ai_verdict = db.Column(db.JSON)
+    grant = db.Column(db.String(20))   # baytarian | vet_student
     auto_approved = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     spot_check = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     reject_reason = db.Column(db.String(300))
@@ -117,9 +127,9 @@ class BaytarianRequest(db.Model):
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
         }
         d.update(auto_approved=self.auto_approved, spot_check=self.spot_check,
-                 parsed=self.parsed or None)
+                 parsed=self.parsed or None, route=self.route, grant=self.grant)
         if admin:
-            d.update(user_id=self.user_id,
+            d.update(user_id=self.user_id, ai_verdict=self.ai_verdict or None,
                      user={"id": self.user.id, "name": self.user.name, "email": self.user.email} if self.user else None,
                      documents=self.documents or [],
                      has_card=bool(self.card_front or self.card_back),

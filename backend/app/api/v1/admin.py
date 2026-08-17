@@ -105,6 +105,7 @@ def stats():
 def _user_json(u):
     return {"id": u.id, "name": u.name, "email": u.email, "role": u.role, "phone": u.phone,
             "is_active": u.is_active, "is_baytarian": u.is_baytarian,
+            "is_vet_student": u.is_vet_student,
             "created_at": u.created_at.isoformat() if u.created_at else None,
             "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or [],
             "category_id": u.category_id, "max_devices": u.max_devices,
@@ -114,7 +115,7 @@ def _user_json(u):
 
 
 PROFILE_FIELDS = ("phone", "headline", "bio", "avatar_url", "expertise", "category_id", "max_devices",
-                  "is_baytarian", "can_add_video", "can_edit_video", "can_delete_video")
+                  "is_baytarian", "is_vet_student", "can_add_video", "can_edit_video", "can_delete_video")
 
 
 def _apply_profile_fields(u, d):
@@ -746,18 +747,61 @@ def baytarian_approve(rid):
         return jsonify(error="not_found"), 404
     if r.status != "pending":
         return jsonify(error="not_pending", status=r.status), 409
+    # A student card proves a student, so approving one must not hand out the doctor's
+    # badge. The admin says which, defaulting to whatever the request already asked for.
+    grant = (request.get_json(silent=True) or {}).get("grant") or r.grant or "baytarian"
+    if grant not in ("baytarian", "vet_student"):
+        return jsonify(error="invalid_grant"), 400
     try:
         r.status = "approved"
+        r.grant = grant
         r.reviewed_by = _uid()
         r.reviewed_at = datetime.now(timezone.utc)
         user = db.session.get(User, r.user_id)
-        user.is_baytarian = True
-        push_notification(r.user_id, "baytarian_approved", "تم توثيق حسابك كطبيب بيطري ✅",
-                          "أصبح بإمكانك الآن الوصول إلى محتوى «بيطريّ» المخصّص للأطباء.")
+        if grant == "baytarian":
+            user.is_baytarian = True
+            push_notification(r.user_id, "baytarian_approved", "تم توثيق حسابك كطبيب بيطري ✅",
+                              "أصبح بإمكانك الآن الوصول إلى محتوى «بيطريّ» المخصّص للأطباء.")
+        else:
+            user.is_vet_student = True
+            push_notification(r.user_id, "vet_student_approved", "تم توثيقك كطالب طب بيطري ✅",
+                              "أصبح بإمكانك الوصول إلى المحتوى المجاني المخصّص للأطباء والطلاب.")
         db.session.commit()
     except Exception:  # noqa: BLE001
         db.session.rollback()
         raise
+    return jsonify(request=r.to_dict(admin=True))
+
+
+@bp.post("/baytarian-requests/<int:rid>/revoke")
+@require_role("admin")
+def baytarian_revoke(rid):
+    """Undo an approval — the answer to a machine having made the decision.
+
+    Auto-approval is only defensible while a person can take it back, so this works on
+    any approved request, whoever approved it.
+    """
+    r = db.session.get(BaytarianRequest, rid)
+    if not r:
+        return jsonify(error="not_found"), 404
+    if r.status != "approved":
+        return jsonify(error="not_approved", status=r.status), 409
+    reason = (request.get_json(silent=True) or {}).get("reason")
+    r.status = "rejected"
+    r.reject_reason = (reason or "تم سحب التوثيق بعد المراجعة")[:300]
+    r.reviewed_by = _uid()
+    r.reviewed_at = datetime.now(timezone.utc)
+    user = db.session.get(User, r.user_id)
+    if r.grant == "vet_student":
+        user.is_vet_student = False
+    else:
+        user.is_baytarian = False
+        user.vet_registration_no = user.vet_license_no = None
+        user.vet_governorate = None
+        user.vet_card_expires_at = None
+    push_notification(r.user_id, "baytarian_revoked", "تم سحب التوثيق",
+                      r.reject_reason)
+    db.session.commit()
     return jsonify(request=r.to_dict(admin=True))
 
 

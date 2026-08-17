@@ -26,7 +26,7 @@ def my_status():
     user = db.session.get(User, _uid())
     latest = (BaytarianRequest.query.filter_by(user_id=_uid())
               .order_by(BaytarianRequest.created_at.desc()).first())
-    return jsonify(is_baytarian=user.is_baytarian,
+    return jsonify(is_baytarian=user.is_baytarian, is_vet_student=user.is_vet_student,
                    request=latest.to_dict() if latest else None)
 
 
@@ -228,6 +228,7 @@ def submit_card():
     fields = report["fields"]
     req = BaytarianRequest(
         user_id=_uid(), status="approved", auto_approved=True,
+        route="syndicate_card", grant="baytarian",
         card_front=saved["front"], card_back=saved["back"],
         ocr_text=f"--- front (details) ---\n{texts.get('front', '')}\n--- back ---\n{texts.get('back', '')}",
         parsed=report, documents=[saved["front"], saved["back"]],
@@ -246,3 +247,138 @@ def submit_card():
                       "تم التحقق من بطاقة النقابة تلقائياً. أصبح بإمكانك الوصول إلى محتوى الأطباء الموثّقين.")
     db.session.commit()
     return jsonify(request=req.to_dict(), is_baytarian=True), 201
+
+
+# ---------------------- other documents, judged by a model ----------------------
+#
+# The syndicate card has one layout and is parsed by hand. A national ID card or a
+# veterinary college ID does not: there is no stable pattern to write, so the reading
+# is done by a model and the decision is made from what it reports. Whatever it cannot
+# settle becomes an ordinary pending request with the reading attached, which is the
+# same queue an admin already works.
+
+DOC_ROUTES = {"national_id", "other"}
+
+# What each route can grant, and what the learner is told when it lands.
+GRANT_COPY = {
+    "baytarian": ("baytarian_approved", "تم توثيق حسابك كطبيب بيطري ✅",
+                  "قرأنا المستند وتم توثيقك تلقائياً. أصبح بإمكانك الوصول إلى محتوى الأطباء الموثّقين."),
+    "vet_student": ("vet_student_approved", "تم توثيقك كطالب طب بيطري ✅",
+                    "قرأنا المستند وتم توثيقك كطالب. أصبح بإمكانك الوصول إلى المحتوى المجاني المخصص للأطباء والطلاب."),
+}
+
+
+def _tell_admins(type_, title, body):
+    """Every auto-approval an admin should look at lands in their notifications. A
+    machine deciding on its own is only acceptable while a person can still see it."""
+    for admin_id, in db.session.query(User.id).filter(
+            User.role == "admin", User.is_active.is_(True)).all():
+        push_notification(admin_id, type_, title, body)
+
+
+def _collect_document():
+    """One or two images. Unlike the syndicate card, a college ID may only have one
+    side worth photographing, so the back is optional."""
+    images = []
+    for side in ("front", "back"):
+        storage = request.files.get(side)
+        if not storage or not storage.filename:
+            continue
+        if storage.mimetype not in CARD_TYPES:
+            return None, (jsonify(error="unsupported_media_type", allowed=sorted(CARD_TYPES)), 415)
+        storage.stream.seek(0, os.SEEK_END)
+        if storage.stream.tell() > CARD_MAX_BYTES:
+            return None, (jsonify(error="file_too_large", max_bytes=CARD_MAX_BYTES), 413)
+        storage.stream.seek(0)
+        images.append((side, storage))
+    if not images:
+        return None, (jsonify(error="document_required"), 400)
+    return images, None
+
+
+@bp.post("/baytarian/document")
+@jwt_required()
+def submit_document():
+    """Verify from a national ID or any other document a model can read.
+
+    `route=national_id` — the occupation printed on the card must read طبيب بيطري.
+    `route=other`       — a college ID, an enrolment letter, anything: the model says
+                          what it is and the answer decides between the veterinarian
+                          status, the student status, and a human.
+    """
+    from ...services import doc_judge
+
+    user = db.session.get(User, _uid())
+    route = (request.form.get("route") or "other").strip()
+    if route not in DOC_ROUTES:
+        return jsonify(error="invalid_route", allowed=sorted(DOC_ROUTES)), 400
+    if user.is_baytarian:
+        return jsonify(error="already_verified"), 409
+    if BaytarianRequest.query.filter_by(user_id=_uid(), status="pending").first():
+        return jsonify(error="request_pending"), 409
+
+    files, failure = _collect_document()
+    if failure:
+        return failure
+
+    images = []
+    for _, storage in files:
+        storage.stream.seek(0)
+        images.append((storage.read(), storage.mimetype))
+
+    expect = {"name": user.name, "national_id": user.national_id}
+    try:
+        verdict = doc_judge.judge(images, expect)
+    except Exception:  # noqa: BLE001 — an outage sends it to a human, it does not 500
+        current_app.logger.exception("document judge failed for user %s", user.id)
+        verdict = None
+
+    grant, problem = doc_judge.decide(verdict, route, expect)
+    if problem:
+        # A definite no. Nothing is stored: they can retake the photo or come through
+        # another door, and a queue full of definite noes helps nobody.
+        current_app.logger.info("document rejected for user %s route=%s problem=%s",
+                                user.id, route, problem)
+        return jsonify(error=problem, verdict=verdict), 422
+
+    saved = _save_sides(_uid(), dict(files))
+    paths = [saved[side] for side, _ in files]
+    req = BaytarianRequest(
+        user_id=_uid(), route=route, ai_verdict=verdict, documents=paths,
+        card_front=paths[0], card_back=paths[1] if len(paths) > 1 else None,
+        note=(verdict or {}).get("reason", "")[:500],
+    )
+
+    if not grant:
+        # Nobody could tell — including when there is no key configured and `verdict`
+        # is None. It becomes an ordinary pending request, which is what the manual
+        # flow has always been.
+        req.status = "pending"
+        db.session.add(req)
+        db.session.commit()
+        return jsonify(request=req.to_dict(), pending=True), 202
+
+    req.status = "approved"
+    req.auto_approved = True
+    req.grant = grant
+    req.reviewed_at = datetime.now(timezone.utc)   # reviewed_by stays null: the system did it
+    db.session.add(req)
+    db.session.flush()
+    req.spot_check = req.id % SPOT_CHECK_EVERY == 0
+
+    if grant == "baytarian":
+        user.is_baytarian = True
+    else:
+        user.is_vet_student = True
+
+    type_, title, body = GRANT_COPY[grant]
+    push_notification(_uid(), type_, title, body)
+    _tell_admins(
+        "baytarian_auto_approved",
+        "توثيق تلقائي يحتاج مراجعة",
+        f"تم توثيق {user.name} ({'طبيب بيطري' if grant == 'baytarian' else 'طالب'}) "
+        f"تلقائياً من مستند. يمكنك مراجعة الطلب رقم {req.id} أو سحب التوثيق.",
+    )
+    db.session.commit()
+    return jsonify(request=req.to_dict(), is_baytarian=user.is_baytarian,
+                   is_vet_student=user.is_vet_student), 201

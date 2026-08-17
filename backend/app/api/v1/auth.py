@@ -86,6 +86,7 @@ def _tokens(user: User, device_id=None):
 def _user_json(user: User):
     return {"id": user.id, "name": user.name, "email": user.email, "phone": user.phone,
             "role": user.role, "locale": user.locale, "is_baytarian": user.is_baytarian,
+            "is_vet_student": user.is_vet_student,
             "headline": user.headline, "bio": user.bio, "location": user.location,
             "specialties": user.specialties or [],
             # Own profile only. public_profile() must never carry these.
