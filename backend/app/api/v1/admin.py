@@ -772,6 +772,43 @@ def baytarian_approve(rid):
     return jsonify(request=r.to_dict(admin=True))
 
 
+@bp.post("/users/<int:uid>/verify")
+@require_role("admin")
+def verify_user_directly(uid):
+    """Verify an account with no document at all — the admin vouches for it.
+
+    Recorded as an approved request on the `admin` route rather than a quiet flag on
+    the user, so the verification queue shows who was verified this way, by whom, and
+    revoke works on it exactly like any other approval.
+    """
+    user = db.session.get(User, uid)
+    if not user:
+        return jsonify(error="not_found"), 404
+    if user.is_baytarian:
+        return jsonify(error="already_verified"), 409
+    grant = (request.get_json(silent=True) or {}).get("grant") or "baytarian"
+    if grant not in ("baytarian", "vet_student"):
+        return jsonify(error="invalid_grant"), 400
+    note = ((request.get_json(silent=True) or {}).get("note") or "")[:500]
+    now = datetime.now(timezone.utc)
+    try:
+        r = BaytarianRequest(user_id=uid, status="approved", route="admin", grant=grant,
+                             note=note or None, reviewed_by=_uid(), reviewed_at=now)
+        db.session.add(r)
+        user.is_baytarian = True
+        user.is_vet_student = grant == "vet_student"
+        push_notification(
+            uid, "baytarian_approved",
+            "تم توثيقك كطالب طب بيطري ✅" if grant == "vet_student"
+            else "تم توثيق حسابك كطبيب بيطري ✅",
+            "وثّقت الإدارة حسابك. أصبح بإمكانك الوصول إلى المحتوى المخصّص للأطباء.")
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        raise
+    return jsonify(request=r.to_dict(admin=True)), 201
+
+
 @bp.post("/baytarian-requests/<int:rid>/revoke")
 @require_role("admin")
 def baytarian_revoke(rid):

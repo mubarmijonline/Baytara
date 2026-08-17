@@ -2,11 +2,76 @@ import { useEffect, useState } from 'react';
 import { api, fetchBaytarianDoc } from '../api.js';
 import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
-import { ErrText, apiError } from '../ui.jsx';
+import { ErrText, Field, Modal, apiError } from '../ui.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 import { pageCopy } from '../page-copy.js';
 
 const statusChip = (s) => ({ pending: 'draft', approved: 'published', rejected: 'unpublished' }[s] || 'role');
+
+// Verify an account nobody uploaded anything for. Search first: verifying the wrong
+// person is the failure that matters here, so the admin picks a row, not an id.
+function DirectVerify({ copy, common, onClose, onDone }) {
+  const [q, setQ] = useState('');
+  const [rows, setRows] = useState(null);
+  const [grant, setGrant] = useState('baytarian');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function search() {
+    if (!q.trim()) return;
+    setErr(''); setRows(null);
+    try { setRows((await api.users({ q })).users); }
+    catch (e) { setErr(apiError(e, common.loadError)); }
+  }
+
+  async function verify(user) {
+    if (!await confirmDialog(copy.verifyDirectConfirm(user.name))) return;
+    setBusy(true);
+    try {
+      await api.verifyUserDirectly(user.id, grant, note);
+      toast.success(copy.verifyDirectDone);
+      onDone();
+    } catch (e) { setErr(apiError(e, common.loadError)); setBusy(false); }
+  }
+
+  return (
+    <Modal title={copy.verifyDirectTitle} onClose={onClose}>
+      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.8, marginTop: 0 }}>{copy.verifyDirectHint}</p>
+      <div className="row" style={{ marginBottom: 12 }}>
+        <input placeholder={copy.verifyDirectSearch} value={q} onChange={(e) => setQ(e.target.value)}
+               onKeyDown={(e) => e.key === 'Enter' && search()} />
+        <button className="btn btn-tonal btn-sm" onClick={search}>{copy.verifyDirectSearchBtn}</button>
+      </div>
+      <Field label={copy.verifyDirectGrant}>
+        <select value={grant} onChange={(e) => setGrant(e.target.value)}>
+          <option value="baytarian">{copy.grants.baytarian}</option>
+          <option value="vet_student">{copy.grants.vet_student}</option>
+        </select>
+      </Field>
+      <Field label={copy.verifyDirectNote}>
+        <input value={note} onChange={(e) => setNote(e.target.value)} />
+      </Field>
+      <ErrText>{err}</ErrText>
+      {rows && (rows.length === 0 ? <div className="empty">{copy.noUsers}</div> : (
+        <table className="table">
+          <tbody>
+            {rows.map((u) => (
+              <tr key={u.id}>
+                <td>{u.name}<div style={{ fontSize: 12, color: 'var(--muted)', direction: 'ltr' }}>{u.email}</div></td>
+                <td className="actions">
+                  {u.is_baytarian
+                    ? <span className="chip chip-published">{copy.alreadyVerified}</span>
+                    : <button className="btn btn-filled btn-sm" disabled={busy} onClick={() => verify(u)}>{copy.verify}</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ))}
+    </Modal>
+  );
+}
 
 // The order the reading is shown in: what the document is, then who it belongs to,
 // then what it says about them. Reads top to bottom like the decision was made.
@@ -161,6 +226,7 @@ export default function Baytarian({ searchParams }) {
   // Seeded from the URL so a dashboard tile lands on the rows it counted.
   const [status, setStatus] = useState(() => searchParams.get('status') || 'pending');
   const [open, setOpen] = useState(null);
+  const [direct, setDirect] = useState(false);
   const [err, setErr] = useState('');
 
   async function load(keepOpenId) {
@@ -202,6 +268,7 @@ export default function Baytarian({ searchParams }) {
         <select value={status} onChange={(e) => setStatus(e.target.value)}>
           {copy.filters.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
+        <button className="btn btn-filled btn-sm" onClick={() => setDirect(true)}>{copy.verifyDirect}</button>
       </div>
       <ErrText>{err}</ErrText>
       {!rows ? <div className="empty">{common.loading}</div> : (
@@ -245,6 +312,10 @@ export default function Baytarian({ searchParams }) {
       {open && (
         <Detail request={open} copy={copy} common={common} onClose={() => setOpen(null)}
           onApprove={approve} onReject={reject} onRevoke={revoke} />
+      )}
+      {direct && (
+        <DirectVerify copy={copy} common={common} onClose={() => setDirect(false)}
+          onDone={() => { setDirect(false); setStatus('approved'); load(); }} />
       )}
     </>
   );

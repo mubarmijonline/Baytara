@@ -184,6 +184,11 @@ export const api = {
   baytarianRevoke: (id, reason) => withAdminStatsInvalidation(
     () => req(`/admin/baytarian-requests/${id}/revoke`, { method: 'POST', body: JSON.stringify({ reason }) }),
   ),
+  // Verify an account with no document, on the admin's own authority. Lands in the
+  // same queue on the `admin` route, so it is visible and revocable like the rest.
+  verifyUserDirectly: (userId, grant, note) => withAdminStatsInvalidation(
+    () => req(`/admin/users/${userId}/verify`, { method: 'POST', body: JSON.stringify({ grant, note }) }),
+  ),
 
   // bundles (course bundling)
   bundles: () => req('/admin/bundles'),

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, Check, Upload, X } from 'lucide-react';
+import { AlertCircle, BadgeCheck, Check, Clock, Upload, X } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
 import { auth, isAuthed } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
@@ -89,6 +89,67 @@ function FieldRow({ name, field, t }) {
   );
 }
 
+/** Reading a document takes tens of seconds. A disabled button says nothing about
+ *  that, so this says what is happening, counts the time honestly, and promises the
+ *  fallback: if a person has to look, the answer arrives as a notification. */
+function Processing({ t, title }) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <section style={{ ...card, borderColor: colors.accent }} aria-live="polite" aria-busy="true">
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+        <span className="am-spinner" style={{ color: colors.accent, marginTop: 2 }} aria-hidden="true" />
+        <div style={{ minWidth: 0 }}>
+          <div className="am-pulse" style={{ fontSize: 16, fontWeight: 700, color: colors.ink }}>{title}</div>
+          <p style={{ margin: '6px 0 0', fontSize: 13.5, color: colors.muted, lineHeight: 1.8 }}>
+            {t('verify.processingBody')}
+          </p>
+          <p style={{ margin: '8px 0 0', fontSize: 13, color: colors.muted2, lineHeight: 1.8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Clock size={14} aria-hidden="true" /> {seconds} {t('verify.seconds')}
+          </p>
+          <p style={{ margin: '8px 0 0', fontSize: 13, color: colors.muted2, lineHeight: 1.8 }}>
+            {t('verify.processingNotify')}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** The end of the journey, stated plainly: verified, or handed to a person. Replaces
+ *  a toast that scrolled away before anyone read it. */
+function Result({ kind, t, onDone }) {
+  const pending = kind === 'pending';
+  const tone = pending ? { bg: '#fdf6e3', fg: '#7a6320', line: '#e8d9a8' } : { bg: '#e8f5ee', fg: '#1a7f4b', line: '#bfe3ce' };
+  const Icon = pending ? Clock : BadgeCheck;
+  return (
+    <Container style={{ padding: '48px 24px', maxWidth: 640 }}>
+      <section style={{ ...card, background: tone.bg, borderColor: tone.line }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <Icon size={26} aria-hidden="true" style={{ color: tone.fg, flex: 'none' }} />
+          <div>
+            <h1 style={{ margin: '0 0 6px', fontSize: 19, fontWeight: 700, color: tone.fg }}>
+              {t(`verify.result.${kind}.title`)}
+            </h1>
+            <p style={{ margin: 0, fontSize: 14.5, color: colors.ink2, lineHeight: 1.9 }}>
+              {t(`verify.result.${kind}.body`)}
+            </p>
+          </div>
+        </div>
+        <button type="button" onClick={onDone}
+          style={{ marginTop: 20, background: colors.accent, color: '#fff', border: 'none', borderRadius: 10,
+            padding: '12px 24px', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
+          {t('verify.backToAccount')}
+        </button>
+      </section>
+    </Container>
+  );
+}
+
 export default function VerifyVet() {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -100,6 +161,10 @@ export default function VerifyVet() {
   const [back, setBack] = useState(null);
   const [report, setReport] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Which long call is running ('reading' the preview, 'submitting' the decision), and
+  // what came back. Both drive their own panel — a spinner in a button said nothing.
+  const [phase, setPhase] = useState('');
+  const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -116,11 +181,11 @@ export default function VerifyVet() {
   useEffect(() => {
     if (route !== 'card' || !front || !back || !user?.national_id) { setReport(null); return undefined; }
     let alive = true;
-    setBusy(true); setError('');
+    setBusy(true); setPhase('reading'); setError('');
     auth.baytarianCard(front, back, true)
       .then((response) => alive && setReport(response.report))
       .catch((e) => alive && setError(t(`verify.error.${e.data?.error || 'generic'}`)))
-      .finally(() => alive && setBusy(false));
+      .finally(() => { if (alive) { setBusy(false); setPhase(''); } });
     return () => { alive = false; };
   }, [route, front, back, user?.national_id, t]);
 
@@ -139,29 +204,29 @@ export default function VerifyVet() {
   }
 
   async function submit() {
-    setBusy(true); setError('');
+    setBusy(true); setPhase('submitting'); setError('');
     try {
+      let outcome = 'approved';
       if (route === 'card') {
         await auth.baytarianCard(front, back, false);
-        toast.success(t('verify.approved'));
       } else {
         const response = await auth.baytarianDocument(route, front, back);
         // 202 means nobody could tell and a person will look; anything else verified.
-        if (response.pending) {
-          toast.success(t('verify.sentToReview'));
-        } else {
-          // Both verify the account; the wording just names which kind it read.
-          toast.success(t(response.is_vet_student ? 'verify.approvedStudent' : 'verify.approved'));
-        }
+        outcome = response.pending ? 'pending' : (response.is_vet_student ? 'student' : 'approved');
       }
       await refresh?.();
-      navigate('/dashboard/profile');
+      // The answer stays on screen instead of a toast that scrolls away, so someone
+      // sent to manual review actually reads that they will be notified.
+      setResult(outcome);
     } catch (e) {
       if (e.data?.report) setReport(e.data.report);
       setError(t(`verify.error.${e.data?.error || 'generic'}`));
-      setBusy(false);
+    } finally {
+      setBusy(false); setPhase('');
     }
   }
+
+  if (result) return <Result kind={result} t={t} onDone={() => navigate('/dashboard/profile')} />;
 
   // One verified status covers both kinds, so being verified ends the journey here
   // whichever document got them there.
@@ -275,13 +340,15 @@ export default function VerifyVet() {
           </div>
         </section>
 
+        {/* Reading the card for the preview: its own panel, because it is the wait
+            people mistake for a broken page. */}
+        {phase === 'reading' && <Processing t={t} title={t('verify.reading')} />}
+
         {/* What the machine read, green or red, before anything is committed. */}
-        {route === 'card' && (busy || report) && (
+        {route === 'card' && report && phase !== 'reading' && (
           <section style={card}>
             <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 700, color: colors.ink }}>{t('verify.step3')}</h2>
-            {busy && !report ? (
-              <p style={{ margin: 0, color: colors.muted, fontSize: 14 }}>{t('verify.reading')}</p>
-            ) : (
+            {(
               <>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {FIELDS.map((name) => (
@@ -301,7 +368,19 @@ export default function VerifyVet() {
           </section>
         )}
 
-        {error && <p role="alert" style={{ margin: 0, color: '#b3261e', fontSize: 14 }}>{error}</p>}
+        {/* Submitting: the long one. Same panel, so the wait always looks the same. */}
+        {phase === 'submitting' && <Processing t={t} title={t('verify.processingTitle')} />}
+
+        {error && (
+          <section role="alert" style={{ ...card, background: '#fdecea', borderColor: '#f2c7c2', padding: 18,
+            display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <AlertCircle size={20} aria-hidden="true" style={{ color: '#b3261e', flex: 'none', marginTop: 1 }} />
+            <div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#b3261e' }}>{t('verify.errorTitle')}</div>
+              <p style={{ margin: '4px 0 0', fontSize: 14, color: colors.ink2, lineHeight: 1.8 }}>{error}</p>
+            </div>
+          </section>
+        )}
 
         <button type="button" onClick={submit} disabled={!ready || busy}
           style={{
