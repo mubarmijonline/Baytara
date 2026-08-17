@@ -334,6 +334,22 @@ def submit_document():
         verdict = None
 
     grant, problem = doc_judge.decide(verdict, route, expect)
+
+    # One document, one account. `decide` catches a card whose number disagrees with the
+    # profile, but says nothing when the profile is empty — and that was every applicant
+    # coming through this door, so the same national ID could have verified any number of
+    # accounts. The number read off the document is checked against every other account
+    # and then written to this one, which both closes that and fills in the profile.
+    claimed = ((verdict or {}).get("national_id") or "").strip()
+    if grant and claimed:
+        from ...services.vet_card import parse_national_id
+
+        decoded, _ = parse_national_id(claimed)
+        claimed = decoded["national_id"] if decoded else ""
+        if claimed and User.query.filter(User.national_id == claimed,
+                                         User.id != user.id).first():
+            grant, problem = None, "card_already_used"
+
     if problem:
         # A definite no. Nothing is stored: they can retake the photo or come through
         # another door, and a queue full of definite noes helps nobody.
@@ -370,6 +386,10 @@ def submit_document():
         user.is_baytarian = True
     else:
         user.is_vet_student = True
+    if claimed and not user.national_id:
+        # Write-once, same as the profile field: it is now the account's identity, and
+        # what stops this document verifying a second account.
+        user.national_id = claimed
 
     type_, title, body = GRANT_COPY[grant]
     push_notification(_uid(), type_, title, body)

@@ -123,6 +123,33 @@ def test_a_national_id_reading_veterinarian_verifies_and_tells_the_admins(app, m
         user_id=admin_id, type="baytarian_auto_approved").count() == 1
 
 
+def test_the_number_read_off_the_card_becomes_the_account_identity(app, monkeypatch):
+    """An applicant with no national ID on file is the normal case at this door. Without
+    storing what was read there is nothing tying the document to the account, and the
+    same card verifies as many accounts as it is uploaded to."""
+    uid = _account()                      # no national ID on the profile
+    _stub_judge(monkeypatch, _verdict(
+        document_type="Egyptian national ID card", national_id=NATIONAL_ID,
+        occupation="طبيب بيطري", occupation_is_veterinarian=True))
+
+    assert _upload(_client(app), route="national_id").status_code == 201
+    assert db.session.get(User, uid).national_id == NATIONAL_ID
+
+
+def test_the_same_card_cannot_verify_a_second_account(app, monkeypatch):
+    _account(email="first@example.test", national_id=NATIONAL_ID)
+    second = _account(email="second@example.test")
+    _stub_judge(monkeypatch, _verdict(
+        document_type="Egyptian national ID card", national_id=NATIONAL_ID,
+        occupation="طبيب بيطري", occupation_is_veterinarian=True))
+
+    response = _upload(_client(app, email="second@example.test"), route="national_id")
+
+    assert response.status_code == 422
+    assert response.get_json()["error"] == "card_already_used"
+    assert not db.session.get(User, second).is_baytarian
+
+
 def test_a_national_id_that_says_something_else_is_refused_without_a_queue_entry(app, monkeypatch):
     uid = _account(national_id=NATIONAL_ID)
     _stub_judge(monkeypatch, _verdict(
