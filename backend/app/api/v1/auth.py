@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from marshmallow import EXCLUDE, Schema, ValidationError, fields, validate
 from flask_jwt_extended import (
     create_access_token,
@@ -13,6 +13,7 @@ from flask_jwt_extended import (
 from ...extensions import db
 from ...models import User, UserDevice
 from ...security import hash_password, verify_password
+from ...services.google_auth import GoogleAuthError, verify_id_token
 
 bp = Blueprint("auth", __name__)
 
@@ -72,6 +73,13 @@ def _tokens(user: User, device_id=None):
     }
 
 
+def _device_limit_response(user: User):
+    """Cap reached — surface the devices so the user can remove one and retry."""
+    devices = UserDevice.query.filter_by(user_id=user.id).order_by(UserDevice.last_seen).all()
+    return jsonify(error="device_limit_reached", max_devices=UserDevice.limit_for(user),
+                   devices=[d.to_dict() for d in devices]), 403
+
+
 def _user_json(user: User):
     return {"id": user.id, "name": user.name, "email": user.email, "phone": user.phone,
             "role": user.role, "locale": user.locale, "is_baytarian": user.is_baytarian}
@@ -112,11 +120,57 @@ def login():
         return jsonify(error="account_disabled"), 403
     body = request.get_json() or {}
     if not _register_device(user, body.get("device_id"), request.headers.get("User-Agent")):
-        # cap reached — surface the devices so the user can remove one and retry
-        devices = UserDevice.query.filter_by(user_id=user.id).order_by(UserDevice.last_seen).all()
-        return jsonify(error="device_limit_reached", max_devices=UserDevice.limit_for(user),
-                       devices=[d.to_dict() for d in devices]), 403
+        return _device_limit_response(user)
     return jsonify(user=_user_json(user), **_tokens(user, body.get("device_id")))
+
+
+@bp.get("/google-config")
+def google_config():
+    """Client id for the browser SDK. Empty string when Google sign-in is not
+    configured — the frontend reads that as "hide the Google button"."""
+    ids = current_app.config.get("GOOGLE_OAUTH_CLIENT_IDS") or []
+    return jsonify(client_id=ids[0] if ids else "")
+
+
+@bp.post("/google")
+def google_login():
+    """Sign in (or sign up) with a Google ID token from the Sign In With Google
+    client. Google never provides a phone number, which the contract requires for
+    the video watermark, so `needs_phone` tells the client to collect it before
+    anything else."""
+    body = request.get_json(silent=True) or {}
+    credential = body.get("credential")
+    if not isinstance(credential, str) or not credential.strip():
+        return jsonify(error="validation", messages={"credential": ["credential_required"]}), 422
+    try:
+        claims = verify_id_token(credential, current_app.config.get("GOOGLE_OAUTH_CLIENT_IDS") or [])
+    except GoogleAuthError as exc:
+        reason = str(exc)
+        if reason == "google_not_configured":
+            return jsonify(error="google_not_configured"), 503
+        return jsonify(error="invalid_google_token", reason=reason), 401
+
+    email = claims["email"].lower()
+    user = User.query.filter_by(google_sub=claims["sub"]).first()
+    created = False
+    if not user:
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.google_sub = claims["sub"]  # link Google to the existing account
+        else:
+            user = User(name=(claims.get("name") or email.split("@")[0])[:120], email=email,
+                        google_sub=claims["sub"], role="student")
+            db.session.add(user)
+            created = True
+        db.session.commit()
+    if not user.is_active:
+        return jsonify(error="account_disabled"), 403
+
+    device_id = body.get("device_id")
+    if not _register_device(user, device_id, request.headers.get("User-Agent")):
+        return _device_limit_response(user)
+    return jsonify(user=_user_json(user), needs_phone=not (user.phone or "").strip(),
+                   **_tokens(user, device_id)), (201 if created else 200)
 
 
 @bp.post("/refresh")

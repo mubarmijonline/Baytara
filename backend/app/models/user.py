@@ -15,7 +15,12 @@ class User(db.Model):
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     phone = db.Column(db.String(40))  # shown in the dynamic video watermark (anti-piracy)
-    password_hash = db.Column(db.String(255), nullable=False)
+    # NULL for Google-only accounts (no password was ever set). verify_password
+    # rejects a blank hash, so such an account cannot be logged into by password.
+    password_hash = db.Column(db.String(255))
+    # Google's stable subject id. Preferred over email for identity: a Google
+    # account can change its email, and the sub never changes.
+    google_sub = db.Column(db.String(64), unique=True, index=True)
     role = db.Column(db.String(20), nullable=False, default="student")
     locale = db.Column(db.String(10), nullable=False, default="ar")
     is_active = db.Column(db.Boolean, nullable=False, default=True)

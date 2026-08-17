@@ -28,6 +28,13 @@ export function AuthProvider({ children }) {
     setUser(res.user);
     return res.user;
   }
+  // Google hands us an ID token; the API verifies it and mints our own tokens.
+  async function loginWithGoogle(credential) {
+    const res = await auth.google(credential);
+    setToken(res.access_token);
+    setUser(res.user);
+    return res.user;
+  }
   async function updateProfile(phone) {
     const res = await auth.profile({ phone });
     setUser(res.user);
@@ -40,7 +47,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, loading, login, register, updateProfile, logout }}>
+    <AuthCtx.Provider value={{ user, loading, login, register, loginWithGoogle, updateProfile, logout }}>
       {children}
     </AuthCtx.Provider>
   );

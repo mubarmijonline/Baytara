@@ -40,6 +40,11 @@ beforeEach(() => {
     if (url.includes('/auth/profile') && options.method === 'PATCH') return json({
       user: { id: 7, name: 'Viewer', email: 'viewer@example.test', phone: '+201099999999', role: 'student' },
     });
+    if (url.includes('/auth/google-config')) return json({ client_id: 'test-client.apps.googleusercontent.com' });
+    if (url.includes('/auth/google')) return json({
+      access_token: 'google-access', needs_phone: true,
+      user: { id: 9, name: 'Google Vet', email: 'vet@gmail.test', phone: null, role: 'student' },
+    });
     if (url.includes('/auth/devices')) return json({ devices: [], max_devices: 2 });
     if (url.includes('/enrollments')) return json({ enrollments: [] });
     if (url.includes('/courses')) return json({ courses: [] });
@@ -72,6 +77,31 @@ it('sends the stable registered device on authenticated profile updates', async 
       'X-Baytara-Device-ID': deviceId,
     }),
   }));
+});
+
+it('sends a Google sign-in to the profile step, because Google carries no phone', async () => {
+  // Stand in for the Google Identity Services script: capture the callback the
+  // page registers, then fire it as Google would after the user picks an account.
+  let onCredential;
+  vi.stubGlobal('google', {
+    accounts: {
+      id: {
+        initialize: ({ callback }) => { onCredential = callback; },
+        renderButton: () => {},
+      },
+    },
+  });
+
+  renderRoute('/auth?next=/videos/2');
+  await waitFor(() => expect(onCredential).toBeTypeOf('function'));
+  onCredential({ credential: 'google-id-token' });
+
+  await waitFor(() => expect(window.location.pathname).toBe('/dashboard/profile'));
+  expect(window.location.search).toBe('?next=%2Fvideos%2F2');
+  const googleCall = fetch.mock.calls.find(([url]) => String(url) === '/api/v1/auth/google');
+  expect(JSON.parse(googleCall[1].body).credential).toBe('google-id-token');
+  expect(localStorage.getItem('baytara_token')).toBe('google-access');
+  expect(screen.queryByText('Apple')).toBeNull();
 });
 
 it('completes a missing phone profile and returns to the requested video', async () => {

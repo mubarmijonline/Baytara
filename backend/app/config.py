@@ -23,6 +23,12 @@ class BaseConfig:
     MAX_CONTENT_LENGTH = 12 * 1024 * 1024  # 12 MB cap on uploads (docs may include PDFs)
     # Public site origin — used to build Fawaterak redirect + webhook URLs
     SITE_URL = os.environ.get("SITE_URL", "https://baytara.app")
+    # Google Sign-In: OAuth client ids accepted as the ID-token audience
+    # (web first, then Android/iOS). Empty list = Google sign-in is disabled and
+    # the frontend hides the button.
+    GOOGLE_OAUTH_CLIENT_IDS = [
+        c.strip() for c in os.environ.get("GOOGLE_OAUTH_CLIENT_IDS", "").split(",") if c.strip()
+    ]
 
 
 class DevelopmentConfig(BaseConfig):

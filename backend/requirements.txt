@@ -8,4 +8,6 @@ argon2-cffi==23.1.0
 marshmallow==3.22.0
 Flask-Cors==4.0.1
 google-cloud-vision==3.7.4
+google-auth==2.55.2  # Google Sign-In ID-token verification (also a vision dep)
+requests==2.34.2  # google.auth.transport.requests
 gunicorn==23.0.0

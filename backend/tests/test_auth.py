@@ -78,6 +78,88 @@ def test_profile_phone_update_and_refresh_rejects_removed_device(auth_app):
     assert rejected.get_json() == {"error": "device_not_registered"}
 
 
+@pytest.fixture
+def google_app(tmp_path):
+    config = type("GoogleTestConfig", (BaseConfig,), {
+        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'google.sqlite'}",
+        "GOOGLE_OAUTH_CLIENT_IDS": ["web-client.apps.googleusercontent.com"],
+        "TESTING": True,
+    })
+    app = create_app(config)
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+def _fake_google(monkeypatch, **overrides):
+    """Stub only Google's certs/signature check, so our own audience,
+    email_verified and linking rules stay under test."""
+    claims = {
+        "aud": "web-client.apps.googleusercontent.com",
+        "sub": "google-sub-1",
+        "email": "Vet@Gmail.test",
+        "email_verified": True,
+        "name": "Google Vet",
+        **overrides,
+    }
+    monkeypatch.setattr("app.services.google_auth.id_token.verify_oauth2_token",
+                        lambda *a, **k: claims)
+    return claims
+
+
+def test_google_sign_in_creates_account_then_links_and_needs_a_phone(google_app, monkeypatch):
+    client = google_app.test_client()
+    _fake_google(monkeypatch)
+
+    first = client.post("/api/v1/auth/google", json={"credential": "tok", "device_id": "browser-g"})
+    assert first.status_code == 201
+    body = first.get_json()
+    # Google gives no phone: the client must collect it before playback.
+    assert body["needs_phone"] is True
+    assert body["user"]["email"] == "vet@gmail.test" and body["user"]["role"] == "student"
+    with google_app.app_context():
+        assert decode_token(body["access_token"])["device_id"] == "browser-g"
+        user = User.query.filter_by(email="vet@gmail.test").one()
+        assert user.google_sub == "google-sub-1" and user.password_hash is None
+
+    # a password-less account cannot be logged into by password
+    assert client.post("/api/v1/auth/login", json={
+        "email": "vet@gmail.test", "password": "secret12",
+    }).status_code == 401
+
+    # second sign-in reuses the account, and the phone is no longer missing
+    client.patch("/api/v1/auth/profile", headers={"Authorization": f"Bearer {body['access_token']}"},
+                 json={"phone": "+201000000002"})
+    again = client.post("/api/v1/auth/google", json={"credential": "tok", "device_id": "browser-g"})
+    assert again.status_code == 200 and again.get_json()["needs_phone"] is False
+
+
+def test_google_sign_in_rejects_bad_audience_and_unverified_email(google_app, monkeypatch):
+    client = google_app.test_client()
+
+    _fake_google(monkeypatch, aud="someone-elses-client.apps.googleusercontent.com")
+    stolen = client.post("/api/v1/auth/google", json={"credential": "tok"})
+    assert stolen.status_code == 401 and stolen.get_json()["reason"] == "audience_mismatch"
+
+    # unverified email must not link to an existing password account (takeover)
+    client.post("/api/v1/auth/register", json={
+        "name": "Owner", "email": "owner@example.test", "phone": "+201000000003", "password": "secret12",
+    })
+    _fake_google(monkeypatch, email="owner@example.test", email_verified=False, sub="attacker-sub")
+    takeover = client.post("/api/v1/auth/google", json={"credential": "tok"})
+    assert takeover.status_code == 401 and takeover.get_json()["reason"] == "email_unverified"
+
+    assert client.post("/api/v1/auth/google", json={}).status_code == 422
+
+
+def test_google_config_is_empty_when_unconfigured(auth_app):
+    assert auth_app.test_client().get("/api/v1/auth/google-config").get_json() == {"client_id": ""}
+    assert auth_app.test_client().post("/api/v1/auth/google",
+                                      json={"credential": "tok"}).status_code == 503
+
+
 def demo():
     app = create_app()
     with app.app_context():

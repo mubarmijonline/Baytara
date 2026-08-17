@@ -73,6 +73,10 @@ async function authFetch(path, opts = {}) {
 export const auth = {
   register: (b) => authFetch('/auth/register', { method: 'POST', body: JSON.stringify({ ...b, device_id: getDeviceId() }) }),
   login: (b) => authFetch('/auth/login', { method: 'POST', body: JSON.stringify({ ...b, device_id: getDeviceId() }) }),
+  // Google Sign-In: the client id comes from the API so it stays in one place
+  // (backend .env) and needs no frontend rebuild to change.
+  googleConfig: () => authFetch('/auth/google-config'),
+  google: (credential) => authFetch('/auth/google', { method: 'POST', body: JSON.stringify({ credential, device_id: getDeviceId() }) }),
   logoutServer: () => authFetch('/auth/logout', { method: 'POST', body: JSON.stringify({ device_id: getDeviceId() }) }).catch(() => {}),
   me: () => authFetch('/auth/me'),
   profile: (body) => authFetch('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
