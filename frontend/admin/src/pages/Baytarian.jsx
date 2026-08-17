@@ -139,8 +139,7 @@ function Detail({ request, copy, common, onClose, onApprove, onReject, onRevoke 
         <div className="actions" style={{ marginTop: 22, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {request.status === 'pending' && (
             <>
-              <button className="btn btn-filled btn-sm" onClick={() => onApprove(request, 'baytarian')}>{copy.verify}</button>
-              <button className="btn btn-tonal btn-sm" onClick={() => onApprove(request, 'vet_student')}>{copy.verifyStudent}</button>
+              <button className="btn btn-filled btn-sm" onClick={() => onApprove(request)}>{copy.verify}</button>
               <button className="btn btn-error btn-sm" onClick={() => onReject(request)}>{copy.reject}</button>
             </>
           )}
@@ -176,11 +175,11 @@ export default function Baytarian({ searchParams }) {
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
 
-  // Both kinds verify the account; the admin only says which one this is.
-  async function approve(r, grant) {
-    const ask = grant === 'vet_student' ? copy.confirmStudent : copy.confirm;
-    if (!await confirmDialog(ask(r.user?.name))) return;
-    try { await api.baytarianApprove(r.id, grant); toast.success(copy.verified); load(r.id); }
+  // One action. There is one verified status, and what the document turned out to be
+  // is already recorded on the request — nothing for the admin to choose between.
+  async function approve(r) {
+    if (!await confirmDialog(copy.confirm(r.user?.name))) return;
+    try { await api.baytarianApprove(r.id); toast.success(copy.verified); load(r.id); }
     catch (e) { toast.error(apiError(e, common.loadError)); }
   }
   async function reject(r) {
@@ -234,7 +233,7 @@ export default function Baytarian({ searchParams }) {
                 <td className="actions">
                   <button className="btn btn-tonal btn-sm" onClick={() => setOpen(r)}>{copy.details}</button>
                   {r.status === 'pending' && (
-                    <button className="btn btn-filled btn-sm" onClick={() => approve(r, r.grant || 'baytarian')}>{copy.verify}</button>
+                    <button className="btn btn-filled btn-sm" onClick={() => approve(r)}>{copy.verify}</button>
                   )}
                 </td>
               </tr>

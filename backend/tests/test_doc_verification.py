@@ -207,6 +207,26 @@ def test_an_edited_image_is_refused(app, monkeypatch):
     assert BaytarianRequest.query.count() == 0
 
 
+def test_approving_needs_no_choice_of_kind(app, monkeypatch):
+    """The admin presses one Verify. Which document it was is already on the request,
+    so the server keeps that rather than asking them to pick it again."""
+    uid = _account()
+    _account(email="admin@example.test", role="admin")
+    _stub_judge(monkeypatch, _verdict(confidence="low"))
+    _upload(_client(app))
+    rid = BaytarianRequest.query.one().id
+
+    admin = _client(app, email="admin@example.test")
+    response = admin.post(f"/api/v1/admin/baytarian-requests/{rid}/approve")
+
+    assert response.status_code == 200, response.get_json()
+    user = db.session.get(User, uid)
+    assert user.is_baytarian
+    # Nothing was read off this one, so it records the plain licensed kind.
+    assert db.session.get(BaytarianRequest, rid).grant == "baytarian"
+    assert Notification.query.filter_by(user_id=uid, type="baytarian_approved").count() == 1
+
+
 def test_admin_approval_of_a_student_request_grants_the_student_status(app, monkeypatch):
     uid = _account()
     _account(email="admin@example.test", role="admin")

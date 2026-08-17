@@ -136,9 +136,10 @@ export const api = {
 
   // baytarian verification requests
   baytarianRequests: (status) => req('/admin/baytarian-requests' + (status ? `?status=${status}` : '')),
-  // `grant` decides what approving hands out: the doctor's badge or the student status.
-  baytarianApprove: (id, grant = 'baytarian') => withAdminStatsInvalidation(
-    () => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST', body: JSON.stringify({ grant }) }),
+  // No kind to pass: there is one verified status, and the server keeps whatever the
+  // request already read as the record of which document it was.
+  baytarianApprove: (id) => withAdminStatsInvalidation(
+    () => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST' }),
   ),
   baytarianReject: (id, reason) => withAdminStatsInvalidation(
     () => req(`/admin/baytarian-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
