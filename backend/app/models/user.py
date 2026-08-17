@@ -27,13 +27,36 @@ class User(db.Model):
     # Baytarian = verified pet doctor (admin-approved via document upload). Gates
     # access to baytarian-tier courses (client البند3 revision).
     is_baytarian = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    # A veterinary student is not a veterinarian, and the badge must keep meaning what it
+    # says. Students get their own status: it opens the free vet-tier content that brings
+    # them to the platform, and nothing that is sold to licensed doctors.
+    is_vet_student = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    # Identity for verification. The national ID is what ties a syndicate card to this
+    # account, so it is unique and write-once for the learner: once set, only an admin
+    # may change it. Never returned by public_profile() — this is not public data.
+    national_id = db.Column(db.String(14), unique=True, index=True)
+    # Photo of the ID card, stored with the verification documents rather than in
+    # the public uploads folder: it is served only to its owner and to admins.
+    national_id_image = db.Column(db.String(500))
+    # Read off the card at verification time and kept so the profile can show what was
+    # verified and when it lapses.
+    vet_registration_no = db.Column(db.String(20))
+    vet_license_no = db.Column(db.String(20))
+    vet_governorate = db.Column(db.String(40))
+    vet_card_expires_at = db.Column(db.Date)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # instructor public-profile fields (used when role == instructor)
     headline = db.Column(db.String(200))
     bio = db.Column(db.Text)
     avatar_url = db.Column(db.String(500))
+    cover_url = db.Column(db.String(500))
+    location = db.Column(db.String(120))
     expertise = db.Column(db.JSON)  # list[str]
+    # Self-service specialties, held as category slugs rather than free text so the
+    # profile and the catalogue always name a specialty the same way. `expertise`
+    # stays as it is: admins write prose there ("استشاري كبرى مزارع الدواجن").
+    specialties = db.Column(db.JSON)  # list[str] of Category.slug
     # Per-account device allowance. NULL = the contract default (UserDevice.MAX_DEVICES).
     # Raised only for staff/testing accounts, never as a way around البند2 for buyers.
     max_devices = db.Column(db.Integer)
@@ -55,6 +78,7 @@ class User(db.Model):
             "bio": self.bio,
             "avatar_url": self.avatar_url,
             "expertise": self.expertise or [],
+            "specialties": self.specialties or [],
             "category": self.category.to_dict(lang) if self.category else None,
         }
 
@@ -76,6 +100,22 @@ class BaytarianRequest(db.Model):
     status = db.Column(db.String(20), nullable=False, default="pending", index=True)
     documents = db.Column(db.JSON)  # list[str] of stored file paths
     note = db.Column(db.String(500))  # applicant note (clinic, license no., etc.)
+    # Card verification evidence. Kept in full so an auto-approval can be re-examined
+    # or undone later: a decision made by a machine still has to be answerable.
+    card_front = db.Column(db.String(500))
+    card_back = db.Column(db.String(500))
+    ocr_text = db.Column(db.Text)
+    parsed = db.Column(db.JSON)      # every field read, with its verdict
+    # Which door the applicant came through, what a model made of their document, and
+    # what the decision granted. Stored even when the answer was "I cannot tell", so the
+    # admin reviewing it by hand sees what was already read rather than starting cold.
+    route = db.Column(db.String(20), nullable=False, default="manual", server_default="manual")
+    ai_verdict = db.Column(db.JSON)
+    # "granted" in the database because GRANT is a reserved word in Postgres and an
+    # unquoted UPDATE on it is a syntax error.
+    grant = db.Column("granted", db.String(20))   # baytarian | vet_student
+    auto_approved = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    spot_check = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     reject_reason = db.Column(db.String(300))
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     reviewed_at = db.Column(db.DateTime(timezone=True))
@@ -93,10 +133,14 @@ class BaytarianRequest(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
         }
+        d.update(auto_approved=self.auto_approved, spot_check=self.spot_check,
+                 parsed=self.parsed or None, route=self.route, grant=self.grant)
         if admin:
-            d.update(user_id=self.user_id,
+            d.update(user_id=self.user_id, ai_verdict=self.ai_verdict or None,
                      user={"id": self.user.id, "name": self.user.name, "email": self.user.email} if self.user else None,
-                     documents=self.documents or [])
+                     documents=self.documents or [],
+                     has_card=bool(self.card_front or self.card_back),
+                     ocr_text=self.ocr_text)
         return d
 
 

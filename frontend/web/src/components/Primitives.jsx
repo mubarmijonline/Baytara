@@ -1,4 +1,4 @@
-import { layout } from '../theme/tokens.js';
+import { colors, layout } from '../theme/tokens.js';
 
 // Centered max-width container matching the design's 1240px wrapper.
 export function Container({ children, style, className }) {
@@ -27,8 +27,8 @@ export function SectionHeading({ title, subtitle, action }) {
       }}
     >
       <div>
-        <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 6px', letterSpacing: '-.5px' }}>{title}</h2>
-        {subtitle && <p style={{ margin: 0, color: '#5A6180', fontSize: 16 }}>{subtitle}</p>}
+        <h2 style={{ fontSize: 25, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-.4px', color: colors.utilityBar }}>{title}</h2>
+        {subtitle && <p style={{ margin: 0, color: colors.muted, fontSize: 14.5 }}>{subtitle}</p>}
       </div>
       {action}
     </div>

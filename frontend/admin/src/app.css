@@ -237,6 +237,15 @@ body {
 .field select { width: 100%; }
 .course-picker { display: grid; gap: 7px; max-height: 180px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
 .course-picker label { cursor: pointer; }
+/* The video form was one flat run of fields; these group it into what the field is
+   about, so instructor and courses read as one decision rather than two of twelve. */
+.video-form-section { border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px 14px; margin: 0 0 14px; min-width: 0; }
+.video-form-section legend { padding: 0 6px; font-size: 13px; font-weight: 700; color: var(--muted, #5A6180); }
+.video-field-hint { display: block; margin-top: 6px; font-size: 12px; color: var(--muted, #5A6180); line-height: 1.6; }
+.video-picker-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.video-picker-head input { flex: 1; min-width: 0; }
+.video-picker-note { margin: 0; padding: 12px; border: 1px dashed var(--border); border-radius: 6px; font-size: 13px; color: var(--muted, #5A6180); }
+.video-picker-warning { margin: 0 0 8px; padding: 9px 12px; border-radius: 6px; font-size: 12.5px; line-height: 1.6; background: #fdf5e0; color: #8a6d1f; }
 .video-editor-panel progress { width: 100%; height: 12px; margin-bottom: 14px; }
 .video-encoding { color: var(--muted); }
 .video-preview { width: 100%; aspect-ratio: 16 / 9; border: 0; margin-top: 14px; border-radius: 6px; }
@@ -400,3 +409,13 @@ select option { font-weight: 600; }
 .settings-success { color: var(--success); font-weight: 700; padding-block: 8px; }
 @media (max-width: 1050px) { .site-settings-layout { grid-template-columns: 1fr; } .site-preview-panel { position: static; } .site-preview-panel iframe { min-height: 620px; } }
 @media (max-width: 620px) { .site-settings-header { flex-direction: column; } .localized-field-grid, .site-preview-toolbar { grid-template-columns: 1fr; } }
+
+/* Dashboard: grouped, clickable figures. Every tile is a link to the rows it counts. */
+.stat-group { margin-bottom: 22px; }
+.stat-group h3 { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--muted, #5A6180); }
+.stat-link { display: block; color: inherit; text-decoration: none; transition: border-color .12s, transform .12s; }
+.stat-link:hover { border-color: #3048A0; transform: translateY(-1px); }
+.stat-link:focus-visible { outline: 2px solid #3048A0; outline-offset: 2px; }
+/* A queue with something in it should read as work, not decoration. */
+.stat-warn .num { color: #8a6d1f; }
+.stat-warn { background: #fffdf6; }

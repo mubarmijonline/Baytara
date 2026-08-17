@@ -64,12 +64,13 @@ function UserForm({ user, onClose, onSaved }) {
   );
 }
 
-export default function Users() {
+export default function Users({ searchParams }) {
   const { language } = useAdminLanguage();
   const copy = pageCopy('users', language);
   const common = pageCopy('common', language);
   const [rows, setRows] = useState(null);
-  const [role, setRole] = useState('');
+  // Seeded from the URL so a dashboard tile lands on the rows it counted.
+  const [role, setRole] = useState(() => searchParams.get('role') || '');
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(undefined); // undefined=closed, null=new, obj=edit
   const [err, setErr] = useState('');

@@ -5,11 +5,12 @@ import { pageCopy } from '../page-copy.js';
 
 const statusChip = (s) => ({ paid: 'published', pending: 'draft', failed: 'unpublished', expired: 'unpublished', refunded: 'role' }[s] || 'role');
 
-export default function Payments({ onLogout }) {
+export default function Payments({ onLogout, searchParams }) {
   const { language } = useAdminLanguage();
   const copy = pageCopy('payments', language);
   const common = pageCopy('common', language);
-  const [status, setStatus] = useState('');
+  // Seeded from the URL so a dashboard tile lands on the rows it counted.
+  const [status, setStatus] = useState(() => searchParams.get('status') || '');
   const [rows, setRows] = useState(null);
   const [meta, setMeta] = useState({ paid_count: 0, revenue: 0 });
   const [err, setErr] = useState('');

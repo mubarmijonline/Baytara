@@ -6,7 +6,7 @@ PAYMENT_STATUSES = ("pending", "approved", "rejected")
 PAYMENT_KINDS = ("enroll", "renewal", "bundle", "video")
 
 # Fawaterak (gateway) payment lifecycle
-FAWATERK_STATUSES = ("pending", "paid", "failed", "expired", "refunded")
+FAWATERK_STATUSES = ("pending", "paid", "failed", "expired", "refunded", "partially_refunded")
 
 
 def _now():
@@ -40,6 +40,14 @@ class Payment(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
     paid_at = db.Column(db.DateTime(timezone=True))
 
+    # Refunds are a recorded decision, not a transfer: there is no gateway refund call
+    # here, so the money is returned by hand and this is the book that says how much
+    # was agreed, by whom, and why.
+    refunded_amount = db.Column(db.Numeric(10, 2), nullable=False, default=0, server_default="0")
+    refunded_at = db.Column(db.DateTime(timezone=True))
+    refunded_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    refund_reason = db.Column(db.Text)
+
     course = db.relationship("Course")
     bundle = db.relationship("Bundle")
     video = db.relationship("Lesson")
@@ -52,6 +60,9 @@ class Payment(db.Model):
             "currency": self.currency, "status": self.status,
             "payment_method": self.payment_method, "reference_number": self.reference_number,
             "invoice_id": self.invoice_id,
+            "refunded_amount": float(self.refunded_amount or 0),
+            "refunded_at": self.refunded_at.isoformat() if self.refunded_at else None,
+            "refund_reason": self.refund_reason,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "paid_at": self.paid_at.isoformat() if self.paid_at else None,
         }

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import {
-  ACCESS_TYPES, CATALOG_STATUSES, catalogErrorCodes, localizedCatalogValue, orderedCategories,
+  ACCESS_TYPES, CATALOG_STATUSES, LEVELS, catalogErrorCodes, localizedCatalogValue, orderedCategories,
 } from '../catalog.js';
 import { confirmDialog } from '../dialog.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
@@ -20,8 +20,10 @@ const COPY = {
     englishDescription: 'الوصف الإنجليزي', chooseInstructor: 'اختر المدرّب', chooseCategory: 'اختر الفئة',
     status: 'الحالة', accessType: 'نوع الوصول', currency: 'العملة', accessDays: 'مدة الوصول بالأيام',
     lifetime: 'مدى الحياة', save: 'حفظ الدورة', cancel: 'إلغاء', titleRequired: 'العنوان العربي مطلوب.',
-    instructorRequired: 'اختر مدرّباً.', categoryPublished: 'الفئة مطلوبة قبل نشر الدورة.',
+    inactive: 'غير نشط', instructorRequired: 'اختر مدرّباً.', categoryPublished: 'الفئة مطلوبة قبل نشر الدورة.',
     deleteConfirm: 'حذف هذه الدورة؟', loadError: 'تعذّر تحميل بيانات الدورة.',
+    level: 'المستوى', certificate: 'شهادة إتمام معتمدة', objectives: 'ماذا ستتعلّم',
+    objectivesEn: 'ماذا ستتعلّم (إنجليزي)', objectiveHint: 'سطر لكل نقطة؛ الأسطر الفارغة تُهمل.',
   },
   en: {
     courses: 'Courses', newCourse: 'New course', editCourse: 'Edit course', search: 'Search courses',
@@ -32,14 +34,17 @@ const COPY = {
     englishDescription: 'English description', chooseInstructor: 'Choose instructor', chooseCategory: 'Choose category',
     status: 'Status', accessType: 'Access type', currency: 'Currency', accessDays: 'Access duration in days',
     lifetime: 'Lifetime', save: 'Save course', cancel: 'Cancel', titleRequired: 'Arabic title is required.',
-    instructorRequired: 'Choose an instructor.', categoryPublished: 'Choose a category before publishing.',
+    inactive: 'inactive', instructorRequired: 'Choose an instructor.', categoryPublished: 'Choose a category before publishing.',
     deleteConfirm: 'Delete this course?', loadError: 'Unable to load course details.',
+    level: 'Level', certificate: 'Accredited certificate', objectives: 'What you will learn',
+    objectivesEn: 'What you will learn (English)', objectiveHint: 'One bullet per line; blank lines are ignored.',
   },
 };
 
 const emptyCourse = {
   title: '', title_en: '', description: '', description_en: '', instructor_id: '', category_id: '',
   access_type: 'general', price: '0', currency: 'EGP', access_days: '', status: 'draft',
+  level: 'beginner', has_certificate: false, objectives: '', objectives_en: '',
 };
 
 function courseForm(course) {
@@ -51,6 +56,10 @@ function courseForm(course) {
     instructor_id: course.instructor?.id || '', category_id: course.category?.id || '',
     access_type: course.access_type || 'general', price: String(course.price ?? 0),
     currency: course.currency || 'EGP', access_days: course.access_days ?? '', status: course.status || 'draft',
+    level: course.level || 'beginner', has_certificate: !!course.has_certificate,
+    // One bullet per line is the cheapest editor that round-trips a list.
+    objectives: (course.objectives || []).join('\n'),
+    objectives_en: (course.objectives_en || []).join('\n'),
   };
 }
 
@@ -61,10 +70,20 @@ function payload(form) {
     category_id: form.category_id ? Number(form.category_id) : null,
     price: Number(form.price || 0),
     access_days: form.access_days === '' ? null : Number(form.access_days),
+    objectives: form.objectives.split('\n'),
+    objectives_en: form.objectives_en.split('\n'),
   };
 }
 
 function errorMessage(error, language) {
+  // A sold course cannot be deleted without destroying enrolment and payment history,
+  // so say that plainly and point at the alternative.
+  if (error?.data?.error === 'course_in_use') {
+    const { enrollments = 0, payments = 0 } = error.data;
+    return language === 'en'
+      ? `This course cannot be deleted: ${enrollments} enrolment(s) and ${payments} payment(s) reference it. Unpublish it instead to hide it from the site.`
+      : `لا يمكن حذف هذه الدورة: مرتبطة بـ ${enrollments} اشتراك و ${payments} معاملة. أخفِها بدلاً من حذفها.`;
+  }
   const labels = {
     title_required: language === 'en' ? 'Arabic title is required.' : 'العنوان العربي مطلوب.',
     valid_instructor_required: language === 'en' ? 'Choose a valid instructor.' : 'اختر مدرّباً صحيحاً.',
@@ -91,12 +110,18 @@ export function CourseEditor({ routeParams = {} }) {
   useEffect(() => {
     let active = true;
     Promise.all([
-      api.users({ role: 'instructor' }),
+      api.users({ role: 'instructor', per_page: 100, active: 1 }),
       api.categories(),
       editing ? api.course(courseId) : Promise.resolve(null),
     ]).then(([usersResult, categoryResult, courseResult]) => {
       if (!active) return;
       const nextInstructors = usersResult.users || [];
+      // Only active instructors may be picked, but a course already owned by a
+      // deactivated one must not render with an empty select.
+      const owner = courseResult?.course?.instructor;
+      if (owner && !nextInstructors.some((person) => person.id === owner.id)) {
+        nextInstructors.push({ ...owner, is_active: false });
+      }
       setInstructors(nextInstructors);
       setCategories(orderedCategories(categoryResult.categories || []));
       if (courseResult) setForm(courseForm(courseResult.course));
@@ -140,13 +165,24 @@ export function CourseEditor({ routeParams = {} }) {
       </section>
       <section className="catalog-panel">
         <div className="catalog-form-grid">
-          <Field label={c.instructor}><select value={form.instructor_id} onChange={set('instructor_id')}><option value="">{c.chooseInstructor}</option>{instructors.map((instructor) => <option key={instructor.id} value={instructor.id}>{instructor.name}</option>)}</select></Field>
+          <Field label={c.instructor}><select value={form.instructor_id} onChange={set('instructor_id')}><option value="">{c.chooseInstructor}</option>{instructors.map((instructor) => <option key={instructor.id} value={instructor.id}>{instructor.name}{instructor.is_active === false ? ` (${c.inactive})` : ''}</option>)}</select></Field>
           <Field label={c.category}><select value={form.category_id} onChange={set('category_id')}><option value="">{c.chooseCategory}</option>{categories.map((category) => <option key={category.id} value={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field>
           <Field label={c.accessType}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option key={access} value={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field>
           <Field label={c.status}><select value={form.status} onChange={set('status')}>{CATALOG_STATUSES.map((status) => <option key={status} value={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field>
           <Field label={c.price}><input type="number" min="0" value={form.price} disabled={!['baytarian', 'general'].includes(form.access_type)} onChange={set('price')} /></Field>
           <Field label={c.currency}><input dir="ltr" maxLength="3" value={form.currency} onChange={set('currency')} /></Field>
           <Field label={c.accessDays}><input type="number" min="1" placeholder={c.lifetime} value={form.access_days} onChange={set('access_days')} /></Field>
+          <Field label={c.level}><select value={form.level} onChange={set('level')}>{LEVELS.map((level) => <option key={level} value={level}>{t(`level.${level}`)}</option>)}</select></Field>
+          <Field label={c.certificate}>
+            <input type="checkbox" checked={form.has_certificate}
+              onChange={(event) => setForm((current) => ({ ...current, has_certificate: event.target.checked }))} />
+          </Field>
+        </div>
+      </section>
+      <section className="catalog-panel">
+        <div className="catalog-form-grid two-columns">
+          <Field label={c.objectives} hint={c.objectiveHint}><textarea rows="6" value={form.objectives} onChange={set('objectives')} /></Field>
+          <Field label={c.objectivesEn} hint={c.objectiveHint}><textarea rows="6" dir="ltr" value={form.objectives_en} onChange={set('objectives_en')} /></Field>
         </div>
       </section>
       <ErrText>{error}</ErrText>
@@ -158,11 +194,12 @@ export function CourseEditor({ routeParams = {} }) {
   </section>;
 }
 
-function CourseList() {
+function CourseList({ initialStatus = '' }) {
   const { language, t } = useAdminLanguage();
   const c = COPY[language];
   const [rows, setRows] = useState(null);
-  const [status, setStatus] = useState('');
+  // Seeded from the URL so a dashboard tile lands on the rows it counted.
+  const [status, setStatus] = useState(() => initialStatus || '');
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const visibleRows = useMemo(() => rows || [], [rows]);
@@ -211,10 +248,10 @@ function CourseList() {
   </section>;
 }
 
-export default function Courses({ routeParams = {} }) {
+export default function Courses({ routeParams = {}, searchParams }) {
   const location = useLocation();
   if (location.pathname.endsWith('/new') || location.pathname.endsWith('/edit')) {
     return <CourseEditor routeParams={routeParams} />;
   }
-  return <CourseList />;
+  return <CourseList initialStatus={searchParams?.get('status') || ''} />;
 }

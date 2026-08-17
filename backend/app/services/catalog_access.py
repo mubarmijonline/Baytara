@@ -40,6 +40,8 @@ def audience_error(user, access_type):
     if getattr(user, "role", None) == "admin":
         return None
 
+    # Students and licensed doctors are both verified veterinarians and reach the same
+    # content; `is_vet_student` records which kind, and gates nothing.
     is_vet = bool(getattr(user, "is_baytarian", False))
     if access_type in {"vet_free", "baytarian"} and not is_vet:
         return "needs_baytarian"
@@ -190,6 +192,18 @@ def video_access(user, video):
     if entitlement and entitlement.has_access():
         return True, None
     expired_entitlement = bool(entitlement and entitlement.is_expired())
+
+    # A course with no fee is watched, not joined: there is no enrollment to look for,
+    # so belonging to one is enough on its own. The audience rule still applies —
+    # vet_free costs nothing but is still instructors only.
+    if course_ids:
+        from ..models.catalog import Course as _Course
+
+        free_courses = _Course.query.filter(
+            _Course.id.in_(course_ids), _Course.access_type.in_(FREE_ACCESS),
+        ).all()
+        if any(audience_error(user, c.access_type) is None for c in free_courses):
+            return True, None
 
     expired_course_access = False
     if course_ids:

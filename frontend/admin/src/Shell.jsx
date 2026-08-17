@@ -15,7 +15,9 @@ import {
   Mail,
   Newspaper,
   Settings,
+  Star,
   Tags,
+  UserCheck,
 } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { ADMIN_DATA_CHANGED_EVENT } from './admin-data-events.js';
@@ -31,6 +33,8 @@ const NAV = [
   ['videos', 'nav.videos', Library],
   ['video-reports', 'nav.videoReports', BarChart3],
   ['bundles', 'nav.bundles', Boxes],
+  ['enrollments', 'nav.enrollments', UserCheck],
+  ['reviews', 'nav.reviews', Star],
   ['hierarchy', 'nav.hierarchy', FolderTree],
   ['categories', 'nav.categories', Tags],
   ['articles', 'nav.articles', Newspaper],

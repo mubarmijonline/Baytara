@@ -1,7 +1,7 @@
 """google sign-in: google_sub on users, password_hash nullable
 
 Revision ID: a3f7c9d15e08
-Revises: f7a3c8e21b40
+Revises: c1d84f2a7b93
 Create Date: 2026-08-17 14:00:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'a3f7c9d15e08'
-down_revision = 'f7a3c8e21b40'
+down_revision = 'c1d84f2a7b93'
 branch_labels = None
 depends_on = None
 

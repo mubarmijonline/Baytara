@@ -4,8 +4,13 @@ import Home from './pages/Home.jsx';
 import Courses from './pages/Courses.jsx';
 import CourseDetail from './pages/CourseDetail.jsx';
 import Bundles from './pages/Bundles.jsx';
+import Paths from './pages/Paths.jsx';
+import Profile from './pages/Profile.jsx';
+import Certificate from './pages/Certificate.jsx';
+import PathDetail from './pages/PathDetail.jsx';
 import Instructor from './pages/Instructor.jsx';
 import Pricing from './pages/Pricing.jsx';
+import VerifyVet from './pages/VerifyVet.jsx';
 import Business from './pages/Business.jsx';
 import Auth from './pages/Auth.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -33,16 +38,22 @@ export default function App() {
         <Route path="/videos" element={<Videos />} />
         <Route path="/videos/:id" element={<VideoDetail />} />
         <Route path="/bundles" element={<Bundles />} />
+        <Route path="/paths" element={<Paths />} />
+        <Route path="/paths/:slug" element={<PathDetail />} />
         <Route path="/buy/:slug" element={<Buy />} />
         <Route path="/payment/callback" element={<PaymentCallback />} />
         <Route path="/instructors/:id" element={<Instructor />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/verify" element={<VerifyVet />} />
         <Route path="/business" element={<Business />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        {/* The profile is the account home; the older dashboard views keep their own paths. */}
+        <Route path="/dashboard" element={<Profile />} />
+        <Route path="/dashboard/learning" element={<Dashboard />} />
         <Route path="/dashboard/my-courses" element={<Dashboard />} />
         <Route path="/dashboard/payments" element={<Dashboard />} />
-        <Route path="/dashboard/profile" element={<Dashboard />} />
+        <Route path="/dashboard/profile" element={<Profile />} />
+        <Route path="/certificates/:serial" element={<Certificate />} />
         <Route path="/about" element={<About />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />

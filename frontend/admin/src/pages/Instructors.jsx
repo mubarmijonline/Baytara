@@ -62,13 +62,18 @@ function InstructorForm({ user, categories, onClose, onSaved }) {
       category_id: f.category_id || null, avatar_url: f.avatar_url || null,
       can_add_video: f.can_add_video, can_edit_video: f.can_edit_video, can_delete_video: f.can_delete_video,
     };
+    // Checked here too: pasting "email: someone@yahoo.com" used to be stored verbatim,
+    // and the address is the account's login, so a typo locks the person out.
+    const email = f.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setErr(copy.invalidEmail); setBusy(false); return; }
     try {
       if (editing) {
         if (f.password) body.password = f.password;
         body.is_active = f.is_active;
+        body.email = email;
         await api.userUpdate(user.id, body);
       } else {
-        await api.userCreate({ ...body, email: f.email, password: f.password, role: 'instructor' });
+        await api.userCreate({ ...body, email, password: f.password, role: 'instructor' });
       }
       onSaved();
     } catch (e) { setErr(apiError(e, common.loadError)); setBusy(false); }
@@ -87,7 +92,9 @@ function InstructorForm({ user, categories, onClose, onSaved }) {
         </div>
       </div>
       <Field label={copy.name}><input value={f.name} onChange={set('name')} /></Field>
-      {!editing && <Field label={copy.email}><input type="email" value={f.email} onChange={set('email')} /></Field>}
+      <Field label={copy.email}>
+        <input type="email" dir="ltr" value={f.email} onChange={set('email')} placeholder="name@example.com" />
+      </Field>
       <Field label={editing ? copy.newPassword : copy.password}>
         <input type="password" value={f.password} onChange={set('password')} />
       </Field>
@@ -158,7 +165,24 @@ export default function Instructors() {
   async function del(u) {
     if (!await confirmDialog(copy.deleteConfirm(u.name))) return;
     try { await api.userDelete(u.id); load(); }
-    catch (e) { toast.error(apiError(e, common.loadError)); }
+    catch (e) {
+      // The API refuses to delete an instructor who still authors content, and says
+      // how much. Show that instead of a bare "something went wrong".
+      if (e.status === 409 && e.data?.error === 'user_has_courses') {
+        toast.error(copy.blockedByContent(e.data.courses ?? 0, e.data.videos ?? 0));
+        return;
+      }
+      toast.error(apiError(e, common.loadError));
+    }
+  }
+
+  // Deactivating is the right move for someone who has left: they keep authorship of
+  // their courses, but cannot sign in and stop appearing in the assignment pickers.
+  async function toggleActive(u) {
+    const confirmText = u.is_active ? copy.deactivateConfirm(u.name) : copy.activateConfirm(u.name);
+    if (!await confirmDialog(confirmText)) return;
+    try { await api.userUpdate(u.id, { is_active: !u.is_active }); load(); }
+    catch (e) { toast.error(apiError(e, copy.statusError)); }
   }
 
   const missing = (u) => [
@@ -204,6 +228,9 @@ export default function Instructors() {
                 <td><span className={`chip ${u.is_active ? 'chip-on' : 'chip-off'}`}>{u.is_active ? copy.active : copy.inactive}</span></td>
                 <td className="actions">
                   <button className="btn btn-tonal btn-sm" onClick={() => setEditing(u)}>{common.edit}</button>
+                  <button className="btn btn-tonal btn-sm" onClick={() => toggleActive(u)}>
+                    {u.is_active ? copy.deactivate : copy.activate}
+                  </button>
                   <button className="btn btn-error btn-sm" onClick={() => del(u)}>{common.delete}</button>
                 </td>
               </tr>

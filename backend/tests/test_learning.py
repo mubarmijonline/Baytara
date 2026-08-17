@@ -165,7 +165,7 @@ def demo():
     with app.app_context():
         db.create_all()
         free_course, free_lessons = _seed(f"free{tag}", price=0)
-        paid_course, _ = _seed(f"paid{tag}", price=199)
+        paid_course, paid_lessons = _seed(f"paid{tag}", price=199)
 
     c = app.test_client()
     h = _auth(c, tag)
@@ -176,20 +176,33 @@ def demo():
     # paid course self-enroll rejected (payment comes in Phase 4)
     assert c.post("/api/v1/enrollments", json={"course_id": paid_course}, headers=h).status_code == 402
 
-    # free enroll ok, idempotent
-    assert c.post("/api/v1/enrollments", json={"course_id": free_course}, headers=h).status_code == 201
-    assert c.post("/api/v1/enrollments", json={"course_id": free_course}, headers=h).status_code == 200
-
-    # progress on non-enrolled lesson denied
+    # A course with no fee is watched, not joined: nothing is recorded and the answer
+    # is the same however many times it is asked.
+    for _ in range(2):
+        free = c.post("/api/v1/enrollments", json={"course_id": free_course}, headers=h)
+        assert free.status_code == 200 and free.get_json() == {"enrollment": None, "free": True}
     with app.app_context():
-        other, other_lessons = _seed(f"other{tag}", price=0)
+        from app.models import Enrollment
+        assert Enrollment.query.filter_by(course_id=free_course).count() == 0
+
+    # Progress hangs off an enrollment, so it belongs to a paid seat. Granted here the
+    # way the payment flow grants it.
+    with app.app_context():
+        from app.models import Enrollment, User
+        uid = User.query.filter_by(email=f"s_{tag}@t.test").one().id
+        db.session.add(Enrollment(user_id=uid, course_id=paid_course, source="purchase", status="active"))
+        db.session.commit()
+
+    # progress on a course the learner has no seat in is denied
+    with app.app_context():
+        other, other_lessons = _seed(f"other{tag}", price=199)
     assert c.post("/api/v1/progress", json={"lesson_id": other_lessons[0]}, headers=h).status_code == 403
 
     # complete 1 of 2 lessons -> 50%
-    r = c.post("/api/v1/progress", json={"lesson_id": free_lessons[0], "completed": True}, headers=h)
+    r = c.post("/api/v1/progress", json={"lesson_id": paid_lessons[0], "completed": True}, headers=h)
     assert r.status_code == 200 and r.get_json()["progress"]["percent"] == 50, r.get_json()
     # complete both -> 100%
-    r = c.post("/api/v1/progress", json={"lesson_id": free_lessons[1], "completed": True}, headers=h)
+    r = c.post("/api/v1/progress", json={"lesson_id": paid_lessons[1], "completed": True}, headers=h)
     assert r.get_json()["progress"]["percent"] == 100
 
     # my enrollments reflects the 100%
@@ -199,7 +212,7 @@ def demo():
     # persisted per-lesson progress is readable back (survives reload)
     with app.app_context():
         from app.models import Course
-        slug = db.session.get(Course, free_course).slug
+        slug = db.session.get(Course, paid_course).slug
     prog = c.get(f"/api/v1/progress?course={slug}", headers=h)
     assert prog.status_code == 200, prog.get_json()
     body = prog.get_json()

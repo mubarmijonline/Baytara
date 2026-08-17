@@ -1,12 +1,37 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { colors, layout } from '../theme/tokens.js';
-import { footerCols, socials as defaultSocials } from '../data/mock.js';
+import { useI18n } from '../lib/i18n.jsx';
 import { useSiteSettings } from '../lib/site-settings.jsx';
+
+// Every entry is a real route. These used to be dead <span>s fed by mock data.
+const COLUMNS = [
+  ['footer.col.platform', [
+    ['/paths', 'nav.paths'], ['/courses', 'nav.courses'], ['/videos', 'nav.videos'],
+    ['/bundles', 'nav.bundles'], ['/pricing', 'nav.pricing'],
+  ]],
+  ['footer.col.company', [
+    ['/about', 'nav.about'], ['/blog', 'nav.blog'], ['/business', 'nav.business'],
+    ['/content', 'nav.consultations'], ['/contact', 'nav.contact'],
+  ]],
+  ['footer.col.help', [
+    ['/contact', 'nav.contact'], ['/pricing', 'nav.pricing'],
+    ['/dashboard', 'nav.dashboard'], ['/auth', 'nav.login'],
+  ]],
+];
+
+const PLACEHOLDER_SOCIALS = ['facebook', 'instagram', 'youtube', 'whatsapp'];
 
 export default function Footer() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const settings = useSiteSettings();
   const tagline = settings.footer?.tagline;
+  // Privacy falls back to the built-in /privacy page: Google's OAuth branding
+  // form needs a privacy link that always resolves on baytara.app.
+  const legal = [
+    [settings.footer?.privacy_url || '/privacy', t('footer.privacy')],
+    [settings.footer?.terms_url, t('footer.terms')],
+  ].filter(([url]) => typeof url === 'string' && (/^https?:\/\//i.test(url) || url.startsWith('/')));
   const configuredSocials = Object.entries(settings.socials || {})
     .filter(([, url]) => typeof url === 'string' && /^https?:\/\//i.test(url));
   return (
@@ -41,7 +66,7 @@ export default function Footer() {
                 'منصة التعلّم البيطري الأولى في العالم العربي — نُتيح المعرفة للأطباء والطلاب ومربّي الحيوان بمحتوى عربي أصيل من نخبة الخبراء.'}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
-              {(configuredSocials.length ? configuredSocials : defaultSocials.map((name) => [name, ''])).map(([name, url]) => (
+              {(configuredSocials.length ? configuredSocials : PLACEHOLDER_SOCIALS.map((name) => [name, ''])).map(([name, url]) => (
                 <a
                   key={name}
                   aria-label={name}
@@ -68,14 +93,14 @@ export default function Footer() {
               ))}
             </div>
           </div>
-          {footerCols.map((col) => (
-            <div key={col.title}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginBottom: 16 }}>{col.title}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                {col.links.map((l) => (
-                  <span key={l} className="link-muted" style={{ fontSize: 14 }}>
-                    {l}
-                  </span>
+          {COLUMNS.map(([titleKey, links]) => (
+            <div key={titleKey}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#fff', marginBottom: 14 }}>{t(titleKey)}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {links.map(([to, labelKey]) => (
+                  <Link key={`${to}-${labelKey}`} to={to} className="link-muted" style={{ fontSize: 13.5, color: 'inherit' }}>
+                    {t(labelKey)}
+                  </Link>
                 ))}
               </div>
             </div>
@@ -93,11 +118,15 @@ export default function Footer() {
           }}
         >
           <span>{settings.footer?.copyright || '© 2026 بيطرة Baytara. جميع الحقوق محفوظة.'}</span>
-          <div style={{ display: 'flex', gap: 20 }}>
-            <span style={{ cursor: 'pointer' }} onClick={() => navigate('/privacy')}>سياسة الخصوصية</span>
-            <span style={{ cursor: 'pointer' }}>الشروط والأحكام</span>
-            <span style={{ cursor: 'pointer' }}>اتفاقية الاستخدام</span>
-          </div>
+          {legal.length > 0 && (
+            <div style={{ display: 'flex', gap: 18 }}>
+              {legal.map(([url, label]) => (url.startsWith('/') ? (
+                <span key={label} style={{ cursor: 'pointer' }} onClick={() => navigate(url)}>{label}</span>
+              ) : (
+                <a key={label} href={url} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>{label}</a>
+              )))}
+            </div>
+          )}
         </div>
       </div>
     </footer>

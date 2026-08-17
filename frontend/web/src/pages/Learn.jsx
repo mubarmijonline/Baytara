@@ -1,253 +1,236 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { colors, layout } from '../theme/tokens.js';
-import { rawCourses, curriculum } from '../data/mock.js';
-import { webapi, mapCourse, auth, isAuthed } from '../lib/api.js';
-import { primeAudioWatermark } from '../lib/audioWatermark.js';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import CurriculumAccordion from '../components/CurriculumAccordion.jsx';
+import LibraryBrowser from '../components/LibraryBrowser.jsx';
 import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
+import NotFound from './NotFound.jsx';
+import { colors, gradients } from '../theme/tokens.js';
+import { auth, isAuthed, useFetch, webapi } from '../lib/api.js';
+import { primeAudioWatermark } from '../lib/audioWatermark.js';
+import { useI18n } from '../lib/i18n.jsx';
 
-// Screen recording can only be blocked by FairPlay DRM, which runs in Safari alone.
-// The backend refuses to issue an OTP to any other browser on a Mac; this is the
-// message the viewer sees in that case.
-const INAPP_BROWSER_MSG = 'لا يمكن تشغيل المحتوى المحمي داخل تطبيقات مثل انستجرام أو فيسبوك. افتح الرابط في متصفّح الجهاز.';
-const MAC_SAFARI_MSG = 'لحماية المحتوى، تشغيل الفيديو على أجهزة Mac متاح عبر متصفّح Safari فقط. افتح الصفحة في Safari.';
+const DARK = colors.utilityBar;
+const PLAYER_BG = '#0d1430';
 
-// Video lesson watch page. Real course content + progress tracking.
-// In Phase 5 the placeholder player is replaced by the VdoCipher DRM player:
-// backend validates enrollment → issues a short-lived OTP → player consumes it.
+// Backend refusal codes that carry their own explanation. Anything else falls back to
+// the generic message; a 403 means "not enrolled".
+const PLAYBACK_ERRORS = [
+  'no_api_key', 'mac_needs_safari', 'unsupported_browser', 'browser_not_supported',
+  'app_required', 'suspicious_activity', 'already_playing', 'too_many_requests', 'access_expired',
+];
+
+function playbackMessage(error, t) {
+  const code = error?.data?.error;
+  if (PLAYBACK_ERRORS.includes(code)) return t(`video.err.${code}`);
+  if (error?.status === 403) return t('video.err.forbidden');
+  return t('video.err.generic');
+}
+
 export default function Learn() {
-  const { courseId, lessonId } = useParams(); // courseId carries the course slug
+  const { courseId, lessonId } = useParams();   // courseId carries the course slug
   const navigate = useNavigate();
-  const [apiCourse, setApiCourse] = useState(null);
-  const [active, setActive] = useState(null);
+  const { t } = useI18n();
+
+  const { data, error, loading } = useFetch(() => webapi.course(courseId), [courseId]);
+  const course = data?.course;
+
+  const [progress, setProgress] = useState(null);
   const [doneIds, setDoneIds] = useState({});
-  const [video, setVideo] = useState(null); // { otp, playbackInfo }
+  const [video, setVideo] = useState(null);      // { otp, playbackInfo, session_id, … }
   const [videoErr, setVideoErr] = useState('');
+  const [tab, setTab] = useState('course');
 
   useEffect(() => {
-    webapi.course(courseId).then((r) => setApiCourse(r.course)).catch(() => {});
-    // load persisted per-lesson progress so completed lessons stay marked across reloads
-    if (isAuthed()) {
-      auth.progressGet(courseId)
-        .then((r) => {
-          const done = {};
-          Object.entries(r.lessons || {}).forEach(([lid, v]) => { if (v.completed) done[lid] = true; });
-          setDoneIds(done);
-        })
-        .catch(() => {});
-    }
+    if (!isAuthed()) return undefined;
+    let alive = true;
+    auth.progressGet(courseId)
+      .then((r) => {
+        if (!alive) return;
+        setProgress(r);
+        const done = {};
+        Object.entries(r.lessons || {}).forEach(([id, entry]) => { if (entry.completed) done[id] = true; });
+        setDoneIds(done);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
   }, [courseId]);
 
-  const useApi = !!apiCourse;
-  const course = useApi
-    ? mapCourse(apiCourse)
-    : rawCourses.find((c) => c.slug === courseId) || rawCourses[Number(courseId)] || rawCourses[0];
+  const videos = useMemo(() => course?.videos || [], [course]);
+  const activeLesson = useMemo(
+    () => videos.find((v) => String(v.id) === String(lessonId)) || videos[0] || null,
+    [videos, lessonId],
+  );
+  const index = activeLesson ? videos.findIndex((v) => v.id === activeLesson.id) : -1;
 
-  // flat video list: videos directly under the course (new model), else the mock curriculum
-  const flat = [];
-  if (useApi) {
-    (apiCourse.videos || []).forEach((ls) =>
-      flat.push({ id: ls.id, key: String(ls.id), name: ls.title, mod: apiCourse.title,
-        has_video: ls.has_video, dur: ls.duration_minutes ? `${ls.duration_minutes} د` : '' }));
-  } else {
-    curriculum.forEach((mod, mi) => mod.lessons.forEach((ls, li) => flat.push({ ...ls, key: `${mi}-${li}`, mod: mod.title })));
-  }
-  const safeFlat = flat.length ? flat : [{ key: 'x', name: 'لا دروس بعد', dur: '', mod: '' }];
-  const activeKey = active || safeFlat.find((l) => l.key === lessonId)?.key || safeFlat[0].key;
-  const activeLesson = safeFlat.find((l) => l.key === activeKey) || safeFlat[0];
-
-  // fetch a fresh DRM OTP whenever the active lesson (with a video) changes
+  // Fresh DRM OTP whenever the active lesson changes. The guard is what keeps a locked
+  // or anonymous viewer from ever hitting /video/playback.
   useEffect(() => {
-    setVideo(null); setVideoErr('');
-    if (!useApi || !isAuthed() || !activeLesson.id || !activeLesson.has_video) return;
+    setVideo(null);
+    setVideoErr('');
+    if (!course || !isAuthed() || !activeLesson?.id || !activeLesson.has_video) return undefined;
     let alive = true;
-    auth.playback(activeLesson.id, apiCourse?.id)
+    auth.playback(activeLesson.id, course.id)
       .then((r) => alive && setVideo(r))
-      .catch((e) => {
-        if (!alive) return;
-        const code = e.data?.error;
-        setVideoErr(
-          code === 'no_api_key' ? 'خدمة الفيديو غير مُفعّلة بعد.'
-          : code === 'mac_needs_safari' ? MAC_SAFARI_MSG
-          : code === 'unsupported_browser' ? INAPP_BROWSER_MSG
-          : code === 'browser_not_supported' ? 'هذا المتصفّح لا يوفّر حماية كافية للمحتوى. استخدم Safari على أجهزة Apple، أو Edge على ويندوز، أو Chrome على أندرويد.'
-          : code === 'app_required' ? 'المحتوى المحمي يُشاهد على الهاتف عبر تطبيق بيطرة. المتصفّح لا يمنع تسجيل الصوت.'
-          : code === 'suspicious_activity' ? 'أوقفنا التشغيل مؤقتاً بعد رصد نشاط متكرر غير مسموح على حسابك. حاول بعد ربع ساعة.'
-          : code === 'already_playing' ? 'حسابك يشغّل فيديو على جهاز آخر الآن. أوقفه ثم أعد المحاولة.'
-          : code === 'too_many_requests' ? 'عدد كبير من محاولات التشغيل خلال ساعة. انتظر قليلاً ثم أعد المحاولة.'
-          : code === 'access_expired' ? 'انتهت مدة اشتراكك في الدورة. جدّد للمتابعة.'
-          : e.status === 403 ? 'اشترك في الدورة لمشاهدة الفيديو.'
-          : 'تعذّر تحميل الفيديو.'
-        );
-      });
+      .catch((e) => alive && setVideoErr(playbackMessage(e, t)));
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeKey, useApi]);
+  }, [activeLesson?.id, course?.id]);
 
-  async function completeCurrent() {
-    if (useApi && activeLesson.id && isAuthed()) {
-      try { await auth.progress({ lesson_id: activeLesson.id, completed: true }); setDoneIds((d) => ({ ...d, [activeLesson.id]: true })); } catch { /* ignore */ }
-    }
-  }
+  const completeCurrent = useCallback(async () => {
+    if (!activeLesson?.id || !isAuthed()) return;
+    try {
+      await auth.progress({ lesson_id: activeLesson.id, course_id: course?.id, completed: true });
+      setDoneIds((current) => ({ ...current, [activeLesson.id]: true }));
+      const refreshed = await auth.progressGet(courseId);
+      setProgress(refreshed);
+    } catch { /* a failed mark must not break playback */ }
+  }, [activeLesson?.id, course?.id, courseId]);
+
+  const openLesson = useCallback((next) => {
+    primeAudioWatermark();               // iOS unlocks audio only inside a user gesture
+    navigate(`/learn/${courseId}/${next.id}`);
+  }, [courseId, navigate]);
 
   async function completeAndNext() {
     await completeCurrent();
-    const i = safeFlat.findIndex((l) => l.key === activeKey);
-    const next = safeFlat[i + 1];
-    if (next) { setActive(next.key); navigate(`/learn/${courseId}/${next.key}`); }
+    const next = videos[index + 1];
+    if (next) openLesson(next);
   }
 
+  if (loading) return <div style={{ padding: '40px 24px', color: colors.muted }}>{t('common.loading')}</div>;
+  if (error || !course) return <NotFound />;
+
+  const percent = progress?.percent ?? 0;
+  const watched = activeLesson ? (progress?.lessons?.[activeLesson.id]?.watched_seconds || 0) : 0;
+  const done = activeLesson ? !!doneIds[activeLesson.id] : false;
+  const status = done ? t('learn.completed') : watched > 0 ? t('learn.inProgress') : null;
+
   return (
-    <div style={{ background: '#141E42', minHeight: '100vh', color: '#fff' }}>
-      <div
-        style={{
-          maxWidth: layout.maxWidth,
-          margin: '0 auto',
-          padding: '24px',
-          display: 'grid',
-          gridTemplateColumns: '1fr 340px',
-          gap: 24,
-          alignItems: 'start',
-        }}
-        className="grid-collapse-2"
-      >
-        {/* Player + info */}
-        <div>
-          {video ? (
-            <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
-              <SecureVdoPlayer playback={video} title="مشغّل الفيديو" onEnded={completeCurrent} onSecurityError={() => setVideoErr('تعذّر التحقق من جلسة المشاهدة.')} />
-            </div>
-          ) : (
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                aspectRatio: '16 / 9',
-                borderRadius: 16,
-                background: course.grad,
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: 84,
-                  height: 84,
-                  borderRadius: '50%',
-                  background: 'rgba(255,255,255,.92)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 12px 34px rgba(0,0,0,.35)',
-                }}
-              >
-                <span
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderTop: '14px solid transparent',
-                    borderBottom: '14px solid transparent',
-                    borderRight: '22px solid #1E2A5E',
-                    marginRight: -4,
-                  }}
-                />
-              </div>
-              <span style={{ position: 'absolute', bottom: 14, left: 0, right: 0, textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,.85)' }}>
-                {videoErr || (activeLesson.has_video ? 'جارٍ تحميل الفيديو…' : 'معاينة — لا فيديو محمي لهذا الدرس بعد')}
-              </span>
+    <div style={{ background: PLAYER_BG, minHeight: '100vh' }}>
+      {/* ---- lesson bar ---- */}
+      <div style={{ background: DARK, color: '#fff', padding: '0 24px', minHeight: 64, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.13)', borderRadius: 11, padding: '8px 14px' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700 }}>{course.title}</div>
+          {index >= 0 && (
+            <div style={{ fontSize: 11.5, color: '#a7aec9', marginTop: 2 }}>
+              {t('learn.lessonOf', { n: index + 1, total: videos.length })}
             </div>
           )}
+        </div>
+        {isAuthed() && (
+          <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.13)', borderRadius: 10, padding: '9px 14px' }}>
+            <span className="hide-sm" style={{ width: 120, height: 6, borderRadius: 100, background: 'rgba(255,255,255,.16)', overflow: 'hidden' }}>
+              <span style={{ display: 'block', width: `${percent}%`, height: '100%', background: colors.gold }} />
+            </span>
+            <span style={{ fontSize: 12.5, fontWeight: 700 }}>{percent}%</span>
+          </div>
+        )}
+      </div>
 
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontSize: 13, color: '#b6b6cc', marginBottom: 6 }}>
-              {course.cat} · {course.instructor}
+      <div className="grid-collapse-2" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', alignItems: 'start' }}>
+        {/* ---- player column ---- */}
+        <div style={{ background: PLAYER_BG, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ aspectRatio: '16 / 9', background: gradients.darkPanel, position: 'relative', display: 'grid', placeItems: 'center' }}>
+            {video ? (
+              <SecureVdoPlayer
+                playback={video}
+                title={activeLesson?.title || course.title}
+                onEnded={completeCurrent}
+                onSecurityError={() => setVideoErr(t('video.err.generic'))}
+              />
+            ) : (
+              <>
+                <span aria-hidden="true" style={{ width: 74, height: 74, borderRadius: '50%', background: 'rgba(48,72,160,.92)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 22 }}>▶</span>
+                <span style={{ position: 'absolute', insetInline: 0, bottom: 0, padding: '12px 18px', background: 'linear-gradient(transparent, rgba(0,0,0,.7))', color: '#cfcfe0', fontSize: 12 }}>
+                  {videoErr || (activeLesson?.has_video ? t('learn.loadingVideo') : t('learn.previewOnly'))}
+                </span>
+              </>
+            )}
+            <span style={{ position: 'absolute', top: 14, insetInlineEnd: 14, background: 'rgba(20,30,66,.7)', border: '1px solid rgba(255,255,255,.15)', color: '#cfcfe0', fontSize: 11, padding: '5px 10px', borderRadius: 7 }}>
+              {t('video.protectedPlayback')}
+            </span>
+          </div>
+
+          <div style={{ flex: 1, background: colors.surface, padding: '24px 26px 30px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, marginBottom: 18, flexWrap: 'wrap' }}>
+              <div>
+                <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: DARK }}>
+                  {activeLesson?.title || course.title}
+                </h1>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {index >= 0 && (
+                    <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
+                      {t('learn.lessonOf', { n: index + 1, total: videos.length })}
+                    </span>
+                  )}
+                  {activeLesson?.duration_minutes > 0 && (
+                    <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
+                      {activeLesson.duration_minutes} {t('common.minutesShort')}
+                    </span>
+                  )}
+                  {status && (
+                    <span style={{ background: '#e8f4ee', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#1a7f4b', fontWeight: 700 }}>{status}</span>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+                <Link to={`/courses/${course.slug}`} style={{ border: `1.5px solid #d6d9e4`, color: colors.ink, fontSize: 14, fontWeight: 600, padding: '11px 18px', borderRadius: 10 }}>
+                  ← {t('learn.backToCourse')}
+                </Link>
+                <button type="button" onClick={completeAndNext}
+                  style={{ background: colors.accent, color: '#fff', fontSize: 14, fontWeight: 700, padding: '11px 20px', borderRadius: 10, border: 'none', cursor: 'pointer' }}>
+                  {t('learn.completeNext')}
+                </button>
+              </div>
             </div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 6px' }}>{activeLesson.name}</h1>
-            <div style={{ fontSize: 14, color: '#6B7291' }}>
-              {activeLesson.mod} · {activeLesson.dur}
+
+            <div style={{ border: `1px solid ${colors.line}`, borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {course.category && (
+                <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>{course.category.name}</span>
+              )}
+              {course.instructor && (
+                <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>{course.instructor.name}</span>
+              )}
+              <span style={{ marginInlineStart: 'auto', background: colors.accentSoft, color: colors.accent, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, fontWeight: 700 }}>
+                {t('learn.protected')}
+              </span>
             </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => navigate(`/courses/${course.slug}`)}
-                style={{
-                  background: 'rgba(255,255,255,.1)',
-                  border: '1px solid rgba(255,255,255,.2)',
-                  color: '#fff',
-                  borderRadius: 10,
-                  padding: '11px 20px',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                ← صفحة الدورة
-              </button>
-              <button
-                onClick={completeAndNext}
-                style={{
-                  background: colors.accent,
-                  border: 'none',
-                  color: '#fff',
-                  borderRadius: 10,
-                  padding: '11px 20px',
-                  fontSize: 14,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-              >
-                إتمام والتالي
-              </button>
-            </div>
+
+            {activeLesson?.description && (
+              <p style={{ margin: '18px 0 0', fontSize: 14.5, lineHeight: 1.85, color: colors.ink2, whiteSpace: 'pre-line' }}>
+                {activeLesson.description}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Playlist */}
-        <aside style={{ background: '#1B2A66', borderRadius: 16, overflow: 'hidden' }}>
-          <div style={{ padding: '18px 18px 12px', fontSize: 16, fontWeight: 900 }}>محتوى الدورة</div>
-          <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-            {safeFlat.map((l, i) => {
-              const isActive = l.key === activeKey;
-              return (
-                <div
-                  key={l.key}
-                  onClick={() => {
-                    primeAudioWatermark(); // unlock audio inside the tap (iOS)
-                    setActive(l.key);
-                    navigate(`/learn/${courseId}/${l.key}`);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '12px 18px',
-                    cursor: 'pointer',
-                    background: isActive ? 'rgba(48,72,160,.14)' : 'transparent',
-                    borderRight: isActive ? `3px solid ${colors.accent}` : '3px solid transparent',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: '50%',
-                      background: isActive ? colors.accent : 'rgba(255,255,255,.1)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 12,
-                      fontWeight: 800,
-                      flex: 'none',
-                    }}
-                  >
-                    {doneIds[l.id] ? '✓' : i + 1}
-                  </span>
-                  <span style={{ flex: 1, fontSize: 14, color: isActive ? '#fff' : '#c9c9dc' }}>{l.name}</span>
-                  <span style={{ fontSize: 12, color: '#6B7291' }}>{l.dur}</span>
-                </div>
-              );
-            })}
+        {/* ---- sidebar ---- */}
+        <aside style={{ background: colors.surface, borderInlineStart: `1px solid ${colors.line}`, minHeight: '100%' }}>
+          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${colors.line}`, display: 'flex', gap: 18, fontSize: 13.5, fontWeight: 700, color: colors.muted2 }}>
+            {[['course', t('learn.thisCourse')], ['all', t('learn.allContent')]].map(([key, label]) => (
+              <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 10px',
+                  color: tab === key ? DARK : colors.muted2, fontWeight: 700, fontSize: 13.5,
+                  borderBottom: tab === key ? `3px solid ${colors.accent}` : '3px solid transparent',
+                }}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ padding: '12px 16px 24px' }}>
+            {tab === 'course' ? (
+              <CurriculumAccordion
+                dense
+                modules={course.modules || []}
+                activeId={activeLesson?.id ?? null}
+                doneIds={doneIds}
+                onSelect={openLesson}
+              />
+            ) : (
+              <LibraryBrowser defaultCategory={course.category?.slug || ''} />
+            )}
           </div>
         </aside>
       </div>

@@ -6,6 +6,8 @@ import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 import { auth as authApi, getLang } from '../lib/api.js';
 import { googleSignInBlocked, loadGoogleIdentity } from '../lib/google.js';
+import { isEmail, normalizeMobile } from '../lib/validate.js';
+import PhoneField from '../components/PhoneField.jsx';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -47,10 +49,15 @@ export default function Auth() {
   }
 
   async function submit() {
+    // Checked here as well as on the server: a rejected signup that only says
+    // "check your details" leaves people guessing which field is wrong.
+    if (!isEmail(f.email)) { setErr(t('validation.email')); return; }
+    if (isSignup && !normalizeMobile(f.phone)) { setErr(t('validation.phone')); return; }
+
     setErr(''); setBusy(true);
     try {
       const user = isSignup
-        ? await register(f.name, f.email, f.password, f.phone)
+        ? await register(f.name, f.email, f.password, normalizeMobile(f.phone))
         : await login(f.email, f.password);
       goAfterAuth(user);
     } catch (e) {
@@ -199,14 +206,15 @@ export default function Auth() {
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 22px' }}>{title}</h2>
           {isSignup && field('الاسم الكامل', <input placeholder="أدخل اسمك" style={inputStyle} value={f.name} onChange={set('name')} />)}
-          {field('البريد الإلكتروني', <input placeholder="you@email.com" style={inputStyle} value={f.email} onChange={set('email')} />)}
+          {field('البريد الإلكتروني', <input type="email" inputMode="email" placeholder="you@email.com" style={inputStyle} value={f.email} onChange={set('email')} />)}
           {isSignup && field(t('auth.phone'),
             <>
-              <input required placeholder="+2010xxxxxxxx" style={inputStyle} value={f.phone} onChange={set('phone')} />
-              <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{t('auth.phoneHint')}</div>
+              <PhoneField id="signup-phone" defaultValue={f.phone}
+                onChange={(value) => setF((current) => ({ ...current, phone: value }))} />
+              <div style={{ fontSize: 12, color: colors.muted, marginTop: 6, lineHeight: 1.7 }}>{t('auth.phoneHint')}</div>
             </>)}
           {field('كلمة المرور', <input type="password" placeholder="••••••••" style={inputStyle} value={f.password} onChange={set('password')} onKeyDown={(e) => e.key === 'Enter' && submit()} />)}
-          {err && <div style={{ color: colors.accent, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{err}</div>}
+          {err && <div role="alert" style={{ color: colors.accent, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{err}</div>}
           <button
             onClick={submit}
             disabled={busy}

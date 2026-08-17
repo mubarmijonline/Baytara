@@ -106,9 +106,47 @@ textarea {
   display: none;
 }
 
+/* The design's card grids. minmax(0,1fr) so a long Arabic title cannot widen a column. */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 1100px) {
+  .videos-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 @media (max-width: 900px) {
   .grid-collapse-2 {
-    grid-template-columns: 1fr !important;
+    /* minmax(0,…), not 1fr: a bare 1fr is minmax(auto,1fr), so a wide child's
+       min-content pushes the track past the viewport and the layout's
+       overflow-x:hidden then clips the form off the side of the screen. */
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .hide-md {
     display: none !important;
@@ -121,9 +159,52 @@ textarea {
   .grid-collapse-sm {
     grid-template-columns: 1fr !important;
   }
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .grid-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
   .hide-sm {
     display: none !important;
   }
+}
+
+/* The certificate page prints as the deliverable; the chrome around it does not. */
+@media print {
+  .site-utility-bar, .site-header-inner, header, footer, .site-tabbar,
+  .certificate-actions { display: none !important; }
+  .certificate-sheet { box-shadow: none !important; border-radius: 0 !important; }
+  body { background: #fff !important; }
+}
+
+/* The tab strip pins under the site header so switching tabs never means scrolling
+   back past the cover photo. scroll-margin-top keeps the panel clear of both bars. */
+.profile-tabs-bar { position: sticky; top: 74px; z-index: 20; }
+.profile-body { scroll-margin-top: 132px; }
+
+@media (max-width: 760px) {
+  /* A 280px cover eats most of a phone screen before a single word of the profile.
+     150px is what the design gives the mobile frame. */
+  .profile-cover { height: 150px !important; }
+  /* Avatar above the name, as in the design — side by side pushes the name up over
+     the cover and squeezes it to one word per line. */
+  .profile-identity { flex-direction: column !important; align-items: flex-start !important;
+    margin-top: -46px !important; padding: 0 16px !important; gap: 12px !important; }
+  .profile-identity > div:first-child { width: 104px !important; height: 104px !important; }
+  .profile-identity > div:last-child { padding-bottom: 0 !important; }
+  .profile-identity h1 { font-size: 22px !important; letter-spacing: 0 !important; }
+  .profile-body { padding: 16px !important; scroll-margin-top: 104px; }
+  /* The six tabs scroll sideways rather than wrapping into a second row. */
+  .profile-tabs { padding: 0 16px !important; gap: 18px !important; }
+  .profile-tabs-bar { top: 54px; }
+  .profile-photo-grid { grid-template-columns: 1fr !important; }
 }
 
 /* toast notifications */
@@ -145,6 +226,21 @@ select { appearance: none; -webkit-appearance: none; background-color: #fff;
 select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2fb; }
 
 .video-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+/* The library shows four across; the home strip keeps three. */
+.videos-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+/* Chips scroll sideways rather than wrapping the filter bar onto three rows. */
+.videos-chip-row { scrollbar-width: none; }
+.videos-chip-row::-webkit-scrollbar { display: none; }
+/* Course catalogue rows: thumbnail, details, price/CTA column. Below 640px the price
+   column would squeeze the title to one word per line, so it drops under the details. */
+@media (max-width: 640px) {
+  .catalog-row { flex-wrap: wrap; }
+  .catalog-row > button:first-child { width: 108px; height: 78px; }
+  .catalog-row-side { flex-direction: row !important; align-items: center !important;
+    width: 100%; justify-content: space-between; }
+  .catalog-search { flex-direction: column; }
+  .catalog-search button { width: 100%; }
+}
 .video-detail-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr); gap: 34px; align-items: start; }
 .video-status-icon { position: relative; display: inline-block; width: 22px; height: 22px; color: #3048A0; }
 .video-status-icon::before { content: ""; position: absolute; inset-inline-start: 4px; bottom: 2px; width: 15px; height: 12px; border: 2px solid currentColor; border-radius: 3px; background: transparent; }
@@ -322,9 +418,30 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
   .student-section-heading button, .student-action, .student-profile-form button { width: 100%; }
 }
 
+/* Phone-only bottom navigation; shown in the 760px block below. */
+.site-tabbar {
+  display: none;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 8px 18px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+  border-top: 1px solid #ececf2;
+  text-align: center;
+  font-size: 11px;
+}
+.site-tabbar a { padding: 6px 0; }
+
 @media (max-width: 760px) {
   body { font-size: 15px; }
   .site-utility-bar { display: none !important; }
+  .site-tabbar { display: grid; }
+  /* Keep the last section clear of the fixed bar. */
+  .site-main { padding-bottom: 4px; }
+  footer { padding-bottom: 64px; }
   .site-header-inner { height: 54px !important; padding: 0 16px !important; gap: 10px !important; }
   .site-logo { height: 32px !important; }
   .show-md[aria-label] { padding: 10px !important; border-radius: 8px !important; }
