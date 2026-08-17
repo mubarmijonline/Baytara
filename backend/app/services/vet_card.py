@@ -58,6 +58,28 @@ LICENSE_RE = re.compile(r"رقم\s*الترخيص\s*[:：]?\s*(\d+)")
 EXPIRY_RE = re.compile(r"ساري\s*حتي\s*[:：]?\s*(\d{4})\s*/\s*(\d{1,2})")
 NATIONAL_ID_RE = re.compile(r"الرقم\s*القومي\s*[:：]?\s*(\d{14})")
 ANY_14_RE = re.compile(r"(?<!\d)(\d{14})(?!\d)")
+# Vision reorders right-to-left lines, so the number does not always follow its label
+# on the same line. This is the fallback: the label, then the next run of digits.
+REGISTRATION_LOOSE_RE = re.compile(r"رقم\s*القيد\D{0,20}(\d{3,})")
+# ...and sometimes ahead of it, when the whole line comes back reversed. Tried before
+# the forward fallback, which would otherwise walk on and grab the licence number.
+REGISTRATION_REVERSED_RE = re.compile(r"(\d{3,})\D{0,20}رقم\s*القيد")
+
+# Folded governorate names, longest first so "شمال سيناء" wins over "سيناء".
+_FOLDED_GOVERNORATES = None
+
+
+def _find_governorate(text):
+    """The governorate printed anywhere on the card, returned canonically."""
+    global _FOLDED_GOVERNORATES
+    if _FOLDED_GOVERNORATES is None:
+        _FOLDED_GOVERNORATES = sorted(
+            ((fold_arabic(name), name) for name in EGYPT_GOVERNORATES.values()),
+            key=lambda pair: -len(pair[0]))
+    for folded, canonical in _FOLDED_GOVERNORATES:
+        if folded and folded in text:
+            return canonical
+    return ""
 
 
 def normalize_digits(text):
@@ -143,23 +165,24 @@ def _read_side(back_text, front_text="", today=None):
 
     profession = PROFESSION_RE.search(text)
     value = profession.group(1).strip() if profession else None
-    if not value:
+    if VET_PROFESSION_RE.search(text):
+        # The phrase appears once, on the profession line. Trusting the whole card
+        # rather than one capture group survives Vision reordering the RTL lines.
+        fields["profession"] = _field(value or "طبيب بيطري", True)
+    elif not value:
         fields["profession"] = _field(problem="unreadable")
-    elif not VET_PROFESSION_RE.search(value):
+    else:
         # A pharmacist's or a dentist's syndicate card is not this one.
         fields["profession"] = _field(value, False, "not_veterinarian")
-    else:
-        fields["profession"] = _field(value, True)
 
-    registration = REGISTRATION_RE.search(text)
-    if registration:
-        fields["registration_no"] = _field(registration.group(1), True)
-        governorate = registration.group(2).strip(" :/\t") or None
-        fields["governorate"] = _field(governorate, bool(governorate),
-                                       None if governorate else "unreadable")
-    else:
-        fields["registration_no"] = _field(problem="unreadable")
-        fields["governorate"] = _field(problem="unreadable")
+    registration = (REGISTRATION_RE.search(text) or REGISTRATION_REVERSED_RE.search(text)
+                    or REGISTRATION_LOOSE_RE.search(text))
+    fields["registration_no"] = _field(registration.group(1), True) if registration \
+        else _field(problem="unreadable")
+
+    printed = (registration.group(2).strip(" :/\t") if registration and registration.lastindex and registration.lastindex > 1
+               else "") or _find_governorate(text)
+    fields["governorate"] = _field(printed, bool(printed), None if printed else "unreadable")
 
     license_no = LICENSE_RE.search(text)
     fields["license_no"] = _field(license_no.group(1), True) if license_no \

@@ -118,6 +118,17 @@ def _collect_sides():
     return files, None
 
 
+def _log_rejection(user, texts, report):
+    """What Vision returned, whenever a card does not check out. Without it a failure
+    in the wild is unreproducible and diagnosing it becomes guesswork."""
+    failed = [k for k, f in report["fields"].items()
+              if k != "national_id_decoded" and not f["ok"]]
+    current_app.logger.warning(
+        "card rejected for user %s, failed=%s problems=%s\n--- back ---\n%s\n--- front ---\n%s",
+        user.id, failed, report.get("problems"),
+        (texts.get("back") or "")[:700], (texts.get("front") or "")[:700])
+
+
 def _check_card(user, texts, today=None):
     """Every rule, in one place, so preview and submit can never disagree."""
     from ...services.vet_card import governorate_agrees, parse_card
@@ -141,13 +152,16 @@ def _check_card(user, texts, today=None):
 
     # One card, one account. Checked against verified accounts only, so an abandoned
     # half-finished attempt never blocks the real owner.
-    taken = None
-    if fields["registration_no"]["ok"] or fields["license_no"]["ok"]:
-        taken = User.query.filter(
-            User.id != user.id, User.is_baytarian.is_(True),
-            db.or_(User.vet_registration_no == fields["registration_no"]["value"],
-                   User.vet_license_no == fields["license_no"]["value"]),
-        ).first()
+    # Only compare numbers we actually read. Passing a None built "vet_registration_no
+    # IS NULL" into the OR, which matched every verified account that has no card on
+    # file and reported a fresh card as already used.
+    claims = [column == fields[key]["value"]
+              for key, column in (("registration_no", User.vet_registration_no),
+                                  ("license_no", User.vet_license_no))
+              if fields[key]["ok"] and fields[key]["value"]]
+    taken = User.query.filter(
+        User.id != user.id, User.is_baytarian.is_(True), db.or_(*claims),
+    ).first() if claims else None
     if taken:
         fields["registration_no"]["ok"] = False
         fields["registration_no"]["problem"] = "card_already_used"
@@ -175,7 +189,10 @@ def preview_card():
     texts, error = _read_card(files)
     if error:
         return jsonify(error=error), 503
-    return jsonify(report=_check_card(user, texts))
+    report = _check_card(user, texts)
+    if not report["complete"]:
+        _log_rejection(user, texts, report)
+    return jsonify(report=report)
 
 
 @bp.post("/baytarian/card")
@@ -204,11 +221,7 @@ def submit_card():
     if not report["complete"]:
         # Nothing is written, but the text is logged: without it a failure in the wild
         # is unreproducible, and guessing at OCR output wastes a day.
-        failed = [k for k, f in report["fields"].items()
-                  if k != "national_id_decoded" and not f["ok"]]
-        current_app.logger.warning(
-            "card rejected for user %s, failed=%s, back=%r front=%r",
-            _uid(), failed, (texts.get("back") or "")[:400], (texts.get("front") or "")[:400])
+        _log_rejection(user, texts, report)
         return jsonify(error="card_not_verified", report=report), 422
 
     saved = _save_sides(_uid(), files)

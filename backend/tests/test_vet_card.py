@@ -146,3 +146,30 @@ def test_the_two_sides_may_be_uploaded_either_way_round():
     swapped = parse_card(front, VISION_REAL, today=TODAY)
     assert right_way["complete"] and swapped["complete"]
     assert swapped["fields"]["national_id"]["value"] == "27811291801536"
+
+
+def test_survives_the_ways_vision_reorders_a_right_to_left_card():
+    """An angled photo does not come back as neat lines. Vision splits a label from
+    its value, reverses a right-to-left line, and drops stamp text in between."""
+    base = ("نقابة الأطباء البيطريين\n{name}{profession}{registration}"
+            "رقم الترخيص: ٢٨٩٢٥\nساری حتی : ۲۰۲۸/۰۹\nالرقم القومى : ٢٧٨١١٢٩١٨٠١٥٣٦")
+    layouts = {
+        "split from label": base.format(
+            name="الدكتور :\nمحمد غريب محمد خضر\n", profession="المهنة :\nطبيب بيطرى\n",
+            registration="رقم القيد :\n٢٨٨٣٤\n/ البحيرة\n"),
+        # the label lands after its number when the whole line comes back reversed
+        "reversed line": base.format(
+            name="الدكتور : محمد غريب محمد خضر\n", profession="المهنة : طبيب بيطرى\n",
+            registration="البحيرة / ٢٨٨٣٤ : رقم القيد\n"),
+        "stamp text between": base.format(
+            name="الدكتور : محمد غريب محمد خضر\nEGYPTIAN VETERINARIANS\n",
+            profession="المهنة : طبيب بيطرى\n", registration="رقم القيد : ٢٨٨٣٤ / البحيرة\n"),
+    }
+    for label, text in layouts.items():
+        card = parse_card(text, "", today=TODAY)
+        fields = card["fields"]
+        assert card["complete"], (label, {k: v for k, v in fields.items() if k != "national_id_decoded"})
+        # the registration is its own number, never the licence sitting on the next line
+        assert fields["registration_no"]["value"] == "28834", (label, fields["registration_no"])
+        assert fields["license_no"]["value"] == "28925", label
+        assert fields["governorate"]["value"] == "البحيرة", label
