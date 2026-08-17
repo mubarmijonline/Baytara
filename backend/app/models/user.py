@@ -106,7 +106,9 @@ class BaytarianRequest(db.Model):
     # admin reviewing it by hand sees what was already read rather than starting cold.
     route = db.Column(db.String(20), nullable=False, default="manual", server_default="manual")
     ai_verdict = db.Column(db.JSON)
-    grant = db.Column(db.String(20))   # baytarian | vet_student
+    # "granted" in the database because GRANT is a reserved word in Postgres and an
+    # unquoted UPDATE on it is a syntax error.
+    grant = db.Column("granted", db.String(20))   # baytarian | vet_student
     auto_approved = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     spot_check = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     reject_reason = db.Column(db.String(300))

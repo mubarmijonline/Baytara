@@ -24,15 +24,17 @@ def upgrade():
     op.add_column("baytarian_requests", sa.Column("route", sa.String(length=20),
                                                   nullable=False, server_default="manual"))
     op.add_column("baytarian_requests", sa.Column("ai_verdict", sa.JSON(), nullable=True))
-    op.add_column("baytarian_requests", sa.Column("grant", sa.String(length=20), nullable=True))
+    # "granted", not "grant": GRANT is reserved in Postgres and an unquoted UPDATE on
+    # a column of that name is a syntax error.
+    op.add_column("baytarian_requests", sa.Column("granted", sa.String(length=20), nullable=True))
     # Everything already approved was approved as a veterinarian, whether by the card
-    # parser or by an admin; leaving grant null would make revoke guess.
-    op.execute("UPDATE baytarian_requests SET grant = 'baytarian' WHERE status = 'approved'")
+    # parser or by an admin; leaving it null would make revoke guess.
+    op.execute("UPDATE baytarian_requests SET granted = 'baytarian' WHERE status = 'approved'")
     op.execute("UPDATE baytarian_requests SET route = 'syndicate_card' WHERE card_front IS NOT NULL")
 
 
 def downgrade():
-    op.drop_column("baytarian_requests", "grant")
+    op.drop_column("baytarian_requests", "granted")
     op.drop_column("baytarian_requests", "ai_verdict")
     op.drop_column("baytarian_requests", "route")
     op.drop_column("users", "is_vet_student")
