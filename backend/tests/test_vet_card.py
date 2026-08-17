@@ -113,3 +113,36 @@ def test_vet_card_parser():
 
 if __name__ == "__main__":
     demo()
+
+
+# Real Vision output, captured from a card image. It hands back a different alphabet
+# than the card prints — سارى حتى returns as ساری حتی with the Farsi yeh — and mixes
+# Arabic-Indic ٢ with Extended Arabic-Indic ۲ inside one document.
+VISION_REAL = (
+    "نقابة الأطباء البيطريين\n"
+    "الدكتور محمد غریب محمد خضر\n"
+    "المهنة : طبيب بيطرى\n"
+    "رقم القيد : ٢٨٨٣٤ / البحيرة\n"
+    "رقم الترخيص: ٢٨٩٢٥\n"
+    "ساری حتی : ۲۰۲۸/۰۹\n"
+    "الرقم القومى : ۲۷۸۱۱۲۹۱۸۰۱٥٣٦"
+)
+
+
+def test_reads_what_vision_actually_returns():
+    """Every field green on the real output, not on tidied-up text."""
+    card = parse_card(VISION_REAL, "", today=TODAY)
+    f = card["fields"]
+    assert card["complete"], {k: v for k, v in f.items() if k != "national_id_decoded"}
+    assert f["expires_at"]["value"] == "2028-09-30"     # the Farsi-yeh label still matched
+    assert f["national_id"]["value"] == "27811291801536"  # mixed digit systems in one number
+    assert f["registration_no"]["value"] == "28834"
+
+
+def test_the_two_sides_may_be_uploaded_either_way_round():
+    """A learner should not have to know which slot is which."""
+    front = "اتحاد نقابات المهن الطبية\nنقابة الأطباء البيطريين\nTel: 27949879"
+    right_way = parse_card(VISION_REAL, front, today=TODAY)
+    swapped = parse_card(front, VISION_REAL, today=TODAY)
+    assert right_way["complete"] and swapped["complete"]
+    assert swapped["fields"]["national_id"]["value"] == "27811291801536"

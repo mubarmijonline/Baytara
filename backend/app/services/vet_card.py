@@ -26,17 +26,37 @@ EGYPT_GOVERNORATES = {
     "34": "شمال سيناء", "35": "جنوب سيناء", "88": "خارج الجمهورية",
 }
 
-VET_PROFESSION_RE = re.compile(r"طبيب\s*بيطر[يى]")
-SYNDICATE_RE = re.compile(r"نقابة\s*الأطباء\s*البيطر")
+# Vision hands back a different alphabet than the card prints. Observed on a real
+# card: سارى حتى comes back as ساری حتی with the Farsi yeh (U+06CC), and كـ appears
+# as ک. Folding these away first is what makes the labels matchable at all.
+_LETTERS = str.maketrans({
+    "ی": "ي", "ى": "ي", "ئ": "ي",          # yeh variants -> yeh
+    "ک": "ك", "ڪ": "ك",                     # kaf variants -> kaf
+    "أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا",  # hamzated alef -> alef
+    "ة": "ه",                               # taa marbuta -> haa
+    "ؤ": "و",
+    "ـ": "",                                # tatweel, a decorative stretch
+})
+_MARKS = re.compile(r"[\u064B-\u0652\u0670\u200c\u200f\u200e]")
 
-# Vision returns the label and the value with the colon and spacing varying, and the
-# Arabic label itself is sometimes split across lines.
+
+def fold_arabic(text):
+    """One spelling for matching. Never shown to anyone — display keeps the original."""
+    return _MARKS.sub("", (text or "").translate(_LETTERS))
+
+
+# Patterns are written in folded form: نقابه not نقابة, بيطري not بيطرى.
+VET_PROFESSION_RE = re.compile(r"طبيب\s*بيطري")
+SYNDICATE_RE = re.compile(r"نقاب\w*\s*الاطباء|الاطباء\s*البيطري")
+
+# The label and value are separated by a colon that Vision sometimes drops, and the
+# value may sit on the next line.
 NAME_RE = re.compile(r"الدكتور\s*[:：]?\s*(.+)")
-PROFESSION_RE = re.compile(r"المهنة\s*[:：]?\s*(.+)")
+PROFESSION_RE = re.compile(r"المهنه\s*[:：]?\s*(.+)")
 REGISTRATION_RE = re.compile(r"رقم\s*القيد\s*[:：]?\s*(\d+)\s*/?\s*([^\d\n]*)")
 LICENSE_RE = re.compile(r"رقم\s*الترخيص\s*[:：]?\s*(\d+)")
-EXPIRY_RE = re.compile(r"سار[يى]\s*حتى\s*[:：]?\s*(\d{4})\s*/\s*(\d{1,2})")
-NATIONAL_ID_RE = re.compile(r"الرقم\s*القوم[يى]\s*[:：]?\s*(\d{14})")
+EXPIRY_RE = re.compile(r"ساري\s*حتي\s*[:：]?\s*(\d{4})\s*/\s*(\d{1,2})")
+NATIONAL_ID_RE = re.compile(r"الرقم\s*القومي\s*[:：]?\s*(\d{14})")
 ANY_14_RE = re.compile(r"(?<!\d)(\d{14})(?!\d)")
 
 
@@ -93,13 +113,28 @@ def _expiry(year, month, today):
 
 
 def parse_card(back_text, front_text="", today=None):
-    """Read a card. Returns {fields: {...}, complete: bool} with a verdict per field.
+    """Read a card whichever way round the two photos were uploaded.
+
+    Both sides are parsed as if each were the data side and the better reading wins.
+    Nobody should have to know which slot is which, and getting it wrong used to
+    report every field as unreadable.
+    """
+    first = _read_side(back_text, front_text, today)
+    second = _read_side(front_text, back_text, today)
+    score = lambda report: sum(  # noqa: E731 — a one-line key, not a function worth naming
+        1 for key, field in report["fields"].items()
+        if key != "national_id_decoded" and field["ok"])
+    return first if score(first) >= score(second) else second
+
+
+def _read_side(back_text, front_text="", today=None):
+    """One reading, treating back_text as the side carrying the data.
 
     Pure: `today` is injectable so the expiry test does not drift.
     """
     today = today or date.today()
-    text = normalize_digits(back_text or "")
-    front = normalize_digits(front_text or "")
+    text = fold_arabic(normalize_digits(back_text or ""))
+    front = fold_arabic(normalize_digits(front_text or ""))
     fields = {}
 
     name = NAME_RE.search(text)
@@ -152,6 +187,13 @@ def parse_card(back_text, front_text="", today=None):
         fields["national_id"] = _field(problem="unreadable")
         fields["national_id_decoded"] = None
 
+    # Folding is for matching only. Once the ID has decoded and the two agree, the
+    # governorate is shown and stored in its canonical spelling rather than the folded
+    # one the matcher worked with — البحيرة, not البحيره.
+    decoded = fields.get("national_id_decoded")
+    if decoded and fields["governorate"]["ok"] and governorate_agrees(decoded, fields["governorate"]["value"]):
+        fields["governorate"]["value"] = decoded["governorate"]
+
     # The front is evidence that this is the right card at all; it carries no data.
     fields["is_syndicate_card"] = _field(
         True, bool(SYNDICATE_RE.search(text) or SYNDICATE_RE.search(front)),
@@ -170,16 +212,16 @@ def governorate_agrees(decoded, printed):
     """
     if not decoded or not printed:
         return False
-    expected = decoded["governorate"]
-    printed = printed.strip().replace("ال", "", 1)
-    return expected.replace("ال", "", 1) in printed or printed in expected
+    expected = fold_arabic(decoded["governorate"]).replace("ال", "", 1)
+    printed = fold_arabic(printed).strip().replace("ال", "", 1)
+    return bool(printed) and (expected in printed or printed in expected)
 
 
 def read_national_id(text):
     """Find a valid national ID in OCR text. The card prints it in Arabic-Indic digits
     and Vision often splits it across groups, so digits are normalised and the runs are
     tried in order until one decodes."""
-    normalized = normalize_digits(text or "")
+    normalized = fold_arabic(normalize_digits(text or ""))
     labelled = NATIONAL_ID_RE.search(normalized)
     candidates = ([labelled.group(1)] if labelled else []) + ANY_14_RE.findall(normalized)
     # Vision sometimes spaces the number into groups; join everything and slide a window.

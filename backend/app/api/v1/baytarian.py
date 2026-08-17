@@ -202,7 +202,13 @@ def submit_card():
 
     report = _check_card(user, texts)
     if not report["complete"]:
-        # Nothing is written: a card that does not check out leaves no request behind.
+        # Nothing is written, but the text is logged: without it a failure in the wild
+        # is unreproducible, and guessing at OCR output wastes a day.
+        failed = [k for k, f in report["fields"].items()
+                  if k != "national_id_decoded" and not f["ok"]]
+        current_app.logger.warning(
+            "card rejected for user %s, failed=%s, back=%r front=%r",
+            _uid(), failed, (texts.get("back") or "")[:400], (texts.get("front") or "")[:400])
         return jsonify(error="card_not_verified", report=report), 422
 
     saved = _save_sides(_uid(), files)
