@@ -123,6 +123,16 @@ def parse_national_id(raw):
     }, None
 
 
+# The card's own labels. Text that is only a label is a column bleeding into a value.
+_LABELS = ("الدكتور", "المهنه", "رقم القيد", "رقم الترخيص", "ساري حتي", "الرقم القومي",
+           "الامين العام")
+
+
+def _is_label(value):
+    stripped = value.strip(" :：/\t")
+    return any(stripped.startswith(label) for label in _LABELS)
+
+
 def _field(value=None, ok=False, problem=None):
     return {"value": value, "ok": ok, "problem": problem}
 
@@ -134,46 +144,52 @@ def _expiry(year, month, today):
     return end, end >= today
 
 
-def parse_card(back_text, front_text="", today=None):
+def parse_card(front_text, back_text="", today=None):
     """Read a card whichever way round the two photos were uploaded.
 
-    Both sides are parsed as if each were the data side and the better reading wins.
-    Nobody should have to know which slot is which, and getting it wrong used to
-    report every field as unreadable.
+    The front is the side carrying the details — name, رقم القيد, الرقم القومى — and
+    the back is the logo and contact side. Both are parsed as if each were the details
+    side and the better reading wins, so a learner who swaps the two still gets read.
     """
-    first = _read_side(back_text, front_text, today)
-    second = _read_side(front_text, back_text, today)
+    first = _read_side(front_text, back_text, today)
+    second = _read_side(back_text, front_text, today)
     score = lambda report: sum(  # noqa: E731 — a one-line key, not a function worth naming
         1 for key, field in report["fields"].items()
         if key != "national_id_decoded" and field["ok"])
     return first if score(first) >= score(second) else second
 
 
-def _read_side(back_text, front_text="", today=None):
-    """One reading, treating back_text as the side carrying the data.
+def _read_side(details_text, other_text="", today=None):
+    """One reading, treating details_text as the side carrying the details.
 
     Pure: `today` is injectable so the expiry test does not drift.
     """
     today = today or date.today()
-    text = fold_arabic(normalize_digits(back_text or ""))
-    front = fold_arabic(normalize_digits(front_text or ""))
+    text = fold_arabic(normalize_digits(details_text or ""))
+    front = fold_arabic(normalize_digits(other_text or ""))
     fields = {}
 
     name = NAME_RE.search(text)
-    fields["name"] = _field(name.group(1).strip(), True) if name and name.group(1).strip() \
+    captured = name.group(1).strip() if name else ""
+    # Vision sometimes returns the card's label column as one block, so the text after
+    # a label is the next label rather than its value. Showing that back as the name
+    # would be worse than admitting it could not be read.
+    fields["name"] = _field(captured, True) if captured and not _is_label(captured) \
         else _field(problem="unreadable")
 
+    # The phrase is what proves it, and showing the phrase found on the card beats
+    # showing whatever happened to follow the label — which was the neighbouring
+    # label often enough to surface as "Profession: رقم القيد".
+    vet = VET_PROFESSION_RE.search(text)
     profession = PROFESSION_RE.search(text)
-    value = profession.group(1).strip() if profession else None
-    if VET_PROFESSION_RE.search(text):
-        # The phrase appears once, on the profession line. Trusting the whole card
-        # rather than one capture group survives Vision reordering the RTL lines.
-        fields["profession"] = _field(value or "طبيب بيطري", True)
-    elif not value:
+    captured = profession.group(1).strip() if profession else ""
+    if vet:
+        fields["profession"] = _field(vet.group(0).strip(), True)
+    elif not captured or _is_label(captured):
         fields["profession"] = _field(problem="unreadable")
     else:
         # A pharmacist's or a dentist's syndicate card is not this one.
-        fields["profession"] = _field(value, False, "not_veterinarian")
+        fields["profession"] = _field(captured, False, "not_veterinarian")
 
     registration = (REGISTRATION_RE.search(text) or REGISTRATION_REVERSED_RE.search(text)
                     or REGISTRATION_LOOSE_RE.search(text))
@@ -217,7 +233,7 @@ def _read_side(back_text, front_text="", today=None):
     if decoded and fields["governorate"]["ok"] and governorate_agrees(decoded, fields["governorate"]["value"]):
         fields["governorate"]["value"] = decoded["governorate"]
 
-    # The front is evidence that this is the right card at all; it carries no data.
+    # The other side is evidence that this is the right card at all; it carries no data.
     fields["is_syndicate_card"] = _field(
         True, bool(SYNDICATE_RE.search(text) or SYNDICATE_RE.search(front)),
         None if (SYNDICATE_RE.search(text) or SYNDICATE_RE.search(front)) else "not_syndicate_card",

@@ -48,7 +48,7 @@ def _client(app, email="vet@example.test"):
     return client
 
 
-def _stub_vision(monkeypatch, back=SAMPLE_BACK, front=SAMPLE_FRONT):
+def _stub_vision(monkeypatch, front=SAMPLE_FRONT, back=SAMPLE_BACK):
     """Stub Google's client, not extract_text, so the real upload-to-bytes path runs.
 
     Stubbing extract_text once hid a TypeError: the endpoint hands it an uploaded file
@@ -148,7 +148,7 @@ def test_a_card_belonging_to_someone_else_is_refused(app, monkeypatch):
 def test_an_expired_card_is_refused(app, monkeypatch):
     with app.app_context():
         _account(national_id=NATIONAL_ID)
-    _stub_vision(monkeypatch, back=SAMPLE_BACK.replace("٢٠٢٨/٠٩", "٢٠٢٠/٠١"))
+    _stub_vision(monkeypatch, front=SAMPLE_FRONT.replace("٢٠٢٨/٠٩", "٢٠٢٠/٠١"))
     client = _client(app)
 
     response = client.post("/api/v1/baytarian/card", data=_sides(),
@@ -191,7 +191,7 @@ def test_a_national_id_is_needed_before_the_card(app, monkeypatch):
 def test_an_unreadable_card_blocks_submission(app, monkeypatch):
     with app.app_context():
         _account(national_id=NATIONAL_ID)
-    _stub_vision(monkeypatch, back="", front="")
+    _stub_vision(monkeypatch, front="", back="")
     client = _client(app)
 
     response = client.post("/api/v1/baytarian/card", data=_sides(),

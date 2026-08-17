@@ -124,16 +124,16 @@ def _log_rejection(user, texts, report):
     failed = [k for k, f in report["fields"].items()
               if k != "national_id_decoded" and not f["ok"]]
     current_app.logger.warning(
-        "card rejected for user %s, failed=%s problems=%s\n--- back ---\n%s\n--- front ---\n%s",
+        "card rejected for user %s, failed=%s problems=%s\n--- front (details) ---\n%s\n--- back ---\n%s",
         user.id, failed, report.get("problems"),
-        (texts.get("back") or "")[:700], (texts.get("front") or "")[:700])
+        (texts.get("front") or "")[:700], (texts.get("back") or "")[:700])
 
 
 def _check_card(user, texts, today=None):
     """Every rule, in one place, so preview and submit can never disagree."""
     from ...services.vet_card import governorate_agrees, parse_card
 
-    report = parse_card(texts.get("back", ""), texts.get("front", ""), today=today)
+    report = parse_card(texts.get("front", ""), texts.get("back", ""), today=today)
     fields = report["fields"]
     problems = []
 
@@ -229,7 +229,7 @@ def submit_card():
     req = BaytarianRequest(
         user_id=_uid(), status="approved", auto_approved=True,
         card_front=saved["front"], card_back=saved["back"],
-        ocr_text=f"--- back ---\n{texts.get('back', '')}\n--- front ---\n{texts.get('front', '')}",
+        ocr_text=f"--- front (details) ---\n{texts.get('front', '')}\n--- back ---\n{texts.get('back', '')}",
         parsed=report, documents=[saved["front"], saved["back"]],
         reviewed_at=datetime.now(timezone.utc),   # reviewed_by stays null: the system did it
     )

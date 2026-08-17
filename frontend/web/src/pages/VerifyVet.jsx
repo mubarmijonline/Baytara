@@ -205,8 +205,9 @@ export default function VerifyVet() {
           <h2 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: colors.ink }}>{t('verify.step2')}</h2>
           <p style={{ margin: '0 0 14px', fontSize: 13.5, color: colors.muted, lineHeight: 1.8 }}>{t('verify.uploadHint')}</p>
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 14 }}>
-            <Side label={t('verify.back')} sample="/images/vet-card-back.png" file={back} onPick={setBack} />
+            {/* Front first: it is the side with the details, and the one that matters. */}
             <Side label={t('verify.front')} sample="/images/vet-card-front.png" file={front} onPick={setFront} />
+            <Side label={t('verify.back')} sample="/images/vet-card-back.png" file={back} onPick={setBack} />
           </div>
         </section>
 

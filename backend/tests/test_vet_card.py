@@ -10,9 +10,9 @@ from app.services.vet_card import (
     parse_card, parse_national_id,
 )
 
-# The sample card, written the way Vision returns it: Arabic-Indic digits, label and
+# The details side, written the way Vision returns it: Arabic-Indic digits, label and
 # value on one line, right-to-left text in logical order.
-SAMPLE_BACK = """نقابة الأطباء البيطريين
+SAMPLE_FRONT = """نقابة الأطباء البيطريين
 الدكتور : محمد غريب محمد خضر
 المهنة : طبيب بيطرى
 رقم القيد : ٢٨٨٣٤ / البحيرة
@@ -23,7 +23,7 @@ SAMPLE_BACK = """نقابة الأطباء البيطريين
 د/ كريم زكى
 """
 
-SAMPLE_FRONT = """اتحاد نقابات المهن الطبية
+SAMPLE_BACK = """اتحاد نقابات المهن الطبية
 نقابة الأطباء البيطريين
 Tel: 27949879
 Fax: 27957280
@@ -64,7 +64,7 @@ def demo():
     assert parse_national_id("39912319801536")[0] is None
 
     # ---- the whole card ----
-    card = parse_card(SAMPLE_BACK, SAMPLE_FRONT, today=TODAY)
+    card = parse_card(SAMPLE_FRONT, SAMPLE_BACK, today=TODAY)
     f = card["fields"]
     assert card["complete"], f
     assert f["name"]["value"] == "محمد غريب محمد خضر"
@@ -82,15 +82,15 @@ def demo():
     assert not governorate_agrees(None, "البحيرة")
 
     # ---- expiry ----
-    expired = parse_card(SAMPLE_BACK.replace("٢٠٢٨/٠٩", "٢٠٢٤/٠٣"), today=TODAY)
+    expired = parse_card(SAMPLE_FRONT.replace("٢٠٢٨/٠٩", "٢٠٢٤/٠٣"), today=TODAY)
     assert expired["fields"]["expires_at"]["problem"] == "expired"
     assert not expired["complete"]
     # the month it expires in is still valid, right to the last day
-    edge = parse_card(SAMPLE_BACK.replace("٢٠٢٨/٠٩", "٢٠٢٦/٠٨"), today=TODAY)
+    edge = parse_card(SAMPLE_FRONT.replace("٢٠٢٨/٠٩", "٢٠٢٦/٠٨"), today=TODAY)
     assert edge["fields"]["expires_at"]["ok"], edge["fields"]["expires_at"]
 
     # ---- another syndicate's card ----
-    pharmacist = parse_card(SAMPLE_BACK.replace("طبيب بيطرى", "صيدلى"), today=TODAY)
+    pharmacist = parse_card(SAMPLE_FRONT.replace("طبيب بيطرى", "صيدلى"), today=TODAY)
     assert pharmacist["fields"]["profession"]["problem"] == "not_veterinarian"
     assert not pharmacist["complete"]
 
@@ -141,9 +141,9 @@ def test_reads_what_vision_actually_returns():
 
 def test_the_two_sides_may_be_uploaded_either_way_round():
     """A learner should not have to know which slot is which."""
-    front = "اتحاد نقابات المهن الطبية\nنقابة الأطباء البيطريين\nTel: 27949879"
-    right_way = parse_card(VISION_REAL, front, today=TODAY)
-    swapped = parse_card(front, VISION_REAL, today=TODAY)
+    back = "اتحاد نقابات المهن الطبية\nنقابة الأطباء البيطريين\nTel: 27949879"
+    right_way = parse_card(VISION_REAL, back, today=TODAY)
+    swapped = parse_card(back, VISION_REAL, today=TODAY)
     assert right_way["complete"] and swapped["complete"]
     assert swapped["fields"]["national_id"]["value"] == "27811291801536"
 
@@ -173,3 +173,18 @@ def test_survives_the_ways_vision_reorders_a_right_to_left_card():
         assert fields["registration_no"]["value"] == "28834", (label, fields["registration_no"])
         assert fields["license_no"]["value"] == "28925", label
         assert fields["governorate"]["value"] == "البحيرة", label
+
+
+def test_a_label_column_is_never_shown_back_as_a_value():
+    """Vision sometimes returns the card's labels as one block and the values as
+    another, so the text after a label is the next label. That surfaced as
+    "Profession: رقم القيد"."""
+    columns = ("نقابة الأطباء البيطريين\n"
+               "الدكتور : المهنة : رقم القيد : رقم الترخيص:\n"
+               "محمد غريب محمد خضر\nطبيب بيطرى\n٢٨٨٣٤ / البحيرة\n٢٨٩٢٥\n"
+               "ساری حتی : ۲۰۲۸/۰۹\nالرقم القومى : ٢٧٨١١٢٩١٨٠١٥٣٦")
+    fields = parse_card(columns, "", today=TODAY)["fields"]
+    # the phrase found on the card, not the label that followed the colon
+    assert fields["profession"]["value"] == "طبيب بيطري", fields["profession"]
+    assert fields["profession"]["ok"]
+    assert not fields["name"]["ok"], fields["name"]      # admits it rather than lying
