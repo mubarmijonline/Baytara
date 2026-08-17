@@ -14,6 +14,7 @@ import Blog from './pages/Blog.jsx';
 import BlogPost from './pages/BlogPost.jsx';
 import Content from './pages/Content.jsx';
 import Contact from './pages/Contact.jsx';
+import Privacy from './pages/Privacy.jsx';
 import Learn from './pages/Learn.jsx';
 import Buy from './pages/Buy.jsx';
 import PaymentCallback from './pages/PaymentCallback.jsx';
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/content" element={<Content />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/learn/:courseId/:lessonId" element={<Learn />} />
         <Route path="*" element={<NotFound />} />
       </Route>

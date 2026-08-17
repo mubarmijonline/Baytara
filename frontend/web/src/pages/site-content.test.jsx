@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import App from '../App.jsx';
@@ -95,6 +95,19 @@ it('renders every editable Business hero and feature field', async () => {
   expect(screen.getByText('Configured feature')).toBeVisible();
   expect(screen.getByText('Configured feature body')).toBeVisible();
   expect(screen.getByRole('img', { name: 'Configured customer' })).toHaveAttribute('src', '/configured-logo.png');
+});
+
+it('reaches the privacy policy from the footer, with the configured support email', async () => {
+  // Google's OAuth branding form rejects a privacy URL that does not resolve on
+  // the authorized domain, so this route has to keep working.
+  renderRoute('/');
+
+  fireEvent.click(await screen.findByText('سياسة الخصوصية'));
+
+  expect(window.location.pathname).toBe('/privacy');
+  expect(await screen.findByRole('heading', { name: 'سياسة الخصوصية' })).toBeVisible();
+  expect(screen.getByRole('link', { name: 'configured@baytara.app' }))
+    .toHaveAttribute('href', 'mailto:configured@baytara.app');
 });
 
 it('renders configured About values and Footer social links', async () => {

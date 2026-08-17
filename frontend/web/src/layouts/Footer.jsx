@@ -94,7 +94,7 @@ export default function Footer() {
         >
           <span>{settings.footer?.copyright || '© 2026 بيطرة Baytara. جميع الحقوق محفوظة.'}</span>
           <div style={{ display: 'flex', gap: 20 }}>
-            <span style={{ cursor: 'pointer' }}>سياسة الخصوصية</span>
+            <span style={{ cursor: 'pointer' }} onClick={() => navigate('/privacy')}>سياسة الخصوصية</span>
             <span style={{ cursor: 'pointer' }}>الشروط والأحكام</span>
             <span style={{ cursor: 'pointer' }}>اتفاقية الاستخدام</span>
           </div>
