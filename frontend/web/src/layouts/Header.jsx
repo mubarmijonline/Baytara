@@ -92,12 +92,16 @@ function NotificationBell() {
         )}
       </button>
       {open && (
-        // Wide enough for a full sentence of body text, but never wider than the
-        // viewport on a phone, where the bell sits close to the screen edge.
-        <div style={{ position: 'absolute', insetInlineEnd: 0, top: 44, width: 'min(420px, calc(100vw - 28px))',
-          maxHeight: 'min(70vh, 520px)', overflowY: 'auto',
-          background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 14, boxShadow: '0 18px 44px rgba(20,20,43,.18)', zIndex: 60 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: `1px solid ${colors.line2}` }}>
+        // Position and size live in .notif-panel: a dropdown on desktop, a sheet under
+        // the header on a phone, which inline styles cannot express.
+        <div className="notif-panel" role="dialog" aria-label={t('nav.notifications')}
+          // Explicit colour: the panel hangs inside the dark header and must not inherit
+          // its light-on-dark text onto a white sheet.
+          style={{ background: '#fff', color: colors.ink, border: `1px solid ${colors.line}`, borderRadius: 14,
+            boxShadow: '0 18px 44px rgba(20,20,43,.18)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+            padding: '13px 16px', borderBottom: `1px solid ${colors.line2}`, position: 'sticky', top: 0,
+            background: '#fff', borderRadius: '14px 14px 0 0' }}>
             <b style={{ fontSize: 14 }}>{t('nav.notifications')}</b>
             {unread > 0 && (
               <button type="button" onClick={markAll}
@@ -114,6 +118,7 @@ function NotificationBell() {
               type="button"
               onClick={() => markRead(n.id)}
               aria-label={n.is_read ? n.title : `${n.title} — ${t('nav.unread')}`}
+              className="notif-row"
               style={{ display: 'block', width: '100%', textAlign: 'inherit', font: 'inherit', border: 'none',
                 borderBottom: `1px solid ${colors.line2}`, padding: '13px 16px', cursor: n.is_read ? 'default' : 'pointer',
                 background: n.is_read ? '#fff' : colors.accentSoft }}

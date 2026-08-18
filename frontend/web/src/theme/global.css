@@ -217,6 +217,37 @@ textarea {
 .toast-error .toast-icon { background: #b3261e; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 
+/* Notification panel. On a phone it stops being a dropdown hanging off the bell —
+   the bell sits 10px from the screen edge, so an anchored panel either overflows or
+   squeezes — and becomes a sheet pinned under the 54px header instead. */
+.notif-panel {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 44px;
+  width: min(420px, calc(100vw - 28px));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 60;
+}
+
+@media (max-width: 760px) {
+  .notif-panel {
+    position: fixed;
+    inset-inline: 10px;
+    top: 60px;
+    width: auto;
+    /* Clears the 54px header above and the fixed bottom tab bar below; dvh so the
+       phone browser's own chrome does not push the last row out of reach. */
+    max-height: calc(100vh - 148px);
+    max-height: calc(100dvh - 148px);
+    border-radius: 16px;
+    z-index: 70;
+  }
+  /* Denser rows waste the width a sheet just gained. */
+  .notif-panel .notif-row { padding: 15px 16px !important; }
+}
+
 /* Work that takes tens of seconds (reading an uploaded document) needs to look alive. */
 @keyframes amSpin { to { transform: rotate(360deg); } }
 @keyframes amPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
