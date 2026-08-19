@@ -118,3 +118,29 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 ## Phase 10 — Mobile-readiness verification
 - [ ] API/JWT audit for future iOS/Android
 - [ ] OpenAPI spec published
+
+## Phase 12 — Flutter app (Android + iOS)
+
+A native app replacing the Capacitor shell in `mobile/`. Same API, no backend changes.
+Plan and parity map: `docs/milestones/mobile-*.md`; API contract: `docs/FLUTTER_APP_PROMPT.md`.
+Android first — iOS code is written but cannot be compiled on this Linux server.
+
+- [x] mobile-00 Toolchain + skeleton — Flutter 3.47.0 + Android SDK installed, brand theme,
+  Dio interceptor stack, route guards, ar/en RTL. 22 tests, analyze clean.
+- [x] mobile-01 Auth + device binding + phone gate — email/Google/register, device-limit
+  screen, mandatory phone gate, Android backup excluded so the device id cannot travel to a
+  second handset. 43 tests. **Hardware checks still open: needs two physical phones.**
+- [ ] mobile-02 Catalogue
+- [ ] mobile-03 Player + capture guards  ← the risky one, deliberately early
+- [ ] mobile-04 Learning + certificates
+- [ ] mobile-05 Payments (Android; 4 kinds — enroll/renewal/bundle/video)
+- [ ] mobile-06 Verification
+- [ ] mobile-07 Account + notifications + polish
+- [ ] mobile-08 iOS bring-up — **blocked: needs a Mac or hosted macOS runner**
+
+**Backend gaps this surfaced** (none are client-side fixable):
+- No password-reset endpoint.
+- No account-deletion endpoint — App Store review will ask for one.
+- No push infrastructure; notifications are a 60s poll.
+- `mobile_requires_app` must be switched on only *after* the apps publish — it removes
+  protected playback from mobile web entirely.

@@ -51,3 +51,15 @@ desktop/windows/obj/
 
 # Local brainstorm scratch
 .superpowers/
+
+# Flutter app: build output, tool caches, generated localisations
+mobile_app/build/
+mobile_app/.dart_tool/
+mobile_app/.flutter-plugins-dependencies
+mobile_app/android/local.properties
+mobile_app/android/.gradle/
+mobile_app/ios/Pods/
+mobile_app/ios/.symlinks/
+mobile_app/ios/Flutter/Flutter.framework
+mobile_app/ios/Flutter/Flutter.podspec
+mobile_app/lib/core/i18n/app_localizations*.dart

@@ -1,0 +1,69 @@
+name: baytara
+description: Baytara — Arabic veterinary learning platform.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State + routing
+  flutter_riverpod: 3.4.2
+  go_router: 17.5.0
+
+  # Network + storage
+  dio: 5.11.0
+  # 10.3.1, not 11.0.0: v11 requires compileSdk 37, and Android 37 now ships as the
+  # "minor version" platform android-37.0 which the current AGP cannot resolve
+  # (it looks for android-37). 10.3.1 targets compileSdk 36 and builds cleanly.
+  flutter_secure_storage: 10.3.1
+
+  # Device identity (see core/storage/device_id.dart — generated once, never regenerated)
+  uuid: 4.6.0
+  package_info_plus: 10.2.1
+
+  # Google sign-in. v7 is instance-based: GoogleSignIn.instance.initialize() then
+  # .authenticate(); the id token comes off account.authentication.idToken and is what
+  # POST /auth/google wants as `credential`.
+  google_sign_in: 7.2.0
+
+  intl: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  fonts:
+    # Brand faces, copied from brand_identity/Fonts and frontend/web/public/fonts.
+    # Weights mirror the @font-face block in frontend/web/src/theme/global.css exactly,
+    # so a screen looks the same in the app as it does on the site.
+    - family: Thmanyah
+      fonts:
+        - asset: assets/fonts/thmanyahsans-Light.otf
+          weight: 300
+        - asset: assets/fonts/thmanyahsans-Regular.otf
+          weight: 400
+        - asset: assets/fonts/thmanyahsans-Medium.otf
+          weight: 500
+        - asset: assets/fonts/thmanyahsans-Bold.otf
+          weight: 700
+        - asset: assets/fonts/thmanyahsans-Black.otf
+          weight: 900
+    - family: Stolzl
+      fonts:
+        - asset: assets/fonts/stolzl_book.otf
+          weight: 400
+        - asset: assets/fonts/stolzl_medium.otf
+          weight: 500
+        - asset: assets/fonts/stolzl_bold.otf
+          weight: 700

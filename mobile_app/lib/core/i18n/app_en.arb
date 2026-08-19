@@ -1,0 +1,75 @@
+{
+  "@@locale": "en",
+  "appName": "Baytara",
+  "tabHome": "Home",
+  "tabCourses": "Courses",
+  "tabContent": "Content",
+  "tabDashboard": "Account",
+  "commonRetry": "Try again",
+  "commonLoading": "Loading...",
+  "commonCancel": "Cancel",
+  "settingsLanguage": "Language",
+  "settingsArabic": "العربية",
+  "settingsEnglish": "English",
+  "errAuthRequired": "Sign in to continue.",
+  "errInvalidCredentials": "That email or password is not right.",
+  "errAccountDisabled": "This account is suspended. Contact us for help.",
+  "errEmailTaken": "That email is already registered.",
+  "errPhoneRequired": "Add your phone number before watching lessons.",
+  "errDeviceLimit": "You have reached the device limit. Remove one to continue.",
+  "errDeviceMismatch": "Sign in again on this device.",
+  "errNotEntitled": "This content is not part of your access.",
+  "errAccessExpired": "Your access to this course has ended. You can renew it.",
+  "errNeedsBaytarian": "This content is for verified veterinarians. Verify your account to reach it.",
+  "errNonVetsOnly": "This tier is for non-veterinarians.",
+  "errNoVideo": "This lesson is not available yet.",
+  "errLessonNotFound": "We could not find that lesson.",
+  "errAlreadyPlaying": "This lesson is playing on your other device. Stop it there and try again.",
+  "errTooManyRequests": "That was a lot of tries in a short time. Wait a moment and try again.",
+  "errSuspicious": "Playback is paused because we saw unusual activity. Try again in 15 minutes.",
+  "errNetwork": "Could not connect. Check your internet.",
+  "errServer": "Something went wrong on our side. Try again shortly.",
+  "errUnknown": "Something unexpected went wrong.",
+  "errGoogleFailed": "Google sign-in did not work. Try again.",
+  "errGoogleUnavailable": "Google sign-in is unavailable right now.",
+  "authSignIn": "Sign in",
+  "authSignUp": "Create account",
+  "authEmail": "Email",
+  "authPassword": "Password",
+  "authName": "Name",
+  "authPhone": "Phone number",
+  "authContinueWithGoogle": "Continue with Google",
+  "authOr": "or",
+  "authCreateAccount": "Create account",
+  "authPasswordTooShort": "Password must be at least 8 characters.",
+  "authEmailInvalid": "Enter a valid email address.",
+  "authNameRequired": "Enter your name.",
+  "phoneTitle": "Add your phone number",
+  "phoneBody": "It is required before watching lessons; it appears inside the protection watermark on the video.",
+  "phoneInvalid": "Enter a valid mobile number.",
+  "phoneSave": "Save and continue",
+  "devicesTitle": "Your devices",
+  "devicesLimitTitle": "You have reached the device limit",
+  "devicesLimitBody": "Your account allows {max} devices. Remove one to sign in on this device.",
+  "devicesRemove": "Remove",
+  "devicesThisDevice": "This device",
+  "devicesLastSeen": "Last seen: {when}",
+  "devicesRetry": "Try again",
+  "devicesEmpty": "No devices registered.",
+  "sessionEndedDeviceRemoved": "This device was removed from your account. Sign in again.",
+  "signOut": "Sign out",
+  "@devicesLimitBody": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@devicesLastSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  }
+}

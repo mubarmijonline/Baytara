@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android auto-backup, Android 11 and below (android:fullBackupContent).
+
+  The secure store is excluded on purpose, and the reason is the device limit.
+
+  Auto-backup restores onto a NEW device. If the device id were restored, one id would
+  cover two physical phones and the server would count them as one, which defeats the
+  two-device rule outright: a user could restore the same backup onto any number of
+  handsets. The tokens are equally unwelcome on a device nobody signed in on.
+
+  The cost of excluding it: reinstalling on the SAME phone generates a fresh device id and
+  consumes one of the account's two slots. That is recoverable, because the devices screen
+  lets the user remove the stale entry, whereas a silently bypassed device limit is not.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+</full-backup-content>

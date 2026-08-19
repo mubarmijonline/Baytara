@@ -1,0 +1,75 @@
+{
+  "@@locale": "ar",
+  "appName": "بيطرة",
+  "tabHome": "الرئيسية",
+  "tabCourses": "الدورات",
+  "tabContent": "المحتوى",
+  "tabDashboard": "حسابي",
+  "commonRetry": "إعادة المحاولة",
+  "commonLoading": "جارٍ التحميل...",
+  "commonCancel": "إلغاء",
+  "settingsLanguage": "اللغة",
+  "settingsArabic": "العربية",
+  "settingsEnglish": "English",
+  "errAuthRequired": "سجّل الدخول للمتابعة.",
+  "errInvalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+  "errAccountDisabled": "هذا الحساب موقوف. تواصل معنا للمساعدة.",
+  "errEmailTaken": "هذا البريد الإلكتروني مسجّل بالفعل.",
+  "errPhoneRequired": "أضف رقم هاتفك قبل مشاهدة الدروس.",
+  "errDeviceLimit": "وصلت للحد الأقصى من الأجهزة. احذف جهازاً للمتابعة.",
+  "errDeviceMismatch": "سجّل الدخول من جديد على هذا الجهاز.",
+  "errNotEntitled": "هذا المحتوى غير متاح ضمن اشتراكك.",
+  "errAccessExpired": "انتهت صلاحية وصولك لهذه الدورة. يمكنك التجديد.",
+  "errNeedsBaytarian": "هذا المحتوى للأطباء البيطريين الموثّقين. وثّق حسابك للوصول إليه.",
+  "errNonVetsOnly": "هذه الباقة مخصّصة لغير الأطباء البيطريين.",
+  "errNoVideo": "الدرس غير متاح بعد.",
+  "errLessonNotFound": "لم نعثر على هذا الدرس.",
+  "errAlreadyPlaying": "الدرس يعمل على جهازك الآخر. أوقفه ثم أعد المحاولة.",
+  "errTooManyRequests": "حاولت كثيراً خلال وقت قصير. انتظر قليلاً ثم أعد المحاولة.",
+  "errSuspicious": "أوقفنا التشغيل مؤقتاً لرصد نشاط غير معتاد. أعد المحاولة بعد ١٥ دقيقة.",
+  "errNetwork": "تعذّر الاتصال. تحقّق من الإنترنت.",
+  "errServer": "حدث خطأ لدينا. أعد المحاولة بعد قليل.",
+  "errUnknown": "حدث خطأ غير متوقع.",
+  "errGoogleFailed": "تعذّر تسجيل الدخول عبر Google. جرّب مرة أخرى.",
+  "errGoogleUnavailable": "تسجيل الدخول عبر Google غير متاح حالياً.",
+  "authSignIn": "تسجيل الدخول",
+  "authSignUp": "حساب جديد",
+  "authEmail": "البريد الإلكتروني",
+  "authPassword": "كلمة المرور",
+  "authName": "الاسم",
+  "authPhone": "رقم الهاتف",
+  "authContinueWithGoogle": "المتابعة عبر Google",
+  "authOr": "أو",
+  "authCreateAccount": "إنشاء الحساب",
+  "authPasswordTooShort": "كلمة المرور ٨ أحرف على الأقل.",
+  "authEmailInvalid": "أدخل بريداً إلكترونياً صحيحاً.",
+  "authNameRequired": "أدخل اسمك.",
+  "phoneTitle": "أضف رقم هاتفك",
+  "phoneBody": "الرقم مطلوب قبل مشاهدة الدروس؛ يظهر داخل علامة الحماية على الفيديو.",
+  "phoneInvalid": "أدخل رقم هاتف محمول صحيحاً.",
+  "phoneSave": "حفظ ومتابعة",
+  "devicesTitle": "أجهزتك",
+  "devicesLimitTitle": "وصلت للحد الأقصى من الأجهزة",
+  "devicesLimitBody": "يسمح حسابك بـ {max} جهازين. احذف جهازاً لتسجيل الدخول على هذا الجهاز.",
+  "devicesRemove": "حذف",
+  "devicesThisDevice": "هذا الجهاز",
+  "devicesLastSeen": "آخر ظهور: {when}",
+  "devicesRetry": "إعادة المحاولة",
+  "devicesEmpty": "لا توجد أجهزة مسجّلة.",
+  "sessionEndedDeviceRemoved": "تم حذف هذا الجهاز من حسابك. سجّل الدخول من جديد.",
+  "signOut": "تسجيل الخروج",
+  "@devicesLimitBody": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@devicesLastSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  }
+}
