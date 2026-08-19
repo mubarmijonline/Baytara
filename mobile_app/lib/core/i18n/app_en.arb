@@ -71,5 +71,112 @@
         "type": "String"
       }
     }
+  },
+  "navVideos": "Videos",
+  "navBundles": "Bundles",
+  "navInstructors": "Instructors",
+  "coursesTitle": "Courses",
+  "videosTitle": "Video library",
+  "searchHint": "Search...",
+  "filters": "Filters",
+  "filtersClear": "Clear all",
+  "filtersApply": "Show results",
+  "filterCategory": "Category",
+  "filterLevel": "Level",
+  "filterAccess": "Access",
+  "filterDuration": "Length",
+  "filterRating": "Rating",
+  "filterSort": "Sort",
+  "levelBeginner": "Beginner",
+  "levelIntermediate": "Intermediate",
+  "levelAdvanced": "Advanced",
+  "durationShort": "Short",
+  "durationMedium": "Medium",
+  "durationLong": "Long",
+  "sortNewest": "Newest",
+  "sortOldest": "Oldest",
+  "sortPopular": "Most popular",
+  "sortRating": "Highest rated",
+  "sortPriceAsc": "Price, low to high",
+  "sortPriceDesc": "Price, high to low",
+  "sortLongest": "Longest",
+  "sortShortest": "Shortest",
+  "tierFree": "Free",
+  "tierVetFree": "Free for vets",
+  "tierBaytarian": "Baytarian",
+  "tierGeneral": "General",
+  "lockNeedsAccount": "Sign in to watch",
+  "lockNeedsPhone": "Add your phone number",
+  "lockNeedsBaytarian": "Requires vet verification",
+  "lockNonVets": "For non-veterinarians",
+  "lockNeedsPurchase": "Buy",
+  "unlocked": "Available to you",
+  "resultsCount": "{n} results",
+  "noResults": "Nothing matches those filters.",
+  "minutesShort": "{n}m",
+  "hoursShort": "{n}h",
+  "lessonsCount": "{n} lessons",
+  "enrolledCount": "{n} enrolled",
+  "reviewsCount": "({n})",
+  "notRated": "New",
+  "certificateIncluded": "Certificate",
+  "lifetimeAccess": "Lifetime access",
+  "accessDays": "{n} days access",
+  "priceFree": "Free",
+  "loadMore": "Show more",
+  "courseObjectives": "What you will learn",
+  "courseContent": "Course content",
+  "courseInstructor": "Instructor",
+  "courseAbout": "About this course",
+  "enroll": "Enrol",
+  "continueLearning": "Continue",
+  "@resultsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@lessonsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@enrolledCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@reviewsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@accessDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }

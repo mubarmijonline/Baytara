@@ -10,6 +10,10 @@ import '../features/auth/domain/session.dart';
 import '../features/auth/ui/devices_screen.dart';
 import '../features/auth/ui/phone_gate_screen.dart';
 import '../features/auth/ui/sign_in_screen.dart';
+import '../features/catalogue/ui/course_detail_screen.dart';
+import '../features/catalogue/ui/courses_screen.dart';
+import '../features/catalogue/ui/home_screen.dart';
+import '../features/catalogue/ui/videos_screen.dart';
 import 'guards.dart';
 import 'splash_screen.dart';
 
@@ -36,8 +40,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) =>
             _TabShell(location: state.matchedLocation, child: child),
         routes: [
-          GoRoute(path: Routes.home, builder: (_, _) => const _Placeholder('Home')),
-          GoRoute(path: Routes.courses, builder: (_, _) => const _Placeholder('Courses')),
+          GoRoute(path: Routes.home, builder: (_, _) => const HomeScreen()),
+          GoRoute(path: Routes.courses, builder: (_, _) => const CoursesScreen()),
           GoRoute(path: Routes.content, builder: (_, _) => const _Placeholder('Content')),
           GoRoute(
             path: Routes.dashboard,
@@ -63,6 +67,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: Routes.devices, builder: (_, _) => const DevicesScreen()),
+
+      // Catalogue detail routes sit outside the tab shell so they push over it with a
+      // back button, rather than swapping the tab content underneath the bar.
+      GoRoute(
+        path: '/courses/:slug',
+        builder: (_, state) =>
+            CourseDetailScreen(slug: state.pathParameters['slug']!),
+      ),
+      GoRoute(path: '/videos', builder: (_, _) => const VideosScreen()),
     ],
   );
 });

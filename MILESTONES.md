@@ -130,7 +130,10 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
 - [x] mobile-01 Auth + device binding + phone gate — email/Google/register, device-limit
   screen, mandatory phone gate, Android backup excluded so the device id cannot travel to a
   second handset. 43 tests. **Hardware checks still open: needs two physical phones.**
-- [ ] mobile-02 Catalogue
+- [x] mobile-02 Catalogue — home, courses list with the full filter set and server facet
+  counts, course detail, video library. Access rules derived in one place; `general` never
+  offers a vet a purchase. 77 tests. Bundles/paths/instructors/articles deferred to after
+  the player.
 - [ ] mobile-03 Player + capture guards  ← the risky one, deliberately early
 - [ ] mobile-04 Learning + certificates
 - [ ] mobile-05 Payments (Android; 4 kinds — enroll/renewal/bundle/video)

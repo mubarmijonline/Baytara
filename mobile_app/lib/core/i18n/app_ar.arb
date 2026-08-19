@@ -71,5 +71,112 @@
         "type": "String"
       }
     }
+  },
+  "navVideos": "الفيديوهات",
+  "navBundles": "الباقات",
+  "navInstructors": "المدرّبون",
+  "coursesTitle": "الدورات",
+  "videosTitle": "مكتبة الفيديو",
+  "searchHint": "ابحث...",
+  "filters": "تصفية",
+  "filtersClear": "مسح الكل",
+  "filtersApply": "عرض النتائج",
+  "filterCategory": "التصنيف",
+  "filterLevel": "المستوى",
+  "filterAccess": "نوع الوصول",
+  "filterDuration": "المدة",
+  "filterRating": "التقييم",
+  "filterSort": "الترتيب",
+  "levelBeginner": "مبتدئ",
+  "levelIntermediate": "متوسط",
+  "levelAdvanced": "متقدّم",
+  "durationShort": "قصيرة",
+  "durationMedium": "متوسطة",
+  "durationLong": "طويلة",
+  "sortNewest": "الأحدث",
+  "sortOldest": "الأقدم",
+  "sortPopular": "الأكثر رواجاً",
+  "sortRating": "الأعلى تقييماً",
+  "sortPriceAsc": "الأقل سعراً",
+  "sortPriceDesc": "الأعلى سعراً",
+  "sortLongest": "الأطول",
+  "sortShortest": "الأقصر",
+  "tierFree": "مجاني",
+  "tierVetFree": "مجاني للأطباء",
+  "tierBaytarian": "بيطري",
+  "tierGeneral": "عام",
+  "lockNeedsAccount": "سجّل الدخول للمشاهدة",
+  "lockNeedsPhone": "أضف رقم هاتفك",
+  "lockNeedsBaytarian": "يتطلب توثيق الطبيب البيطري",
+  "lockNonVets": "مخصّص لغير الأطباء البيطريين",
+  "lockNeedsPurchase": "شراء",
+  "unlocked": "متاح لك",
+  "resultsCount": "{n} نتيجة",
+  "noResults": "لا توجد نتائج مطابقة.",
+  "minutesShort": "{n} د",
+  "hoursShort": "{n} س",
+  "lessonsCount": "{n} درس",
+  "enrolledCount": "{n} ملتحق",
+  "reviewsCount": "({n})",
+  "notRated": "جديد",
+  "certificateIncluded": "بشهادة",
+  "lifetimeAccess": "وصول دائم",
+  "accessDays": "{n} يوم وصول",
+  "priceFree": "مجاناً",
+  "loadMore": "عرض المزيد",
+  "courseObjectives": "ماذا ستتعلّم",
+  "courseContent": "محتوى الدورة",
+  "courseInstructor": "المدرّب",
+  "courseAbout": "عن الدورة",
+  "enroll": "التحاق",
+  "continueLearning": "متابعة",
+  "@resultsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@lessonsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@enrolledCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@reviewsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@accessDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }
