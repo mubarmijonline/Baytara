@@ -178,5 +178,6 @@
         "type": "int"
       }
     }
-  }
+  },
+  "captureBlocked": "Stop the screen recording to keep watching"
 }

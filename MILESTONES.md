@@ -134,7 +134,11 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
   counts, course detail, video library. Access rules derived in one place; `general` never
   offers a vet a purchase. 77 tests. Bundles/paths/instructors/articles deferred to after
   the player.
-- [ ] mobile-03 Player + capture guards  ← the risky one, deliberately early
+- [~] mobile-03 Player + capture guards — DRM playback, 15s heartbeat, watched-vs-covered
+  telemetry, FLAG_SECURE + ALLOW_CAPTURE_BY_NONE, throttled suspicious reporting. Audio
+  watermark round-trips against the backend decoder (`tool/verify_watermark.sh`). 118 tests.
+  **Code complete but NOTHING verified on hardware; iOS never compiled. Watermark playback
+  scheduling deferred to iOS bring-up.**
 - [ ] mobile-04 Learning + certificates
 - [ ] mobile-05 Payments (Android; 4 kinds — enroll/renewal/bundle/video)
 - [ ] mobile-06 Verification

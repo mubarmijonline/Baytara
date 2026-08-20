@@ -27,6 +27,17 @@ dependencies:
   uuid: 4.6.0
   package_info_plus: 10.2.1
 
+  # DRM playback. The player widget is VdoPlayer, fed EmbedInfo.streaming(otp:, playbackInfo:)
+  # from POST /video/playback. Never cache an OTP: single-session, short-lived, and the
+  # server counts every mint against a 40/hour ceiling.
+  vdocipher_flutter: 2.8.5
+
+  # NOTE: screen_protector was evaluated and deliberately NOT used. It only wraps
+  # FLAG_SECURE, which MainActivity already sets natively, and it does not do the thing
+  # that actually matters on Android: ALLOW_CAPTURE_BY_NONE, which silences the audio in a
+  # recording. It also fails to compile against this AGP/Kotlin combination. The native
+  # implementation in android/.../MainActivity.kt is the source of truth.
+
   # Google sign-in. v7 is instance-based: GoogleSignIn.instance.initialize() then
   # .authenticate(); the id token comes off account.authentication.idToken and is what
   # POST /auth/google wants as `credential`.

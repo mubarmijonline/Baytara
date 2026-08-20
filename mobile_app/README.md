@@ -8,14 +8,27 @@ ships. It is retired only once this app passes its definition of done.
 
 ## Status
 
-Milestone 0 of 8 — toolchain and skeleton. See `docs/milestones/mobile-00-*.md` and the
-per-milestone files after it. The four tabs render placeholders; the interceptor stack,
-route guards, error vocabulary and localisation underneath them are real and tested.
+Milestones 0-3 of 8. See `docs/milestones/mobile-*.md`.
+
+Done: toolchain and skeleton, auth with device binding and the phone gate, catalogue
+browsing, and the player with its telemetry and capture guards.
+
+**The protections are code complete but unverified on hardware.** Nothing in the player
+milestone has run on a real phone, and iOS has never been compiled at all. Do not repeat any
+protection claim from this README as fact until `docs/milestones/mobile-03-*.md`'s hardware
+checklist has been worked through.
 
 ## Build
 
 ```bash
 cd mobile_app && flutter build apk --debug
+```
+
+The watermark acceptance check, which round-trips Dart-generated audio through the backend's
+own decoder:
+
+```bash
+cd mobile_app && ./tool/verify_watermark.sh
 ```
 
 Requires the toolchain installed on this server:
