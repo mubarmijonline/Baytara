@@ -8,15 +8,18 @@ ships. It is retired only once this app passes its definition of done.
 
 ## Status
 
-Milestones 0-3 of 8. See `docs/milestones/mobile-*.md`.
+Milestones 0-7 of 8 done. Milestone 8 (iOS) is blocked on hardware.
+See `docs/milestones/mobile-*.md`.
 
 Done: toolchain and skeleton, auth with device binding and the phone gate, catalogue
-browsing, and the player with its telemetry and capture guards.
+browsing, the player with its telemetry and capture guards, learning and certificates,
+payments, verification, and the account surface. 165 tests, analyze clean, Android APK
+builds. No placeholder screens remain.
 
-**The protections are code complete but unverified on hardware.** Nothing in the player
-milestone has run on a real phone, and iOS has never been compiled at all. Do not repeat any
-protection claim from this README as fact until `docs/milestones/mobile-03-*.md`'s hardware
-checklist has been worked through.
+**Nothing has run on a real phone, and no Swift in this repo has ever been compiled.**
+Every protection claim below is a design intent, not an observation. Do not repeat any of it
+as fact until the hardware checklists in `docs/milestones/mobile-03-*.md` and
+`mobile-08-*.md` have been worked through.
 
 ## Build
 

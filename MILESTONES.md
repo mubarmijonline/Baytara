@@ -152,7 +152,11 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
 - [x] mobile-07 Account + notifications + polish — notifications (60s poll, stopped when
   backgrounded), profile, settings, plus the bundles/instructors/articles screens deferred
   from mobile-02. No placeholder screens remain. 165 tests.
-- [ ] mobile-08 iOS bring-up — **blocked: needs a Mac or hosted macOS runner**
+- [ ] mobile-08 iOS bring-up — **BLOCKED: needs macOS. No Swift in this repo has ever been
+  compiled.** iOS project prepared (bundle id, deployment target, Info.plist permissions,
+  CaptureGuard added to the Xcode project). Handover in `docs/milestones/mobile-08-*.md`.
+  Two open decisions: whether FairPlay blanks recordings on our VdoCipher tier (still
+  unanswered, flagged since mobile-03), and Apple IAP vs the reader model.
 
 **Backend gaps this surfaced** (none are client-side fixable):
 - No password-reset endpoint.

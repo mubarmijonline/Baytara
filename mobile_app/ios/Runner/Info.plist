@@ -66,5 +66,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- image_picker: iOS terminates the app on first camera or library access if these
+	     are absent. Both are shown to the user verbatim, so they say why Baytara is
+	     asking rather than repeating the permission name back at them. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Baytara uses the camera to photograph your veterinary syndicate card or ID for account verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Baytara needs access to your photos so you can upload a picture of your veterinary card or ID for verification.</string>
 </dict>
 </plist>
