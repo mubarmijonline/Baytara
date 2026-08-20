@@ -23,7 +23,19 @@ import 'refresh_interceptor.dart';
 /// and it must also be set on any WebView or custom tab the app opens.
 const String kAppUserAgent = 'BaytaraApp/1';
 
-const String kApiBaseUrl = 'https://baytara.app/api/v1';
+/// The API the app talks to.
+///
+/// Overridable at build time so a development run can point somewhere else:
+///
+///   flutter run -d chrome --dart-define=BAYTARA_API=http://localhost:8091/api/v1
+///
+/// This matters most on web, where the browser enforces CORS: the live API only allows
+/// `https://baytara.app` as an origin, so a page served from localhost is refused. Native
+/// builds are unaffected, since CORS is a browser rule.
+const String kApiBaseUrl = String.fromEnvironment(
+  'BAYTARA_API',
+  defaultValue: 'https://baytara.app/api/v1',
+);
 
 class ApiClient {
   ApiClient({

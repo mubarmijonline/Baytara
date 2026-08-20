@@ -13,8 +13,6 @@
 //   - reader model  -> return false on iOS; prices stay visible, buy buttons do not
 //   - real IAP      -> the iOS path routes to StoreKit instead of the hosted gateway, and
 //                      the backend gains a receipt-validation endpoint
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 
 abstract final class PurchaseAvailability {
@@ -24,7 +22,9 @@ abstract final class PurchaseAvailability {
   /// iOS: currently yes, because the decision is not made. **This is the line to change.**
   static bool get purchasesEnabled {
     if (kIsWeb) return true;
-    if (Platform.isIOS) {
+    // defaultTargetPlatform rather than dart:io Platform: the latter does not exist on web
+    // and its mere import breaks the web build.
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
       // NOT YET DECIDED. Flip to false for the reader model before any App Store
       // submission, or replace this branch with the StoreKit path.
       return true;

@@ -3,7 +3,7 @@
 // The result is three genuinely different answers, not success/failure. In particular a 202
 // is NOT a failure and NOT a success: a human will decide, and the copy has to say so and
 // tell the user not to resubmit, because a second pending request is refused.
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,6 +33,11 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
   String? _frontPath;
   String? _backPath;
 
+  // Held for the preview. On web a picked file's `path` is a blob URL that File cannot
+  // open, so the bytes are what makes the preview work everywhere.
+  Uint8List? _frontBytes;
+  Uint8List? _backBytes;
+
   @override
   void initState() {
     super.initState();
@@ -58,12 +63,16 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       maxWidth: 2400,
       imageQuality: 88,
     );
-    if (picked == null || !mounted) return;
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
     setState(() {
       if (front) {
         _frontPath = picked.path;
+        _frontBytes = bytes;
       } else {
         _backPath = picked.path;
+        _backBytes = bytes;
       }
     });
   }
@@ -87,6 +96,8 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
                 _state = const VerificationState();
                 _frontPath = null;
                 _backPath = null;
+                _frontBytes = null;
+                _backBytes = null;
               }),
             ),
           VerificationStage.error => _ErrorResult(
@@ -135,13 +146,15 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
                 _route = route;
                 _frontPath = null;
                 _backPath = null;
+                _frontBytes = null;
+                _backBytes = null;
               }),
             ),
           if (_route != null) ...[
             const SizedBox(height: 20),
             _CaptureSlot(
               label: _needsBothSides ? l.verifyCaptureFront : l.verifyCaptureDocument,
-              path: _frontPath,
+              bytes: _frontBytes,
               onCamera: () => _pick(front: true, source: ImageSource.camera),
               onGallery: () => _pick(front: true, source: ImageSource.gallery),
             ),
@@ -149,7 +162,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
               const SizedBox(height: 14),
               _CaptureSlot(
                 label: l.verifyCaptureBack,
-                path: _backPath,
+                bytes: _backBytes,
                 onCamera: () => _pick(front: false, source: ImageSource.camera),
                 onGallery: () => _pick(front: false, source: ImageSource.gallery),
               ),
@@ -225,13 +238,13 @@ class _RouteTile extends StatelessWidget {
 class _CaptureSlot extends StatelessWidget {
   const _CaptureSlot({
     required this.label,
-    required this.path,
+    required this.bytes,
     required this.onCamera,
     required this.onGallery,
   });
 
   final String label;
-  final String? path;
+  final Uint8List? bytes;
   final VoidCallback onCamera;
   final VoidCallback onGallery;
 
@@ -246,10 +259,10 @@ class _CaptureSlot extends StatelessWidget {
         const SizedBox(height: 8),
         // A live preview of what was captured, so a blurry or cropped photo is caught here
         // rather than forty seconds later by the reader.
-        if (path != null)
+        if (bytes != null)
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.file(File(path!),
+            child: Image.memory(bytes!,
                 height: 170, width: double.infinity, fit: BoxFit.cover),
           ),
         const SizedBox(height: 8),
@@ -258,7 +271,7 @@ class _CaptureSlot extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onCamera,
               icon: const Icon(Icons.photo_camera_outlined, size: 18),
-              label: Text(path == null ? l.verifyTakePhoto : l.verifyRetake),
+              label: Text(bytes == null ? l.verifyTakePhoto : l.verifyRetake),
             ),
           ),
           const SizedBox(width: 10),
