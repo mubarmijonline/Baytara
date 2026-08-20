@@ -238,5 +238,51 @@
         "type": "int"
       }
     }
+  },
+  "verifyTitle": "توثيق الطبيب البيطري",
+  "verifyIntro": "وثّق حسابك للوصول إلى المحتوى المخصّص للأطباء البيطريين.",
+  "verifyRouteCard": "كارنيه النقابة",
+  "verifyRouteCardHint": "أدق وأسرع طريقة. صوّر وجهي الكارنيه.",
+  "verifyRouteNationalId": "بطاقة الرقم القومي",
+  "verifyRouteNationalIdHint": "إذا كانت المهنة المدوّنة «طبيب بيطري».",
+  "verifyRouteOther": "مستند آخر",
+  "verifyRouteOtherHint": "كارنيه الكلية أو إفادة قيد. قد يحتاج مراجعة بشرية.",
+  "verifyCaptureFront": "الوجه الأمامي",
+  "verifyCaptureBack": "الوجه الخلفي",
+  "verifyCaptureDocument": "صورة المستند",
+  "verifyTakePhoto": "التقاط صورة",
+  "verifyFromGallery": "من المعرض",
+  "verifyRetake": "إعادة الالتقاط",
+  "verifySubmit": "إرسال للتوثيق",
+  "verifyPreview": "فحص مبدئي",
+  "verifyProcessingTitle": "جارٍ قراءة المستند",
+  "verifyProcessingBody": "قد تستغرق القراءة من ١٠ إلى ٤٠ ثانية. لا تغلق الشاشة.",
+  "verifyElapsed": "مضى {n} ثانية",
+  "verifyUploading": "جارٍ الرفع {n}%",
+  "verifiedVetTitle": "تم التوثيق",
+  "verifiedVetBody": "حسابك موثّق كطبيب بيطري. أصبح المحتوى البيطري متاحاً لك.",
+  "verifiedStudentTitle": "تم التوثيق كطالب",
+  "verifiedStudentBody": "حسابك موثّق كطالب بيطري، وتصل إلى نفس المحتوى.",
+  "verifyPendingTitle": "أُرسل للمراجعة",
+  "verifyPendingBody": "لم نتمكّن من التأكد تلقائياً، وسيراجع أحد الزملاء طلبك. ستصلك النتيجة في الإشعارات.\n\nلا ترسل الطلب مرة أخرى؛ الطلب المكرّر يُرفض.",
+  "verifyFailedTitle": "تعذّر التوثيق من هذا المستند",
+  "verifyFailedBody": "تأكّد من وضوح الصورة وأن البيانات كاملة، ثم جرّب مرة أخرى أو استخدم مستنداً آخر.",
+  "verifyAlreadyVerified": "حسابك موثّق بالفعل.",
+  "verifyRequestPending": "لديك طلب قيد المراجعة بالفعل. انتظر النتيجة في الإشعارات.",
+  "verifyNationalIdRequired": "أضف رقمك القومي في الملف الشخصي أولاً.",
+  "verifyServiceUnavailable": "خدمة قراءة المستندات غير متاحة الآن. جرّب لاحقاً.",
+  "@verifyElapsed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@verifyUploading": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }

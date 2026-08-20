@@ -238,5 +238,51 @@
         "type": "int"
       }
     }
+  },
+  "verifyTitle": "Veterinary verification",
+  "verifyIntro": "Verify your account to reach content for veterinarians.",
+  "verifyRouteCard": "Syndicate card",
+  "verifyRouteCardHint": "The most reliable route. Photograph both sides.",
+  "verifyRouteNationalId": "National ID",
+  "verifyRouteNationalIdHint": "If the printed occupation reads veterinarian.",
+  "verifyRouteOther": "Another document",
+  "verifyRouteOtherHint": "College card or enrolment letter. May need human review.",
+  "verifyCaptureFront": "Front",
+  "verifyCaptureBack": "Back",
+  "verifyCaptureDocument": "Document photo",
+  "verifyTakePhoto": "Take photo",
+  "verifyFromGallery": "From gallery",
+  "verifyRetake": "Retake",
+  "verifySubmit": "Submit for verification",
+  "verifyPreview": "Check first",
+  "verifyProcessingTitle": "Reading your document",
+  "verifyProcessingBody": "This takes 10 to 40 seconds. Please keep this screen open.",
+  "verifyElapsed": "{n} seconds elapsed",
+  "verifyUploading": "Uploading {n}%",
+  "verifiedVetTitle": "Verified",
+  "verifiedVetBody": "Your account is verified as a veterinarian. Veterinary content is now available.",
+  "verifiedStudentTitle": "Verified as a student",
+  "verifiedStudentBody": "Your account is verified as a veterinary student, and reaches the same content.",
+  "verifyPendingTitle": "Sent for review",
+  "verifyPendingBody": "We could not confirm this automatically, so a colleague will review it. The answer will arrive in your notifications.\n\nPlease do not submit again; a duplicate request is refused.",
+  "verifyFailedTitle": "Could not verify from this document",
+  "verifyFailedBody": "Check the photo is sharp and the details are fully visible, then try again or use a different document.",
+  "verifyAlreadyVerified": "Your account is already verified.",
+  "verifyRequestPending": "You already have a request under review. Watch your notifications for the answer.",
+  "verifyNationalIdRequired": "Add your national ID number to your profile first.",
+  "verifyServiceUnavailable": "The document reading service is unavailable right now. Try again later.",
+  "@verifyElapsed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@verifyUploading": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }

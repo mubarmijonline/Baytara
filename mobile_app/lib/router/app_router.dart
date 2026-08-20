@@ -21,6 +21,7 @@ import '../features/payments/ui/buy_screen.dart';
 import '../features/payments/ui/payment_return_screen.dart';
 import '../features/payments/ui/payments_screen.dart';
 import '../features/player/ui/player_screen.dart';
+import '../features/verification/ui/verify_screen.dart';
 import 'guards.dart';
 import 'splash_screen.dart';
 
@@ -72,6 +73,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: Routes.devices, builder: (_, _) => const DevicesScreen()),
       GoRoute(path: '/account/payments', builder: (_, _) => const PaymentsScreen()),
+
+      // Guard rule 4 skips this entirely for an already-verified vet.
+      GoRoute(path: Routes.verify, builder: (_, _) => const VerifyScreen()),
 
       // Where the gateway's deep link lands. Confirms with the server; the URL's `status`
       // parameter is not consulted.

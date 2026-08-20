@@ -146,7 +146,9 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
   Links return, server-confirmed outcome. The redirect is never treated as proof of payment.
   iOS purchase decision deferred behind one flag. 147 tests.
   **Needs assetlinks.json published with the release fingerprint.**
-- [ ] mobile-06 Verification
+- [x] mobile-06 Verification — three routes, three outcomes. 202 (human review) is its own
+  screen that says do not resubmit, because a duplicate is refused. Byte progress then an
+  honest elapsed counter for the 10-40s read. 159 tests.
 - [ ] mobile-07 Account + notifications + polish
 - [ ] mobile-08 iOS bring-up — **blocked: needs a Mac or hosted macOS runner**
 
