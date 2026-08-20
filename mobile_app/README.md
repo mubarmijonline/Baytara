@@ -34,9 +34,11 @@ own decoder:
 cd mobile_app && ./tool/verify_watermark.sh
 ```
 
-Requires the toolchain installed on this server:
-`/development/flutter` (3.47.0 stable) and `/development/android-sdk`. Put both on `PATH`
-and set `ANDROID_HOME` before building.
+On the dev server the toolchain lives at `/development/flutter` (3.47.0 stable) and
+`/development/android-sdk`; both are already on `PATH` via `~/.bashrc`.
+
+**To run it on your own laptop, see [RUNNING.md](RUNNING.md)** — that covers copying the
+project, the Flutter SDK, and creating an emulator in Android Studio.
 
 There is no emulator here and no display. Testing means sideloading the APK to a real
 Android phone — copy it over, enable "install unknown apps", tap it. Same as `mobile/`.
