@@ -14,6 +14,8 @@ import '../features/catalogue/ui/course_detail_screen.dart';
 import '../features/catalogue/ui/courses_screen.dart';
 import '../features/catalogue/ui/home_screen.dart';
 import '../features/catalogue/ui/videos_screen.dart';
+import '../features/learning/ui/certificate_screen.dart';
+import '../features/learning/ui/my_learning_screen.dart';
 import '../features/player/ui/player_screen.dart';
 import 'guards.dart';
 import 'splash_screen.dart';
@@ -44,10 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: Routes.home, builder: (_, _) => const HomeScreen()),
           GoRoute(path: Routes.courses, builder: (_, _) => const CoursesScreen()),
           GoRoute(path: Routes.content, builder: (_, _) => const _Placeholder('Content')),
-          GoRoute(
-            path: Routes.dashboard,
-            builder: (_, _) => const _Placeholder('Dashboard'),
-          ),
+          GoRoute(path: Routes.dashboard, builder: (_, _) => const MyLearningScreen()),
         ],
       ),
       GoRoute(
@@ -77,6 +76,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             CourseDetailScreen(slug: state.pathParameters['slug']!),
       ),
       GoRoute(path: '/videos', builder: (_, _) => const VideosScreen()),
+
+      // Public: anyone holding the serial can verify a certificate, no account needed.
+      GoRoute(
+        path: '/certificates/:serial',
+        builder: (_, state) =>
+            CertificateScreen(serial: state.pathParameters['serial']!),
+      ),
 
       // The player. Routes.isPlayer() matches this prefix, so guard rule 3 applies.
       GoRoute(

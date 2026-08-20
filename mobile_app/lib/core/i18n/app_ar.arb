@@ -179,5 +179,41 @@
       }
     }
   },
-  "captureBlocked": "أوقف تسجيل الشاشة لمتابعة المشاهدة"
+  "captureBlocked": "أوقف تسجيل الشاشة لمتابعة المشاهدة",
+  "myLearning": "تعلّمي",
+  "myCourses": "دوراتي",
+  "certificatesTitle": "الشهادات",
+  "statCourses": "دورة",
+  "statHours": "ساعة مشاهدة",
+  "statStreak": "يوم متتابع",
+  "noEnrolmentsHint": "لم تلتحق بأي دورة مدفوعة بعد. الدورات المجانية تُشاهَد مباشرة ولا تظهر هنا.",
+  "noCertificates": "لا توجد شهادات بعد.",
+  "lessonOfTotal": "الدرس {n} من {total}",
+  "lessonsDone": "{n} من {total} دروس",
+  "renewAccess": "تجديد الوصول",
+  "certificateSerial": "الرقم التسلسلي",
+  "certificateIssued": "تاريخ الإصدار",
+  "certificateHolder": "صاحب الشهادة",
+  "certificateVerified": "شهادة موثّقة",
+  "certificateShare": "مشاركة",
+  "@lessonOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@lessonsDone": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -139,7 +139,9 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
   watermark round-trips against the backend decoder (`tool/verify_watermark.sh`). 118 tests.
   **Code complete but NOTHING verified on hardware; iOS never compiled. Watermark playback
   scheduling deferred to iOS bring-up.**
-- [ ] mobile-04 Learning + certificates
+- [x] mobile-04 Learning + certificates — resume point, enrolments with progress,
+  certificates and public verification. Free courses correctly produce no enrolment, and the
+  empty state says so. 131 tests.
 - [ ] mobile-05 Payments (Android; 4 kinds — enroll/renewal/bundle/video)
 - [ ] mobile-06 Verification
 - [ ] mobile-07 Account + notifications + polish

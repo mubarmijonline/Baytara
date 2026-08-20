@@ -179,5 +179,41 @@
       }
     }
   },
-  "captureBlocked": "Stop the screen recording to keep watching"
+  "captureBlocked": "Stop the screen recording to keep watching",
+  "myLearning": "My learning",
+  "myCourses": "My courses",
+  "certificatesTitle": "Certificates",
+  "statCourses": "courses",
+  "statHours": "hours watched",
+  "statStreak": "day streak",
+  "noEnrolmentsHint": "No paid courses yet. Free courses are watched directly and do not appear here.",
+  "noCertificates": "No certificates yet.",
+  "lessonOfTotal": "Lesson {n} of {total}",
+  "lessonsDone": "{n} of {total} lessons",
+  "renewAccess": "Renew access",
+  "certificateSerial": "Serial",
+  "certificateIssued": "Issued",
+  "certificateHolder": "Awarded to",
+  "certificateVerified": "Verified certificate",
+  "certificateShare": "Share",
+  "@lessonOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@lessonsDone": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }
