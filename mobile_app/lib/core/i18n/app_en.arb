@@ -215,5 +215,28 @@
         "type": "int"
       }
     }
+  },
+  "checkoutTitle": "Checkout",
+  "checkoutPay": "Pay now",
+  "checkoutConfirming": "Confirming your payment...\nPlease keep the app open.",
+  "checkoutPaidTitle": "Payment received",
+  "checkoutPaidBody": "The content is now available to you.",
+  "checkoutPendingTitle": "Payment is processing",
+  "checkoutPendingBody": "We do not have a final answer yet. Some payment methods take a few minutes. You will find the status in your payments history, and you do not need to pay again.",
+  "checkoutFailedTitle": "Payment did not go through",
+  "checkoutUnavailableOnThisPlatform": "Purchases are not available in the app on this device.",
+  "renewalExplainer": "Renewal costs {n}% of the course price.",
+  "paymentsTitle": "Payments",
+  "paymentsEmpty": "No payments yet.",
+  "paymentPaid": "Paid",
+  "paymentPending": "Processing",
+  "paymentFailed": "Failed",
+  "paymentRefunded": "Refunded",
+  "@renewalExplainer": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }

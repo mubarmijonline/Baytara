@@ -215,5 +215,28 @@
         "type": "int"
       }
     }
+  },
+  "checkoutTitle": "إتمام الشراء",
+  "checkoutPay": "الدفع الآن",
+  "checkoutConfirming": "نتأكد من عملية الدفع...\nلا تغلق التطبيق.",
+  "checkoutPaidTitle": "تم الدفع",
+  "checkoutPaidBody": "أصبح المحتوى متاحاً لك الآن.",
+  "checkoutPendingTitle": "الدفع قيد المعالجة",
+  "checkoutPendingBody": "لم تصلنا نتيجة نهائية بعد. بعض وسائل الدفع تستغرق دقائق. ستجد الحالة في سجل المدفوعات، ولا حاجة للدفع مرة أخرى.",
+  "checkoutFailedTitle": "لم تتم العملية",
+  "checkoutUnavailableOnThisPlatform": "الشراء غير متاح داخل التطبيق على هذا الجهاز.",
+  "renewalExplainer": "رسوم التجديد {n}% من سعر الدورة.",
+  "paymentsTitle": "المدفوعات",
+  "paymentsEmpty": "لا توجد مدفوعات.",
+  "paymentPaid": "مدفوع",
+  "paymentPending": "قيد المعالجة",
+  "paymentFailed": "فشل",
+  "paymentRefunded": "مسترد",
+  "@renewalExplainer": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }

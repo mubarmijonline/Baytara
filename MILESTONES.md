@@ -142,7 +142,10 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
 - [x] mobile-04 Learning + certificates — resume point, enrolments with progress,
   certificates and public verification. Free courses correctly produce no enrolment, and the
   empty state says so. 131 tests.
-- [ ] mobile-05 Payments (Android; 4 kinds — enroll/renewal/bundle/video)
+- [x] mobile-05 Payments (Android) — all four kinds, hosted gateway in a Custom Tab, App
+  Links return, server-confirmed outcome. The redirect is never treated as proof of payment.
+  iOS purchase decision deferred behind one flag. 147 tests.
+  **Needs assetlinks.json published with the release fingerprint.**
 - [ ] mobile-06 Verification
 - [ ] mobile-07 Account + notifications + polish
 - [ ] mobile-08 iOS bring-up — **blocked: needs a Mac or hosted macOS runner**

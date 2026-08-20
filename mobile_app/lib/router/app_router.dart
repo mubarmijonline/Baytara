@@ -16,6 +16,10 @@ import '../features/catalogue/ui/home_screen.dart';
 import '../features/catalogue/ui/videos_screen.dart';
 import '../features/learning/ui/certificate_screen.dart';
 import '../features/learning/ui/my_learning_screen.dart';
+import '../features/payments/data/payment_dto.dart';
+import '../features/payments/ui/buy_screen.dart';
+import '../features/payments/ui/payment_return_screen.dart';
+import '../features/payments/ui/payments_screen.dart';
 import '../features/player/ui/player_screen.dart';
 import 'guards.dart';
 import 'splash_screen.dart';
@@ -67,6 +71,32 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: Routes.devices, builder: (_, _) => const DevicesScreen()),
+      GoRoute(path: '/account/payments', builder: (_, _) => const PaymentsScreen()),
+
+      // Where the gateway's deep link lands. Confirms with the server; the URL's `status`
+      // parameter is not consulted.
+      GoRoute(
+        path: '/payment/callback',
+        builder: (_, state) => PaymentReturnScreen(
+          paymentId: int.parse(state.uri.queryParameters['pid'] ?? '0'),
+        ),
+      ),
+
+      // Buying. `kind` decides which of the four flows this is; `?kind=renewal` is where a
+      // lapsed enrolment and an access_expired refusal both lead.
+      GoRoute(
+        path: '/buy/:slug',
+        builder: (_, state) {
+          final q = state.uri.queryParameters;
+          return BuyScreen(
+            kind: PaymentKind.fromWire(q['kind']),
+            courseId: int.tryParse(q['course_id'] ?? ''),
+            bundleId: int.tryParse(q['bundle_id'] ?? ''),
+            videoId: int.tryParse(q['video_id'] ?? ''),
+            title: q['title'],
+          );
+        },
+      ),
 
       // Catalogue detail routes sit outside the tab shell so they push over it with a
       // back button, rather than swapping the tab content underneath the bar.

@@ -38,6 +38,15 @@ dependencies:
   # recording. It also fails to compile against this AGP/Kotlin combination. The native
   # implementation in android/.../MainActivity.kt is the source of truth.
 
+  # Hosted checkout. The gateway URL opens in a Custom Tab / SFSafariViewController, NOT a
+  # bare WebView and never the VdoCipher WebView: a payment page in an app-controlled
+  # WebView is both a security problem and a store-review one.
+  flutter_custom_tabs: 2.6.0
+
+  # App Links / Universal Links, to catch the gateway's redirect back to
+  # https://baytara.app/payment/callback.
+  app_links: 7.2.1
+
   # Google sign-in. v7 is instance-based: GoogleSignIn.instance.initialize() then
   # .authenticate(); the id token comes off account.authentication.idToken and is what
   # POST /auth/google wants as `credential`.
