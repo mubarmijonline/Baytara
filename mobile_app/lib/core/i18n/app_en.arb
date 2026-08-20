@@ -284,5 +284,35 @@
         "type": "int"
       }
     }
-  }
+  },
+  "notificationsTitle": "Notifications",
+  "notificationsEmpty": "No notifications.",
+  "notificationsMarkAll": "Mark all read",
+  "notificationsUnread": "{n} unread notifications",
+  "settingsTitle": "Settings",
+  "settingsAbout": "About Baytara",
+  "settingsPrivacy": "Privacy policy",
+  "settingsContact": "Contact us",
+  "settingsDevices": "Devices",
+  "settingsPayments": "Payments",
+  "settingsVersion": "Version",
+  "profileTitle": "Profile",
+  "profileEdit": "Edit",
+  "profileSave": "Save",
+  "profileName": "Name",
+  "profileHeadline": "Headline",
+  "profileLocation": "City",
+  "profileBio": "About you",
+  "profileSaved": "Saved.",
+  "signOutConfirm": "Sign out on this device?",
+  "@notificationsUnread": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "blogTitle": "Blog",
+  "instructorsTitle": "Instructors",
+  "bundlesTitle": "Bundles"
 }

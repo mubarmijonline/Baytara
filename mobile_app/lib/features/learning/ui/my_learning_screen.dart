@@ -11,6 +11,7 @@ import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
+import '../../account/ui/notifications_screen.dart';
 import '../application/learning_providers.dart';
 import '../data/learning_dto.dart';
 
@@ -25,7 +26,16 @@ class MyLearningScreen extends ConsumerWidget {
     final certificates = ref.watch(certificatesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.myLearning)),
+      appBar: AppBar(
+        title: Text(l.myLearning),
+        actions: [
+          NotificationBell(onTap: () => context.push('/account/notifications')),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push('/account/settings'),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref

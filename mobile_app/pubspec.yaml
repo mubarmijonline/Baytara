@@ -59,6 +59,10 @@ dependencies:
   # label the uploaded card sides, and an implicit dependency is one a dio upgrade can drop.
   http_parser: any
 
+  # Opening the privacy policy, about and contact pages in the browser rather than
+  # reimplementing them natively.
+  url_launcher: 6.3.2
+
   intl: any
 
 dev_dependencies:

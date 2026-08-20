@@ -38,6 +38,10 @@ final articlesProvider = FutureProvider.family<List<Article>, String?>(
   (ref, kind) => ref.watch(catalogueRepositoryProvider).articles(kind: kind),
 );
 
+final articleProvider = FutureProvider.family<Article, String>(
+  (ref, slug) => ref.watch(catalogueRepositoryProvider).article(slug),
+);
+
 /// A listing that grows as the user pages, rather than replacing itself.
 class ListingState<T> {
   const ListingState({

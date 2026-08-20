@@ -284,5 +284,35 @@
         "type": "int"
       }
     }
-  }
+  },
+  "notificationsTitle": "الإشعارات",
+  "notificationsEmpty": "لا توجد إشعارات.",
+  "notificationsMarkAll": "تعليم الكل كمقروء",
+  "notificationsUnread": "{n} إشعار غير مقروء",
+  "settingsTitle": "الإعدادات",
+  "settingsAbout": "عن بيطرة",
+  "settingsPrivacy": "سياسة الخصوصية",
+  "settingsContact": "تواصل معنا",
+  "settingsDevices": "الأجهزة",
+  "settingsPayments": "المدفوعات",
+  "settingsVersion": "الإصدار",
+  "profileTitle": "الملف الشخصي",
+  "profileEdit": "تعديل",
+  "profileSave": "حفظ",
+  "profileName": "الاسم",
+  "profileHeadline": "المسمّى",
+  "profileLocation": "المدينة",
+  "profileBio": "نبذة",
+  "profileSaved": "تم الحفظ.",
+  "signOutConfirm": "تسجيل الخروج من هذا الجهاز؟",
+  "@notificationsUnread": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "blogTitle": "المدوّنة",
+  "instructorsTitle": "المدرّبون",
+  "bundlesTitle": "الباقات"
 }

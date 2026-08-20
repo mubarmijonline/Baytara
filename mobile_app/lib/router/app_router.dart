@@ -10,7 +10,12 @@ import '../features/auth/domain/session.dart';
 import '../features/auth/ui/devices_screen.dart';
 import '../features/auth/ui/phone_gate_screen.dart';
 import '../features/auth/ui/sign_in_screen.dart';
+import '../features/account/ui/notifications_screen.dart';
+import '../features/account/ui/profile_screen.dart';
+import '../features/account/ui/settings_screen.dart';
 import '../features/catalogue/ui/course_detail_screen.dart';
+import '../features/catalogue/ui/bundles_screen.dart';
+import '../features/catalogue/ui/content_screen.dart';
 import '../features/catalogue/ui/courses_screen.dart';
 import '../features/catalogue/ui/home_screen.dart';
 import '../features/catalogue/ui/videos_screen.dart';
@@ -50,7 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: Routes.home, builder: (_, _) => const HomeScreen()),
           GoRoute(path: Routes.courses, builder: (_, _) => const CoursesScreen()),
-          GoRoute(path: Routes.content, builder: (_, _) => const _Placeholder('Content')),
+          GoRoute(path: Routes.content, builder: (_, _) => const ContentScreen()),
           GoRoute(path: Routes.dashboard, builder: (_, _) => const MyLearningScreen()),
         ],
       ),
@@ -76,6 +81,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Guard rule 4 skips this entirely for an already-verified vet.
       GoRoute(path: Routes.verify, builder: (_, _) => const VerifyScreen()),
+      GoRoute(path: '/account/profile', builder: (_, _) => const ProfileScreen()),
+      GoRoute(path: '/account/notifications',
+          builder: (_, _) => const NotificationsScreen()),
+      GoRoute(path: '/account/settings', builder: (_, _) => const SettingsScreen()),
 
       // Where the gateway's deep link lands. Confirms with the server; the URL's `status`
       // parameter is not consulted.
@@ -110,6 +119,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             CourseDetailScreen(slug: state.pathParameters['slug']!),
       ),
       GoRoute(path: '/videos', builder: (_, _) => const VideosScreen()),
+      GoRoute(path: '/bundles', builder: (_, _) => const BundlesScreen()),
+      GoRoute(path: '/instructors', builder: (_, _) => const InstructorsScreen()),
+      GoRoute(path: '/blog', builder: (_, _) => const ContentScreen(kind: 'blog')),
+      GoRoute(
+        path: '/articles/:slug',
+        builder: (_, state) => ArticleScreen(slug: state.pathParameters['slug']!),
+      ),
 
       // Public: anyone holding the serial can verify a certificate, no account needed.
       GoRoute(
@@ -178,15 +194,4 @@ class _TabShell extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Placeholder extends StatelessWidget {
-  const _Placeholder(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(label)),
-        body: Center(child: Text(label, style: Theme.of(context).textTheme.headlineSmall)),
-      );
 }

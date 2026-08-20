@@ -149,7 +149,9 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
 - [x] mobile-06 Verification — three routes, three outcomes. 202 (human review) is its own
   screen that says do not resubmit, because a duplicate is refused. Byte progress then an
   honest elapsed counter for the 10-40s read. 159 tests.
-- [ ] mobile-07 Account + notifications + polish
+- [x] mobile-07 Account + notifications + polish — notifications (60s poll, stopped when
+  backgrounded), profile, settings, plus the bundles/instructors/articles screens deferred
+  from mobile-02. No placeholder screens remain. 165 tests.
 - [ ] mobile-08 iOS bring-up — **blocked: needs a Mac or hosted macOS runner**
 
 **Backend gaps this surfaced** (none are client-side fixable):
