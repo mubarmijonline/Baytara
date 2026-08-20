@@ -28,19 +28,75 @@ class Category {
 }
 
 class InstructorRef {
-  const InstructorRef({required this.id, required this.name, this.headline, this.avatarUrl});
+  const InstructorRef({
+    required this.id,
+    required this.name,
+    this.headline,
+    this.avatarUrl,
+    this.bio,
+    this.expertise,
+    this.specialties = const [],
+    this.coursesCount = 0,
+    this.lessonsCount = 0,
+    this.studentsCount = 0,
+    this.minutes = 0,
+  });
 
+  /// Handles both shapes: the trimmed object embedded in a course or video, and the full
+  /// row from /instructors, which already carries everything a profile screen needs. No
+  /// second request is required to show one.
   factory InstructorRef.fromJson(Map<String, dynamic> j) => InstructorRef(
         id: (j['id'] as num).toInt(),
         name: j['name'] as String? ?? '',
         headline: j['headline'] as String?,
         avatarUrl: j['avatar_url'] as String?,
+        bio: j['bio'] as String?,
+        expertise: j['expertise'] as String?,
+        specialties: [
+          for (final s in (j['specialties'] as List? ?? const [])) s.toString(),
+        ],
+        coursesCount: (j['courses'] as num?)?.toInt() ?? 0,
+        lessonsCount: (j['lessons'] as num?)?.toInt() ?? 0,
+        studentsCount: (j['students'] as num?)?.toInt() ?? 0,
+        minutes: (j['minutes'] as num?)?.toInt() ?? 0,
       );
 
   final int id;
   final String name;
   final String? headline;
   final String? avatarUrl;
+  final String? bio;
+  final String? expertise;
+  final List<String> specialties;
+  final int coursesCount;
+  final int lessonsCount;
+  final int studentsCount;
+  final int minutes;
+}
+
+/// A learning path: an ordered run of courses.
+class LearningPath {
+  const LearningPath({
+    required this.slug,
+    required this.title,
+    this.description = '',
+    this.courses = const [],
+  });
+
+  factory LearningPath.fromJson(Map<String, dynamic> j) => LearningPath(
+        slug: j['slug'] as String? ?? '',
+        title: j['title'] as String? ?? '',
+        description: j['description'] as String? ?? '',
+        courses: [
+          for (final c in (j['courses'] as List? ?? const []))
+            Course.fromJson((c as Map).cast<String, dynamic>()),
+        ],
+      );
+
+  final String slug;
+  final String title;
+  final String description;
+  final List<Course> courses;
 }
 
 /// A course as it appears in a listing or on its own page.

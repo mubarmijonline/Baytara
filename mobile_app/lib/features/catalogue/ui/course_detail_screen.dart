@@ -166,7 +166,11 @@ class _Content extends ConsumerWidget {
                 const SizedBox(height: 26),
                 _Heading(l.courseInstructor),
                 const SizedBox(height: 10),
-                _InstructorTile(instructor: course.instructor!),
+                GestureDetector(
+                  onTap: () =>
+                      context.push('/instructors/${course.instructor!.id}'),
+                  child: _InstructorTile(instructor: course.instructor!),
+                ),
               ],
               if (course.videos.isNotEmpty) ...[
                 const SizedBox(height: 26),

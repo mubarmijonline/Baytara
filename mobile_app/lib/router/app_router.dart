@@ -18,6 +18,9 @@ import '../features/catalogue/ui/bundles_screen.dart';
 import '../features/catalogue/ui/content_screen.dart';
 import '../features/catalogue/ui/courses_screen.dart';
 import '../features/catalogue/ui/home_screen.dart';
+import '../features/catalogue/ui/instructor_screen.dart';
+import '../features/catalogue/ui/pricing_screen.dart';
+import '../features/catalogue/ui/video_detail_screen.dart';
 import '../features/catalogue/ui/videos_screen.dart';
 import '../features/learning/ui/certificate_screen.dart';
 import '../features/learning/ui/my_learning_screen.dart';
@@ -119,8 +122,29 @@ final routerProvider = Provider<GoRouter>((ref) {
             CourseDetailScreen(slug: state.pathParameters['slug']!),
       ),
       GoRoute(path: '/videos', builder: (_, _) => const VideosScreen()),
+
+      // Was missing entirely: every video card pushes this, so tapping one did nothing.
+      GoRoute(
+        path: '/videos/:id',
+        builder: (_, state) =>
+            VideoDetailScreen(videoId: int.parse(state.pathParameters['id']!)),
+      ),
+
+      // Also dead until now: the player's refusal screen sends a would-be buyer here.
+      GoRoute(path: '/pricing', builder: (_, _) => const PricingScreen()),
       GoRoute(path: '/bundles', builder: (_, _) => const BundlesScreen()),
       GoRoute(path: '/instructors', builder: (_, _) => const InstructorsScreen()),
+      GoRoute(
+        path: '/instructors/:id',
+        builder: (_, state) =>
+            InstructorScreen(instructorId: int.parse(state.pathParameters['id']!)),
+      ),
+      GoRoute(path: '/paths', builder: (_, _) => const PathsScreen()),
+      GoRoute(
+        path: '/paths/:slug',
+        builder: (_, state) =>
+            PathDetailScreen(slug: state.pathParameters['slug']!),
+      ),
       GoRoute(path: '/blog', builder: (_, _) => const ContentScreen(kind: 'blog')),
       GoRoute(
         path: '/articles/:slug',

@@ -314,5 +314,44 @@
   },
   "blogTitle": "Blog",
   "instructorsTitle": "Instructors",
-  "bundlesTitle": "Bundles"
+  "bundlesTitle": "Bundles",
+  "levelBreeders": "Breeders",
+  "homeHeroTitle": "Veterinary learning in Arabic",
+  "homeHeroSubtitle": "Courses and videos from practising vets, with material you can use in clinic.",
+  "homeWelcomeBack": "Welcome back, {name}",
+  "homeCatalogueEmpty": "No published content yet. Pull down to refresh.",
+  "seeAll": "See all",
+  "@homeWelcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "greetingHello": "Hello, {name}",
+  "greetingGetVerified": "Verify as a veterinarian",
+  "greetingSignedOut": "Sign in",
+  "greetingSignedOutHint": "To track your progress and keep your courses.",
+  "@greetingHello": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "contentEmpty": "No free content published yet.",
+  "blogEmpty": "No articles published yet.",
+  "bundlesEmpty": "No bundles available right now.",
+  "instructorsEmpty": "No instructors yet.",
+  "coursesEmptyCatalogue": "No courses published yet.",
+  "watchNow": "Watch now",
+  "pricingTitle": "Access and pricing",
+  "pricingIntro": "Four kinds of access. Free content is open to anyone with an account; the rest depends on verification or purchase.",
+  "pricingFreeBody": "Open to anyone with an account. No verification, no payment.",
+  "pricingVetFreeBody": "Costs nothing, but is for verified veterinarians only.",
+  "pricingBaytarianBody": "Paid content, for verified veterinarians only.",
+  "pricingGeneralBody": "Paid content for non-veterinarians. Verified vets do not buy this one; their material is in the Baytarian tier.",
+  "pathsTitle": "Learning paths",
+  "pathsEmpty": "No learning paths published yet.",
+  "statStudents": "students"
 }

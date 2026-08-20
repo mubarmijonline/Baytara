@@ -38,6 +38,14 @@ final articlesProvider = FutureProvider.family<List<Article>, String?>(
   (ref, kind) => ref.watch(catalogueRepositoryProvider).articles(kind: kind),
 );
 
+final pathsProvider = FutureProvider<List<LearningPath>>(
+  (ref) => ref.watch(catalogueRepositoryProvider).paths(),
+);
+
+final pathProvider = FutureProvider.family<LearningPath, String>(
+  (ref, slug) => ref.watch(catalogueRepositoryProvider).path(slug),
+);
+
 final articleProvider = FutureProvider.family<Article, String>(
   (ref, slug) => ref.watch(catalogueRepositoryProvider).article(slug),
 );

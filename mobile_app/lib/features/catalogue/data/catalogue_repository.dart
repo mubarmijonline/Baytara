@@ -212,6 +212,30 @@ class CatalogueRepository {
     }
   }
 
+  /// Learning paths: ordered runs of courses. Currently empty on the live site, so the
+  /// screen hides itself rather than showing an empty tab.
+  Future<List<LearningPath>> paths() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/paths');
+      return [
+        for (final p in (res.data?['paths'] as List? ?? const []))
+          LearningPath.fromJson((p as Map).cast<String, dynamic>()),
+      ];
+    } catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  Future<LearningPath> path(String slug) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/paths/$slug');
+      return LearningPath.fromJson(
+          (res.data!['path'] as Map).cast<String, dynamic>());
+    } catch (e) {
+      throw asApiException(e);
+    }
+  }
+
   /// [kind] selects the collection: the blog, or the free-content shelf.
   Future<List<Article>> articles({String? kind}) async {
     try {

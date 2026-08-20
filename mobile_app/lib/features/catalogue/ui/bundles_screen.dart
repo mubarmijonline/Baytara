@@ -28,7 +28,7 @@ class BundlesScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => _Error(message: asApiException(e).code.message(l)),
           data: (rows) => rows.isEmpty
-              ? _Empty(text: l.noResults)
+              ? _Empty(text: l.bundlesEmpty)
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                   itemCount: rows.length,
@@ -59,7 +59,7 @@ class InstructorsScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => _Error(message: asApiException(e).code.message(l)),
           data: (rows) => rows.isEmpty
-              ? _Empty(text: l.noResults)
+              ? _Empty(text: l.instructorsEmpty)
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: rows.length,
@@ -67,6 +67,7 @@ class InstructorsScreen extends ConsumerWidget {
                   itemBuilder: (context, i) {
                     final person = rows[i];
                     return ListTile(
+                      onTap: () => context.push('/instructors/${person.id}'),
                       leading: CircleAvatar(
                         radius: 22,
                         backgroundColor: BrandColors.accentSoft,

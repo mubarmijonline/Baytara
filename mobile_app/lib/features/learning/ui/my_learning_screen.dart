@@ -12,6 +12,7 @@ import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../../account/ui/notifications_screen.dart';
+import '../../auth/domain/session.dart';
 import '../application/learning_providers.dart';
 import '../data/learning_dto.dart';
 
@@ -21,6 +22,7 @@ class MyLearningScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L10n.of(context);
+    final session = ref.watch(sessionProvider);
     final summary = ref.watch(learningSummaryProvider);
     final enrollments = ref.watch(enrollmentsProvider);
     final certificates = ref.watch(certificatesProvider);
@@ -46,6 +48,8 @@ class MyLearningScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
+            _Greeting(session: session),
+            const SizedBox(height: 18),
             summary.when(
               loading: () => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
@@ -236,6 +240,105 @@ class _EnrollmentTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// A personal header. Signed out it invites sign-in rather than greeting nobody, since this
+/// tab is reachable without an account.
+class _Greeting extends ConsumerWidget {
+  const _Greeting({required this.session});
+  final SessionState session;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L10n.of(context);
+
+    if (session is! SessionSignedIn) {
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push('/auth'),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              const CircleAvatar(
+                radius: 22,
+                backgroundColor: BrandColors.accentSoft,
+                child: Icon(Icons.person_outline, color: BrandColors.accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l.greetingSignedOut,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Text(l.greetingSignedOutHint,
+                        style: const TextStyle(
+                            fontSize: 12.5, color: BrandColors.muted2)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: BrandColors.muted2),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    final user = (session as SessionSignedIn).user;
+    // First name only: the full legal name on a greeting reads like a form, not a hello.
+    final firstName = user.name.trim().split(RegExp(r'\s+')).first;
+
+    return Row(children: [
+      CircleAvatar(
+        radius: 26,
+        backgroundColor: BrandColors.accentSoft,
+        child: Text(
+          firstName.isEmpty ? '?' : firstName.characters.first,
+          style: const TextStyle(
+              fontSize: 21, fontWeight: FontWeight.w800, color: BrandColors.accent),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.greetingHello(firstName),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w800, height: 1.4)),
+            const SizedBox(height: 3),
+            Row(children: [
+              if (user.isBaytarian) ...[
+                const Icon(Icons.verified, size: 14, color: Color(0xFF1A7F4B)),
+                const SizedBox(width: 4),
+                Text(
+                  user.isVetStudent ? l.verifiedStudentTitle : l.verifiedVetTitle,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A7F4B)),
+                ),
+              ] else
+                // Not a scolding: it is the one action that unlocks vet content, so it is
+                // offered as a link rather than stated as a deficiency.
+                GestureDetector(
+                  onTap: () => context.push('/verify'),
+                  child: Text(l.greetingGetVerified,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: BrandColors.accent)),
+                ),
+            ]),
+          ],
+        ),
+      ),
+    ]);
   }
 }
 

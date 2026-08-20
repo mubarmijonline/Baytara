@@ -41,8 +41,12 @@ class ContentScreen extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.all(40),
                     child: Center(
-                      child: Text(l.noResults,
-                          style: const TextStyle(color: BrandColors.muted2)),
+                      child: Text(
+                        kind == 'blog' ? l.blogEmpty : l.contentEmpty,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            color: BrandColors.muted2, height: 1.8),
+                      ),
                     ),
                   ),
                 ])

@@ -111,14 +111,39 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
       );
     }
     if (state.items.isEmpty) {
+      // Two very different situations wearing the same face. With no filters applied an
+      // empty list means the catalogue has nothing; with filters it means the filters
+      // excluded everything, and the fix is to clear them.
+      final q = controller.query;
+      final filtered = q.category != null ||
+          q.level != null ||
+          q.accessType != null ||
+          q.duration != null ||
+          q.minRating != null ||
+          (q.search?.trim().isNotEmpty ?? false);
+
       return ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.all(40),
-            child: Center(
-              child: Text(l.noResults,
+            padding: const EdgeInsets.fromLTRB(32, 50, 32, 32),
+            child: Column(
+              children: [
+                Icon(filtered ? Icons.filter_alt_off_outlined : Icons.school_outlined,
+                    size: 38, color: BrandColors.muted2),
+                const SizedBox(height: 16),
+                Text(
+                  filtered ? l.noResults : l.coursesEmptyCatalogue,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: BrandColors.muted2)),
+                  style: const TextStyle(color: BrandColors.muted, height: 1.8),
+                ),
+                if (filtered) ...[
+                  const SizedBox(height: 14),
+                  OutlinedButton(
+                    onPressed: () => controller.apply(CourseQuery(sort: q.sort)),
+                    child: Text(l.filtersClear),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -172,7 +197,7 @@ class _FilterSheet extends ConsumerStatefulWidget {
 class _FilterSheetState extends ConsumerState<_FilterSheet> {
   late CourseQuery _draft = widget.query;
 
-  static const _levels = ['beginner', 'intermediate', 'advanced'];
+  static const _levels = ['beginner', 'intermediate', 'advanced', 'breeders'];
   static const _durations = ['short', 'medium', 'long'];
   static const _sorts = [
     'newest',
@@ -186,6 +211,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
   String _levelLabel(String v, L10n l) => switch (v) {
         'beginner' => l.levelBeginner,
         'intermediate' => l.levelIntermediate,
+        'breeders' => l.levelBreeders,
         _ => l.levelAdvanced,
       };
 

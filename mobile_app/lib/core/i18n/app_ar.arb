@@ -314,5 +314,44 @@
   },
   "blogTitle": "المدوّنة",
   "instructorsTitle": "المدرّبون",
-  "bundlesTitle": "الباقات"
+  "bundlesTitle": "الباقات",
+  "levelBreeders": "مربّون",
+  "homeHeroTitle": "تعلّم الطب البيطري بالعربية",
+  "homeHeroSubtitle": "دورات وفيديوهات من أطباء ممارسين، بمحتوى عملي تستخدمه في العيادة.",
+  "homeWelcomeBack": "أهلاً {name}",
+  "homeCatalogueEmpty": "لا يوجد محتوى منشور بعد. اسحب للأسفل للتحديث.",
+  "seeAll": "الكل",
+  "@homeWelcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "greetingHello": "أهلاً، {name}",
+  "greetingGetVerified": "وثّق حسابك كطبيب بيطري",
+  "greetingSignedOut": "سجّل الدخول",
+  "greetingSignedOutHint": "لمتابعة تقدّمك وحفظ دوراتك.",
+  "@greetingHello": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "contentEmpty": "لا يوجد محتوى مجاني منشور بعد.",
+  "blogEmpty": "لا توجد مقالات منشورة بعد.",
+  "bundlesEmpty": "لا توجد باقات متاحة حالياً.",
+  "instructorsEmpty": "لا يوجد مدرّبون بعد.",
+  "coursesEmptyCatalogue": "لا توجد دورات منشورة بعد.",
+  "watchNow": "مشاهدة",
+  "pricingTitle": "الوصول والاشتراكات",
+  "pricingIntro": "أربعة أنواع من الوصول. المحتوى المجاني متاح لأي شخص لديه حساب، والباقي يعتمد على التوثيق أو الشراء.",
+  "pricingFreeBody": "متاح لأي شخص لديه حساب. لا يتطلب توثيقاً ولا دفعاً.",
+  "pricingVetFreeBody": "مجاني، لكن للأطباء البيطريين الموثّقين فقط.",
+  "pricingBaytarianBody": "محتوى مدفوع، للأطباء البيطريين الموثّقين فقط.",
+  "pricingGeneralBody": "محتوى مدفوع لغير الأطباء البيطريين. الأطباء الموثّقون لا يشترونه، فمحتواهم في باقة «بيطري».",
+  "pathsTitle": "المسارات التعليمية",
+  "pathsEmpty": "لا توجد مسارات منشورة بعد.",
+  "statStudents": "دارس"
 }
