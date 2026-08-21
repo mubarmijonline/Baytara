@@ -11,6 +11,7 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../application/catalogue_providers.dart';
 import 'widgets/course_card.dart';
+import '../../../core/theme/branded_title.dart';
 
 class BundlesScreen extends ConsumerWidget {
   const BundlesScreen({super.key});
@@ -21,7 +22,7 @@ class BundlesScreen extends ConsumerWidget {
     final async = ref.watch(bundlesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.bundlesTitle)),
+      appBar: AppBar(title: BrandedTitle(l.bundlesTitle)),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(bundlesProvider),
         child: async.when(

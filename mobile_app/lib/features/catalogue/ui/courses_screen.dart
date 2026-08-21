@@ -16,6 +16,7 @@ import '../application/catalogue_providers.dart';
 import '../data/catalogue_repository.dart';
 import 'widgets/access_badge.dart';
 import 'widgets/course_card.dart';
+import '../../../core/theme/branded_title.dart';
 
 class CoursesScreen extends ConsumerStatefulWidget {
   const CoursesScreen({super.key});
@@ -55,7 +56,7 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.coursesTitle),
+        title: BrandedTitle(l.coursesTitle),
         actions: [
           IconButton(
             tooltip: l.filters,

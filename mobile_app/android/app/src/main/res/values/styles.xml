@@ -16,7 +16,10 @@
          running.
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
-    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <!-- Theme.AppCompat, not the platform theme: vdocipher_flutter's player requires an
+         AppCompat host. Changing this back breaks video playback with an error that points
+         at MainActivity rather than at the theme. -->
+    <style name="NormalTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
 </resources>

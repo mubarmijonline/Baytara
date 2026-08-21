@@ -47,3 +47,10 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Required by the AppCompat theme in res/values/styles.xml, which vdocipher_flutter's
+    // player needs. Declared explicitly rather than relied on arriving transitively through
+    // some other plugin, since that can vanish on a dependency bump.
+    implementation("androidx.appcompat:appcompat:1.7.0")
+}

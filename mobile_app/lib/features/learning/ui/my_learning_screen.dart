@@ -15,6 +15,7 @@ import '../../account/ui/notifications_screen.dart';
 import '../../auth/domain/session.dart';
 import '../application/learning_providers.dart';
 import '../data/learning_dto.dart';
+import '../../../core/theme/branded_title.dart';
 
 class MyLearningScreen extends ConsumerWidget {
   const MyLearningScreen({super.key});
@@ -29,7 +30,7 @@ class MyLearningScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.myLearning),
+        title: BrandedTitle(l.myLearning),
         actions: [
           NotificationBell(onTap: () => context.push('/account/notifications')),
           IconButton(

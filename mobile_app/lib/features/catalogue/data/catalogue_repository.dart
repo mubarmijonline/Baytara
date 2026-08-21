@@ -9,6 +9,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 import 'catalogue_dto.dart';
+import 'site_settings.dart';
 
 /// The filter set the courses list offers, mirroring the query parameters
 /// `list_courses` accepts in backend/app/api/v1/courses.py.
@@ -263,10 +264,14 @@ class CatalogueRepository {
 
   /// Site copy and configuration. The app renders this rather than hardcoding strings, so
   /// the admin CMS reaches app users the same way it reaches the website.
-  Future<Map<String, dynamic>> settings() async {
+  ///
+  /// Returns the typed model rather than the raw body: the response nests everything under
+  /// a `settings` key, and handing callers the wrapper is what made every lookup miss
+  /// silently. See site_settings.dart.
+  Future<SiteSettings> settings() async {
     try {
       final res = await _dio.get<Map<String, dynamic>>('/settings');
-      return res.data ?? const {};
+      return SiteSettings.fromResponse(res.data);
     } catch (e) {
       throw asApiException(e);
     }

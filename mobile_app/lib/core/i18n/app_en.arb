@@ -353,5 +353,8 @@
   "pricingGeneralBody": "Paid content for non-veterinarians. Verified vets do not buy this one; their material is in the Baytarian tier.",
   "pathsTitle": "Learning paths",
   "pathsEmpty": "No learning paths published yet.",
-  "statStudents": "students"
+  "statStudents": "students",
+  "homeTestimonialsFallback": "What learners say",
+  "businessTitle": "Baytara for Business",
+  "businessEmpty": "Nothing published for this section yet."
 }

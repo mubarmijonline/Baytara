@@ -10,6 +10,7 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
+import '../../../core/theme/branded_title.dart';
 
 class ContentScreen extends ConsumerWidget {
   const ContentScreen({super.key, this.kind = 'content'});
@@ -23,7 +24,7 @@ class ContentScreen extends ConsumerWidget {
     final async = ref.watch(articlesProvider(kind));
 
     return Scaffold(
-      appBar: AppBar(title: Text(kind == 'blog' ? l.blogTitle : l.tabContent)),
+      appBar: AppBar(title: BrandedTitle(kind == 'blog' ? l.blogTitle : l.tabContent)),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(articlesProvider(kind)),
         child: async.when(

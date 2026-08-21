@@ -11,6 +11,7 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../application/catalogue_providers.dart';
 import 'widgets/course_card.dart';
+import '../../../core/theme/branded_title.dart';
 
 class VideosScreen extends ConsumerStatefulWidget {
   const VideosScreen({super.key});
@@ -48,7 +49,7 @@ class _VideosScreenState extends ConsumerState<VideosScreen> {
     final categories = ref.watch(categoriesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.videosTitle)),
+      appBar: AppBar(title: BrandedTitle(l.videosTitle)),
       body: RefreshIndicator(
         onRefresh: controller.refresh,
         child: Column(

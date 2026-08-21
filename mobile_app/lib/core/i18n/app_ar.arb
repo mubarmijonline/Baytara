@@ -353,5 +353,8 @@
   "pricingGeneralBody": "محتوى مدفوع لغير الأطباء البيطريين. الأطباء الموثّقون لا يشترونه، فمحتواهم في باقة «بيطري».",
   "pathsTitle": "المسارات التعليمية",
   "pathsEmpty": "لا توجد مسارات منشورة بعد.",
-  "statStudents": "دارس"
+  "statStudents": "دارس",
+  "homeTestimonialsFallback": "آراء المتعلّمين",
+  "businessTitle": "بيطرة للأعمال",
+  "businessEmpty": "لا يوجد محتوى منشور لهذا القسم بعد."
 }

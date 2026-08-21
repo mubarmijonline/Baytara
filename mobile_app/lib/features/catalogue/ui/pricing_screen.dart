@@ -14,6 +14,7 @@ import '../../../core/theme/tokens.dart';
 import '../../auth/domain/session.dart';
 import '../../payments/data/purchase_availability.dart';
 import 'widgets/access_badge.dart';
+import '../../../core/theme/branded_title.dart';
 
 class PricingScreen extends ConsumerWidget {
   const PricingScreen({super.key});
@@ -26,7 +27,7 @@ class PricingScreen extends ConsumerWidget {
         session is SessionSignedIn && session.user.isBaytarian;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.pricingTitle)),
+      appBar: AppBar(title: BrandedTitle(l.pricingTitle)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
         children: [

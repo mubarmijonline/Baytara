@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../data/catalogue_dto.dart';
 import '../data/catalogue_repository.dart';
+import '../data/site_settings.dart';
 
 final catalogueRepositoryProvider = Provider<CatalogueRepository>(
   (ref) => CatalogueRepository(client: ref.watch(apiClientProvider)),
@@ -14,7 +15,7 @@ final categoriesProvider = FutureProvider<List<Category>>(
   (ref) => ref.watch(catalogueRepositoryProvider).categories(),
 );
 
-final settingsProvider = FutureProvider<Map<String, dynamic>>(
+final settingsProvider = FutureProvider<SiteSettings>(
   (ref) => ref.watch(catalogueRepositoryProvider).settings(),
 );
 

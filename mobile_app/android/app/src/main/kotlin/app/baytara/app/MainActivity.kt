@@ -7,7 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import android.annotation.TargetApi
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executor
@@ -31,7 +31,15 @@ import java.util.concurrent.Executor
  *  - Screen-recording callback (Android 15+): detection only. It stops nothing; it lets the
  *    app pause and report. Older versions have no dependable equivalent and none is faked.
  */
-class MainActivity : FlutterActivity() {
+// FlutterFragmentActivity, not FlutterActivity: vdocipher_flutter renders its player as an
+// Android platform view that requires a FragmentActivity host, and refuses to attach without
+// one ("MainActivity is not a subclass of FlutterFragmentActivity"). This also requires an
+// AppCompat theme, which is set in res/values/styles.xml -- the error message does not
+// mention that half, and the player still fails without it.
+//
+// Everything below is unchanged. This file holds the only two protections that genuinely
+// prevent a capture on Android, so an edit here is the one that could silently remove them.
+class MainActivity : FlutterFragmentActivity() {
 
     private var channel: MethodChannel? = null
     private var recordingCallbackRegistered = false
