@@ -16,7 +16,7 @@
          running.
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
-        <!-- Theme.AppCompat, not the platform theme: vdocipher_flutter's player requires an
+    <!-- Theme.AppCompat, not the platform theme: vdocipher_flutter's player requires an
          AppCompat host. Changing this back breaks video playback with an error that points
          at MainActivity rather than at the theme. -->
     <style name="NormalTheme" parent="Theme.AppCompat.NoActionBar">

@@ -17,6 +17,10 @@ import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/access/access.dart';
+import '../../auth/domain/session.dart';
+import '../../learning/application/learning_providers.dart';
+// `Enrollment` here is the learning model, not anything in the catalogue.
+import '../../learning/data/learning_dto.dart';
 import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
 import 'widgets/course_card.dart';
@@ -43,6 +47,13 @@ class ContentScreen extends ConsumerWidget {
             .where((v) => v.tier == AccessTier.free && v.hasVideo)
             .toList();
 
+    // Courses the user is enrolled in get their own section at the top: this is the shelf
+    // they came here for, and burying it under general free content would be wrong.
+    // Signed-out visitors never ask, since /enrollments 401s for them.
+    final enrolled = kind == 'blog' || ref.watch(sessionProvider) is! SessionSignedIn
+        ? const <Enrollment>[]
+        : (ref.watch(enrollmentsProvider).value ?? const <Enrollment>[]);
+
     return Scaffold(
       appBar: AppBar(title: BrandedTitle(kind == 'blog' ? l.blogTitle : l.tabContent)),
       body: RefreshIndicator(
@@ -50,7 +61,7 @@ class ContentScreen extends ConsumerWidget {
         child: async.when(
           loading: () => freeVideos.isEmpty
               ? const Center(child: CircularProgressIndicator())
-              : _list(context, const [], freeVideos, l),
+              : _list(context, const [], freeVideos, enrolled, l),
           error: (e, _) => ListView(children: [
             Padding(
               padding: const EdgeInsets.all(32),
@@ -59,7 +70,7 @@ class ContentScreen extends ConsumerWidget {
                   style: const TextStyle(color: BrandColors.muted, height: 1.7)),
             ),
           ]),
-          data: (rows) => rows.isEmpty && freeVideos.isEmpty
+          data: (rows) => rows.isEmpty && freeVideos.isEmpty && enrolled.isEmpty
               ? ListView(children: [
                   Padding(
                     padding: const EdgeInsets.all(40),
@@ -73,7 +84,7 @@ class ContentScreen extends ConsumerWidget {
                     ),
                   ),
                 ])
-              : _list(context, rows, freeVideos, l),
+              : _list(context, rows, freeVideos, enrolled, l),
         ),
       ),
     );
@@ -86,12 +97,29 @@ Widget _list(
   BuildContext context,
   List<Article> articles,
   List<Video> videos,
+  List<Enrollment> enrolled,
   L10n l,
 ) {
-  final showHeadings = articles.isNotEmpty && videos.isNotEmpty;
+  // Headings only earn their place once more than one kind is on screen; a single-kind
+  // shelf labelled with its own name explains nothing.
+  final kinds =
+      [enrolled.isNotEmpty, videos.isNotEmpty, articles.isNotEmpty].where((x) => x).length;
+  final showHeadings = kinds > 1;
+
   return ListView(
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
     children: [
+      if (enrolled.isNotEmpty) ...[
+        if (showHeadings) _Heading(l.myCourses),
+        for (final e in enrolled)
+          if (e.course != null)
+            CourseCard(
+              course: e.course!,
+              // Suppresses the price and the buy prompt: this seat is already bought.
+              entitled: true,
+              onTap: () => context.push('/courses/${e.course!.slug}'),
+            ),
+      ],
       if (videos.isNotEmpty) ...[
         if (showHeadings) _Heading(l.videosTitle),
         for (final v in videos)

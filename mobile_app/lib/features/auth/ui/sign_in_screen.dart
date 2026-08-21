@@ -37,6 +37,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
   bool _busy = false;
   String? _error;
 
+  /// Revealed by the eye toggle. Off by default: a password field is obscured because
+  /// someone may be over your shoulder, and defaulting to visible would defeat that.
+  bool _showPassword = false;
+
   @override
   void dispose() {
     _tabs.dispose();
@@ -240,10 +244,21 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
         const SizedBox(height: 12),
         TextField(
           controller: _password,
-          obscureText: true,
+          obscureText: !_showPassword,
           textInputAction: isSignUp ? TextInputAction.next : TextInputAction.done,
           onSubmitted: (_) => isSignUp ? null : _submitSignIn(),
-          decoration: InputDecoration(labelText: l.authPassword),
+          decoration: InputDecoration(
+            labelText: l.authPassword,
+            // Typing a password blind on a phone keyboard is where most sign-in failures
+            // come from, so it can be revealed deliberately.
+            suffixIcon: IconButton(
+              icon: Icon(_showPassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined),
+              tooltip: _showPassword ? l.passwordHide : l.passwordShow,
+              onPressed: () => setState(() => _showPassword = !_showPassword),
+            ),
+          ),
         ),
         if (isSignUp) ...[
           const SizedBox(height: 12),

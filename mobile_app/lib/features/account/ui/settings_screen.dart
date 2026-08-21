@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/locale_controller.dart';
@@ -71,19 +70,19 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text(l.settingsAbout),
-            onTap: () => _open('https://baytara.app/about'),
+            onTap: () => context.push('/about'),
           ),
           ListTile(
             leading: const Icon(Icons.privacy_tip_outlined),
             title: Text(l.settingsPrivacy),
-            // Opened rather than reimplemented: the stores require a reachable policy, and
-            // a native copy would be one more thing to keep in step with the real one.
-            onTap: () => _open('https://baytara.app/privacy'),
+            // In-app now, but still the website's own page rather than a copied one: a
+            // second privacy policy that drifts from the real one is worse than a link.
+            onTap: () => context.push('/privacy'),
           ),
           ListTile(
             leading: const Icon(Icons.mail_outline),
             title: Text(l.settingsContact),
-            onTap: () => _open('https://baytara.app/contact'),
+            onTap: () => context.push('/contact'),
           ),
           if (session is SessionSignedIn) ...[
             const Divider(height: 24),
@@ -111,12 +110,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _open(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
 
   Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
     final l = L10n.of(context);

@@ -32,6 +32,8 @@ class SiteSettings {
     this.stats = const [],
     this.testimonials = const [],
     this.business = const BusinessCopy(),
+    this.about = const AboutCopy(),
+    this.contact = const ContactCopy(),
     this.footer = const {},
     this.socials = const {},
   });
@@ -50,6 +52,8 @@ class SiteSettings {
         for (final t in _list(root['testimonials'])) Testimonial.fromJson(t),
       ],
       business: BusinessCopy.fromJson(_obj(root['business'])),
+      about: AboutCopy.fromJson(_obj(root['about'])),
+      contact: ContactCopy.fromJson(_obj(root['contact'])),
       footer: _obj(root['footer']),
       socials: _obj(root['socials']),
     );
@@ -60,6 +64,8 @@ class SiteSettings {
   final List<StatItem> stats;
   final List<Testimonial> testimonials;
   final BusinessCopy business;
+  final AboutCopy about;
+  final ContactCopy contact;
   final Map<String, dynamic> footer;
   final Map<String, dynamic> socials;
 }
@@ -216,6 +222,61 @@ class BusinessCopy {
   /// Nothing worth rendering. The banner and the page both hide themselves rather than
   /// showing an empty shell.
   bool get isEmpty => title.isEmpty && body.isEmpty && stats.isEmpty;
+}
+
+class AboutCopy {
+  const AboutCopy({this.title = '', this.body = '', this.values = const []});
+
+  factory AboutCopy.fromJson(Map<String, dynamic> j) => AboutCopy(
+        title: _str(j, 'title'),
+        body: _str(j, 'body'),
+        values: [
+          for (final v in _list(j['values']))
+            AboutValue(title: _str(v, 'title'), description: _str(v, 'description')),
+        ],
+      );
+
+  final String title;
+  final String body;
+  final List<AboutValue> values;
+
+  bool get isEmpty => title.isEmpty && body.isEmpty && values.isEmpty;
+}
+
+class AboutValue {
+  const AboutValue({required this.title, required this.description});
+  final String title;
+  final String description;
+}
+
+class ContactCopy {
+  const ContactCopy({
+    this.title = '',
+    this.subtitle = '',
+    this.email = '',
+    this.phone = '',
+    this.address = '',
+    this.hours = '',
+  });
+
+  factory ContactCopy.fromJson(Map<String, dynamic> j) => ContactCopy(
+        title: _str(j, 'title'),
+        subtitle: _str(j, 'subtitle'),
+        email: _str(j, 'email'),
+        phone: _str(j, 'phone'),
+        address: _str(j, 'address'),
+        hours: _str(j, 'hours'),
+      );
+
+  final String title;
+  final String subtitle;
+
+  /// Several of these are blank on the live site. Each row hides itself rather than
+  /// printing an empty label.
+  final String email;
+  final String phone;
+  final String address;
+  final String hours;
 }
 
 class BusinessFeature {

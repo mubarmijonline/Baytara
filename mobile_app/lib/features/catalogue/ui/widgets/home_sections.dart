@@ -82,7 +82,7 @@ class HomeHero extends StatelessWidget {
                   hero.primaryCta.isNotEmpty ? hero.primaryCta : l.coursesTitle),
             ),
             OutlinedButton(
-              onPressed: () => context.go('/videos'),
+              onPressed: () => context.push('/how-it-works'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),

@@ -10,6 +10,7 @@ import '../features/auth/domain/session.dart';
 import '../features/auth/ui/devices_screen.dart';
 import '../features/auth/ui/phone_gate_screen.dart';
 import '../features/auth/ui/sign_in_screen.dart';
+import '../features/account/ui/info_screens.dart';
 import '../features/account/ui/notifications_screen.dart';
 import '../features/account/ui/profile_screen.dart';
 import '../features/account/ui/settings_screen.dart';
@@ -19,6 +20,7 @@ import '../features/catalogue/ui/business_screen.dart';
 import '../features/catalogue/ui/content_screen.dart';
 import '../features/catalogue/ui/courses_screen.dart';
 import '../features/catalogue/ui/home_screen.dart';
+import '../features/catalogue/ui/how_it_works_screen.dart';
 import '../features/catalogue/ui/instructor_screen.dart';
 import '../features/catalogue/ui/pricing_screen.dart';
 import '../features/catalogue/ui/video_detail_screen.dart';
@@ -134,6 +136,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Also dead until now: the player's refusal screen sends a would-be buyer here.
       GoRoute(path: '/pricing', builder: (_, _) => const PricingScreen()),
       GoRoute(path: '/business', builder: (_, _) => const BusinessScreen()),
+      GoRoute(path: '/how-it-works', builder: (_, _) => const HowItWorksScreen()),
+      GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
+      GoRoute(path: '/contact', builder: (_, _) => const ContactScreen()),
+      GoRoute(path: '/privacy', builder: (_, _) => const PrivacyScreen()),
       GoRoute(path: '/bundles', builder: (_, _) => const BundlesScreen()),
       GoRoute(path: '/instructors', builder: (_, _) => const InstructorsScreen()),
       GoRoute(
