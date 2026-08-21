@@ -203,6 +203,21 @@ class _TabShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = L10n.of(context);
+    final onHome = location == Routes.home;
+
+    return PopScope(
+      // Back on a secondary tab returns to Home instead of leaving the app. Only Home
+      // itself lets the system close it, which is how a bottom-nav app is expected to
+      // behave on Android; previously any tab exited straight to the launcher.
+      canPop: onHome,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !onHome) context.go(Routes.home);
+      },
+      child: _scaffold(context, l),
+    );
+  }
+
+  Widget _scaffold(BuildContext context, L10n l) {
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(

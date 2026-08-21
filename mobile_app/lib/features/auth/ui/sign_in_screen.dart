@@ -131,7 +131,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
     };
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.appName)),
+      appBar: AppBar(
+        title: Text(l.authSignIn),
+        // A guard redirect leaves no route to pop, so go_router shows no back arrow and the
+        // user is stuck on sign-in. Browsing is open to anonymous visitors, so there is
+        // always somewhere to go back to.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: l.commonCancel,
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/'),
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [

@@ -48,7 +48,17 @@ void main() {
     store = SecureStore(storage: _FakeSecureStorage(stored));
     refreshCalls = 0;
     signOuts = [];
-    refreshClient = Dio(BaseOptions(baseUrl: 'https://example.test'));
+    refreshClient = Dio(BaseOptions(baseUrl: 'https://example.test'))
+      // Mirrors production: ApiClient gives its bare refresh client the same context
+      // interceptor as the main one. Leaving it out is what let a real bug through -- the
+      // interceptor used to overwrite the refresh token with the access token.
+      ..interceptors.add(InterceptorsWrapper(onRequest: (options, h) async {
+        if (options.headers['Authorization'] == null) {
+          final token = await store.accessToken;
+          if (token != null) options.headers['Authorization'] = 'Bearer $token';
+        }
+        h.next(options);
+      }));
   });
 
   /// Answers /auth/refresh after a delay, so concurrent callers genuinely overlap. Any other
@@ -112,6 +122,50 @@ void main() {
     expect(refreshCalls, 1, reason: 'concurrent 401s must share one in-flight refresh');
     expect(interceptor.refreshCount, 1);
     expect(stored['baytara_access_token'], 'fresh-token');
+  });
+
+  test('the refresh call sends the REFRESH token, not the access token', () async {
+    // The regression test for the bug that signed users out on every cold start: the
+    // context interceptor overwrote the Authorization header the refresh call had set, so
+    // /auth/refresh received an expired access token and always failed.
+    String? sentOnRefresh;
+    refreshClient.httpClientAdapter = _CallbackAdapter((options) async {
+      if (options.path.endsWith('/auth/refresh')) {
+        sentOnRefresh = options.headers['Authorization']?.toString();
+        return ResponseBody.fromString('{"access_token":"fresh-token"}', 200,
+            headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+      }
+      return ResponseBody.fromString('{"ok":true}', 200,
+          headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+    });
+
+    final interceptor = buildInterceptor();
+    final dio = Dio(BaseOptions(baseUrl: 'https://example.test'))
+      ..interceptors.add(InterceptorsWrapper(onRequest: (options, h) async {
+        if (options.headers['Authorization'] == null) {
+          final token = await store.accessToken;
+          if (token != null) options.headers['Authorization'] = 'Bearer $token';
+        }
+        h.next(options);
+      }))
+      ..interceptors.add(interceptor)
+      ..httpClientAdapter = _CallbackAdapter((options) async {
+        if (options.extra['__retried'] != true) {
+          throw DioException(
+            requestOptions: options,
+            response: Response(requestOptions: options, statusCode: 401),
+          );
+        }
+        return ResponseBody.fromString('{"ok":true}', 200,
+            headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+      });
+
+    await dio.get<dynamic>('/protected');
+
+    expect(sentOnRefresh, 'Bearer refresh-abc',
+        reason: 'the refresh endpoint requires the refresh token; sending the stale access '
+            'token makes every refresh fail and signs the user out');
+    expect(sentOnRefresh, isNot(contains('stale')));
   });
 
   test('a failed refresh clears both tokens and signals sign-out', () async {

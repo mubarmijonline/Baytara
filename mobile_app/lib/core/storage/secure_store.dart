@@ -23,9 +23,19 @@ class SecureStore {
   static const _refreshToken = 'baytara_refresh_token';
   static const _deviceId = 'baytara_device_id';
 
+  /// The last known profile, as JSON. Not a security token, but it lives here so it is
+  /// cleared with the session rather than outliving a sign-out in plain preferences.
+  static const _cachedUser = 'baytara_cached_user';
+
   Future<String?> get accessToken => _storage.read(key: _accessToken);
   Future<String?> get refreshToken => _storage.read(key: _refreshToken);
   Future<String?> get deviceId => _storage.read(key: _deviceId);
+
+  /// Lets a cold start paint the signed-in UI immediately instead of waiting on a network
+  /// round-trip to /auth/me. The server is still asked, in the background, and its answer
+  /// replaces this.
+  Future<String?> get cachedUser => _storage.read(key: _cachedUser);
+  Future<void> setCachedUser(String? json) => _write(_cachedUser, json);
 
   Future<void> setAccessToken(String? value) => _write(_accessToken, value);
   Future<void> setRefreshToken(String? value) => _write(_refreshToken, value);
@@ -37,6 +47,9 @@ class SecureStore {
   Future<void> clearTokens() async {
     await _storage.delete(key: _accessToken);
     await _storage.delete(key: _refreshToken);
+    // The cached profile goes with the session; leaving it would let the next launch paint
+    // a signed-in header for an account that is signed out.
+    await _storage.delete(key: _cachedUser);
   }
 
   Future<void> _write(String key, String? value) =>

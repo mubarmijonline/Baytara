@@ -103,9 +103,17 @@ class ApiClient {
       options.queryParameters = {'lang': lang, ...options.queryParameters};
     }
 
-    final token = await _store.accessToken;
-    if (token != null && token.isNotEmpty) {
-      options.headers['Authorization'] = 'Bearer $token';
+    // Only fill in the access token when the caller has not set an Authorization header
+    // itself. POST /auth/refresh deliberately sends the REFRESH token, and overwriting it
+    // here sent the expired access token to an endpoint that requires a refresh one -- so
+    // every refresh failed, and the user was signed out 15 minutes after signing in or on
+    // the next cold start. Silent, because a failed refresh looks exactly like a normal
+    // expired session.
+    if (options.headers['Authorization'] == null) {
+      final token = await _store.accessToken;
+      if (token != null && token.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
     }
     handler.next(options);
   }

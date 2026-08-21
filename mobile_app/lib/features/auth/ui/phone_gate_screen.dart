@@ -60,7 +60,19 @@ class _PhoneGateScreenState extends ConsumerState<PhoneGateScreen> {
   Widget build(BuildContext context) {
     final l = L10n.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l.phoneTitle)),
+      appBar: AppBar(
+        title: Text(l.phoneTitle),
+        // Same as sign-in: reached by redirect, so nothing to pop. The gate still holds --
+        // the guard sends the user straight back here the moment they try to play
+        // anything -- but they can browse the catalogue in the meantime rather than being
+        // trapped on a form.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: l.commonCancel,
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/'),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(20),

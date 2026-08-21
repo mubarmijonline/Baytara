@@ -2,11 +2,14 @@
 //
 // The controller owns SessionState. The router watches it, so anything that changes the
 // session here moves the user automatically -- there is no navigation in this file.
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/network/api_error.dart';
 import '../../../core/providers.dart';
+import '../../../core/storage/secure_store.dart';
 import '../data/auth_dto.dart';
 import '../data/auth_repository.dart';
 import '../domain/session.dart';
@@ -29,24 +32,52 @@ class AuthController {
   AuthRepository get _repo => _ref.read(authRepositoryProvider);
   SessionController get _session => _ref.read(sessionProvider.notifier);
 
-  /// Runs once at launch. Restores the stored token and asks the server who it belongs to.
+  /// Runs once at launch. Restores the session and asks the server to confirm it.
+  ///
+  /// The confirmation does not block the first paint. A cold start used to sit on the splash
+  /// for a whole network round-trip before anything appeared; now the cached profile paints
+  /// immediately and /auth/me corrects it a moment later. The cache holds only what the
+  /// route guards and the greeting read, and a stale value self-corrects on the next frame.
   ///
   /// Any failure lands on signed-out rather than an error screen: an expired refresh token
-  /// is the ordinary case after thirty days, not an incident. The interceptor has already
-  /// cleared the tokens by the time a 401 reaches here.
+  /// is the ordinary case after thirty days, not an incident.
   Future<void> bootstrap() async {
-    final token = await _ref.read(secureStoreProvider).accessToken;
-    final refresh = await _ref.read(secureStoreProvider).refreshToken;
+    final store = _ref.read(secureStoreProvider);
+    final token = await store.accessToken;
+    final refresh = await store.refreshToken;
+
     if ((token == null || token.isEmpty) && (refresh == null || refresh.isEmpty)) {
       _session.restoredEmpty();
       return;
     }
+
+    final cached = await _cachedUser(store);
+    if (cached != null) _session.signedIn(cached);
+
     try {
-      _session.signedIn(await _repo.me());
+      final user = await _repo.me();
+      _session.signedIn(user);
+      await _cache(store, user);
     } on ApiException {
+      // Only demote to signed-out if the server actually rejected us. The interceptor has
+      // already cleared the tokens by this point.
       _session.signedOut();
     }
   }
+
+  Future<AuthUser?> _cachedUser(SecureStore store) async {
+    final raw = await store.cachedUser;
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return authUserFromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      // A cache written by an older build is not worth failing a launch over.
+      return null;
+    }
+  }
+
+  Future<void> _cache(SecureStore store, AuthUser user) =>
+      store.setCachedUser(jsonEncode(authUserToJson(user)));
 
   Future<void> register({
     required String name,
@@ -61,12 +92,14 @@ class AuthController {
       password: password,
     );
     _session.signedIn(result.user);
+    await _cache(_ref.read(secureStoreProvider), result.user);
   }
 
   Future<void> login({required String email, required String password}) async {
     try {
       final result = await _repo.login(email: email, password: password);
       _session.signedIn(result.user);
+      await _cache(_ref.read(secureStoreProvider), result.user);
     } on ApiException catch (e) {
       // Re-thrown as the typed exception so the screen can show the device list it already
       // received rather than making a second call for it.
@@ -100,6 +133,7 @@ class AuthController {
     try {
       final result = await _repo.google(idToken);
       _session.signedIn(result.user);
+      await _cache(_ref.read(secureStoreProvider), result.user);
     } on ApiException catch (e) {
       final limit = asDeviceLimit(e);
       if (limit != null) throw limit;
@@ -109,7 +143,11 @@ class AuthController {
 
   /// Saves the phone the gate collected and updates the session, which releases the guard.
   Future<void> submitPhone(String e164) async {
-    _session.signedIn(await _repo.setPhone(e164));
+    final user = await _repo.setPhone(e164);
+    _session.signedIn(user);
+    // Cached too: the phone gate is a route guard, and a stale cache would send the user
+    // back to the gate on the next cold start.
+    await _cache(_ref.read(secureStoreProvider), user);
   }
 
   Future<void> signOut() async {

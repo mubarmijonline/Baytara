@@ -14,6 +14,18 @@ AuthUser authUserFromJson(Map<String, dynamic> json) => AuthUser(
       isVetStudent: json['is_vet_student'] as bool? ?? false,
     );
 
+/// The subset of the profile worth caching for an instant cold start. Only what the route
+/// guards and the greeting need; anything else is re-read from the server anyway.
+Map<String, dynamic> authUserToJson(AuthUser u) => {
+      'id': u.id,
+      'name': u.name,
+      'email': u.email,
+      'phone': u.phone,
+      'role': u.role,
+      'is_baytarian': u.isBaytarian,
+      'is_vet_student': u.isVetStudent,
+    };
+
 /// One row of GET /auth/devices.
 class UserDevice {
   const UserDevice({
