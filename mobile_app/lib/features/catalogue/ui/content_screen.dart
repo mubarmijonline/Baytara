@@ -1,5 +1,13 @@
-// Articles: the blog and the free-content shelf, which are one table on the server
-// distinguished by `type` (ARTICLE_TYPES = blog | content).
+// The free-content shelf, and the blog.
+//
+// Articles are one table on the server distinguished by `type` (ARTICLE_TYPES = blog |
+// content). The website's /content page fetches only `articles('content')`, and this screen
+// matched that exactly -- which left it empty, because no articles are published.
+//
+// The free tab now also lists **free videos**, which the page's own subtitle has always
+// promised ("ندوات، ملفات، وسلاسل فيديو مجانية"). They exist in the library and were
+// reachable only from the Videos tab, so a visitor following the site's own description
+// found nothing. The blog tab stays articles-only, since a video is not a blog post.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,8 +16,10 @@ import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/access/access.dart';
 import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
+import 'widgets/course_card.dart';
 import '../../../core/theme/branded_title.dart';
 
 class ContentScreen extends ConsumerWidget {
@@ -23,12 +33,24 @@ class ContentScreen extends ConsumerWidget {
     final l = L10n.of(context);
     final async = ref.watch(articlesProvider(kind));
 
+    // Free videos belong on the free-content shelf, not only in the library. The blog is
+    // articles only.
+    final freeVideos = kind == 'blog'
+        ? const <Video>[]
+        : ref
+            .watch(videosProvider)
+            .items
+            .where((v) => v.tier == AccessTier.free && v.hasVideo)
+            .toList();
+
     return Scaffold(
       appBar: AppBar(title: BrandedTitle(kind == 'blog' ? l.blogTitle : l.tabContent)),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(articlesProvider(kind)),
         child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => freeVideos.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : _list(context, const [], freeVideos, l),
           error: (e, _) => ListView(children: [
             Padding(
               padding: const EdgeInsets.all(32),
@@ -37,7 +59,7 @@ class ContentScreen extends ConsumerWidget {
                   style: const TextStyle(color: BrandColors.muted, height: 1.7)),
             ),
           ]),
-          data: (rows) => rows.isEmpty
+          data: (rows) => rows.isEmpty && freeVideos.isEmpty
               ? ListView(children: [
                   Padding(
                     padding: const EdgeInsets.all(40),
@@ -51,15 +73,54 @@ class ContentScreen extends ConsumerWidget {
                     ),
                   ),
                 ])
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                  itemCount: rows.length,
-                  itemBuilder: (context, i) => _ArticleCard(article: rows[i]),
-                ),
+              : _list(context, rows, freeVideos, l),
         ),
       ),
     );
   }
+}
+
+/// Free videos first, then articles. Headings appear only when both kinds are present, so
+/// a single-kind shelf is not cluttered with a label that explains nothing.
+Widget _list(
+  BuildContext context,
+  List<Article> articles,
+  List<Video> videos,
+  L10n l,
+) {
+  final showHeadings = articles.isNotEmpty && videos.isNotEmpty;
+  return ListView(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+    children: [
+      if (videos.isNotEmpty) ...[
+        if (showHeadings) _Heading(l.videosTitle),
+        for (final v in videos)
+          VideoCard(video: v, onTap: () => context.push('/videos/${v.id}')),
+      ],
+      if (articles.isNotEmpty) ...[
+        if (showHeadings) _Heading(l.blogTitle),
+        for (final a in articles) _ArticleCard(article: a),
+      ],
+    ],
+  );
+}
+
+class _Heading extends StatelessWidget {
+  const _Heading(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 10, top: 4),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(text,
+              style: const TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
+                  color: BrandColors.ink)),
+        ),
+      );
 }
 
 class _ArticleCard extends StatelessWidget {
