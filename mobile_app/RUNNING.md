@@ -192,3 +192,118 @@ flutter run --dart-define=BAYTARA_API=http://10.0.2.2:8090/api/v1
 `10.0.2.2` is how an Android emulator reaches its host machine's `localhost`. Note the local
 backend's `CORS_ORIGINS` does not matter here: CORS is a browser rule and this is a native
 build.
+
+---
+
+## Running live on a real Android phone
+
+This is the setup that matters: **video needs Widevine DRM, and emulators do not have it
+properly.** A phone is the only place playback can actually be judged. You get full hot
+reload, exactly as on the emulator.
+
+The phone plugs into **your laptop**, not the server.
+
+### 1. Turn on Developer Options
+
+On the phone: **Settings → About phone → Build number**, tap it **seven times**. It will
+count down and then say developer mode is on. (Samsung buries it under
+Settings → About phone → Software information → Build number.)
+
+### 2. Turn on USB debugging
+
+**Settings → System → Developer options → USB debugging**, on.
+
+While you are there, turn on **Install via USB** as well if your phone has it (many Xiaomi,
+Oppo and Vivo devices do). Without it the install silently fails.
+
+### 3. Plug it in
+
+Use a **data** cable, not a charge-only one. A charge-only cable charges the phone and is
+invisible to `adb`, which looks exactly like a broken setup.
+
+The phone shows **"Allow USB debugging?"** with an RSA fingerprint. Tick **Always allow from
+this computer** and accept. If no dialog appears, pull the cable, re-plug, and unlock the
+phone first.
+
+If a USB mode notification appears, choose **File transfer (MTP)**. Charging-only mode hides
+the device from `adb` on some phones.
+
+### 4. Check the laptop can see it
+
+```
+adb devices
+```
+
+You want:
+
+```
+List of devices attached
+ABC123XYZ       device
+```
+
+- **empty list** — cable, USB debugging, or the driver (Windows may need your phone maker's
+  USB driver).
+- **`unauthorized`** — the RSA prompt was not accepted. Run
+  `adb kill-server` then `adb devices`, and watch the phone.
+- **`offline`** — unlock the phone, or replug.
+
+### 5. Run it
+
+```
+cd C:\projects\mobile_app
+flutter devices
+flutter run
+```
+
+`flutter devices` should list your phone by model name. If both a phone and an emulator are
+connected, `flutter run -d <device-id>` picks one; the id is the first column of
+`adb devices`.
+
+The first build onto a new device takes a few minutes. After that:
+
+- **`r`** — hot reload
+- **`R`** — hot restart (needed after changing native code or themes)
+- **`q`** — quit
+
+### Running without a cable
+
+Once the phone has been paired over USB once, on Android 11 and later:
+
+```
+adb tcpip 5555
+adb connect <phone-ip>:5555
+```
+
+The phone's IP is in **Settings → About phone → Status → IP address**. Both devices must be
+on the same network. Unplug the cable and `flutter run` as normal.
+
+---
+
+## Capturing a crash
+
+If the app dies rather than showing an error, the reason is in the Android log, not in the
+Flutter console. Two ways, both from `C:\projects\mobile_app`:
+
+**While `flutter run` is attached**, the console prints the Dart side. Copy everything from
+the first red line.
+
+**For a native crash** (the app vanishes with no Dart error), that is not enough. Open a
+second terminal and run:
+
+```
+adb logcat -c
+```
+
+then reproduce the crash, then:
+
+```
+adb logcat -d > crash.txt
+```
+
+`crash.txt` holds the answer. The useful part is the block beginning
+`FATAL EXCEPTION` or `*** *** ***`, plus anything mentioning `vdocipher`, `ExoPlayer`,
+`MediaDrm` or `Widevine`.
+
+A crash naming **`MediaDrm`**, **`Widevine`** or **`ERROR_DRM`** means the device or
+emulator cannot do the DRM, which is the expected emulator result and should disappear on a
+real phone.
