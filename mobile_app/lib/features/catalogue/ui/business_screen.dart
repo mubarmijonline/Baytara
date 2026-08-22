@@ -5,7 +5,7 @@
 // page must not render headings for content that does not exist.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/error_copy.dart';
@@ -97,14 +97,29 @@ class _Body extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () => _contact(),
+                  onPressed: () => context.push('/business/request'),
                   style: FilledButton.styleFrom(
                     backgroundColor: BrandColors.gold,
                     foregroundColor: BrandColors.ink,
                   ),
                   child: Text(business.primaryCta.isNotEmpty
                       ? business.primaryCta
-                      : l.settingsContact),
+                      : l.demoTitle),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () =>
+                      context.push('/business/request?kind=specialist'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.45)),
+                  ),
+                  child: Text(business.secondaryCta.isNotEmpty
+                      ? business.secondaryCta
+                      : l.demoTitleSpecialist),
                 ),
               ),
             ],
@@ -179,11 +194,4 @@ class _Body extends StatelessWidget {
     );
   }
 
-  /// The contact form lives on the website; there is no B2B enquiry endpoint in the API.
-  Future<void> _contact() async {
-    final uri = Uri.parse('https://baytara.app/contact');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
 }

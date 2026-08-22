@@ -409,5 +409,18 @@
         "type": "String"
       }
     }
-  }
+  },
+  "demoTitle": "اطلب عرضاً تجريبياً",
+  "demoTitleSpecialist": "تحدّث مع مختص",
+  "demoSubtitle": "اترك بياناتك وسنتواصل معك لترتيب عرض تجريبي يناسب فريقك.",
+  "demoOrganisation": "جهة العمل",
+  "demoTeamSize": "حجم الفريق",
+  "demoNotes": "تفاصيل إضافية (اختياري)",
+  "demoSubmit": "إرسال الطلب",
+  "demoSubject": "طلب عرض تجريبي — بيطرة للأعمال",
+  "demoSubjectSpecialist": "طلب تحدث مع مختص — بيطرة للأعمال",
+  "demoBodyIntro": "طلب عرض تجريبي من تطبيق بيطرة.",
+  "demoBodyIntroSpecialist": "طلب تحدث مع مختص من تطبيق بيطرة.",
+  "demoSentTitle": "وصلنا طلبك",
+  "demoSentBody": "سنتواصل معك على البريد أو الهاتف الذي تركته في أقرب وقت."
 }

@@ -277,16 +277,24 @@ class CatalogueRepository {
     }
   }
 
+  /// Sends an enquiry to the same inbox the website's contact form fills, which the admin
+  /// panel reads under Messages.
+  ///
+  /// The field is `body`, not `message`: ContactSchema in backend/app/api/v1/content.py
+  /// requires `name`, `email` and `body`, with `subject` optional. Sending `message` fails
+  /// validation, which is what this used to do.
   Future<void> contact({
     required String name,
     required String email,
-    required String message,
+    required String body,
+    String? subject,
   }) async {
     try {
       await _dio.post<dynamic>('/contact', data: {
         'name': name,
         'email': email,
-        'message': message,
+        'body': body,
+        if (subject != null && subject.trim().isNotEmpty) 'subject': subject.trim(),
       });
     } catch (e) {
       throw asApiException(e);

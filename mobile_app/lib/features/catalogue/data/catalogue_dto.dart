@@ -4,6 +4,22 @@
 // Only the fields a screen actually uses are parsed. A DTO that mirrors every column is a
 // DTO nobody keeps in sync with the server.
 import '../../../core/access/access.dart';
+import '../../../core/network/dio_client.dart';
+
+/// Turns a media path from the API into something Image.network can fetch.
+///
+/// Uploads come back **relative** ("/api/v1/uploads/x.jpg") while provider-hosted posters
+/// come back absolute. Handing a relative path to NetworkImage fails silently, which is why
+/// no instructor avatar has ever appeared in the app.
+String? resolveMediaUrl(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  final value = raw.trim();
+  if (value.startsWith('http://') || value.startsWith('https://')) return value;
+  // kApiBaseUrl ends in /api/v1 and these paths already begin with it, so the origin is
+  // what gets prefixed, not the whole base.
+  final origin = Uri.parse(kApiBaseUrl).origin;
+  return value.startsWith('/') ? '$origin$value' : '$origin/$value';
+}
 
 class Category {
   const Category({
@@ -34,7 +50,7 @@ class InstructorRef {
     this.headline,
     this.avatarUrl,
     this.bio,
-    this.expertise,
+    this.expertise = const [],
     this.specialties = const [],
     this.coursesCount = 0,
     this.lessonsCount = 0,
@@ -49,9 +65,15 @@ class InstructorRef {
         id: (j['id'] as num).toInt(),
         name: j['name'] as String? ?? '',
         headline: j['headline'] as String?,
-        avatarUrl: j['avatar_url'] as String?,
+        avatarUrl: resolveMediaUrl(j['avatar_url'] as String?),
         bio: j['bio'] as String?,
-        expertise: j['expertise'] as String?,
+        // `expertise` is a LIST on the wire, not a string. Casting it to String threw, and
+        // because that happened inside the list parse it took the whole /instructors
+        // response down -- which surfaced as "something unexpected went wrong" rather than
+        // as one missing field.
+        expertise: [
+          for (final e in (j['expertise'] as List? ?? const [])) e.toString(),
+        ],
         specialties: [
           for (final s in (j['specialties'] as List? ?? const [])) s.toString(),
         ],
@@ -66,7 +88,7 @@ class InstructorRef {
   final String? headline;
   final String? avatarUrl;
   final String? bio;
-  final String? expertise;
+  final List<String> expertise;
   final List<String> specialties;
   final int coursesCount;
   final int lessonsCount;
@@ -137,7 +159,7 @@ class Course {
         currency: j['currency'] as String? ?? 'EGP',
         isPaid: j['is_paid'] as bool? ?? false,
         lockReason: j['lock_reason'] as String?,
-        image: j['image'] as String?,
+        image: resolveMediaUrl(j['image'] as String?),
         level: j['level'] as String? ?? 'beginner',
         lessonsCount: (j['lessons_count'] as num?)?.toInt() ?? 0,
         // video_minutes is the real summed length; duration_minutes is what an admin typed
@@ -230,7 +252,7 @@ class Video {
         tier: AccessTier.fromWire(j['access_type'] as String?),
         isPaid: j['is_paid'] as bool? ?? false,
         lockReason: j['lock_reason'] as String?,
-        poster: j['poster'] as String?,
+        poster: resolveMediaUrl(j['poster'] as String?),
         durationMinutes: (j['duration_minutes'] as num?)?.toInt(),
         price: (j['price'] as num?)?.toDouble() ?? 0,
         currency: j['currency'] as String? ?? 'EGP',
@@ -332,7 +354,7 @@ class Article {
         title: j['title'] as String? ?? '',
         excerpt: j['excerpt'] as String?,
         body: j['body'] as String?,
-        image: j['image'] as String?,
+        image: resolveMediaUrl(j['image'] as String?),
         publishedAt: DateTime.tryParse(j['published_at'] as String? ?? ''),
       );
 

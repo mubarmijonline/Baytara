@@ -409,5 +409,18 @@
         "type": "String"
       }
     }
-  }
+  },
+  "demoTitle": "Request a demo",
+  "demoTitleSpecialist": "Talk to a specialist",
+  "demoSubtitle": "Leave your details and we will arrange a demo that suits your team.",
+  "demoOrganisation": "Organisation",
+  "demoTeamSize": "Team size",
+  "demoNotes": "Anything else (optional)",
+  "demoSubmit": "Send request",
+  "demoSubject": "Demo request — Baytara for Business",
+  "demoSubjectSpecialist": "Specialist request — Baytara for Business",
+  "demoBodyIntro": "Demo request from the Baytara app.",
+  "demoBodyIntroSpecialist": "Specialist request from the Baytara app.",
+  "demoSentTitle": "Request received",
+  "demoSentBody": "We will get back to you on the email or phone you left, as soon as we can."
 }

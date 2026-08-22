@@ -23,6 +23,7 @@ import '../features/catalogue/ui/home_screen.dart';
 import '../features/catalogue/ui/how_it_works_screen.dart';
 import '../features/catalogue/ui/instructor_screen.dart';
 import '../features/catalogue/ui/pricing_screen.dart';
+import '../features/catalogue/ui/request_demo_screen.dart';
 import '../features/catalogue/ui/video_detail_screen.dart';
 import '../features/catalogue/ui/videos_screen.dart';
 import '../features/learning/ui/certificate_screen.dart';
@@ -136,6 +137,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Also dead until now: the player's refusal screen sends a would-be buyer here.
       GoRoute(path: '/pricing', builder: (_, _) => const PricingScreen()),
       GoRoute(path: '/business', builder: (_, _) => const BusinessScreen()),
+      GoRoute(
+        path: '/business/request',
+        builder: (_, state) => RequestDemoScreen(
+          kind: state.uri.queryParameters['kind'] == 'specialist'
+              ? DemoRequestKind.specialist
+              : DemoRequestKind.demo,
+        ),
+      ),
       GoRoute(path: '/how-it-works', builder: (_, _) => const HowItWorksScreen()),
       GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
       GoRoute(path: '/contact', builder: (_, _) => const ContactScreen()),

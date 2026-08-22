@@ -124,7 +124,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
       await ref.read(catalogueRepositoryProvider).contact(
             name: _name.text.trim(),
             email: _email.text.trim(),
-            message: _message.text.trim(),
+            body: _message.text.trim(),
           );
       if (mounted) {
         setState(() {

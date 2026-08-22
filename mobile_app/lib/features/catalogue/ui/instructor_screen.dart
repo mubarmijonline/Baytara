@@ -10,6 +10,7 @@ import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/theme/branded_title.dart';
 import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
 
@@ -23,15 +24,28 @@ class InstructorScreen extends ConsumerWidget {
     final async = ref.watch(instructorsProvider);
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        title: BrandedTitle(l.instructorsTitle),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+        ),
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
-            child: Text(asApiException(e).code.message(l),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: BrandColors.muted, height: 1.8)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(asApiException(e).code.message(l),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: BrandColors.muted, height: 1.8)),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () => ref.invalidate(instructorsProvider),
+                child: Text(l.commonRetry),
+              ),
+            ]),
           ),
         ),
         data: (rows) {
@@ -93,12 +107,14 @@ class _Profile extends StatelessWidget {
           _Stat(value: '${person.lessonsCount}', label: l.navVideos),
           _Stat(value: '${person.studentsCount}', label: l.statStudents),
         ]),
-        if (person.specialties.isNotEmpty) ...[
+        // expertise and specialties are separate lists on the wire; both are shown.
+        if (person.expertise.isNotEmpty || person.specialties.isNotEmpty) ...[
           const SizedBox(height: 24),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
+              for (final e in person.expertise) Chip(label: Text(e)),
               for (final s in person.specialties) Chip(label: Text(s)),
             ],
           ),
