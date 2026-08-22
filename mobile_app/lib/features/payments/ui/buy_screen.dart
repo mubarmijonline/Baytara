@@ -12,6 +12,7 @@ import '../application/checkout_controller.dart';
 import '../data/payment_dto.dart';
 import '../data/payment_repository.dart';
 import '../data/purchase_availability.dart';
+import 'payment_method_screen.dart';
 
 final paymentRepositoryProvider = Provider<PaymentRepository>(
   (ref) => PaymentRepository(client: ref.watch(apiClientProvider)),
@@ -43,6 +44,10 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
 
   CheckoutState _state = const CheckoutState();
 
+  /// Set when the user finished one of the non-charging methods, so the screen can say
+  /// plainly what did and did not happen.
+  PaymentMethodChoice? _testOutcome;
+
   @override
   void initState() {
     super.initState();
@@ -63,7 +68,33 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
     super.dispose();
   }
 
+  /// Ask how they want to pay, then act on the answer.
+  ///
+  /// Only the hosted gateway actually moves money. The card form is presentation, and the
+  /// test option deliberately grants nothing -- an in-app path that unlocked paid content
+  /// without a payment would be a way to get the content for free, not a testing
+  /// convenience.
   Future<void> _pay() async {
+    final choice = await Navigator.of(context).push<PaymentMethodChoice>(
+      MaterialPageRoute(
+        builder: (_) => PaymentMethodScreen(quote: _state.quote),
+      ),
+    );
+    if (choice == null || !mounted) return;
+
+    switch (choice.kind) {
+      case PaymentMethodKind.freeTest:
+      case PaymentMethodKind.card:
+        // Both end here. The card form collects nothing that could be charged, so
+        // pretending otherwise would be worse than saying so.
+        setState(() => _testOutcome = choice);
+        return;
+      case PaymentMethodKind.hostedGateway:
+        await _payViaGateway();
+    }
+  }
+
+  Future<void> _payViaGateway() async {
     final session = await _checkout.begin(
       kind: widget.kind,
       courseId: widget.courseId,
@@ -92,7 +123,18 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: switch (_state.stage) {
+          child: _testOutcome != null
+              ? _Result(
+                  icon: Icons.science_outlined,
+                  tone: BrandColors.star,
+                  title: l.checkoutTestTitle,
+                  body: _testOutcome!.cardLast4 != null
+                      ? '${l.checkoutCardPending(_testOutcome!.cardLast4!)}\n\n${l.checkoutTestBody}'
+                      : l.checkoutTestBody,
+                  actionLabel: l.paymentsTitle,
+                  onAction: () => context.go('/account/payments'),
+                )
+              : switch (_state.stage) {
             CheckoutStage.quoting => const Center(child: CircularProgressIndicator()),
             CheckoutStage.confirming => _Waiting(text: l.checkoutConfirming),
             CheckoutStage.paid => _Result(

@@ -50,10 +50,6 @@ dependencies:
   # Camera and gallery, for the verification document captures.
   image_picker: 1.2.3
 
-  # Embedded browser for the privacy policy, whose text lives only in the website's React
-  # page. A copy in the app would drift from the real policy; this cannot.
-  webview_flutter: 4.14.1
-
   # Google sign-in. v7 is instance-based: GoogleSignIn.instance.initialize() then
   # .authenticate(); the id token comes off account.authentication.idToken and is what
   # POST /auth/google wants as `credential`.

@@ -374,5 +374,40 @@
   "howStep4Title": "ابدأ التعلّم",
   "howStep4Body": "تابع تقدّمك في كل درس، واحصل على شهادة عند إكمال الدورات التي تمنح شهادة.",
   "howProtectionTitle": "عن حماية الفيديو",
-  "howProtectionBody": "الفيديوهات محميّة، ويظهر داخلها اسمك وبريدك ورقم هاتفك كعلامة مائية. تسجيل الشاشة يخرج بصورة سوداء، ونحن نسجّل محاولات التسجيل."
+  "howProtectionBody": "الفيديوهات محميّة، ويظهر داخلها اسمك وبريدك ورقم هاتفك كعلامة مائية. تسجيل الشاشة يخرج بصورة سوداء، ونحن نسجّل محاولات التسجيل.",
+  "privacyUpdated": "آخر تحديث: {date}",
+  "@privacyUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentMethodTitle": "طريقة الدفع",
+  "methodGatewayTitle": "بطاقة أو محفظة عبر بوابة الدفع",
+  "methodGatewaySubtitle": "تُفتح صفحة الدفع الآمنة الرسمية. هذه هي الطريقة الحقيقية.",
+  "methodCardTitle": "إدخال بيانات البطاقة",
+  "methodCardSubtitle": "واجهة تجريبية فقط — لا تُرسل البيانات ولا تُحفظ.",
+  "methodTestTitle": "دفع تجريبي مجاني",
+  "methodTestSubtitle": "لاختبار التدفق فقط. لا يتم خصم أي مبلغ ولا يُفتح المحتوى.",
+  "methodTestConfirm": "متابعة تجريبية",
+  "cardDemoNotice": "هذه الشاشة للعرض فقط. أرقام البطاقات لا تُرسل لأي جهة ولا تُحفظ. الدفع الحقيقي يتم على صفحة البوابة.",
+  "cardNumber": "رقم البطاقة",
+  "cardExpiry": "تاريخ الانتهاء",
+  "cardCvc": "CVC",
+  "cardHolder": "اسم حامل البطاقة",
+  "cardNumberInvalid": "رقم البطاقة غير صحيح.",
+  "cardExpiryInvalid": "تاريخ الانتهاء غير صحيح.",
+  "cardCvcInvalid": "رمز CVC غير صحيح.",
+  "cardHolderRequired": "أدخل اسم حامل البطاقة.",
+  "checkoutTestTitle": "انتهى التدفق التجريبي",
+  "checkoutTestBody": "وصلت لنهاية التدفق دون أي عملية دفع. لم يتم فتح المحتوى، لأن ذلك يحتاج عملية دفع حقيقية أو تفعيلاً من لوحة الإدارة.",
+  "checkoutCardPending": "بطاقة تنتهي بـ {last4}",
+  "@checkoutCardPending": {
+    "placeholders": {
+      "last4": {
+        "type": "String"
+      }
+    }
+  }
 }

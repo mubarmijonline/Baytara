@@ -374,5 +374,40 @@
   "howStep4Title": "Start learning",
   "howStep4Body": "Your progress is tracked per lesson, and courses that offer one award a certificate on completion.",
   "howProtectionTitle": "About video protection",
-  "howProtectionBody": "Videos are protected, and your name, email and phone number are watermarked into them. A screen recording comes out black, and recording attempts are logged."
+  "howProtectionBody": "Videos are protected, and your name, email and phone number are watermarked into them. A screen recording comes out black, and recording attempts are logged.",
+  "privacyUpdated": "Last updated: {date}",
+  "@privacyUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentMethodTitle": "Payment method",
+  "methodGatewayTitle": "Card or wallet via the payment gateway",
+  "methodGatewaySubtitle": "Opens the official secure payment page. This is the real one.",
+  "methodCardTitle": "Enter card details",
+  "methodCardSubtitle": "Demonstration UI only — nothing is sent or stored.",
+  "methodTestTitle": "Free test payment",
+  "methodTestSubtitle": "For exercising the flow. Charges nothing and unlocks nothing.",
+  "methodTestConfirm": "Run test flow",
+  "cardDemoNotice": "This screen is for demonstration. Card numbers are not sent anywhere and are not stored. Real payments happen on the gateway page.",
+  "cardNumber": "Card number",
+  "cardExpiry": "Expiry",
+  "cardCvc": "CVC",
+  "cardHolder": "Cardholder name",
+  "cardNumberInvalid": "That card number is not valid.",
+  "cardExpiryInvalid": "That expiry date is not valid.",
+  "cardCvcInvalid": "That CVC is not valid.",
+  "cardHolderRequired": "Enter the cardholder name.",
+  "checkoutTestTitle": "Test flow finished",
+  "checkoutTestBody": "You reached the end of the flow with no payment taken. Nothing was unlocked, because that needs a real payment or an activation from the admin panel.",
+  "checkoutCardPending": "Card ending {last4}",
+  "@checkoutCardPending": {
+    "placeholders": {
+      "last4": {
+        "type": "String"
+      }
+    }
+  }
 }

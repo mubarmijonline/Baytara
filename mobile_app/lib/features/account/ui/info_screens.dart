@@ -5,7 +5,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/error_copy.dart';
@@ -15,6 +14,7 @@ import '../../../core/theme/branded_title.dart';
 import '../../../core/theme/tokens.dart';
 import '../../catalogue/application/catalogue_providers.dart';
 import '../../catalogue/data/site_settings.dart';
+import '../data/privacy_doc.dart';
 
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
@@ -254,53 +254,69 @@ class _ContactRow extends StatelessWidget {
       );
 }
 
-/// The privacy policy.
+/// The privacy policy, rendered natively from the ported document.
 ///
-/// Unlike About and Contact, this has **no API representation**: the text lives in
-/// frontend/web/src/pages/Privacy.jsx as 234 lines of hardcoded markup. Copying it into the
-/// app would create a second copy that drifts from the real one the moment legal counsel
-/// edits either, and a privacy policy that disagrees with itself is worse than an
-/// inconvenient one.
-///
-/// So it is loaded in an embedded WebView: in the app as asked, one source of truth, and it
-/// updates the moment the website does.
-class PrivacyScreen extends StatefulWidget {
+/// See privacy_doc.dart: the text is a second copy of the website's, so the two must be
+/// edited together until the policy moves into the settings CMS.
+class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
-
-  @override
-  State<PrivacyScreen> createState() => _PrivacyScreenState();
-}
-
-class _PrivacyScreenState extends State<PrivacyScreen> {
-  late final WebViewController _controller;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) {
-            if (mounted) setState(() => _loading = false);
-          },
-        ),
-      )
-      // The BaytaraApp marker, for consistency with every other request the app makes.
-      ..setUserAgent(kAppUserAgent)
-      ..loadRequest(Uri.parse('https://baytara.app/privacy'));
-  }
 
   @override
   Widget build(BuildContext context) {
     final l = L10n.of(context);
+    final code = Localizations.localeOf(context).languageCode;
+    final sections = PrivacyDoc.forLocale(code);
+
     return Scaffold(
       appBar: AppBar(title: BrandedTitle(l.settingsPrivacy)),
-      body: Stack(children: [
-        WebViewWidget(controller: _controller),
-        if (_loading) const Center(child: CircularProgressIndicator()),
-      ]),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+        children: [
+          Text(l.settingsPrivacy,
+              style: const TextStyle(
+                  fontSize: 21, fontWeight: FontWeight.w800, height: 1.5)),
+          const SizedBox(height: 6),
+          // A policy without a date is not much of a policy.
+          Text(l.privacyUpdated(PrivacyDoc.updatedFor(code)),
+              style: const TextStyle(fontSize: 12.5, color: BrandColors.muted2)),
+          const SizedBox(height: 24),
+          for (final section in sections) ...[
+            Text(section.title,
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    height: 1.5,
+                    color: BrandColors.ink)),
+            const SizedBox(height: 8),
+            for (final paragraph in section.body) ...[
+              Text(paragraph,
+                  style: const TextStyle(
+                      fontSize: 14, height: 2.0, color: BrandColors.ink2)),
+              const SizedBox(height: 10),
+            ],
+            for (final item in section.items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Icon(Icons.circle, size: 5, color: BrandColors.accent),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(item,
+                          style: const TextStyle(
+                              fontSize: 13.5, height: 1.95, color: BrandColors.ink2)),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 20),
+          ],
+        ],
+      ),
     );
   }
 }

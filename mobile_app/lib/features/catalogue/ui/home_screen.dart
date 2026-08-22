@@ -14,6 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/i18n/app_localizations.dart';
+import '../../../core/i18n/error_copy.dart';
+import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../../auth/domain/session.dart';
 import '../../learning/application/learning_providers.dart';
@@ -144,32 +146,20 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-            // Courses shelf, for when the catalogue has any.
-            if (courses.items.isNotEmpty)
-              SliverToBoxAdapter(
+            // 5. Instructors.
+            instructors.when(
+              loading: () => const _Nothing(),
+              error: (e, _) => SliverToBoxAdapter(
                 child: HomeSection(
-                  title: settings.home.featuredTitle.isNotEmpty
-                      ? settings.home.featuredTitle
-                      : l.coursesTitle,
-                  actionLabel: l.seeAll,
-                  onAction: () => context.go('/courses'),
+                  title: l.instructorsTitle,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        for (final c in courses.items.take(4))
-                          CourseCard(
-                            course: c,
-                            onTap: () => context.push('/courses/${c.slug}'),
-                          ),
-                      ],
-                    ),
+                    child: Text(asApiException(e).code.message(l),
+                        style: const TextStyle(
+                            fontSize: 13, color: BrandColors.muted2)),
                   ),
                 ),
               ),
-
-            // 5. Instructors.
-            instructors.maybeWhen(
               data: (list) => list.isEmpty
                   ? const _Nothing()
                   : SliverToBoxAdapter(
@@ -196,8 +186,31 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-              orElse: () => const _Nothing(),
             ),
+
+            // Courses shelf, for when the catalogue has any.
+            if (courses.items.isNotEmpty)
+              SliverToBoxAdapter(
+                child: HomeSection(
+                  title: settings.home.featuredTitle.isNotEmpty
+                      ? settings.home.featuredTitle
+                      : l.coursesTitle,
+                  actionLabel: l.seeAll,
+                  onAction: () => context.go('/courses'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        for (final c in courses.items.take(4))
+                          CourseCard(
+                            course: c,
+                            onTap: () => context.push('/courses/${c.slug}'),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // 6. Testimonials.
             if (settings.testimonials.any((t) => !t.isEmpty))

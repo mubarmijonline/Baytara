@@ -71,25 +71,39 @@ class HomeHero extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.85))),
           ],
           const SizedBox(height: 20),
-          Wrap(spacing: 10, runSpacing: 10, children: [
-            FilledButton(
-              onPressed: () => context.go('/courses'),
-              style: FilledButton.styleFrom(
-                backgroundColor: BrandColors.gold,
-                foregroundColor: BrandColors.ink,
+          Row(children: [
+            Expanded(
+              child: FilledButton(
+                onPressed: () => context.go('/courses'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: BrandColors.gold,
+                  foregroundColor: BrandColors.ink,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(hero.primaryCta.isNotEmpty
+                      ? hero.primaryCta
+                      : l.coursesTitle),
+                ),
               ),
-              child: Text(
-                  hero.primaryCta.isNotEmpty ? hero.primaryCta : l.coursesTitle),
             ),
-            OutlinedButton(
-              onPressed: () => context.push('/how-it-works'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => context.push('/how-it-works'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(hero.secondaryCta.isNotEmpty
+                      ? hero.secondaryCta
+                      : l.howItWorksTitle),
+                ),
               ),
-              child: Text(hero.secondaryCta.isNotEmpty
-                  ? hero.secondaryCta
-                  : l.videosTitle),
             ),
           ]),
           if (resume != null) ...[
