@@ -110,6 +110,20 @@ it('reaches the privacy policy from the footer, with the configured support emai
     .toHaveAttribute('href', 'mailto:configured@baytara.app');
 });
 
+it('reaches the refund policy from the footer, and publishes no placeholder WhatsApp', async () => {
+  // The payment gateway's reviewers check the footer for this link first.
+  renderRoute('/');
+
+  fireEvent.click(await screen.findByText('سياسة الاسترجاع'));
+
+  expect(window.location.pathname).toBe('/refund');
+  expect(await screen.findByRole('heading', { name: 'سياسة الاسترجاع والإلغاء' })).toBeVisible();
+  expect(screen.getByRole('link', { name: 'support@baytara.app' }))
+    .toHaveAttribute('href', 'mailto:support@baytara.app');
+  // No WhatsApp number is configured in these settings, so the clause must not render.
+  expect(screen.queryByText(/واتساب/)).toBeNull();
+});
+
 it('renders configured About values and Footer social links', async () => {
   const view = renderRoute('/about');
 

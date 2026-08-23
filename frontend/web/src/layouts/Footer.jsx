@@ -31,6 +31,7 @@ export default function Footer() {
   const legal = [
     [settings.footer?.privacy_url || '/privacy', t('footer.privacy')],
     [settings.footer?.terms_url, t('footer.terms')],
+    [settings.footer?.refund_url || '/refund', t('footer.refund')],
   ].filter(([url]) => typeof url === 'string' && (/^https?:\/\//i.test(url) || url.startsWith('/')));
   const configuredSocials = Object.entries(settings.socials || {})
     .filter(([, url]) => typeof url === 'string' && /^https?:\/\//i.test(url));
