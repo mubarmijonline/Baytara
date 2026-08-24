@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Baytara — Main Website front-end (Phase 1, mock data)",
+  "description": "Baytara \u2014 Main Website front-end (Phase 1, mock data)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "hls.js": "^1.7.1",
     "lucide-react": "^0.577.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

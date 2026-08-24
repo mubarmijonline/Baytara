@@ -78,7 +78,7 @@ function CoursePicker({ form, setForm, courses, dropped, language, t }) {
   </>;
 }
 
-function CatalogFields({ form, setForm, categories, instructors, courses, dropped, language, t }) {
+function CatalogFields({ form, setForm, categories, instructors, courses, dropped, language, t, uploadLocal, removeLocal, uploading }) {
   const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
   // paid videos always enforce the macOS Safari rule; free ones are opt-in
   const paidTier = form.access_type === 'baytarian' || form.access_type === 'general';
@@ -109,6 +109,24 @@ function CatalogFields({ form, setForm, categories, instructors, courses, droppe
     <FormSection title={t('video.sectionAccess')}>
       <div className="video-form-columns"><Field label={t('catalog.accessType')}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option value={access} key={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field><Field label={t('catalog.status')}><select value={form.status} onChange={set('status')}>{['draft', 'published', 'unpublished'].map((status) => <option value={status} key={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field></div>
       <div className="video-form-columns"><Field label={t('catalog.price')}><input type="number" min="0" value={form.price} onChange={set('price')} /></Field><Field label={t('catalog.currency')}><input dir="ltr" maxLength="3" value={form.currency} onChange={set('currency')} /></Field><Field label={t('catalog.accessDays')}><input type="number" min="1" value={form.access_days} onChange={set('access_days')} /></Field></div>
+      <Field label={t('video.selfHosted')}>
+        <div className="video-selfhost">
+          <div style={{ fontSize: 12, color: 'var(--muted, #6b6b80)', marginBottom: 6 }}>{t('video.selfHostedHint')}</div>
+          <input type="file" accept="video/mp4,video/quicktime,video/x-matroska,video/webm"
+                 disabled={!form.id || uploading}
+                 onChange={(event) => event.target.files?.[0] && uploadLocal(event.target.files[0])} />
+          {!form.id && <div style={{ fontSize: 12, color: 'var(--muted, #6b6b80)' }}>{t('video.selfHostedSaveFirst')}</div>}
+          {uploading > 0 && <div style={{ fontSize: 12 }}>{t('video.uploading')} {uploading}%</div>}
+          {form.source === 'local' && (
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              {t('video.selfHostedStatus')}: <b>{form.local_status || '—'}</b>
+              {form.local_status === 'ready' && ' ✅'}
+              {form.local_error && <span style={{ color: '#b3261e' }}> — {form.local_error}</span>}
+              <button type="button" className="btn btn-text btn-sm" onClick={removeLocal}>{t('video.selfHostedRemove')}</button>
+            </div>
+          )}
+        </div>
+      </Field>
       <Field label={t('video.captureProtection')}>
         <label className="video-protection-toggle" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <input
@@ -150,6 +168,38 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const [recovery, setRecovery] = useState(null);
   const [localError, setLocalError] = useState('');
   const [providerError, setProviderError] = useState('');
+  const [uploading, setUploading] = useState(0);
+
+  // Upload a file to our own server; the backend packages it as encrypted HLS in the
+  // background, so poll until local_status settles.
+  const uploadLocal = async (file) => {
+    if (!videoId) return;
+    setUploading(1);
+    setLocalError('');
+    try {
+      const res = await api.videoUpload(videoId, file, setUploading);
+      setForm((current) => ({ ...current, source: 'local', local_status: res?.video?.local_status || 'packaging' }));
+      const poll = setInterval(async () => {
+        try {
+          const fresh = await api.video(videoId);
+          const video = fresh.video || fresh;
+          setForm((current) => ({ ...current, source: video.source, local_status: video.local_status, local_error: video.local_error }));
+          if (video.local_status === 'ready' || video.local_status === 'failed') clearInterval(poll);
+        } catch { clearInterval(poll); }
+      }, 4000);
+    } catch (error) {
+      setLocalError(error.message);
+    } finally {
+      setUploading(0);
+    }
+  };
+
+  const removeLocal = async () => {
+    try {
+      const res = await api.videoUploadDelete(videoId);
+      setForm((current) => ({ ...current, source: res?.video?.source || 'vdocipher', local_status: null, local_error: null }));
+    } catch (error) { setLocalError(error.message); }
+  };
 
   const [providerDetail, setProviderDetail] = useState('');
   const [preview, setPreview] = useState(null);
@@ -319,7 +369,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   };
 
   return <section className="video-editor"><Link className="back-link" to="/videos"><ArrowLeft size={16} /> {t('common.back')}</Link><h2>{creating ? t('pages.videoNew') : t('pages.videoDetails')}</h2><ErrText>{message(localError)}</ErrText>
-    <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} instructors={instructors} courses={courses} dropped={dropped} language={language} t={t} />
+    <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} instructors={instructors} courses={courses} dropped={dropped} language={language} t={t} uploadLocal={uploadLocal} removeLocal={removeLocal} uploading={uploading} />
       {(creating || providerOnly) && <><h3>{t('video.folder')}</h3><VideoFolderTree selectedId={folderId} onSelect={selectFolder} picker />{creating && <Field label={t('video.file')}><input type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} /></Field>}</>}
       {creating && busy && <progress max="100" value={progress} />}
       <button className="btn btn-filled" type="button" disabled={busy} onClick={creating ? upload : saveCatalog}>{creating ? <><Upload size={16} /> {t('video.uploadVideo')}</> : providerOnly ? t('common.import') : <><Save size={16} /> {t('common.save')}</>}</button>
