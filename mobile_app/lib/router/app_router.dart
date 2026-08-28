@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/i18n/app_localizations.dart';
+import '../core/providers.dart';
 import '../features/auth/data/auth_dto.dart';
 import '../features/auth/domain/session.dart';
 import '../features/auth/ui/devices_screen.dart';
@@ -27,6 +28,7 @@ import '../features/catalogue/ui/request_demo_screen.dart';
 import '../features/catalogue/ui/video_detail_screen.dart';
 import '../features/catalogue/ui/videos_screen.dart';
 import '../features/learning/ui/certificate_screen.dart';
+import '../features/onboarding/ui/onboarding_screen.dart';
 import '../features/learning/ui/my_learning_screen.dart';
 import '../features/payments/data/payment_dto.dart';
 import '../features/payments/ui/buy_screen.dart';
@@ -42,11 +44,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: Routes.splash,
     // Re-runs redirect whenever the session changes: a sign-out mid-session must eject the
     // user from a protected screen rather than leaving them on a page that no longer loads.
-    refreshListenable: _SessionListenable(ref),
+    refreshListenable: _RouterListenable(ref),
     redirect: (context, state) {
       final to = guardRedirect(
         session: ref.read(sessionProvider),
         location: state.matchedLocation,
+        onboardingSeen: ref.read(onboardingSeenProvider),
       );
       // The device screen reached from a sign-in refusal is the one authed-looking route a
       // signed-out user must be able to see. Without this the guard would bounce them
@@ -56,6 +59,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: Routes.splash, builder: (_, _) => const SplashScreen()),
+      GoRoute(path: Routes.onboarding, builder: (_, _) => const OnboardingScreen()),
       ShellRoute(
         builder: (context, state, child) =>
             _TabShell(location: state.matchedLocation, child: child),
@@ -187,9 +191,12 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class _SessionListenable extends ChangeNotifier {
-  _SessionListenable(Ref ref) {
+/// Re-runs the redirect when either the session or the onboarding flag changes. Without the
+/// second, a first-run user finishing the tour would sit on it until something else moved.
+class _RouterListenable extends ChangeNotifier {
+  _RouterListenable(Ref ref) {
     ref.listen(sessionProvider, (_, _) => notifyListeners());
+    ref.listen(onboardingSeenProvider, (_, _) => notifyListeners());
   }
 }
 

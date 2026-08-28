@@ -27,6 +27,11 @@ class SecureStore {
   /// cleared with the session rather than outliving a sign-out in plain preferences.
   static const _cachedUser = 'baytara_cached_user';
 
+  /// Whether the first-run tour has been seen. Not a secret, but it lives here so the app
+  /// needs only one storage mechanism, and it deliberately survives sign-out: someone who
+  /// signs out has still seen the tour, and showing it again would be a bug, not a welcome.
+  static const _onboardingSeen = 'baytara_onboarding_seen';
+
   Future<String?> get accessToken => _storage.read(key: _accessToken);
   Future<String?> get refreshToken => _storage.read(key: _refreshToken);
   Future<String?> get deviceId => _storage.read(key: _deviceId);
@@ -34,6 +39,11 @@ class SecureStore {
   /// Lets a cold start paint the signed-in UI immediately instead of waiting on a network
   /// round-trip to /auth/me. The server is still asked, in the background, and its answer
   /// replaces this.
+  Future<bool> get onboardingSeen async =>
+      (await _storage.read(key: _onboardingSeen)) == '1';
+  Future<void> markOnboardingSeen() =>
+      _storage.write(key: _onboardingSeen, value: '1');
+
   Future<String?> get cachedUser => _storage.read(key: _cachedUser);
   Future<void> setCachedUser(String? json) => _write(_cachedUser, json);
 

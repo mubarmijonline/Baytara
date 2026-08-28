@@ -11,6 +11,74 @@ const _verifiedVet =
     AuthUser(id: 3, name: 'C', email: 'c@b.c', phone: '01000000000', isBaytarian: true);
 
 void main() {
+  group('the first-run tour', () {
+    test('a fresh install is sent to onboarding before anything else', () {
+      // Outranks even the splash: it is the first thing a new install should show.
+      expect(
+        guardRedirect(
+          session: const SessionRestoring(),
+          location: '/courses',
+          onboardingSeen: false,
+        ),
+        Routes.onboarding,
+      );
+      expect(
+        guardRedirect(
+          session: const SessionSignedIn(_withPhone),
+          location: '/learn/1/2',
+          onboardingSeen: false,
+        ),
+        Routes.onboarding,
+      );
+    });
+
+    test('onboarding itself is allowed through', () {
+      expect(
+        guardRedirect(
+          session: const SessionSignedOut(),
+          location: Routes.onboarding,
+          onboardingSeen: false,
+        ),
+        isNull,
+      );
+    });
+
+    test('an unread flag decides nothing', () {
+      // null means "not loaded yet". Treating it as false would flash the tour at returning
+      // users on every cold start.
+      expect(
+        guardRedirect(
+          session: const SessionSignedOut(),
+          location: '/courses',
+          onboardingSeen: null,
+        ),
+        isNull,
+      );
+    });
+
+    test('once seen, the route sends you home instead of replaying it', () {
+      expect(
+        guardRedirect(
+          session: const SessionSignedOut(),
+          location: Routes.onboarding,
+          onboardingSeen: true,
+        ),
+        Routes.home,
+      );
+    });
+
+    test('having seen it does not otherwise change the guards', () {
+      expect(
+        guardRedirect(
+          session: const SessionSignedIn(_noPhone),
+          location: '/learn/1/2',
+          onboardingSeen: true,
+        ),
+        startsWith(Routes.phoneGate),
+      );
+    });
+  });
+
   group('while restoring', () {
     test('everything waits on the splash screen', () {
       expect(

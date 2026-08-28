@@ -11,6 +11,7 @@ import '../features/auth/domain/session.dart';
 
 abstract final class Routes {
   static const splash = '/splash';
+  static const onboarding = '/onboarding';
   static const home = '/';
   static const courses = '/courses';
   static const content = '/content';
@@ -48,7 +49,19 @@ String? guardRedirect({
   required SessionState session,
   required String location,
   bool? canPlayTarget,
+  bool? onboardingSeen,
 }) {
+  // The first-run tour outranks everything, including the splash: it is the first thing a
+  // new install should show. `null` means the flag has not been read yet, and deciding then
+  // would flash the tour at returning users on every cold start.
+  if (onboardingSeen == false) {
+    return location == Routes.onboarding ? null : Routes.onboarding;
+  }
+  // Once seen, the route has nothing left to offer.
+  if (onboardingSeen == true && location == Routes.onboarding) {
+    return session is SessionSignedIn ? Routes.home : Routes.home;
+  }
+
   // Still reading secure storage. Deciding now would bounce a signed-in user to the
   // catalogue for the half-second before their token loads.
   if (session is SessionRestoring) {

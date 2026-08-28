@@ -34,6 +34,30 @@ final sessionEndedProvider =
 /// Set by main() for debug builds. Off in tests, where request logs are only noise.
 final verboseNetworkLoggingProvider = Provider<bool>((ref) => false);
 
+/// Whether the first-run tour has been shown.
+///
+/// Null means "not read yet": the router must not decide anything while it is null, or a
+/// returning user gets a flash of onboarding on every cold start.
+class OnboardingSeen extends Notifier<bool?> {
+  @override
+  bool? build() {
+    Future.microtask(_load);
+    return null;
+  }
+
+  Future<void> _load() async {
+    state = await ref.read(secureStoreProvider).onboardingSeen;
+  }
+
+  Future<void> complete() async {
+    await ref.read(secureStoreProvider).markOnboardingSeen();
+    state = true;
+  }
+}
+
+final onboardingSeenProvider =
+    NotifierProvider<OnboardingSeen, bool?>(OnboardingSeen.new);
+
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
     verboseLogging: ref.watch(verboseNetworkLoggingProvider),

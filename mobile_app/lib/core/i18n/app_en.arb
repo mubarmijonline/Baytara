@@ -422,5 +422,14 @@
   "demoBodyIntro": "Demo request from the Baytara app.",
   "demoBodyIntroSpecialist": "Specialist request from the Baytara app.",
   "demoSentTitle": "Request received",
-  "demoSentBody": "We will get back to you on the email or phone you left, as soon as we can."
+  "demoSentBody": "We will get back to you on the email or phone you left, as soon as we can.",
+  "onboardSkip": "Skip",
+  "onboardNext": "Next",
+  "onboardStart": "Get started",
+  "onboard1Title": "Veterinary learning in Arabic",
+  "onboard1Body": "Courses and videos from practising vets, with material you can use in clinic. Written in Arabic, not translated into it.",
+  "onboard2Title": "Verification opens the specialist content",
+  "onboard2Body": "Free content is open to any account. The specialist veterinary material needs you verified as a vet, not just paid up.",
+  "onboard3Title": "Protected content, carrying your details",
+  "onboard3Body": "Your name and phone number are watermarked into every video, which is why we ask for a number before playback. Screen recordings come out black."
 }
