@@ -151,3 +151,19 @@ it('shows an upload that the browser interrupted, and keeps its video record', a
   // The record survived, so the editor for that video is one click away.
   expect(screen.getByRole('link', { name: /Open the video editor/i })).toHaveAttribute('href', '/admin/videos/41');
 });
+
+it('drops a queued row that never reached the server, since nothing can resume it', async () => {
+  // Files picked before the form was complete: no video id was ever created, and the
+  // File object cannot survive the reload, so the row would only offer a dead retry.
+  localStorage.setItem('baytara_admin_upload_queue', JSON.stringify([
+    { key: 'k1', title: 'Never started', name: 'never.mp4', size: 2048, status: 'queued', progress: 0 },
+    { key: 'k2', id: 41, title: 'Half sent', name: 'half.mp4', size: 1024, status: 'uploading', progress: 42 },
+  ]));
+
+  renderUpload();
+
+  expect(await screen.findByText('Half sent')).toBeVisible();
+  expect(screen.queryByText('Never started')).toBeNull();
+  // The one with a video behind it offers to finish, without redoing the form.
+  expect(screen.getByText('Pick the file again')).toBeVisible();
+});

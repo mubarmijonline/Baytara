@@ -474,3 +474,7 @@ select option { font-weight: 600; }
   .upload-form-row { grid-template-columns: 1fr; gap: 12px; }
   .upload-panel { padding: 16px; }
 }
+
+/* The row's own file picker, dressed as a button. */
+.upload-reattach { cursor: pointer; display: inline-flex; align-items: center; }
+.upload-reattach input { display: none; }
