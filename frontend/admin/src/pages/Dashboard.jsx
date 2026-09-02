@@ -31,34 +31,47 @@ function StorageCard({ copy, common }) {
   if (failed) return null;
   if (!data) return <section className="stat-group"><h3>{copy.storageTitle}</h3><div className="empty">{common.loading}</div></section>;
 
-  const used = data.disk_total_bytes && data.disk_free_bytes != null
-    ? data.disk_total_bytes - data.disk_free_bytes
-    : null;
-  // Two bars in one: everything else on the disk, then our videos on top of it, so the
-  // question "how much room is left for uploads" is answered by the empty part.
-  const pct = (value) => (data.disk_total_bytes ? Math.min(100, (value / data.disk_total_bytes) * 100) : 0);
+  // The card is about the upload directory, not the machine. The bar shows what is
+  // inside that directory — the biggest videos against the folder's own total — so a
+  // full-looking bar means "these few files are most of it", never "the server is full".
+  const total = data.videos_bytes || 0;
+  const share = (value) => (total ? Math.min(100, (value / total) * 100) : 0);
+  const top = data.largest.slice(0, 5);
+  const rest = total - top.reduce((sum, row) => sum + row.bytes, 0);
+  const average = data.video_count ? total / data.video_count : 0;
 
   return (
     <section className="stat-group">
       <h3>{copy.storageTitle}</h3>
       <div className="storage-card">
         <div className="storage-figures">
-          <div><b>{bytes(data.videos_bytes)}</b><span>{copy.storageVideos}</span></div>
+          <div><b>{bytes(total)}</b><span>{copy.storageVideos}</span></div>
           <div><b>{data.video_count}</b><span>{copy.storageCount}</span></div>
-          <div><b>{bytes(data.disk_free_bytes)}</b><span>{copy.storageFree}</span></div>
-          <div><b>{bytes(data.disk_total_bytes)}</b><span>{copy.storageDisk}</span></div>
+          <div><b>{bytes(average)}</b><span>{copy.storageAverage}</span></div>
         </div>
 
-        <div className="storage-bar" role="img"
-             aria-label={`${copy.storageVideos}: ${bytes(data.videos_bytes)} — ${copy.storageFree}: ${bytes(data.disk_free_bytes)}`}>
-          {used != null && <span className="storage-bar-other" style={{ width: `${pct(used - data.videos_bytes)}%` }} />}
-          <span className="storage-bar-videos" style={{ width: `${pct(data.videos_bytes)}%` }} />
-        </div>
-        <div className="storage-legend">
-          <span><i className="dot-videos" /> {copy.storageVideos}</span>
-          <span><i className="dot-other" /> {copy.storageOther}</span>
-          <span><i className="dot-free" /> {copy.storageFree}</span>
-        </div>
+        {total > 0 && (
+          <>
+            <div className="storage-bar" role="img"
+                 aria-label={`${copy.storageVideos}: ${bytes(total)}`}>
+              {top.map((row, index) => (
+                <span key={row.lesson_id ?? `top-${index}`}
+                      className={`storage-bar-seg seg-${index % 5}`}
+                      style={{ width: `${share(row.bytes)}%` }}
+                      title={`${row.title || `#${row.lesson_id}`} — ${bytes(row.bytes)}`} />
+              ))}
+              {rest > 0 && <span className="storage-bar-rest" style={{ width: `${share(rest)}%` }} />}
+            </div>
+            <div className="storage-legend">
+              {top.map((row, index) => (
+                <span key={row.lesson_id ?? `legend-${index}`}>
+                  <i className={`seg-${index % 5}`} /> {row.title || `#${row.lesson_id}`}
+                </span>
+              ))}
+              {rest > 0 && <span><i className="seg-rest" /> {copy.storageRest}</span>}
+            </div>
+          </>
+        )}
 
         {data.largest.length > 0 && (
           <table className="table storage-largest">
@@ -78,6 +91,7 @@ function StorageCard({ copy, common }) {
           </table>
         )}
         <div className="video-field-hint">{copy.storagePath}: <code dir="ltr">{data.path}</code></div>
+        <div className="video-field-hint">{copy.storageHeadroom}: {bytes(data.disk_free_bytes)}</div>
       </div>
     </section>
   );
