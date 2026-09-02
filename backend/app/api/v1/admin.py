@@ -1273,6 +1273,11 @@ def _delete_catalog_video(video_id):
     )
     if has_dependencies:
         return jsonify(error="video_in_use"), 409
+    # A self-hosted video owns files on disk. Dropping only the row would leave its
+    # packaged HLS behind, counted by the storage card and served to nobody.
+    from ...services import local_video
+
+    local_video.delete(current_app, video_id)
     db.session.delete(video)
     db.session.commit()
     return jsonify(deleted=video_id)
