@@ -92,6 +92,9 @@ export const api = {
   me: () => req('/auth/me'),
 
   stats: ({ deferUnauthorized = false } = {}) => req('/admin/stats', { clearTokenOn401: !deferUnauthorized }),
+  // Disk taken by self-hosted video. Its own call: it walks the filesystem, and the
+  // dashboard counters should not wait on that.
+  storage: () => req('/admin/storage'),
 
   // users
   users: (params) => req('/admin/users' + qs(params)),

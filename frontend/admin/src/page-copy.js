@@ -8,6 +8,11 @@ const COPY = {
       heading: 'لوحة القيادة',
       subtitle: 'اضغط على أي رقم للانتقال إلى تفاصيله.',
       egp: 'ج.م',
+      storageTitle: 'مساحة الفيديوهات على الخادم',
+      storageVideos: 'حجم الفيديوهات', storageCount: 'عدد الفيديوهات المرفوعة',
+      storageFree: 'المساحة المتاحة', storageDisk: 'إجمالي القرص',
+      storageOther: 'مستخدَم بواسطة النظام', storageLargest: 'الأكبر حجماً',
+      storageSize: 'الحجم', storageOrphan: 'مجلد بلا فيديو', storagePath: 'مسار التخزين',
       groups: {
         attention: 'يحتاج إجراءً', money: 'المدفوعات والإيرادات',
         learners: 'المتعلّمون', catalog: 'المحتوى', people: 'الحسابات',
@@ -188,6 +193,11 @@ const COPY = {
       heading: 'Dashboard',
       subtitle: 'Press any number to open what it counts.',
       egp: 'EGP',
+      storageTitle: 'Video storage on the server',
+      storageVideos: 'Videos on disk', storageCount: 'Uploaded videos',
+      storageFree: 'Free space', storageDisk: 'Disk total',
+      storageOther: 'Used by everything else', storageLargest: 'Largest',
+      storageSize: 'Size', storageOrphan: 'Folder with no video', storagePath: 'Storage path',
       groups: {
         attention: 'Needs action', money: 'Payments and revenue',
         learners: 'Learners', catalog: 'Content', people: 'Accounts',

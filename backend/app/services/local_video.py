@@ -99,3 +99,53 @@ def read_key(app, lesson_id):
 
 def delete(app, lesson_id):
     shutil.rmtree(lesson_dir(app, lesson_id), ignore_errors=True)
+
+
+def usage(app, lesson_ids=None):
+    """How much disk the self-hosted videos take, per video and in total.
+
+    Walks the packaged directories rather than trusting the database: what matters to an
+    admin deciding whether to upload another lecture is what is actually on the disk,
+    including any directory left behind by a failed packaging run.
+
+    ponytail: os.walk on a few hundred directories, called from one admin screen. Cache
+    it in Redis the day the dashboard feels slow, not before.
+    """
+    root = video_root(app)
+    per_video, total = [], 0
+    if root.exists():
+        for entry in os.scandir(root):
+            if not entry.is_dir():
+                continue
+            size = 0
+            for base, _dirs, files in os.walk(entry.path):
+                for name in files:
+                    try:
+                        size += os.path.getsize(os.path.join(base, name))
+                    except OSError:  # vanished mid-walk (a delete racing this scan)
+                        continue
+            total += size
+            try:
+                lesson_id = int(entry.name)
+            except ValueError:
+                lesson_id = None  # not one of ours; still counted in the total
+            per_video.append({"lesson_id": lesson_id, "bytes": size})
+
+    # Disk figures come from the filesystem holding the videos, which may well be a
+    # different mount from the one the database sits on.
+    probe = root if root.exists() else root.parent
+    try:
+        disk = shutil.disk_usage(probe)
+        disk_total, disk_free = disk.total, disk.free
+    except OSError:
+        disk_total = disk_free = None
+
+    per_video.sort(key=lambda row: row["bytes"], reverse=True)
+    return {
+        "videos_bytes": total,
+        "video_count": len(per_video),
+        "largest": per_video[:10],
+        "disk_total_bytes": disk_total,
+        "disk_free_bytes": disk_free,
+        "path": str(root),
+    }

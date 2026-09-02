@@ -35,6 +35,29 @@ def _uid():
 
 # ------------------------------ dashboard ------------------------------
 
+@bp.get("/storage")
+@require_role("admin")
+def storage():
+    """Disk taken by self-hosted video, and how much room is left.
+
+    Its own endpoint rather than another block on /admin/stats: this one touches the
+    filesystem, and the dashboard should not wait on a disk walk to draw its counters.
+    """
+    from ...services import local_video
+
+    report = local_video.usage(current_app)
+    titles = {}
+    ids = [row["lesson_id"] for row in report["largest"] if row["lesson_id"]]
+    if ids:
+        titles = {lesson.id: lesson.title
+                  for lesson in Lesson.query.filter(Lesson.id.in_(ids)).all()}
+    for row in report["largest"]:
+        # A directory with no lesson behind it is an orphan the admin can delete.
+        row["title"] = titles.get(row["lesson_id"])
+    return jsonify(storage=report)
+
+
+
 @bp.get("/stats")
 @require_role("admin")
 def stats():
