@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { ACCESS_TYPES, CATEGORY_KEYS, localizedCatalogValue, providerReady } from '../catalog.js';
 import VideoFolderTree from '../components/VideoFolderTree.jsx';
-import { Field, ErrText } from '../ui.jsx';
+import { Field, ErrText, catalogErrorText } from '../ui.jsx';
 import { uploadForm } from '../vdocipher-upload.js';
 import { useAdminLanguage } from '../i18n.jsx';
 
@@ -330,7 +330,10 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   // The server refuses a video joining a course its instructor does not own. Show that
   // rule rather than the generic failure the catch would otherwise report.
   const saveFailure = (error) => ((error.data?.errors || []).includes('course_instructor_mismatch')
-    ? 'course_instructor_mismatch' : error.message);
+    ? 'course_instructor_mismatch'
+    // Everything else the validator refuses names its own field, so say which one
+    // rather than reporting the envelope.
+    : catalogErrorText(error, t));
 
   const saveCatalog = async () => {
     const invalid = validate(providerOnly);

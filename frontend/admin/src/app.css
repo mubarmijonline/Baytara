@@ -442,3 +442,10 @@ select option { font-weight: 600; }
   .storage-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .storage-figures b { font-size: 17px; }
 }
+
+/* Upload queue: one row per file, with its own bar while it transfers. */
+.upload-queue td { vertical-align: top; }
+.upload-name { font-weight: 700; }
+.upload-progress { width: 100%; max-width: 320px; height: 8px; margin-top: 6px; display: block; }
+/* A required select that is still empty, marked before the server has to say no. */
+.field-required { border-color: #e0a800 !important; background: #fffdf5; }

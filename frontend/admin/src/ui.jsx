@@ -32,3 +32,14 @@ export function ErrText({ children }) {
 export function apiError(e, fallback = 'حدث خطأ.') {
   return e && e.data && e.data.error ? e.data.error : fallback;
 }
+
+/** The catalogue validator answers with a list of reasons; showing only the envelope
+ *  ("catalog_validation_failed") told an admin nothing about which field to fix. */
+export function catalogErrorText(e, t) {
+  const code = e?.data?.error;
+  const reasons = Array.isArray(e?.data?.errors) ? e.data.errors : [];
+  if (reasons.length) return reasons.map((reason) => t(`catalog.error.${reason}`)).join(' · ');
+  if (!code) return e?.message || t('errors.generic');
+  const known = t(`catalog.error.${code}`);
+  return known === `catalog.error.${code}` ? code : known;
+}
