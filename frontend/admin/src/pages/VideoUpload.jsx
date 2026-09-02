@@ -17,8 +17,8 @@ const QUEUE_KEY = 'baytara_admin_upload_queue';
 const SETTLED = new Set(['ready', 'failed', 'interrupted']);
 
 const empty = {
-  category_id: '', access_type: 'free', status: 'published', is_protected: false,
-  price: '0', currency: 'EGP',
+  category_id: '', instructor_id: '', access_type: 'free', status: 'published',
+  is_protected: false, price: '0', currency: 'EGP',
 };
 
 const megabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -46,6 +46,7 @@ export default function VideoUpload() {
   const { language, t } = useAdminLanguage();
   const [form, setForm] = useState(empty);
   const [categories, setCategories] = useState([]);
+  const [instructors, setInstructors] = useState([]);
   const [items, setItems] = useState(loadQueue);
   const [error, setError] = useState('');
   const [running, setRunning] = useState(false);
@@ -60,6 +61,7 @@ export default function VideoUpload() {
 
   useEffect(() => {
     api.categories().then((r) => setCategories(r.categories || [])).catch(() => {});
+    api.users({ role: 'instructor' }).then((r) => setInstructors(r.users || [])).catch(() => {});
   }, []);
 
   // Packaging happens on the server, so its progress is the one thing that does survive a
@@ -118,6 +120,7 @@ export default function VideoUpload() {
           ...form,
           title: item.title,
           category_id: Number(form.category_id),
+          instructor_id: Number(form.instructor_id),
           price: Number(form.price || 0),
         });
         id = (res.video || res).id;
@@ -133,6 +136,7 @@ export default function VideoUpload() {
   const start = async () => {
     setError('');
     if (!form.category_id) return setError(t('video.validation.category'));
+    if (!form.instructor_id) return setError(t('video.validation.instructor'));
     const pending = items.filter((row) => row.file && (row.status === 'queued' || row.status === 'interrupted'));
     if (!pending.length) return setError(t('videoUpload.pickFile'));
 
@@ -157,15 +161,24 @@ export default function VideoUpload() {
       <h2>{t('videoUpload.heading')}</h2>
       <p style={{ color: 'var(--muted, #6b6b80)', maxWidth: 720, marginTop: -6 }}>{t('videoUpload.intro')}</p>
 
-      <section className="video-editor-panel" style={{ maxWidth: 820 }}>
+      <section className="video-editor-panel upload-panel">
         {/* One set of catalogue fields for the whole batch; the title is per file. */}
-        <div className="video-form-columns">
+        <div className="upload-form-row">
           <Field label={`${t('catalog.category')} *`} hint={t('videoUpload.categoryHint')}>
             <select value={form.category_id} onChange={set('category_id')}
                     className={form.category_id ? '' : 'field-required'} required>
               <option value="">{t('video.chooseCategory')}</option>
               {categories.filter((c) => CATEGORY_KEYS.includes(c.slug)).map((c) => (
                 <option key={c.id} value={c.id}>{localizedCatalogValue(c, 'name', language)}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label={`${t('video.instructor')} *`} hint={t('videoUpload.instructorHint')}>
+            <select value={form.instructor_id} onChange={set('instructor_id')}
+                    className={form.instructor_id ? '' : 'field-required'} required>
+              <option value="">{t('video.chooseInstructor')}</option>
+              {instructors.map((person) => (
+                <option key={person.id} value={person.id}>{person.name}</option>
               ))}
             </select>
           </Field>
@@ -181,7 +194,7 @@ export default function VideoUpload() {
           </Field>
         </div>
         {(form.access_type === 'baytarian' || form.access_type === 'general') && (
-          <div className="video-form-columns">
+          <div className="upload-form-row">
             <Field label={`${t('catalog.price')} *`} hint={t('videoUpload.priceHint')}>
               <input type="number" min="1" value={form.price} onChange={set('price')} />
             </Field>
@@ -213,7 +226,7 @@ export default function VideoUpload() {
       </section>
 
       {items.length > 0 && (
-        <section className="video-editor-panel" style={{ maxWidth: 820, marginTop: 16 }}>
+        <section className="video-editor-panel upload-panel" style={{ marginTop: 16 }}>
           <h3>{t('videoUpload.queue')}</h3>
           <p className="video-field-hint">{t('videoUpload.queueHint')}</p>
           <table className="table upload-queue">
