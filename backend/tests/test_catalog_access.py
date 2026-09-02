@@ -386,6 +386,8 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
             "instructor_id": None,
             "assignment_count": 1,
             "is_protected": True,
+            "source": "vdocipher",
+            "local_status": None,
             "has_video": False,
             "course_id": None,
         }

@@ -419,3 +419,26 @@ select option { font-weight: 600; }
 /* A queue with something in it should read as work, not decoration. */
 .stat-warn .num { color: #8a6d1f; }
 .stat-warn { background: #fffdf6; }
+
+/* Storage card: how much disk the self-hosted videos take. The bar answers the only
+   question an admin actually has — is there room for another lecture. */
+.storage-card { border: 1px solid var(--line, #ececf2); border-radius: 14px; padding: 16px; background: #fff; }
+.storage-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.storage-figures div { display: flex; flex-direction: column; gap: 2px; }
+.storage-figures b { font-size: 20px; font-weight: 800; }
+.storage-figures span { font-size: 12.5px; color: var(--muted, #5A6180); }
+.storage-bar { display: flex; height: 12px; border-radius: 7px; overflow: hidden; background: #eef0f6; }
+.storage-bar-other { background: #c7cbdd; }
+.storage-bar-videos { background: #3048A0; }
+.storage-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; color: var(--muted, #5A6180); }
+.storage-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 5px; }
+.storage-legend .dot-videos { background: #3048A0; }
+.storage-legend .dot-other { background: #c7cbdd; }
+.storage-legend .dot-free { background: #eef0f6; border: 1px solid #d7dae6; }
+.storage-largest { margin-top: 14px; }
+.storage-largest td:last-child, .storage-largest th:last-child { text-align: end; white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .storage-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .storage-figures b { font-size: 17px; }
+}

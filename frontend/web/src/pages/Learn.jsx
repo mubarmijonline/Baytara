@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import CurriculumAccordion from '../components/CurriculumAccordion.jsx';
 import LibraryBrowser from '../components/LibraryBrowser.jsx';
 import SecureVdoPlayer from '../components/SecureVdoPlayer.jsx';
+import LocalHlsPlayer from '../components/LocalHlsPlayer.jsx';
 import NotFound from './NotFound.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { auth, isAuthed, useFetch, webapi } from '../lib/api.js';
@@ -132,12 +133,19 @@ export default function Learn() {
         <div style={{ background: PLAYER_BG, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <div style={{ aspectRatio: '16 / 9', background: gradients.darkPanel, position: 'relative', display: 'grid', placeItems: 'center' }}>
             {video ? (
-              <SecureVdoPlayer
-                playback={video}
-                title={activeLesson?.title || course.title}
-                onEnded={completeCurrent}
-                onSecurityError={() => setVideoErr(t('video.err.generic'))}
-              />
+              // Two delivery paths, one player contract: VdoCipher when the lesson has
+              // a provider id, our own encrypted HLS when the file lives on this server.
+              (() => {
+                const Player = video.kind === 'local' ? LocalHlsPlayer : SecureVdoPlayer;
+                return (
+                  <Player
+                    playback={video}
+                    title={activeLesson?.title || course.title}
+                    onEnded={completeCurrent}
+                    onSecurityError={() => setVideoErr(t('video.err.generic'))}
+                  />
+                );
+              })()
             ) : (
               <>
                 <span aria-hidden="true" style={{ width: 74, height: 74, borderRadius: '50%', background: 'rgba(48,72,160,.92)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 22 }}>▶</span>

@@ -17,6 +17,7 @@ import {
   Settings,
   Star,
   Tags,
+  Upload,
   UserCheck,
 } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -31,6 +32,7 @@ const NAV = [
   ['baytarian', 'nav.baytarian', BadgeCheck],
   ['courses', 'nav.courses', BookOpen],
   ['videos', 'nav.videos', Library],
+  ['videos/upload', 'nav.videoUpload', Upload],
   ['video-reports', 'nav.videoReports', BarChart3],
   ['bundles', 'nav.bundles', Boxes],
   ['enrollments', 'nav.enrollments', UserCheck],
