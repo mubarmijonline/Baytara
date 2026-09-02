@@ -56,7 +56,17 @@ export default function VideoUpload() {
   useEffect(() => { saveQueue(items); }, [items]);
 
   const patch = useCallback((key, changes) => {
-    setItems((rows) => rows.map((row) => (row.key === key ? { ...row, ...changes } : row)));
+    setItems((rows) => {
+      let touched = false;
+      const next = rows.map((row) => {
+        if (row.key !== key) return row;
+        if (Object.entries(changes).every(([field, value]) => row[field] === value)) return row;
+        touched = true;
+        return { ...row, ...changes };
+      });
+      // Same array when nothing actually changed, so effects watching `items` rest.
+      return touched ? next : rows;
+    });
   }, []);
 
   useEffect(() => {
@@ -66,6 +76,11 @@ export default function VideoUpload() {
 
   // Packaging happens on the server, so its progress is the one thing that does survive a
   // refresh: on load, ask what really became of every item that has a video id.
+  const pendingKey = items
+    .filter((row) => row.id && !SETTLED.has(row.status))
+    .map((row) => `${row.id}:${row.status}`)
+    .join(',');
+
   useEffect(() => {
     const pending = items.filter((row) => row.id && !SETTLED.has(row.status));
     if (!pending.length) { clearInterval(pollRef.current); return undefined; }
@@ -83,12 +98,16 @@ export default function VideoUpload() {
     tick();
     pollRef.current = setInterval(tick, 4000);
     return () => clearInterval(pollRef.current);
-  }, [items, patch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingKey, patch]);
 
-  const set = (key) => (event) => setForm({
-    ...form,
-    [key]: event.target.type === 'checkbox' ? event.target.checked : event.target.value,
-  });
+  const set = (key) => (event) => {
+    setError('');   // the old complaint is about the field being changed
+    setForm({
+      ...form,
+      [key]: event.target.type === 'checkbox' ? event.target.checked : event.target.value,
+    });
+  };
 
   const addFiles = (fileList) => {
     const chosen = Array.from(fileList || []);
@@ -133,12 +152,18 @@ export default function VideoUpload() {
     }
   }
 
+  const missing = () => {
+    if (!form.category_id) return t('video.validation.category');
+    if (!form.instructor_id) return t('video.validation.instructor');
+    return '';
+  };
+
   const start = async () => {
-    setError('');
-    if (!form.category_id) return setError(t('video.validation.category'));
-    if (!form.instructor_id) return setError(t('video.validation.instructor'));
+    const invalid = missing();
+    setError(invalid);
+    if (invalid) return;
     const pending = items.filter((row) => row.file && (row.status === 'queued' || row.status === 'interrupted'));
-    if (!pending.length) return setError(t('videoUpload.pickFile'));
+    if (!pending.length) return;
 
     setRunning(true);
     // One at a time: ffmpeg is already busy packaging the last one, and parallel uploads
@@ -150,6 +175,23 @@ export default function VideoUpload() {
     setRunning(false);
     if (filesRef.current) filesRef.current.value = '';
   };
+
+  const waitingRef = useRef(false);
+  useEffect(() => {
+    if (running || waitingRef.current) return;
+    if (!items.some((row) => row.file && (row.status === 'queued' || row.status === 'interrupted'))) return;
+    // Files are waiting: either say what is stopping them, or get on with it. Returning
+    // quietly is what made the page look like it had ignored the file.
+    const invalid = missing();
+    if (invalid) { setError(invalid); return; }
+    waitingRef.current = true;
+    // Deferred so the row renders as queued before the first byte moves.
+    Promise.resolve().then(async () => {
+      await start();
+      waitingRef.current = false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, form.category_id, form.instructor_id, running]);
 
   const remove = (key) => setItems((rows) => rows.filter((row) => row.key !== key));
   const clearSettled = () => setItems((rows) => rows.filter((row) => !SETTLED.has(row.status)));
@@ -208,7 +250,7 @@ export default function VideoUpload() {
           <span>{t('video.captureProtectionHint')}</span>
         </label>
 
-        <Field label={t('videoUpload.file')} hint={t('videoUpload.multipleHint')}>
+        <Field label={t('videoUpload.file')} hint={`${t('videoUpload.multipleHint')} ${t('videoUpload.autoStart')}`}>
           <input ref={filesRef} type="file" multiple
                  accept="video/mp4,video/quicktime,video/x-matroska,video/webm"
                  onChange={(e) => addFiles(e.target.files)} />
@@ -216,9 +258,11 @@ export default function VideoUpload() {
 
         <ErrText>{error}</ErrText>
         <div className="row">
-          <button className="btn btn-filled" type="button" disabled={running || !waiting} onClick={start}>
-            <Upload size={16} /> {running ? t('videoUpload.running') : `${t('videoUpload.submit')}${waiting ? ` (${waiting})` : ''}`}
-          </button>
+          {waiting > 0 && (
+            <button className="btn btn-filled" type="button" disabled={running} onClick={start}>
+              <Upload size={16} /> {running ? t('videoUpload.running') : `${t('videoUpload.retry')} (${waiting})`}
+            </button>
+          )}
           {items.some((row) => SETTLED.has(row.status)) && (
             <button className="btn btn-text" type="button" onClick={clearSettled}>{t('videoUpload.clearDone')}</button>
           )}
@@ -236,9 +280,10 @@ export default function VideoUpload() {
                   <td>
                     <div className="upload-name">{row.title || row.name}</div>
                     <div className="video-field-hint" dir="ltr">{row.name} — {megabytes(row.size)}</div>
-                    {row.status === 'uploading' && (
-                      <progress className="upload-progress" max="100" value={row.progress} />
-                    )}
+                    {row.status === 'packaging'
+                      ? <progress className="upload-progress" />
+                      : <progress className="upload-progress" max="100"
+                                  value={row.status === 'ready' ? 100 : row.progress || 0} />}
                     {row.error && <div style={{ color: '#b3261e', fontSize: 12 }}>{row.error}</div>}
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
