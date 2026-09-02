@@ -31,6 +31,17 @@ function renderUpload() {
 
 const clip = (name) => new File([new Uint8Array(8)], name, { type: 'video/mp4' });
 
+// The selects are populated by their own requests; setting a value before the options
+// arrive is a no-op on a React select, which is a test trap, not app behaviour.
+async function chooseCategory() {
+  await screen.findByRole('option', { name: 'Large animals' });
+  fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: '1' } });
+}
+async function chooseInstructor() {
+  await screen.findByRole('option', { name: 'Dr Sara' });
+  fireEvent.change(screen.getByLabelText(/Instructor/i), { target: { value: '8' } });
+}
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('baytara_admin_language', 'en');
@@ -59,35 +70,72 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it('refuses to start without a category, naming the field', async () => {
+it('will not upload without a category, and says which field is missing', async () => {
   renderUpload();
-  const picker = await screen.findByLabelText(/Video file/i);
-  fireEvent.change(picker, { target: { files: [clip('one.mp4')] } });
+  // Picking the file is the whole gesture: there is no button to press afterwards.
+  fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('one.mp4')] } });
 
-  fireEvent.click(screen.getByRole('button', { name: /Upload and process/i }));
-
-  expect(await screen.findByText('Category is required.')).toBeVisible();
+  await waitFor(() => {
+    expect(document.querySelector('.error-text')?.textContent).toBe('Category is required.');
+  });
   // Nothing was created: the catalogue row is only made once the form is valid.
   expect(fetch.mock.calls.some(([url, o]) => String(url).endsWith('/admin/videos') && o?.method === 'POST')).toBe(false);
 });
 
-it('queues several files at once and creates a video for each', async () => {
+it('names the missing instructor instead of printing a translation key', async () => {
   renderUpload();
+  await chooseCategory();
+  fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('one.mp4')] } });
+
+  await waitFor(() => {
+    expect(document.querySelector('.error-text')?.textContent).toBe('An instructor is required.');
+  });
+  // Never a raw translation key.
+  expect(document.body.textContent).not.toMatch(/catalog\.error\./);
+});
+
+it('starts on its own once the form is complete, for every file picked', async () => {
+  renderUpload();
+  await chooseCategory();
+  await chooseInstructor();
+
   fireEvent.change(await screen.findByLabelText(/Video file/i),
     { target: { files: [clip('one.mp4'), clip('two.mp4')] } });
 
-  // Both appear in the queue before anything is uploaded.
+  // Both rows appear, and both upload with no further gesture.
   expect(screen.getByText('one.mp4', { exact: false })).toBeVisible();
-  expect(screen.getByText('two.mp4', { exact: false })).toBeVisible();
-
-  fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: '1' } });
-  fireEvent.change(await screen.findByLabelText(/Instructor/i), { target: { value: '8' } });
-  fireEvent.click(screen.getByRole('button', { name: /Upload and process \(2\)/i }));
-
   await waitFor(() => {
     const created = fetch.mock.calls.filter(([url, o]) => String(url).endsWith('/admin/videos') && o?.method === 'POST');
     expect(created).toHaveLength(2);
   });
+});
+
+it('picks the queue up by itself when the missing field is filled in later', async () => {
+  renderUpload();
+  fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('late.mp4')] } });
+  await waitFor(() => {
+    expect(document.querySelector('.error-text')?.textContent).toBe('Category is required.');
+  });
+
+  await chooseCategory();
+  await chooseInstructor();
+
+  // No re-picking the file, no button: completing the form resumes the queue.
+  await waitFor(() => {
+    expect(fetch.mock.calls.some(([url, o]) => String(url).endsWith('/admin/videos') && o?.method === 'POST')).toBe(true);
+  });
+});
+
+it('gives every queued row a progress bar, so waiting looks like a stage not a stall', async () => {
+  localStorage.setItem('baytara_admin_upload_queue', JSON.stringify([
+    { key: 'k1', id: 41, title: 'Converting now', name: 'a.mp4', size: 1024, status: 'packaging', progress: 100 },
+  ]));
+  renderUpload();
+
+  const bar = await waitFor(() => document.querySelector('progress.upload-progress'));
+  expect(bar).toBeTruthy();
+  // Packaging has no percentage to report, so the bar is indeterminate rather than absent.
+  expect(bar.hasAttribute('value')).toBe(false);
 });
 
 it('shows an upload that the browser interrupted, and keeps its video record', async () => {
@@ -102,15 +150,4 @@ it('shows an upload that the browser interrupted, and keeps its video record', a
   expect(screen.getByText('Half sent')).toBeVisible();
   // The record survived, so the editor for that video is one click away.
   expect(screen.getByRole('link', { name: /Open the video editor/i })).toHaveAttribute('href', '/admin/videos/41');
-});
-
-it('names the missing instructor instead of printing a translation key', async () => {
-  renderUpload();
-  fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('one.mp4')] } });
-  fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: '1' } });
-
-  fireEvent.click(screen.getByRole('button', { name: /Upload and process/i }));
-
-  expect(await screen.findByText('An instructor is required.')).toBeVisible();
-  expect(screen.queryByText(/catalog\.error\./)).toBeNull();
 });
