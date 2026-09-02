@@ -428,13 +428,18 @@ select option { font-weight: 600; }
 .storage-figures b { font-size: 20px; font-weight: 800; }
 .storage-figures span { font-size: 12.5px; color: var(--muted, #5A6180); }
 .storage-bar { display: flex; height: 12px; border-radius: 7px; overflow: hidden; background: #eef0f6; }
-.storage-bar-other { background: #c7cbdd; }
-.storage-bar-videos { background: #3048A0; }
+.storage-bar-seg { transition: width .2s; }
+.storage-bar-rest { background: #c7cbdd; }
+/* One colour per top video, so a segment and its legend entry match. */
+.seg-0 { background: #3048A0; }
+.seg-1 { background: #4a63c4; }
+.seg-2 { background: #6a80d6; }
+.seg-3 { background: #8e9fe4; }
+.seg-4 { background: #b3bff0; }
+.seg-rest { background: #c7cbdd; }
 .storage-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; color: var(--muted, #5A6180); }
 .storage-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 5px; }
-.storage-legend .dot-videos { background: #3048A0; }
-.storage-legend .dot-other { background: #c7cbdd; }
-.storage-legend .dot-free { background: #eef0f6; border: 1px solid #d7dae6; }
+.storage-legend i { border: 0; }
 .storage-largest { margin-top: 14px; }
 .storage-largest td:last-child, .storage-largest th:last-child { text-align: end; white-space: nowrap; }
 
