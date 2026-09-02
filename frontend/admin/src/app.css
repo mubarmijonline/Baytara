@@ -449,3 +449,7 @@ select option { font-weight: 600; }
 .upload-progress { width: 100%; max-width: 320px; height: 8px; margin-top: 6px; display: block; }
 /* A required select that is still empty, marked before the server has to say no. */
 .field-required { border-color: #e0a800 !important; background: #fffdf5; }
+
+/* Title row on the video editor: the destructive action sits away from Save. */
+.video-editor-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.video-editor-title h2 { margin: 0; }

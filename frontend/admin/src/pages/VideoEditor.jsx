@@ -1,7 +1,9 @@
-import { ArrowLeft, Eye, FolderInput, Save, Upload } from 'lucide-react';
+import { ArrowLeft, Eye, FolderInput, Save, Trash2, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
+import { confirmDialog } from '../dialog.jsx';
+import { toast } from '../toast.jsx';
 import { ACCESS_TYPES, CATEGORY_KEYS, localizedCatalogValue, providerReady } from '../catalog.js';
 import VideoFolderTree from '../components/VideoFolderTree.jsx';
 import { Field, ErrText, catalogErrorText } from '../ui.jsx';
@@ -335,6 +337,21 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     // rather than reporting the envelope.
     : catalogErrorText(error, t));
 
+  // Removing the catalogue row also removes any packaged file on our server. The API
+  // refuses while a course, purchase or watch history still points at it.
+  const deleteVideo = async () => {
+    if (!await confirmDialog(t('video.deleteConfirm').replace('{title}', form.title || `#${videoId}`))) return;
+    setPhase('delete'); setLocalError('');
+    try {
+      await api.videoDelete(videoId);
+      toast.success(t('video.deleted'));
+      navigate('/videos');
+    } catch (error) {
+      setLocalError(error.data?.error === 'video_in_use' ? t('video.deleteInUse') : catalogErrorText(error, t));
+      setPhase('idle');
+    }
+  };
+
   const saveCatalog = async () => {
     const invalid = validate(providerOnly);
     if (invalid) { setLocalError(invalid); return; }
@@ -371,7 +388,16 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     return error ? t('errors.load') : '';
   };
 
-  return <section className="video-editor"><Link className="back-link" to="/videos"><ArrowLeft size={16} /> {t('common.back')}</Link><h2>{creating ? t('pages.videoNew') : t('pages.videoDetails')}</h2><ErrText>{message(localError)}</ErrText>
+  return <section className="video-editor"><Link className="back-link" to="/videos"><ArrowLeft size={16} /> {t('common.back')}</Link>
+    <div className="video-editor-title">
+      <h2>{creating ? t('pages.videoNew') : t('pages.videoDetails')}</h2>
+      {!creating && videoId && (
+        <button className="btn btn-error btn-sm" type="button" disabled={phase === 'delete'} onClick={deleteVideo}>
+          <Trash2 size={15} /> {phase === 'delete' ? t('video.deleting') : t('common.delete')}
+        </button>
+      )}
+    </div>
+    <ErrText>{message(localError)}</ErrText>
     <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} instructors={instructors} courses={courses} dropped={dropped} language={language} t={t} uploadLocal={uploadLocal} removeLocal={removeLocal} uploading={uploading} />
       {(creating || providerOnly) && <><h3>{t('video.folder')}</h3><VideoFolderTree selectedId={folderId} onSelect={selectFolder} picker />{creating && <Field label={t('video.file')}><input type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} /></Field>}</>}
       {creating && busy && <progress max="100" value={progress} />}

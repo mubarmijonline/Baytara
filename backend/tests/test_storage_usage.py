@@ -84,3 +84,57 @@ def test_storage_endpoint_names_the_videos_and_is_admin_only(app):
     # The orphan is reported with no title, which is how an admin spots it.
     orphan = [row for row in body["largest"] if row["lesson_id"] == 9999][0]
     assert orphan["title"] is None
+
+
+def test_deleting_a_video_frees_its_disk_space(app):
+    client = app.test_client()
+    headers = _admin_headers(client, app)
+    with app.app_context():
+        lesson = Lesson(title="ملف محلي", position=0, status="published", access_type="free")
+        db.session.add(lesson)
+        db.session.commit()
+        lesson_id = lesson.id
+
+    folder = local_video.lesson_dir(app, lesson_id)
+    folder.mkdir(parents=True)
+    (folder / "seg0.ts").write_bytes(b"x" * 2048)
+    assert local_video.usage(app)["videos_bytes"] == 2048
+
+    assert client.delete(f"/api/v1/admin/videos/{lesson_id}", headers=headers).status_code == 200
+
+    # Row and files go together: a deleted video must not keep counting against the disk.
+    assert not folder.exists()
+    assert local_video.usage(app)["videos_bytes"] == 0
+    with app.app_context():
+        assert db.session.get(Lesson, lesson_id) is None
+
+
+def test_a_video_in_use_is_refused_and_keeps_its_files(app):
+    from app.models import Category, Course, CourseVideo
+
+    client = app.test_client()
+    headers = _admin_headers(client, app)
+    with app.app_context():
+        lesson = Lesson(title="قيد الاستخدام", position=0, status="published", access_type="free")
+        instructor = User(name="I", email="ins@t.test", password_hash=hash_password("secret12"),
+                          role="instructor")
+        category = Category(name="C", slug="c-in-use")
+        db.session.add_all([lesson, instructor, category])
+        db.session.flush()
+        course = Course(title="K", slug="k-in-use", price=0, instructor_id=instructor.id,
+                        category_id=category.id, status="published", access_type="free")
+        db.session.add(course)
+        db.session.flush()
+        # The video sits inside a course, so deleting it would tear a hole in that course.
+        db.session.add(CourseVideo(course_id=course.id, video_id=lesson.id, position=0))
+        db.session.commit()
+        lesson_id = lesson.id
+
+    folder = local_video.lesson_dir(app, lesson_id)
+    folder.mkdir(parents=True)
+    (folder / "seg0.ts").write_bytes(b"x" * 512)
+
+    refused = client.delete(f"/api/v1/admin/videos/{lesson_id}", headers=headers)
+    assert refused.status_code == 409 and refused.get_json()["error"] == "video_in_use"
+    # A refusal must not be half-done: the files are still there.
+    assert (folder / "seg0.ts").exists()
