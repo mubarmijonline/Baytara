@@ -26,9 +26,14 @@ const megabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 function loadQueue() {
   try {
     const raw = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-    // Anything still mid-transfer when the page went away did not survive it.
-    return raw.map((item) => (item.status === 'uploading' || item.status === 'queued'
-      ? { ...item, status: 'interrupted' } : item));
+    return raw
+      // The File itself cannot be stored, so a row that never created a video has
+      // nothing left to resume and nothing on the server to point at: it goes.
+      .filter((item) => item.id)
+      // Anything still mid-transfer when the page went away did not survive it. The
+      // catalogue row did, so this one can be finished by re-attaching the file.
+      .map((item) => (item.status === 'uploading' || item.status === 'queued'
+        ? { ...item, status: 'interrupted' } : item));
   } catch {
     return [];
   }
@@ -296,6 +301,16 @@ export default function VideoUpload() {
                     </span>
                   </td>
                   <td className="actions">
+                    {row.status === 'interrupted' && row.id && (
+                      <label className="btn btn-tonal btn-sm upload-reattach">
+                        {t('videoUpload.reattach')}
+                        <input type="file" accept="video/mp4,video/quicktime,video/x-matroska,video/webm"
+                               onChange={(event) => {
+                                 const picked = event.target.files?.[0];
+                                 if (picked) patch(row.key, { file: picked, status: 'queued', progress: 0, error: '' });
+                               }} />
+                      </label>
+                    )}
                     {row.id && <Link className="btn btn-tonal btn-sm" to={`/videos/${row.id}`}>{t('videoUpload.openEditor')}</Link>}
                     {row.status === 'ready' && (
                       <a className="btn btn-text btn-sm" href={`https://baytara.app/videos/${row.id}`}
