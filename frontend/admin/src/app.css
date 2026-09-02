@@ -458,3 +458,17 @@ select option { font-weight: 600; }
 /* Title row on the video editor: the destructive action sits away from Save. */
 .video-editor-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .video-editor-title h2 { margin: 0; }
+
+/* Upload page: wider than the editor panels, and rows that size to their content
+   instead of falling into the editor's four-column rule, which put three selects
+   shoulder to shoulder. */
+.upload-panel { max-width: 1040px; padding: 24px; }
+.upload-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 20px; margin-bottom: 6px; }
+.upload-panel .field { margin-bottom: 14px; }
+.upload-panel .field-hint { display: block; margin-top: 4px; line-height: 1.6; }
+.upload-panel input[type="file"] { padding: 10px; border: 1px dashed var(--border); border-radius: 8px; width: 100%; }
+
+@media (max-width: 700px) {
+  .upload-form-row { grid-template-columns: 1fr; gap: 12px; }
+  .upload-panel { padding: 16px; }
+}

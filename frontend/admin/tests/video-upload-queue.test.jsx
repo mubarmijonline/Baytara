@@ -45,6 +45,7 @@ beforeEach(() => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return response({ payments: {}, baytarian: {}, courses: {}, users: {} });
     if (url.endsWith('/categories')) return response({ categories });
+    if (url.includes('/admin/users')) return response({ users: [{ id: 8, name: 'Dr Sara' }] });
     if (url.includes('/admin/videos/') ) return response({ video: { id: 41, local_status: 'packaging' } });
     if (url.includes('/admin/videos')) return response({ video: { id: 41 } }, 201);
     return response({});
@@ -80,6 +81,7 @@ it('queues several files at once and creates a video for each', async () => {
   expect(screen.getByText('two.mp4', { exact: false })).toBeVisible();
 
   fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: '1' } });
+  fireEvent.change(await screen.findByLabelText(/Instructor/i), { target: { value: '8' } });
   fireEvent.click(screen.getByRole('button', { name: /Upload and process \(2\)/i }));
 
   await waitFor(() => {
@@ -100,4 +102,15 @@ it('shows an upload that the browser interrupted, and keeps its video record', a
   expect(screen.getByText('Half sent')).toBeVisible();
   // The record survived, so the editor for that video is one click away.
   expect(screen.getByRole('link', { name: /Open the video editor/i })).toHaveAttribute('href', '/admin/videos/41');
+});
+
+it('names the missing instructor instead of printing a translation key', async () => {
+  renderUpload();
+  fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('one.mp4')] } });
+  fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: '1' } });
+
+  fireEvent.click(screen.getByRole('button', { name: /Upload and process/i }));
+
+  expect(await screen.findByText('An instructor is required.')).toBeVisible();
+  expect(screen.queryByText(/catalog\.error\./)).toBeNull();
 });

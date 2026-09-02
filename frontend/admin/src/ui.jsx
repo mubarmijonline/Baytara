@@ -38,8 +38,13 @@ export function apiError(e, fallback = 'حدث خطأ.') {
 export function catalogErrorText(e, t) {
   const code = e?.data?.error;
   const reasons = Array.isArray(e?.data?.errors) ? e.data.errors : [];
-  if (reasons.length) return reasons.map((reason) => t(`catalog.error.${reason}`)).join(' · ');
+  // t() hands back the key when there is no copy for it, and a key on screen tells an
+  // admin nothing. Fall back to the bare code, which at least names the rule.
+  const describe = (reason) => {
+    const text = t(`catalog.error.${reason}`);
+    return text === `catalog.error.${reason}` ? reason : text;
+  };
+  if (reasons.length) return reasons.map(describe).join(' · ');
   if (!code) return e?.message || t('errors.generic');
-  const known = t(`catalog.error.${code}`);
-  return known === `catalog.error.${code}` ? code : known;
+  return describe(code);
 }
