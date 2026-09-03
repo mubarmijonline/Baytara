@@ -757,6 +757,13 @@ def _package_local_video(app, lesson_id, source_path):
             lesson = db.session.get(Lesson, lesson_id)
             if minutes and not lesson.duration_minutes:
                 lesson.duration_minutes = minutes
+            # A thumbnail from the video itself, so a self-hosted upload does not sit in
+            # the library behind the branded placeholder. It goes to the public image
+            # folder: the poster is not secret, unlike the segments beside it.
+            if not lesson.poster:
+                name = f"video_{lesson_id}_{uuid.uuid4().hex[:8]}.jpg"
+                if local_video.grab_poster(source_path, app.config["UPLOAD_IMAGE_DIR"], name):
+                    lesson.poster = f"/api/v1/uploads/{name}"
             lesson.local_status = "ready"
             lesson.local_error = None
         except Exception as exc:  # noqa: BLE001 - the reason belongs in the admin UI
@@ -1287,6 +1294,14 @@ def _video_dict(l):
     d["title_en"] = l.title_en
     d["description_en"] = l.description_en
     d["vdocipher_video_id"] = l.vdocipher_video_id
+    # Where the video is served from, so the library can say so rather than leaving an
+    # admin to infer it from a missing provider id.
+    d["source"] = l.source
+    d["local_status"] = l.local_status
+    d["local_error"] = l.local_error
+    # Which courses this video may join at all: the server refuses a course owned by a
+    # different instructor, so the picker should not offer one.
+    d["instructor_id"] = l.instructor_id
     d["courses"] = [
         {
             "id": row.course.id, "title": row.course.title, "title_en": row.course.title_en,

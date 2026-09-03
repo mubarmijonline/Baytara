@@ -13,6 +13,19 @@ function Poster({ video }) {
   return poster ? <img className="video-poster" src={poster} alt="" /> : <div className="video-poster video-poster-fallback" role="img" aria-label={t('video.posterFallback')}>{t('admin.brand')}</div>;
 }
 
+function Delivery({ video }) {
+  const { t } = useAdminLanguage();
+  const local = video.catalog?.source === 'local' || (!video.provider_id && video.catalog);
+  if (!local) return <span className="chip chip-role">{t('video.deliveryProvider')}</span>;
+  const status = video.catalog?.local_status;
+  const tone = status === 'ready' ? 'published' : status === 'failed' ? 'unpublished' : 'draft';
+  return (
+    <span className={`chip chip-${tone}`} title={video.catalog?.local_error || ''}>
+      {t('video.deliveryLocal')}{status && status !== 'ready' ? ` · ${t(`videoUpload.status.${status}`)}` : ''}
+    </span>
+  );
+}
+
 function ProviderState({ video }) {
   const { t } = useAdminLanguage();
   const status = String(video.status || '').toLowerCase();
@@ -128,6 +141,9 @@ function VideoDetailsDialog({ video, onClose, onDeleted }) {
             <div key={label} className="video-detail-fact"><span>{label}</span><strong>{value}</strong></div>
           ))}
         </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 12px' }}>
+          <Delivery video={video} />
+        </div>
         <div className="video-detail-actions">
           <Link className="btn btn-filled btn-sm" to={editTarget(video)}><Edit3 size={15} /> {t('video.editMetadata')}</Link>
           {catalogId && (
@@ -166,7 +182,7 @@ export default function VideoViews({ view, videos, onDeleted }) {
   const detail = selected
     ? <VideoDetailsDialog video={selected} onClose={() => setSelected(null)} onDeleted={onDeleted} />
     : null;
-  if (view === 'table') return <>{detail}<div className="video-table-scroll" data-testid="video-table-scroll"><table className="table video-table" data-testid="video-table"><thead><tr><th>{t('video.title')}</th><th>{t('video.providerId')}</th><th>{t('video.uploadDate')}</th><th>{t('video.providerState')}</th><th>{t('video.publication')}</th><th>{t('video.duration')}</th><th>{t('catalog.category')}</th><th>{t('catalog.accessType')}</th><th>{t('video.assignments')}</th></tr></thead><tbody>{videos.map((video) => <tr key={video.id}><td><VideoOpenButton video={video} className="video-title-button" onClick={open(video)}>{titleFor(video, language)}</VideoOpenButton></td><td dir="ltr"><ProviderId video={video} /></td><td>{video.uploaded_at || t('video.notAvailable')}</td><td><ProviderState video={video} /></td><td><Publication video={video} /></td><td><Duration video={video} /></td><td>{categoryFor(video, language) || t('video.notAvailable')}</td><td>{video.catalog?.access_type ? t(`catalog.access.${video.catalog.access_type}`) : t('video.notAvailable')}</td><td><Assignments video={video} names /></td></tr>)}{!videos.length && <tr><td colSpan="9" className="empty">{t('video.empty')}</td></tr>}</tbody></table></div></>;
-  if (view === 'list') return <>{detail}<div className="video-list" data-testid="video-list">{videos.map((video) => <VideoOpenButton key={video.id} video={video} onClick={open(video)}><article className="video-list-row"><Poster video={video} /><div><strong>{titleFor(video, language)}</strong><small dir="ltr"><ProviderId video={video} /></small><Metadata video={video} compact /></div><ProviderState video={video} /></article></VideoOpenButton>)}{!videos.length && <div className="empty">{t('video.empty')}</div>}</div></>;
-  return <>{detail}<div className="video-grid" data-testid="video-grid">{videos.map((video) => <VideoOpenButton key={video.id} video={video} onClick={open(video)}><article className="video-card"><Poster video={video} /><div className="video-card-body"><strong>{titleFor(video, language)}</strong><small dir="ltr"><ProviderId video={video} /></small><ProviderState video={video} /><Metadata video={video} /></div></article></VideoOpenButton>)}{!videos.length && <div className="empty">{t('video.empty')}</div>}</div></>;
+  if (view === 'table') return <>{detail}<div className="video-table-scroll" data-testid="video-table-scroll"><table className="table video-table" data-testid="video-table"><thead><tr><th>{t('video.title')}</th><th>{t('video.providerId')}</th><th>{t('video.uploadDate')}</th><th>{t('video.delivery')}</th><th>{t('video.providerState')}</th><th>{t('video.publication')}</th><th>{t('video.duration')}</th><th>{t('catalog.category')}</th><th>{t('catalog.accessType')}</th><th>{t('video.assignments')}</th></tr></thead><tbody>{videos.map((video) => <tr key={video.id}><td><VideoOpenButton video={video} className="video-title-button" onClick={open(video)}>{titleFor(video, language)}</VideoOpenButton></td><td dir="ltr"><ProviderId video={video} /></td><td>{video.uploaded_at || t('video.notAvailable')}</td><td><Delivery video={video} /></td><td><ProviderState video={video} /></td><td><Publication video={video} /></td><td><Duration video={video} /></td><td>{categoryFor(video, language) || t('video.notAvailable')}</td><td>{video.catalog?.access_type ? t(`catalog.access.${video.catalog.access_type}`) : t('video.notAvailable')}</td><td><Assignments video={video} names /></td></tr>)}{!videos.length && <tr><td colSpan="9" className="empty">{t('video.empty')}</td></tr>}</tbody></table></div></>;
+  if (view === 'list') return <>{detail}<div className="video-list" data-testid="video-list">{videos.map((video) => <VideoOpenButton key={video.id} video={video} onClick={open(video)}><article className="video-list-row"><Poster video={video} /><div><strong>{titleFor(video, language)}</strong><small dir="ltr"><ProviderId video={video} /></small><Metadata video={video} compact /></div><div className="video-row-chips"><Delivery video={video} /><ProviderState video={video} /></div></article></VideoOpenButton>)}{!videos.length && <div className="empty">{t('video.empty')}</div>}</div></>;
+  return <>{detail}<div className="video-grid" data-testid="video-grid">{videos.map((video) => <VideoOpenButton key={video.id} video={video} onClick={open(video)}><article className="video-card"><Poster video={video} /><div className="video-card-body"><strong>{titleFor(video, language)}</strong><small dir="ltr"><ProviderId video={video} /></small><div className="video-row-chips"><Delivery video={video} /><ProviderState video={video} /></div><Metadata video={video} /></div></article></VideoOpenButton>)}{!videos.length && <div className="empty">{t('video.empty')}</div>}</div></>;
 }
