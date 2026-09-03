@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Check, Play } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
@@ -29,6 +30,22 @@ function Tile({ value, label, gold = false }) {
   );
 }
 
+/** True on the widths where the action bar belongs. Rendering it only there keeps the
+ *  price and the button from existing twice in the page — for a screen reader as much
+ *  as for a test — since CSS alone would merely hide the duplicate. */
+function useCompactLayout() {
+  const [compactLayout, setCompactLayout] = useState(false);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const query = window.matchMedia('(max-width: 900px)');
+    const apply = () => setCompactLayout(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+  return compactLayout;
+}
+
 function dateLabel(iso, lang) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-GB' : 'ar-EG', { year: 'numeric', month: 'long' });
@@ -49,12 +66,15 @@ function PurchaseCard({ course, slug, preview, firstLessonId }) {
       ? t('course.includes.days', { n: course.access_days })
       : t('access.lifetime'),
     t('course.includes.devices'),
-    t('course.includes.lessons', { n: course.lessons_count, m: Math.round((course.video_minutes || 0) / 60) }),
+    course.lessons_count > 0
+      ? t('course.includes.lessons', { n: course.lessons_count, m: Math.round((course.video_minutes || 0) / 60) })
+      : null,
     course.has_certificate ? t('course.includes.certificate') : null,
   ].filter(Boolean);
 
   return (
     <div style={{ background: colors.surface, borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.3)' }}>
+      {(preview || course.image) && (
       <div style={{ aspectRatio: '16 / 9', background: course.image ? `center/cover url(${course.image})` : gradients.darkPanel, position: 'relative', display: 'grid', placeItems: 'center' }}>
         {preview ? (
           <Link
@@ -73,6 +93,7 @@ function PurchaseCard({ course, slug, preview, firstLessonId }) {
           </span>
         )}
       </div>
+      )}
 
       <div style={{ padding: 22 }}>
         <div style={{ border: `1px solid ${colors.line}`, borderRadius: 12, padding: 14, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -134,6 +155,7 @@ export default function CourseDetail() {
   const navigate = useNavigate();
   const { t, lang } = useI18n();
 
+  const compactLayout = useCompactLayout();
   const { data, error, loading } = useFetch(() => webapi.course(slug), [slug]);
   const course = data?.course;
   const { data: reviewData } = useFetch(() => webapi.courseReviews(slug).catch(() => null), [slug]);
@@ -160,12 +182,18 @@ export default function CourseDetail() {
   const related = (relatedData?.courses || []).filter((c) => c.slug !== slug).slice(0, 3);
   const hours = Math.round((course.video_minutes || 0) / 60);
   const updated = dateLabel(course.content_updated_at, lang);
+  const stats = [
+    course.rating != null && { gold: true, value: `★ ${course.rating}`, label: t('course.ratingsCount', { n: course.reviews_count }) },
+    course.lessons_count > 0 && { value: course.lessons_count, label: t('course.lessonsUnit') },
+    hours > 0 && { value: hours, label: t('course.hoursUnit') },
+    course.enrolled_count > 0 && { value: compact(course.enrolled_count, lang), label: t('home.learners') },
+  ].filter(Boolean);
 
   return (
     <div style={{ background: colors.surface }}>
       {/* ---------------- dark hero ---------------- */}
       <div style={{ background: DARK, color: '#fff' }}>
-        <Container className="grid-collapse-2" style={{ padding: '32px 24px 44px', display: 'grid', gridTemplateColumns: '1fr 372px', gap: 40, alignItems: 'start' }}>
+        <Container className="grid-collapse-2" style={{ padding: stats.length ? '32px 24px 44px' : '28px 24px 32px', display: 'grid', gridTemplateColumns: '1fr 372px', gap: 40, alignItems: 'start' }}>
           <div>
             <nav aria-label={t('course.breadcrumb')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, color: '#cfcfe0', marginBottom: 18, flexWrap: 'wrap' }}>
               <Link to="/courses" style={{ color: 'inherit' }}>{t('nav.courses')}</Link>
@@ -188,14 +216,13 @@ export default function CourseDetail() {
               </p>
             )}
 
-            <div className="grid-collapse-sm" style={{ display: 'grid', gridTemplateColumns: `repeat(${course.rating != null ? 4 : 3},1fr)`, gap: 10, maxWidth: 640, marginBottom: 22 }}>
-              {course.rating != null && (
-                <Tile gold value={`★ ${course.rating}`} label={t('course.ratingsCount', { n: course.reviews_count })} />
-              )}
-              <Tile value={course.lessons_count} label={t('course.lessonsUnit')} />
-              <Tile value={hours} label={t('course.hoursUnit')} />
-              <Tile value={compact(course.enrolled_count, lang)} label={t('home.learners')} />
-            </div>
+            {/* Only figures the database actually has. A brand-new course showed a row of
+                zeros, which reads as an empty shop rather than a new one. */}
+            {stats.length > 0 && (
+              <div className="course-hero-stats" style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length},minmax(0,1fr))`, gap: 10, maxWidth: 640, marginBottom: 22 }}>
+                {stats.map((tile) => <Tile key={tile.label} {...tile} />)}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
               {course.instructor && (
@@ -247,19 +274,28 @@ export default function CourseDetail() {
           <section>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 14, flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: DARK }}>{t('course.curriculum')}</h2>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
-                  {t('course.unitsCount', { n: modules.length })}
-                </span>
-                <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
-                  {course.lessons_count} {t('course.lessonsUnit')}
-                </span>
-              </div>
+              {course.lessons_count > 0 && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
+                    {t('course.unitsCount', { n: modules.length })}
+                  </span>
+                  <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
+                    {course.lessons_count} {t('course.lessonsUnit')}
+                  </span>
+                </div>
+              )}
             </div>
             {modules.length ? (
               <CurriculumAccordion modules={modules} onSelect={(video) => navigate(`/learn/${slug}/${video.id}`)} />
             ) : (
-              <div style={{ color: colors.muted, fontSize: 14.5 }}>{t('course.noLessons')}</div>
+              /* A course with nothing in it yet is a normal state, not a broken page. */
+              <div style={{ border: `1px dashed ${colors.line}`, borderRadius: 16, padding: '34px 26px', textAlign: 'center', background: colors.surfaceMuted }}>
+                <div style={{ fontSize: 15.5, fontWeight: 700, color: colors.ink, marginBottom: 6 }}>{t('course.noLessons')}</div>
+                <p style={{ margin: '0 0 16px', fontSize: 13.5, color: colors.muted, lineHeight: 1.8 }}>{t('course.noLessonsHint')}</p>
+                <Link to="/videos" style={{ display: 'inline-block', border: `1.5px solid ${colors.accent}`, color: colors.accent, fontSize: 14, fontWeight: 700, padding: '11px 20px', borderRadius: 10 }}>
+                  {t('video.allVideos')}
+                </Link>
+              </div>
             )}
           </section>
 
@@ -294,11 +330,13 @@ export default function CourseDetail() {
             </section>
           )}
 
-          <ReviewList
-            reviews={reviewData?.reviews || []}
-            rating={course.rating}
-            count={course.reviews_count}
-          />
+          {(reviewData?.reviews?.length > 0 || course.rating != null) && (
+            <ReviewList
+              reviews={reviewData?.reviews || []}
+              rating={course.rating}
+              count={course.reviews_count}
+            />
+          )}
         </div>
 
         {/* ---------------- aside ---------------- */}
@@ -333,6 +371,32 @@ export default function CourseDetail() {
           </section>
         </aside>
       </Container>
+
+      {/* On a phone the purchase card is a screen and a half up by the time anyone has
+          read the curriculum, so price and action follow along the bottom. */}
+      {compactLayout && (
+      <div className="course-action-bar">
+        <div>
+          <strong>{course.is_paid ?? course.price > 0 ? `${course.price} ${course.currency || t('common.egp')}` : t('access.free')}</strong>
+          <small>{course.access_days ? t('course.includes.days', { n: course.access_days }) : t('access.lifetime')}</small>
+        </div>
+        {course.lock_reason ? (
+          <button type="button" onClick={() => navigate(course.lock_reason === 'needs_baytarian' ? '/pricing' : '/courses')}>
+            {course.lock_reason === 'needs_baytarian' ? t('membership.verify') : t('lock.instructors_only')}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!(course.is_paid ?? course.price > 0) && !firstLessonId}
+            onClick={() => ((course.is_paid ?? course.price > 0)
+              ? navigate(`/buy/${slug}`)
+              : firstLessonId && navigate(`/learn/${course.id}/${firstLessonId}`))}
+          >
+            {(course.is_paid ?? course.price > 0) ? t('course.buyAndStart') : t('course.watchFree')}
+          </button>
+        )}
+      </div>
+      )}
     </div>
   );
 }
