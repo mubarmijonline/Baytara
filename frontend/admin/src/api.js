@@ -164,7 +164,11 @@ export const api = {
   catalogVideos: (params) => req('/admin/videos' + qs(params)),
   videoLibrary: (params, { signal } = {}) => req('/admin/video-library' + qs(params), { signal }),
   video: (id) => req(`/admin/videos/${id}`),
-  videoCreate: (body) => req('/admin/videos', { method: 'POST', body: JSON.stringify(body) }),
+  // `silent` keeps the global data-changed event from firing. The upload page needs it:
+  // that event remounts the active page, which would throw away a transfer in progress.
+  videoCreate: (body, { silent = false } = {}) => req('/admin/videos', {
+    method: 'POST', body: JSON.stringify(body), skipAdminDataChanged: silent,
+  }),
   videoUpdate: (id, body) => req(`/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   videoDelete: (id) => req(`/admin/videos/${id}`, { method: 'DELETE' }),
   videoCoursesSet: (id, course_ids) => req(`/admin/videos/${id}/courses`, { method: 'POST', body: JSON.stringify({ course_ids }) }),

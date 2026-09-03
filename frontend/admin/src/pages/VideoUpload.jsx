@@ -146,7 +146,7 @@ export default function VideoUpload() {
           category_id: Number(form.category_id),
           instructor_id: Number(form.instructor_id),
           price: Number(form.price || 0),
-        });
+        }, { silent: true });
         id = (res.video || res).id;
         patch(item.key, { id });
       }

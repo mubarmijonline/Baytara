@@ -167,3 +167,22 @@ it('drops a queued row that never reached the server, since nothing can resume i
   // The one with a video behind it offers to finish, without redoing the form.
   expect(screen.getByText('Pick the file again')).toBeVisible();
 });
+
+it('keeps the form and the queue through an upload, instead of remounting the page', async () => {
+  // Creating the video used to fire the admin data-changed event, and the shell keys the
+  // active page on a revision counter — so the page remounted mid-transfer, the form
+  // reset, and the row vanished before its id had been stored.
+  renderUpload();
+  await chooseCategory();
+  await chooseInstructor();
+  fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('one.mp4')] } });
+
+  await waitFor(() => {
+    expect(fetch.mock.calls.some(([url, o]) => String(url).endsWith('/admin/videos') && o?.method === 'POST')).toBe(true);
+  });
+
+  // Still the same page: the choices stand and the row is still on screen.
+  expect(screen.getByLabelText(/Category/i)).toHaveValue('1');
+  expect(screen.getByLabelText(/Instructor/i)).toHaveValue('8');
+  expect(screen.getByText('one.mp4', { exact: false })).toBeVisible();
+});
