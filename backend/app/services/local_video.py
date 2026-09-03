@@ -151,6 +151,15 @@ def usage(app, lesson_ids=None):
     }
 
 
+# Cards are 16:9 and a lot of lecture footage is shot portrait. Cropping to fill cuts
+# the speaker's head off, so the frame is fitted whole and the gap filled with the brand
+# navy — a letterboxed thumbnail beats a decapitated one.
+POSTER_FILTER = (
+    "scale=854:480:force_original_aspect_ratio=decrease,"
+    "pad=854:480:(ow-iw)/2:(oh-ih)/2:color=0x141E42"
+)
+
+
 def grab_poster(source_path, target_dir, name="poster.jpg"):
     """Pull a still out of the video to use as its thumbnail.
 
@@ -164,7 +173,7 @@ def grab_poster(source_path, target_dir, name="poster.jpg"):
     try:
         subprocess.run(
             ["ffmpeg", "-v", "error", "-y", "-ss", "3", "-i", str(source_path),
-             "-frames:v", "1", "-vf", "scale=854:-2", "-q:v", "3", str(poster)],
+             "-frames:v", "1", "-vf", POSTER_FILTER, "-q:v", "3", str(poster)],
             check=True, capture_output=True, timeout=120,
         )
     except Exception:  # noqa: BLE001
@@ -172,7 +181,7 @@ def grab_poster(source_path, target_dir, name="poster.jpg"):
         try:
             subprocess.run(
                 ["ffmpeg", "-v", "error", "-y", "-i", str(source_path),
-                 "-frames:v", "1", "-vf", "scale=854:-2", "-q:v", "3", str(poster)],
+                 "-frames:v", "1", "-vf", POSTER_FILTER, "-q:v", "3", str(poster)],
                 check=True, capture_output=True, timeout=120,
             )
         except Exception:  # noqa: BLE001

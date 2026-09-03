@@ -565,3 +565,41 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 @media (max-width: 360px) {
   .video-grid { grid-template-columns: minmax(0, 1fr) !important; }
 }
+
+/* Course page: the hero figures wrap rather than squeezing to unreadable columns. */
+@media (max-width: 760px) {
+  .course-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* Price and action, kept within reach on a phone. Sits above the tab bar. */
+.course-action-bar {
+  display: none;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 64px;
+  z-index: 55;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+  border-top: 1px solid #ececf2;
+  box-shadow: 0 -8px 24px rgba(20, 30, 66, 0.08);
+}
+.course-action-bar strong { display: block; font-size: 16px; font-weight: 800; color: #1E2A5E; }
+.course-action-bar small { display: block; font-size: 12px; color: #5A6180; margin-top: 2px; }
+.course-action-bar button {
+  border: none;
+  border-radius: 11px;
+  background: #3048A0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px 22px;
+  cursor: pointer;
+}
+.course-action-bar button:disabled { opacity: .6; cursor: default; }
+
+@media (max-width: 900px) {
+  .course-action-bar { display: flex; }
+}
