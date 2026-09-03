@@ -53,16 +53,22 @@ function CoursePicker({ form, setForm, courses, dropped, language, t }) {
   const [query, setQuery] = useState('');
   const toggle = (id) => setForm({ ...form, course_ids: form.course_ids.includes(id) ? form.course_ids.filter((value) => value !== id) : [...form.course_ids, id] });
   const needle = query.trim().toLowerCase();
+  // Only the video's own instructor's courses. The server refuses any other pairing
+  // (course_instructor_mismatch), and a picker that offers a choice the save will
+  // reject is worse than one that offers nothing.
+  const owned = courses.filter((course) => Number(course.instructor?.id ?? course.instructor_id) === Number(form.instructor_id));
   const shown = needle
-    ? courses.filter((course) => localizedCatalogValue(course, 'title', language).toLowerCase().includes(needle))
-    : courses;
+    ? owned.filter((course) => localizedCatalogValue(course, 'title', language).toLowerCase().includes(needle))
+    : owned;
 
   // Nothing is selectable until an instructor is chosen: a video can only join a
   // course its own instructor owns, so without one there is no list to draw.
   if (!form.instructor_id) return <p className="video-picker-note">{t('video.pickInstructorFirst')}</p>;
+  if (!owned.length) return <p className="video-picker-warning">{t('video.coursePickerNoneForInstructor')}</p>;
 
   return <>
     {dropped > 0 && <p className="video-picker-warning">{t('video.coursesDropped', { n: dropped })}</p>}
+    <p className="video-picker-note">{t('video.coursePickerSameInstructor')}</p>
     <div className="video-picker-head">
       <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('video.searchCourses')} />
       <span className="chip">{t('video.coursesSelected', { n: form.course_ids.length })}</span>

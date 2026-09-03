@@ -149,3 +149,32 @@ def usage(app, lesson_ids=None):
         "disk_free_bytes": disk_free,
         "path": str(root),
     }
+
+
+def grab_poster(source_path, target_dir, name="poster.jpg"):
+    """Pull a still out of the video to use as its thumbnail.
+
+    Taken a few seconds in rather than at zero: the first frame of a lecture is very
+    often a black fade or a title card mid-dissolve. Returns the file name, or None —
+    a missing thumbnail is a cosmetic loss and must never fail an upload.
+    """
+    target = Path(target_dir)
+    target.mkdir(parents=True, exist_ok=True)
+    poster = target / name
+    try:
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-ss", "3", "-i", str(source_path),
+             "-frames:v", "1", "-vf", "scale=854:-2", "-q:v", "3", str(poster)],
+            check=True, capture_output=True, timeout=120,
+        )
+    except Exception:  # noqa: BLE001
+        # A clip shorter than the seek point yields nothing; try the very first frame.
+        try:
+            subprocess.run(
+                ["ffmpeg", "-v", "error", "-y", "-i", str(source_path),
+                 "-frames:v", "1", "-vf", "scale=854:-2", "-q:v", "3", str(poster)],
+                check=True, capture_output=True, timeout=120,
+            )
+        except Exception:  # noqa: BLE001
+            return None
+    return poster.name if poster.exists() and poster.stat().st_size else None

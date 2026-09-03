@@ -478,3 +478,6 @@ select option { font-weight: 600; }
 /* The row's own file picker, dressed as a button. */
 .upload-reattach { cursor: pointer; display: inline-flex; align-items: center; }
 .upload-reattach input { display: none; }
+
+/* Two chips per row in the library: where it is served from, then its provider state. */
+.video-row-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
