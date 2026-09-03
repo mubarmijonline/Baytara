@@ -769,6 +769,45 @@ def _package_local_video(app, lesson_id, source_path):
             db.session.commit()
 
 
+def resume_interrupted_packaging(app):
+    """Pick up transcodes that a restart killed.
+
+    The packaging thread is a daemon inside the web process, so a deploy or a crash
+    takes it with it and leaves the row saying `packaging` for ever. The uploaded source
+    is still in `_incoming`, so the work can simply start again; a row whose source has
+    gone is marked failed, because nothing will ever finish it.
+    """
+    import threading
+
+    from ...services import local_video
+
+    with app.app_context():
+        stuck = Lesson.query.filter_by(local_status="packaging").all()
+        if not stuck:
+            return
+        incoming = os.path.join(app.config["LOCAL_VIDEO_DIR"], "_incoming")
+        sources = {}
+        if os.path.isdir(incoming):
+            for name in os.listdir(incoming):
+                lesson_id = name.split("_", 1)[0]
+                if lesson_id.isdigit():
+                    sources.setdefault(int(lesson_id), os.path.join(incoming, name))
+
+        for lesson in stuck:
+            source = sources.get(lesson.id)
+            if source and os.path.exists(source):
+                app.logger.warning("resuming interrupted packaging for video %s", lesson.id)
+                # Half-written renditions are worthless; package() clears the directory.
+                threading.Thread(target=_package_local_video, args=(app, lesson.id, source),
+                                 daemon=True).start()
+            else:
+                app.logger.warning("packaging for video %s cannot resume: source is gone", lesson.id)
+                lesson.local_status = "failed"
+                lesson.local_error = "packaging_interrupted_source_missing"
+                local_video.delete(app, lesson.id)
+        db.session.commit()
+
+
 @bp.post("/videos/<int:lid>/upload")
 @require_role("admin")
 def video_upload(lid):

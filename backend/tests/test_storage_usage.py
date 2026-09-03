@@ -1,5 +1,6 @@
 """What the storage card reports: bytes on disk, not bytes the database believes in."""
 import os
+import time
 
 import pytest
 
@@ -138,3 +139,59 @@ def test_a_video_in_use_is_refused_and_keeps_its_files(app):
     assert refused.status_code == 409 and refused.get_json()["error"] == "video_in_use"
     # A refusal must not be half-done: the files are still there.
     assert (folder / "seg0.ts").exists()
+
+
+def test_interrupted_packaging_resumes_when_the_source_survived(app, monkeypatch):
+    from app.api.v1 import admin as admin_api
+
+    with app.app_context():
+        lesson = Lesson(title="نصف مُحوَّل", position=0, status="published", access_type="free",
+                        source="local", local_status="packaging")
+        db.session.add(lesson)
+        db.session.commit()
+        lesson_id = lesson.id
+
+    incoming = local_video.video_root(app) / "_incoming"
+    incoming.mkdir(parents=True)
+    source = incoming / f"{lesson_id}_abcd1234_clip.mp4"
+    source.write_bytes(b"not really a video")
+
+    started = []
+    # The real worker would run ffmpeg; the question here is only whether it is asked to.
+    monkeypatch.setattr(admin_api, "_package_local_video",
+                        lambda application, lid, path: started.append((lid, path)))
+
+    admin_api.resume_interrupted_packaging(app)
+
+    # Threads are daemons, so give the scheduler a moment to run them.
+    for _ in range(50):
+        if started:
+            break
+        time.sleep(0.02)
+    assert started and started[0][0] == lesson_id
+    with app.app_context():
+        assert db.session.get(Lesson, lesson_id).local_status == "packaging"
+
+
+def test_interrupted_packaging_fails_loudly_when_the_source_is_gone(app):
+    from app.api.v1 import admin as admin_api
+
+    with app.app_context():
+        lesson = Lesson(title="مفقود", position=0, status="published", access_type="free",
+                        source="local", local_status="packaging")
+        db.session.add(lesson)
+        db.session.commit()
+        lesson_id = lesson.id
+
+    # Half-written renditions with no source to finish them are just wasted disk.
+    folder = local_video.lesson_dir(app, lesson_id)
+    folder.mkdir(parents=True)
+    (folder / "seg0.ts").write_bytes(b"x" * 4096)
+
+    admin_api.resume_interrupted_packaging(app)
+
+    with app.app_context():
+        stuck = db.session.get(Lesson, lesson_id)
+        assert stuck.local_status == "failed"
+        assert stuck.local_error == "packaging_interrupted_source_missing"
+    assert not folder.exists()
