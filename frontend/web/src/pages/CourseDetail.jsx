@@ -67,7 +67,10 @@ function PurchaseCard({ course, slug, preview, firstLessonId }) {
       : t('access.lifetime'),
     t('course.includes.devices'),
     course.lessons_count > 0
-      ? t('course.includes.lessons', { n: course.lessons_count, m: Math.round((course.video_minutes || 0) / 60) })
+      // Under an hour, say minutes: rounding eleven minutes to "0 hours" reads as empty.
+      ? (course.video_minutes >= 60
+        ? t('course.includes.lessons', { n: course.lessons_count, m: Math.round(course.video_minutes / 60) })
+        : t('course.includes.lessonsMinutes', { n: course.lessons_count, m: course.video_minutes || 0 }))
       : null,
     course.has_certificate ? t('course.includes.certificate') : null,
   ].filter(Boolean);
@@ -185,7 +188,9 @@ export default function CourseDetail() {
   const stats = [
     course.rating != null && { gold: true, value: `★ ${course.rating}`, label: t('course.ratingsCount', { n: course.reviews_count }) },
     course.lessons_count > 0 && { value: course.lessons_count, label: t('course.lessonsUnit') },
-    hours > 0 && { value: hours, label: t('course.hoursUnit') },
+    course.video_minutes > 0 && (hours > 0
+      ? { value: hours, label: t('course.hoursUnit') }
+      : { value: course.video_minutes, label: t('common.minutesShort') }),
     course.enrolled_count > 0 && { value: compact(course.enrolled_count, lang), label: t('home.learners') },
   ].filter(Boolean);
 
@@ -219,7 +224,7 @@ export default function CourseDetail() {
             {/* Only figures the database actually has. A brand-new course showed a row of
                 zeros, which reads as an empty shop rather than a new one. */}
             {stats.length > 0 && (
-              <div className="course-hero-stats" style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length},minmax(0,1fr))`, gap: 10, maxWidth: 640, marginBottom: 22 }}>
+              <div className="course-hero-stats" style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length},minmax(0,160px))`, gap: 10, maxWidth: 640, marginBottom: 22 }}>
                 {stats.map((tile) => <Tile key={tile.label} {...tile} />)}
               </div>
             )}
