@@ -1,5 +1,5 @@
 import { ArrowLeft, Eye, EyeOff, ListVideo, Pencil, Plus, Save, Search, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import {
@@ -16,6 +16,8 @@ const COPY = {
     allStatuses: 'كل الحالات', title: 'العنوان', instructor: 'المدرّب', category: 'الفئة', access: 'الوصول',
     price: 'السعر', enrolled: 'المسجّلون', actions: 'الإجراءات', noCourses: 'لا توجد دورات.', loading: 'جارٍ التحميل…',
     content: 'المحتوى', edit: 'تعديل', publish: 'نشر', unpublish: 'إخفاء', delete: 'حذف',
+    cover: 'صورة الدورة', coverHint: 'تظهر في قوائم الدورات وأعلى صفحة الدورة. مقاس 16:9 يعطي أفضل نتيجة.',
+    coverRemove: 'إزالة الصورة', coverError: 'تعذّر رفع الصورة.',
     arabicTitle: 'العنوان العربي', englishTitle: 'العنوان الإنجليزي', arabicDescription: 'الوصف العربي',
     englishDescription: 'الوصف الإنجليزي', chooseInstructor: 'اختر المدرّب', chooseCategory: 'اختر الفئة',
     status: 'الحالة', accessType: 'نوع الوصول', currency: 'العملة', accessDays: 'مدة الوصول بالأيام',
@@ -30,6 +32,8 @@ const COPY = {
     allStatuses: 'All statuses', title: 'Title', instructor: 'Instructor', category: 'Category', access: 'Access',
     price: 'Price', enrolled: 'Enrolled', actions: 'Actions', noCourses: 'No courses found.', loading: 'Loading…',
     content: 'Content', edit: 'Edit', publish: 'Publish', unpublish: 'Unpublish', delete: 'Delete',
+    cover: 'Course image', coverHint: 'Shown in course listings and at the top of the course page. 16:9 works best.',
+    coverRemove: 'Remove image', coverError: 'Could not upload the image.',
     arabicTitle: 'Arabic title', englishTitle: 'English title', arabicDescription: 'Arabic description',
     englishDescription: 'English description', chooseInstructor: 'Choose instructor', chooseCategory: 'Choose category',
     status: 'Status', accessType: 'Access type', currency: 'Currency', accessDays: 'Access duration in days',
@@ -45,6 +49,7 @@ const emptyCourse = {
   title: '', title_en: '', description: '', description_en: '', instructor_id: '', category_id: '',
   access_type: 'general', price: '0', currency: 'EGP', access_days: '', status: 'draft',
   level: 'beginner', has_certificate: false, objectives: '', objectives_en: '',
+  image: '',
 };
 
 function courseForm(course) {
@@ -54,6 +59,7 @@ function courseForm(course) {
     title: course.title || '', title_en: course.title_en || '',
     description: course.description || '', description_en: course.description_en || '',
     instructor_id: course.instructor?.id || '', category_id: course.category?.id || '',
+    image: course.image || '',
     access_type: course.access_type || 'general', price: String(course.price ?? 0),
     currency: course.currency || 'EGP', access_days: course.access_days ?? '', status: course.status || 'draft',
     level: course.level || 'beginner', has_certificate: !!course.has_certificate,
@@ -106,6 +112,23 @@ export function CourseEditor({ routeParams = {} }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
+  const coverRef = useRef(null);
+
+  // The cover is what the course looks like everywhere it is listed: the home row, the
+  // catalogue card, the top of its own page. Same upload endpoint as instructor photos.
+  async function pickCover(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setError('');
+    try {
+      const { url } = await api.uploadImage(file);
+      setForm((current) => ({ ...current, image: url }));
+    } catch (failure) {
+      setError(errorMessage(failure, language) || c.coverError);
+    } finally {
+      if (coverRef.current) coverRef.current.value = '';
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -161,6 +184,17 @@ export function CourseEditor({ routeParams = {} }) {
           <Field label={c.englishTitle}><input dir="ltr" value={form.title_en} onChange={set('title_en')} /></Field>
           <Field label={c.arabicDescription}><textarea value={form.description} onChange={set('description')} /></Field>
           <Field label={c.englishDescription}><textarea dir="ltr" value={form.description_en} onChange={set('description_en')} /></Field>
+          <Field label={c.cover} hint={c.coverHint}>
+            <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={pickCover} />
+          </Field>
+          {form.image && (
+            <div className="course-cover-preview">
+              <img src={form.image} alt="" />
+              <button type="button" className="btn btn-text btn-sm" onClick={() => setForm((current) => ({ ...current, image: '' }))}>
+                {c.coverRemove}
+              </button>
+            </div>
+          )}
         </div>
       </section>
       <section className="catalog-panel">
