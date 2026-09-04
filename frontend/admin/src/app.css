@@ -481,3 +481,7 @@ select option { font-weight: 600; }
 
 /* Two chips per row in the library: where it is served from, then its provider state. */
 .video-row-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
+
+/* Course cover preview, so an admin sees what they just uploaded. */
+.course-cover-preview { display: flex; align-items: center; gap: 12px; margin: -6px 0 14px; }
+.course-cover-preview img { width: 160px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; border: 1px solid var(--line, #ececf2); display: block; }
