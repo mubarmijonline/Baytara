@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Container, SectionHeading } from '../components/Primitives.jsx';
 import Avatar from '../components/Avatar.jsx';
 import ResumeCard from '../components/ResumeCard.jsx';
+import CourseCard from '../components/CourseCard.jsx';
 import VideoCard from '../components/VideoCard.jsx';
 import { colors, font, gradients } from '../theme/tokens.js';
 import { auth, compact, isAuthed, useFetch, webapi } from '../lib/api.js';
@@ -131,6 +132,32 @@ function CategoriesSection() {
             </div>
           </button>
         ))}
+      </div>
+    </Container>
+  );
+}
+
+/* ----------------------------- newest courses ----------------------------- */
+
+function NewestCoursesSection() {
+  const settings = useSiteSettings();
+  const { t } = useI18n();
+  const { data } = useFetch(() => webapi.courses({ sort: 'newest', per_page: 3 }), []);
+  const courses = data?.courses || [];
+  // Nothing published yet is a state the home page should pass over in silence, not
+  // announce with an empty row.
+  if (!courses.length) return null;
+
+  return (
+    <Container className="home-section" style={{ padding: '44px 24px 10px' }}>
+      <SectionHeading
+        title={settings.home?.new_title || t('home.newestCourses')}
+        subtitle={settings.home?.new_subtitle}
+        action={<SectionLink to="/courses">{t('common.viewAll')}</SectionLink>}
+      />
+      {/* width={null} so the cards fill the grid rather than keeping their carousel size. */}
+      <div className="grid-3">
+        {courses.map((course, index) => <CourseCard key={course.id} course={course} width={null} isNew={index === 0} />)}
       </div>
     </Container>
   );
@@ -353,6 +380,7 @@ export default function Home() {
       <Hero summary={summary} />
       <StatsBand />
       <CategoriesSection />
+      <NewestCoursesSection />
       <FreeVideosSection />
       <InstructorsSection />
       <Testimonials />
