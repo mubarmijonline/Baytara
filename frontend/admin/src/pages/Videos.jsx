@@ -139,6 +139,22 @@ export default function Videos({ searchParams, setSearchParams }) {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [folder, page, providerStatus, categoryId, access, publication, courseId, assignment, query, debouncedQuery, categoriesLoaded]);
 
+  // A video packaging on our server finishes minutes later, in the background. Without
+  // this the row said "Converting" until somebody thought to press refresh — including
+  // for videos that were already done.
+  const converting = (library?.items || []).some(
+    (item) => item.catalog?.source === 'local'
+      && item.catalog?.local_status
+      && item.catalog.local_status !== 'ready'
+      && item.catalog.local_status !== 'failed',
+  );
+  useEffect(() => {
+    if (!converting) return undefined;
+    const timer = setInterval(() => load(true), 15000);
+    return () => clearInterval(timer);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [converting]);
+
   const currentPage = library?.page || page;
   const pageCount = library?.pages || 1;
   return <section className="video-library">
