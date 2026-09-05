@@ -66,13 +66,21 @@ def package(source_path, target_dir):
     info_path.write_text(f"key\n{key_path}\n")
     os.chmod(info_path, 0o600)
 
+    # One command, one decode, both renditions. Encoding them in separate runs read and
+    # decoded the source twice, which on a two-core box shared with everything else on
+    # this machine is the difference between minutes and hours.
+    cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(source_path)]
+    split = ["[0:v]split=%d%s" % (len(RENDITIONS), "".join(f"[v{i}]" for i in range(len(RENDITIONS))))]
+    for i, (name, height, _v, _a) in enumerate(RENDITIONS):
+        split.append(f"[v{i}]scale=-2:{height}[out{i}]")
+    cmd += ["-filter_complex", ";".join(split)]
+
     master_lines = ["#EXTM3U", "#EXT-X-VERSION:3"]
-    for name, height, v_rate, a_rate in RENDITIONS:
+    for i, (name, height, v_rate, a_rate) in enumerate(RENDITIONS):
         out_dir = target / name
         out_dir.mkdir(exist_ok=True)
-        cmd = [
-            "ffmpeg", "-v", "error", "-y", "-i", str(source_path),
-            "-vf", f"scale=-2:{height}",
+        cmd += [
+            "-map", f"[out{i}]", "-map", "0:a?",
             "-c:v", "libx264", "-preset", "veryfast", "-b:v", v_rate,
             "-c:a", "aac", "-b:a", a_rate,
             "-hls_time", "6",
@@ -81,10 +89,11 @@ def package(source_path, target_dir):
             "-hls_segment_filename", str(out_dir / "seg_%04d.ts"),
             str(out_dir / "index.m3u8"),
         ]
-        subprocess.run(cmd, check=True, capture_output=True, timeout=60 * 60)
         bandwidth = int(v_rate.rstrip("k")) * 1000 + int(a_rate.rstrip("k")) * 1000
         master_lines.append(f"#EXT-X-STREAM-INF:BANDWIDTH={bandwidth},RESOLUTION=x{height}")
         master_lines.append(f"{name}/index.m3u8")
+
+    subprocess.run(cmd, check=True, capture_output=True, timeout=60 * 60)
 
     info_path.unlink(missing_ok=True)  # keeps the key path off disk in a readable file
     master = target / "master.m3u8"
