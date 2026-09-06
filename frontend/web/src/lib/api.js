@@ -25,6 +25,46 @@ export function getDeviceId() {
   return d;
 }
 
+// ---- machine signature (contract البند2: two devices, counted per machine) ----
+// A device id lives in localStorage, which browsers do not share, so Chrome, Firefox
+// and Safari on one laptop looked like three devices. This is a coarse signature of the
+// machine itself, built only from values every browser on it reports the same way.
+//
+// Deliberately coarse. Screen size, platform and timezone survive a browser update and
+// a zoom change; CPU count and canvas hashes do not, and a signature that drifts locks
+// people out — the failure we are fixing. The cost is that two identical laptops in one
+// clinic can share a signature, which loosens the limit rather than breaking it.
+const GROUP_KEY = 'baytara_device_group';
+
+function platformClass() {
+  const ua = navigator.userAgent || '';
+  if (/Android/i.test(ua)) return 'android';
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+  if (/Windows/i.test(ua)) return 'windows';
+  if (/Mac OS X|Macintosh/i.test(ua)) return 'macos';
+  if (/Linux|X11/i.test(ua)) return 'linux';
+  return 'other';
+}
+
+export function getDeviceGroup() {
+  let cached = '';
+  try { cached = localStorage.getItem(GROUP_KEY) || ''; } catch { /* private mode */ }
+  if (cached) return cached;
+  let timezone = '';
+  try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { /* older browser */ }
+  const parts = [platformClass(), `${window.screen?.width || 0}x${window.screen?.height || 0}`, timezone];
+  // FNV-1a: this identifies a machine to our own server, it is not a secret.
+  let hash = 0x811c9dc5;
+  const raw = parts.join('|');
+  for (let i = 0; i < raw.length; i += 1) {
+    hash ^= raw.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  const signature = `${parts[0]}-${hash.toString(16)}`;
+  try { localStorage.setItem(GROUP_KEY, signature); } catch { /* fine, recomputed next time */ }
+  return signature;
+}
+
 const qs = (p) => {
   const s = new URLSearchParams(Object.entries(p || {}).filter(([, v]) => v != null && v !== '')).toString();
   return s ? `?${s}` : '';
@@ -75,7 +115,11 @@ async function refreshAccessToken() {
   if (!refreshing) {
     refreshing = fetch(BASE + '/auth/refresh', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${refreshToken}`, 'X-Baytara-Device-ID': getDeviceId() },
+      headers: {
+        Authorization: `Bearer ${refreshToken}`,
+        'X-Baytara-Device-ID': getDeviceId(),
+        'X-Baytara-Device-Group': getDeviceGroup(),
+      },
     }).then(async (r) => {
       if (!r.ok) { logout(); return ''; }
       const body = await r.json();
@@ -94,6 +138,7 @@ async function authFetch(path, opts = {}, retried = false) {
     headers: {
       'Content-Type': 'application/json',
       'X-Baytara-Device-ID': getDeviceId(),
+      'X-Baytara-Device-Group': getDeviceGroup(),
       ...(opts.headers || {}),
       ...(t ? { Authorization: `Bearer ${t}` } : {}),
     },
@@ -118,6 +163,7 @@ async function authUpload(path, formData, retried = false) {
     body: formData,
     headers: {
       'X-Baytara-Device-ID': getDeviceId(),
+      'X-Baytara-Device-Group': getDeviceGroup(),
       ...(t ? { Authorization: `Bearer ${t}` } : {}),
     },
   });

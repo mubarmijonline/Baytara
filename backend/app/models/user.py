@@ -154,6 +154,16 @@ class UserDevice(db.Model):
 
     MAX_DEVICES = 2
 
+    @property
+    def group(self):
+        """What the limit actually counts. A row with no signature is its own device."""
+        return self.device_group or self.device_id
+
+    @staticmethod
+    def groups_for(user_id):
+        rows = UserDevice.query.filter_by(user_id=user_id).all()
+        return {row.group for row in rows}
+
     @staticmethod
     def limit_for(user):
         """Device allowance for this account: its override, else the contract default."""
@@ -162,6 +172,10 @@ class UserDevice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     device_id = db.Column(db.String(80), nullable=False)
+    # The machine this browser runs on. Browsers cannot share storage, so each one has
+    # its own device_id; they share a group when they report the same machine, and the
+    # limit counts groups. NULL for rows that predate it, which then stand alone.
+    device_group = db.Column(db.String(64), index=True)
     label = db.Column(db.String(160))  # user-agent snippet for the user to recognize it
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     last_seen = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -170,6 +184,7 @@ class UserDevice(db.Model):
         return {
             "id": self.id,
             "device_id": self.device_id,
+            "device_group": self.group,
             "label": self.label,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,

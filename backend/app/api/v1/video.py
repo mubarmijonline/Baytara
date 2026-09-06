@@ -215,7 +215,9 @@ def playback():
     device = UserDevice.query.filter_by(user_id=user.id, device_id=device_id).first()
     if not device:
         return deny("device_not_registered", 403)
-    if UserDevice.query.filter_by(user_id=user.id).count() > UserDevice.limit_for(user):
+    # Machines, not browser rows: several browsers on one laptop are one device, and
+    # counting rows here would refuse playback the login had just allowed.
+    if len(UserDevice.groups_for(user.id)) > UserDevice.limit_for(user):
         return deny("device_limit_reached", 403)
 
     if not lesson:
