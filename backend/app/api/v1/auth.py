@@ -25,23 +25,44 @@ PROFILE_IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": 
 PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024   # the 5 MB the profile screen promises
 
 
-def _register_device(user, device_id, label):
-    """Device Limit (contract البند2): track devices, block a 3rd distinct one.
-    Returns True if allowed, False if the device cap is reached. No-op (allowed)
-    when the client sends no device_id."""
+def _device_group():
+    """The machine the caller is on, as the client reports it.
+
+    Browsers cannot share storage, so each one generates its own device id; without
+    this, Chrome, Firefox and Safari on one laptop were three devices and a learner
+    with a laptop and a phone was locked out. Clients that send nothing — the mobile
+    app, an old build — fall back to their device id and stand alone, which is the
+    behaviour that existed before.
+    """
+    return (request.headers.get("X-Baytara-Device-Group") or "").strip()[:64] or None
+
+
+def _register_device(user, device_id, label, group=None):
+    """Device Limit (contract البند2): two devices, counted per machine.
+
+    Every browser still gets its own row — the token is bound to a device id, and the
+    playback rules check that. What the cap counts is distinct machines, so opening the
+    same laptop in another browser costs nothing.
+    """
     if not device_id:
         return True
+    group = group or _device_group() or device_id
     now = datetime.now(timezone.utc)
     dev = UserDevice.query.filter_by(user_id=user.id, device_id=device_id).first()
     if dev:
         dev.last_seen = now
         if label:
             dev.label = label[:160]
+        # An existing row may predate the signature, or the machine may have changed
+        # (a new screen). Keep the latest reading rather than a stale one.
+        dev.device_group = group
         db.session.commit()
         return True
-    if UserDevice.query.filter_by(user_id=user.id).count() >= UserDevice.limit_for(user):
+    known = UserDevice.groups_for(user.id)
+    if group not in known and len(known) >= UserDevice.limit_for(user):
         return False
-    db.session.add(UserDevice(user_id=user.id, device_id=device_id, label=(label or "")[:160]))
+    db.session.add(UserDevice(user_id=user.id, device_id=device_id, device_group=group,
+                              label=(label or "")[:160]))
     db.session.commit()
     return True
 
@@ -84,11 +105,28 @@ def _tokens(user: User, device_id=None):
     }
 
 
+def _grouped_devices(user_id):
+    """One entry per machine, newest first, carrying how many browsers it holds.
+
+    Showing raw rows would list three "devices" against a cap of two and read as a bug.
+    """
+    machines = {}
+    rows = UserDevice.query.filter_by(user_id=user_id).order_by(UserDevice.last_seen.desc()).all()
+    for row in rows:
+        entry = machines.get(row.group)
+        if entry:
+            entry["browsers"] += 1
+            continue
+        data = row.to_dict()
+        data["browsers"] = 1
+        machines[row.group] = data
+    return list(machines.values())
+
+
 def _device_limit_response(user: User):
-    """Cap reached — surface the devices so the user can remove one and retry."""
-    devices = UserDevice.query.filter_by(user_id=user.id).order_by(UserDevice.last_seen).all()
+    """Cap reached — surface the machines so the user can remove one and retry."""
     return jsonify(error="device_limit_reached", max_devices=UserDevice.limit_for(user),
-                   devices=[d.to_dict() for d in devices]), 403
+                   devices=_grouped_devices(user.id)), 403
 
 
 def _user_json(user: User):
@@ -369,19 +407,24 @@ def logout():
 def list_devices():
     uid = int(get_jwt_identity())
     user = db.session.get(User, uid)
-    rows = UserDevice.query.filter_by(user_id=uid).order_by(UserDevice.last_seen.desc()).all()
-    return jsonify(devices=[d.to_dict() for d in rows], max_devices=UserDevice.limit_for(user))
+    return jsonify(devices=_grouped_devices(uid), max_devices=UserDevice.limit_for(user))
 
 
 @bp.delete("/devices/<int:did>")
 @jwt_required()
 def remove_device(did):
-    dev = UserDevice.query.filter_by(id=did, user_id=int(get_jwt_identity())).first()
+    uid = int(get_jwt_identity())
+    dev = UserDevice.query.filter_by(id=did, user_id=uid).first()
     if not dev:
         return jsonify(error="not_found"), 404
-    db.session.delete(dev)
+    # The list shows machines, so removing one frees the whole machine — every browser
+    # signed in on it. Deleting a single browser row would leave the slot occupied and
+    # the user still blocked.
+    freed = [row for row in UserDevice.query.filter_by(user_id=uid).all() if row.group == dev.group]
+    for row in freed:
+        db.session.delete(row)
     db.session.commit()
-    return jsonify(deleted=did)
+    return jsonify(deleted=did, browsers_removed=len(freed))
 
 
 # ------------------------- national ID card (private) -------------------------

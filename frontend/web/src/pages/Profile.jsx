@@ -625,6 +625,9 @@ export default function Profile() {
                 {!devices.length && <Empty>{t('dashboard.noDevices')}</Empty>}
                 {devices.map((device) => {
                   const isCurrent = device.device_id === thisDevice;
+                  // A machine, not a browser: say how many browsers it holds, so removing
+                  // it is understood to sign all of them out.
+                  const browsers = device.browsers || 1;
                   return (
                     <div key={device.id} style={{ display: 'flex', alignItems: 'center', gap: 11, border: `1px solid ${colors.line2}`, borderRadius: 11, padding: '11px 13px' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -633,6 +636,7 @@ export default function Profile() {
                         </div>
                         <div style={{ fontSize: 11.5, color: colors.muted2, marginTop: 3 }}>
                           {(device.label || '').slice(0, 90)} · {dateLabel(device.last_seen, lang)}
+                          {browsers > 1 && ` · ${t('devices.browsers', { n: browsers })}`}
                         </div>
                       </div>
                       <button type="button" onClick={() => removeDevice(device.id)}
