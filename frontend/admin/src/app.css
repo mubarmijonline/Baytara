@@ -485,3 +485,9 @@ select option { font-weight: 600; }
 /* Course cover preview, so an admin sees what they just uploaded. */
 .course-cover-preview { display: flex; align-items: center; gap: 12px; margin: -6px 0 14px; }
 .course-cover-preview img { width: 160px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; border: 1px solid var(--line, #ececf2); display: block; }
+
+/* Uploading straight into a course. */
+.course-add-video { display: flex; flex-direction: column; gap: 4px; }
+.course-add-protect { display: flex; gap: 8px; align-items: flex-start; margin: -4px 0 12px; font-size: 13px; line-height: 1.6; }
+.course-add-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12.5px; color: var(--muted, #5A6180); }
+.course-add-progress progress { flex: 1; height: 10px; border-radius: 6px; }

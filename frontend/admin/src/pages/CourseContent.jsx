@@ -5,11 +5,27 @@ import { api } from '../api.js';
 import { catalogErrorCodes, durationLabel, localizedCatalogValue, posterFor } from '../catalog.js';
 import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
-import { ErrText } from '../ui.jsx';
+import { ErrText, Field, catalogErrorText } from '../ui.jsx';
+import { uploadForm } from '../vdocipher-upload.js';
 
 const COPY = {
   ar: {
     heading: 'محتوى الدورة', back: 'الدورات', loading: 'جارٍ تحميل المحتوى…', loadError: 'تعذّر تحميل محتوى الدورة.',
+    addVideo: 'رفع فيديو جديد لهذه الدورة',
+    addVideoTitle: 'عنوان الفيديو',
+    addVideoWhere: 'مكان التخزين',
+    addVideoVdo: 'VdoCipher — محمي بتقنية DRM',
+    addVideoLocal: 'خادم بيطرة — بدون DRM',
+    addVideoVdoHint: 'الخيار الموصى به للمحتوى المدفوع: يمنع تسجيل الشاشة على iPhone وعلى أجهزة أندرويد المدعومة.',
+    addVideoLocalHint: 'مناسب للمحتوى المجاني فقط: الصورة قابلة للتسجيل على أي جهاز، والعلامة المائية وحدها هي ما يحدّد الحساب.',
+    addVideoProtect: 'تفعيل منع تسجيل الشاشة (يمنع التشغيل من متصفح الجوال إذا كان إلزام التطبيق مُفعّلاً)',
+    addVideoFile: 'ملف الفيديو',
+    addVideoSubmit: 'رفع وإضافة للدورة',
+    addVideoTitleRequired: 'اكتب عنوان الفيديو.',
+    addVideoFileRequired: 'اختر ملف الفيديو.',
+    addVideoNoInstructor: 'لا يمكن الرفع: هذه الدورة بلا محاضر.',
+    addVideoPhase: { creating: 'جارٍ التحضير…', uploading: 'جارٍ الرفع', importing: 'جارٍ التسجيل في المكتبة…', attaching: 'جارٍ الإضافة للدورة…' },
+
     upload: 'رفع وتعيين', search: 'البحث في الفيديوهات القابلة لإعادة الاستخدام', available: 'مكتبة الفيديوهات',
     assigned: 'الفيديوهات المرتبة', add: 'إضافة الفيديوهات المحددة', noAvailable: 'لا توجد فيديوهات مطابقة.',
     noAssigned: 'لا توجد فيديوهات في هذه الدورة.', moveUp: 'نقل {title} لأعلى', moveDown: 'نقل {title} لأسفل',
@@ -23,6 +39,20 @@ const COPY = {
   },
   en: {
     heading: 'Course content', back: 'Courses', loading: 'Loading course content…', loadError: 'Unable to load course content.',
+    addVideo: 'Upload a new video to this course',
+    addVideoTitle: 'Video title',
+    addVideoWhere: 'Where it is stored',
+    addVideoVdo: 'VdoCipher — DRM protected',
+    addVideoLocal: 'Baytara server — no DRM',
+    addVideoVdoHint: 'The choice for paid content: it blocks screen recording on iPhone and on supported Android devices.',
+    addVideoLocalHint: 'Free content only: the picture can be recorded on any device, and only the watermark identifies the account.',
+    addVideoProtect: 'Enforce the screen-recording rule (blocks mobile browsers while the app-only setting is on)',
+    addVideoFile: 'Video file',
+    addVideoSubmit: 'Upload and add to the course',
+    addVideoTitleRequired: 'Give the video a title.',
+    addVideoFileRequired: 'Choose a video file.',
+    addVideoNoInstructor: 'Cannot upload: this course has no instructor.',
+    addVideoPhase: { creating: 'Preparing…', uploading: 'Uploading', importing: 'Recording it in the library…', attaching: 'Adding it to the course…' },
     upload: 'Upload and assign', search: 'Search reusable videos', available: 'Video library', assigned: 'Ordered videos',
     add: 'Add selected videos', noAvailable: 'No matching videos.', noAssigned: 'No videos in this course.',
     moveUp: 'Move {title} up', moveDown: 'Move {title} down', remove: 'Remove {title} from this course',
@@ -38,6 +68,120 @@ const COPY = {
 
 function label(template, title) {
   return template.replace('{title}', title);
+}
+
+
+// Upload a video straight into this course, choosing where it is served from.
+//
+// Before this, a video was created somewhere else and then assigned here, and the only
+// upload screen wrote to our own server — so videos meant for VdoCipher ended up
+// self-hosted, which has no DRM and cannot stop a screen recording. The destination is
+// now an explicit choice at the moment of upload, and the course supplies the category
+// and the instructor, so the pairing the server would refuse cannot be made by accident.
+function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
+  const [title, setTitle] = useState('');
+  const [destination, setDestination] = useState('vdocipher');
+  const [protect, setProtect] = useState(true);
+  const [file, setFile] = useState(null);
+  const [phase, setPhase] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState('');
+  const fileRef = useRef(null);
+
+  const reset = () => {
+    setTitle(''); setFile(null); setProgress(0); setPhase('');
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  // Everything the catalogue insists on, taken from the course rather than asked again.
+  const metadata = () => ({
+    title: title.trim(),
+    category_id: course?.category?.id || null,
+    instructor_id: course?.instructor?.id || null,
+    access_type: course?.access_type || 'free',
+    status: 'published',
+    price: 0,
+    currency: course?.currency || 'EGP',
+    is_protected: protect,
+  });
+
+  async function submit() {
+    setError('');
+    if (!title.trim()) { setError(copy.addVideoTitleRequired); return; }
+    if (!file) { setError(copy.addVideoFileRequired); return; }
+    if (!course?.instructor?.id) { setError(copy.addVideoNoInstructor); return; }
+
+    try {
+      let videoId;
+      if (destination === 'local') {
+        setPhase('creating');
+        const created = await api.videoCreate(metadata(), { silent: true });
+        videoId = (created.video || created).id;
+        setPhase('uploading');
+        await api.videoUpload(videoId, file, setProgress);
+      } else {
+        // The provider needs the file before we have anything to record, so the
+        // catalogue row is created by the import once the upload lands.
+        setPhase('creating');
+        const credentials = await api.vdocipherUploadCredentials({
+          title: title.trim(), course_id: courseId,
+        });
+        const body = new FormData();
+        Object.entries(credentials.fields).forEach(([key, value]) => body.append(key, value));
+        body.append('success_action_status', '201');
+        body.append('success_action_redirect', '');
+        body.append('file', file);
+        setPhase('uploading');
+        await uploadForm(credentials.upload_link, body, setProgress);
+        setPhase('importing');
+        const imported = await api.vdocipherImport({ ...metadata(), video_id: credentials.video_id });
+        videoId = (imported.video || imported).id;
+      }
+      setPhase('attaching');
+      await api.videoCoursesAdd(videoId, [courseId]);
+      reset();
+      onAdded();
+    } catch (failure) {
+      setError(catalogErrorText(failure, t));
+      setPhase('');
+    }
+  }
+
+  const working = Boolean(phase);
+  return (
+    <section className="catalog-panel course-add-video">
+      <h3>{copy.addVideo}</h3>
+      <Field label={copy.addVideoTitle}>
+        <input value={title} onChange={(event) => setTitle(event.target.value)} disabled={working} />
+      </Field>
+      <Field label={copy.addVideoWhere} hint={destination === 'vdocipher' ? copy.addVideoVdoHint : copy.addVideoLocalHint}>
+        <select value={destination} onChange={(event) => setDestination(event.target.value)} disabled={working}>
+          <option value="vdocipher">{copy.addVideoVdo}</option>
+          <option value="local">{copy.addVideoLocal}</option>
+        </select>
+      </Field>
+      {destination === 'vdocipher' && (
+        <label className="course-add-protect">
+          <input type="checkbox" checked={protect} onChange={(event) => setProtect(event.target.checked)} disabled={working} />
+          <span>{copy.addVideoProtect}</span>
+        </label>
+      )}
+      <Field label={copy.addVideoFile}>
+        <input ref={fileRef} type="file" accept="video/mp4,video/quicktime,video/x-matroska,video/webm"
+               disabled={working} onChange={(event) => setFile(event.target.files?.[0] || null)} />
+      </Field>
+      {working && (
+        <div className="course-add-progress">
+          <progress max="100" value={phase === 'uploading' ? progress : undefined} />
+          <span>{copy.addVideoPhase[phase] || phase}{phase === 'uploading' ? ` ${progress}%` : ''}</span>
+        </div>
+      )}
+      <ErrText>{error}</ErrText>
+      <button className="btn btn-filled" type="button" disabled={working} onClick={submit}>
+        <Upload size={16} /> {copy.addVideoSubmit}
+      </button>
+    </section>
+  );
 }
 
 export default function CourseContent({ routeParams = {} }) {
@@ -229,6 +373,9 @@ export default function CourseContent({ routeParams = {} }) {
           {!videos.length && <div className="empty">{c.noAssigned}</div>}
         </div>
       </section>
+      <AddVideoToCourse course={course} courseId={courseId} copy={c} t={t}
+        onAdded={() => loadCourse({ showLoading: false })} />
+
       <aside className="catalog-panel reusable-video-panel"><h3>{c.available}</h3>
         <input className="catalog-search" type="search" aria-label={c.search} placeholder={c.search} value={query} onChange={(event) => setQuery(event.target.value)} />
         <div className="catalog-selector">
