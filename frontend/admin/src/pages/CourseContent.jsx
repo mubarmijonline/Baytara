@@ -11,6 +11,7 @@ import { uploadForm } from '../vdocipher-upload.js';
 const COPY = {
   ar: {
     heading: 'محتوى الدورة', back: 'الدورات', loading: 'جارٍ تحميل المحتوى…', loadError: 'تعذّر تحميل محتوى الدورة.',
+    deliveryLocal: 'على خادمنا', deliveryVdo: 'VdoCipher',
     addVideo: 'رفع فيديو جديد لهذه الدورة',
     addVideoTitle: 'عنوان الفيديو',
     addVideoWhere: 'مكان التخزين',
@@ -39,6 +40,7 @@ const COPY = {
   },
   en: {
     heading: 'Course content', back: 'Courses', loading: 'Loading course content…', loadError: 'Unable to load course content.',
+    deliveryLocal: 'Our server', deliveryVdo: 'VdoCipher',
     addVideo: 'Upload a new video to this course',
     addVideoTitle: 'Video title',
     addVideoWhere: 'Where it is stored',
@@ -78,6 +80,21 @@ function label(template, title) {
 // self-hosted, which has no DRM and cannot stop a screen recording. The destination is
 // now an explicit choice at the moment of upload, and the course supplies the category
 // and the instructor, so the pairing the server would refuse cannot be made by accident.
+
+// Where a video is served from, said out loud. A local video has no DRM and a
+// VdoCipher one does, and the two were indistinguishable in this list.
+function DeliveryChip({ video, copy }) {
+  const local = video.source === 'local';
+  const status = video.local_status;
+  const tone = !local ? 'published' : status === 'ready' ? 'role' : status === 'failed' ? 'unpublished' : 'draft';
+  return (
+    <span className={`chip chip-${tone}`} title={video.local_error || ''}>
+      {local ? copy.deliveryLocal : copy.deliveryVdo}
+      {local && status && status !== 'ready' ? ` · ${status}` : ''}
+    </span>
+  );
+}
+
 function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
   const [title, setTitle] = useState('');
   const [destination, setDestination] = useState('vdocipher');
@@ -357,7 +374,7 @@ export default function CourseContent({ routeParams = {} }) {
               <GripVertical size={18} className="drag-handle" aria-hidden="true" />
               <span className="order-number">{index + 1}</span>
               <div className="ordered-video-poster">{poster ? <img src={poster} alt="" /> : <Video size={20} aria-hidden="true" />}</div>
-              <div className="ordered-video-copy"><strong>{title}</strong><span>{video.category ? localizedCatalogValue(video.category, 'name', language) : '—'} · {video.assignment_count ?? 1} {c.courses}</span><div className="ordered-video-meta"><span className="chip chip-role">{t(`catalog.access.${video.access_type}`)}</span>{minutes ? <span><Clock3 size={13} aria-hidden="true" /> {minutes} {c.minutes}</span> : null}</div></div>
+              <div className="ordered-video-copy"><strong>{title}</strong><span>{video.category ? localizedCatalogValue(video.category, 'name', language) : '—'} · {video.assignment_count ?? 1} {c.courses}</span><div className="ordered-video-meta"><DeliveryChip video={video} copy={c} /><span className="chip chip-role">{t(`catalog.access.${video.access_type}`)}</span>{minutes ? <span><Clock3 size={13} aria-hidden="true" /> {minutes} {c.minutes}</span> : null}</div></div>
               <div className="ordered-video-actions">
                 <select aria-label={`${c.unitOf}: ${title}`} disabled={controlsBusy}
                   value={videoUnit[video.id] ?? ''} onChange={(event) => setUnitFor(video.id, event.target.value)}>
