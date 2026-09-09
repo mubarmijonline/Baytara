@@ -7,31 +7,128 @@
 // stream. So they are encoded here rather than left to each call site.
 import 'package:uuid/uuid.dart';
 
+import '../../../core/network/media_url.dart';
+
+/// Which delivery path the server picked for this lesson.
+///
+/// Set on the lesson row (`Lesson.source` in backend/app/models/catalog.py), not chosen by
+/// the client, and the two answers have nothing in common past the session id: VdoCipher
+/// returns an OTP for its own player, self-hosted returns a URL to our encrypted HLS.
+enum PlaybackKind {
+  vdocipher,
+  local;
+
+  /// The VdoCipher response carries no `kind` key at all -- it predates the second path --
+  /// so an absent value means VdoCipher rather than "unknown".
+  static PlaybackKind fromWire(String? wire) =>
+      wire == 'local' ? PlaybackKind.local : PlaybackKind.vdocipher;
+}
+
 /// A minted playback session. Everything here is short-lived and none of it is persisted:
-/// the OTP is single-session and the server counts every mint against 40 per hour.
+/// the OTP is single-session, the HLS token expires, and the server counts every mint
+/// against 40 per hour.
+///
+/// The two named constructors exist so a session cannot be *built* holding the wrong half
+/// of the contract -- there is no way to make a local session carrying an OTP, or a DRM one
+/// carrying a playlist URL. The fields themselves stay nullable, so reading the wrong half
+/// still compiles; [kind] is what a caller switches on, and player_screen does.
 class PlaybackSession {
-  const PlaybackSession({
-    required this.otp,
-    required this.playbackInfo,
+  const PlaybackSession._({
+    required this.kind,
     required this.sessionId,
     required this.resumePositionSeconds,
-    required this.audioMark,
+    this.otp,
+    this.playbackInfo,
+    this.url,
+    this.watermark,
+    this.audioMark,
   });
 
-  factory PlaybackSession.fromJson(Map<String, dynamic> j) => PlaybackSession(
-        otp: j['otp'] as String,
-        playbackInfo: j['playbackInfo'] as String,
-        sessionId: j['session_id'] as String,
-        resumePositionSeconds: (j['resume_position_seconds'] as num?)?.toInt() ?? 0,
-        // The account id, encoded into the inaudible audio watermark so a screen recording
-        // still names the account it came from.
-        audioMark: (j['audio_mark'] as num?)?.toInt(),
+  /// DRM delivery: the provider's player is handed an OTP and playbackInfo, and the
+  /// provider bakes the viewer watermark into the stream itself.
+  const PlaybackSession.vdocipher({
+    required String otp,
+    required String playbackInfo,
+    required String sessionId,
+    required int resumePositionSeconds,
+    int? audioMark,
+  }) : this._(
+          kind: PlaybackKind.vdocipher,
+          otp: otp,
+          playbackInfo: playbackInfo,
+          sessionId: sessionId,
+          resumePositionSeconds: resumePositionSeconds,
+          audioMark: audioMark,
+        );
+
+  /// Self-hosted delivery: AES-128 encrypted HLS from our own server, every playlist,
+  /// segment and key URI carrying the signed token in [url]'s query.
+  ///
+  /// There is no provider to bake in a watermark here, so [watermark] arrives as text and
+  /// **this app is what draws it**. Dropping it would ship the self-hosted path with
+  /// strictly weaker attribution than the DRM one.
+  const PlaybackSession.local({
+    required String url,
+    required String sessionId,
+    required int resumePositionSeconds,
+    String? watermark,
+    int? audioMark,
+  }) : this._(
+          kind: PlaybackKind.local,
+          url: url,
+          watermark: watermark,
+          sessionId: sessionId,
+          resumePositionSeconds: resumePositionSeconds,
+          audioMark: audioMark,
+        );
+
+  /// Parses either shape.
+  ///
+  /// This used to read `j['otp'] as String` unconditionally. Against a self-hosted lesson
+  /// that is a TypeError, not an ApiException, so it escaped the player's `on ApiException`
+  /// catch and took the screen down: every locally hosted video was unplayable in the app
+  /// from the moment the second delivery path shipped.
+  factory PlaybackSession.fromJson(Map<String, dynamic> j) {
+    final sessionId = j['session_id'] as String;
+    final resume = (j['resume_position_seconds'] as num?)?.toInt() ?? 0;
+    // The account id, encoded into the inaudible audio watermark so a screen recording
+    // still names the account it came from. Sent on both paths.
+    final audioMark = (j['audio_mark'] as num?)?.toInt();
+
+    if (PlaybackKind.fromWire(j['kind'] as String?) == PlaybackKind.local) {
+      return PlaybackSession.local(
+        // The server sends this relative ("/api/v1/video/hls/12/master.m3u8?t=..."), and a
+        // player cannot open a relative path any more than NetworkImage can.
+        url: resolveMediaUrl(j['url'] as String?)!,
+        watermark: (j['watermark'] as String?)?.trim(),
+        sessionId: sessionId,
+        resumePositionSeconds: resume,
+        audioMark: audioMark,
       );
+    }
+    return PlaybackSession.vdocipher(
+      otp: j['otp'] as String,
+      playbackInfo: j['playbackInfo'] as String,
+      sessionId: sessionId,
+      resumePositionSeconds: resume,
+      audioMark: audioMark,
+    );
+  }
 
-  final String otp;
-  final String playbackInfo;
+  final PlaybackKind kind;
 
-  /// The server's public session id, used in the events URL.
+  /// VdoCipher only.
+  final String? otp;
+  final String? playbackInfo;
+
+  /// Self-hosted only: the absolute master playlist URL, token already in the query.
+  final String? url;
+
+  /// Self-hosted only: the viewer text this app must draw over the picture.
+  final String? watermark;
+
+  /// The server's public session id, used in the events URL. The only field the two paths
+  /// share, and the reason all the telemetry below is delivery-agnostic.
   final String sessionId;
 
   /// Seek here before the first frame when greater than zero.

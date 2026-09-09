@@ -42,11 +42,18 @@ class PlaybackSessionController {
 
   final CoverageTracker coverage;
 
-  /// The OTP and playbackInfo, exposed for the player widget. Deliberately read-only and
-  /// never persisted: an OTP is single-session, short-lived, and every mint counts against
-  /// the account's 40-per-hour ceiling.
-  String get sessionOtp => _session.otp;
-  String get sessionPlaybackInfo => _session.playbackInfo;
+  /// What the player widget needs, exposed read-only and never persisted: an OTP is
+  /// single-session, an HLS token expires, and every mint counts against the account's
+  /// 40-per-hour ceiling.
+  ///
+  /// Everything below this point is delivery-agnostic. The heartbeat, the event rules and
+  /// the outcomes are keyed on the session id, which both paths return, so a self-hosted
+  /// lesson is monitored exactly as strictly as a DRM one.
+  PlaybackKind get kind => _session.kind;
+  String? get sessionOtp => _session.otp;
+  String? get sessionPlaybackInfo => _session.playbackInfo;
+  String? get sessionUrl => _session.url;
+  String? get sessionWatermark => _session.watermark;
 
   Timer? _timer;
   bool _started = false;

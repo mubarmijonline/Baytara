@@ -13,8 +13,16 @@ See `docs/milestones/mobile-*.md`.
 
 Done: toolchain and skeleton, auth with device binding and the phone gate, catalogue
 browsing, the player with its telemetry and capture guards, learning and certificates,
-payments, verification, and the account surface. 165 tests, analyze clean, Android APK
+payments, verification, and the account surface. 217 tests, analyze clean, Android APK
 builds. No placeholder screens remain.
+
+The player handles **both** delivery paths the server offers. A lesson is either
+VdoCipher-hosted or hosted by us (`Lesson.source`), and `POST /video/playback` answers with
+a different shape for each: an OTP for the provider's player, or a URL to our own encrypted
+HLS. On the self-hosted path there is no provider to bake in the viewer watermark, so this
+app draws it. See `docs/milestones/mobile-09-*.md`, which also records the three silent
+defects that fix uncovered — most importantly that no session had ever sent a single
+telemetry event, so no lesson recorded progress and no course could complete from the app.
 
 **Nothing has run on a real phone, and no Swift in this repo has ever been compiled.**
 Every protection claim below is a design intent, not an observation. Do not repeat any of it

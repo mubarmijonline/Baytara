@@ -33,7 +33,7 @@ class FakeRepo implements PlaybackRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-const _session = PlaybackSession(
+const _session = PlaybackSession.vdocipher(
   otp: 'o',
   playbackInfo: 'p',
   sessionId: 'sess-1',

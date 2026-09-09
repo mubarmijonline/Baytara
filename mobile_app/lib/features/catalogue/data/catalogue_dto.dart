@@ -4,22 +4,12 @@
 // Only the fields a screen actually uses are parsed. A DTO that mirrors every column is a
 // DTO nobody keeps in sync with the server.
 import '../../../core/access/access.dart';
-import '../../../core/network/dio_client.dart';
+import '../../../core/network/media_url.dart';
 
-/// Turns a media path from the API into something Image.network can fetch.
-///
-/// Uploads come back **relative** ("/api/v1/uploads/x.jpg") while provider-hosted posters
-/// come back absolute. Handing a relative path to NetworkImage fails silently, which is why
-/// no instructor avatar has ever appeared in the app.
-String? resolveMediaUrl(String? raw) {
-  if (raw == null || raw.trim().isEmpty) return null;
-  final value = raw.trim();
-  if (value.startsWith('http://') || value.startsWith('https://')) return value;
-  // kApiBaseUrl ends in /api/v1 and these paths already begin with it, so the origin is
-  // what gets prefixed, not the whole base.
-  final origin = Uri.parse(kApiBaseUrl).origin;
-  return value.startsWith('/') ? '$origin$value' : '$origin/$value';
-}
+// resolveMediaUrl lives in core/network now: the player needs the same rule and must not
+// import a catalogue DTO to get it. Re-exported so every existing call site, here and in
+// the tests, keeps reading it from this file.
+export '../../../core/network/media_url.dart' show resolveMediaUrl;
 
 class Category {
   const Category({

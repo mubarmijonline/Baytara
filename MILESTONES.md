@@ -139,6 +139,7 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
   watermark round-trips against the backend decoder (`tool/verify_watermark.sh`). 118 tests.
   **Code complete but NOTHING verified on hardware; iOS never compiled. Watermark playback
   scheduling deferred to iOS bring-up.**
+  _The telemetry written here was never connected to a player; see mobile-09._
 - [x] mobile-04 Learning + certificates — resume point, enrolments with progress,
   certificates and public verification. Free courses correctly produce no enrolment, and the
   empty state says so. 131 tests.
@@ -152,6 +153,13 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
 - [x] mobile-07 Account + notifications + polish — notifications (60s poll, stopped when
   backgrounded), profile, settings, plus the bundles/instructors/articles screens deferred
   from mobile-02. No placeholder screens remain. 165 tests.
+- [x] mobile-09 Self-hosted playback + the telemetry wiring — the app now plays a lesson
+  the server hosts itself (encrypted HLS, token in every URI) as well as a VdoCipher one,
+  and draws the viewer watermark on that path because no provider bakes it in. Fixed three
+  silent defects: a `kind:"local"` response threw a TypeError past the screen's error
+  handling so every self-hosted video was unplayable; no session ever sent an event, so no
+  heartbeat ran, no progress was recorded and no course could complete from the app; and a
+  resumed lesson opened at zero. 217 tests. **Still nothing on hardware.**
 - [ ] mobile-08 iOS bring-up — **BLOCKED: needs macOS. No Swift in this repo has ever been
   compiled.** iOS project prepared (bundle id, deployment target, Info.plist permissions,
   CaptureGuard added to the Xcode project). Handover in `docs/milestones/mobile-08-*.md`.

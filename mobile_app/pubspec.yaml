@@ -32,6 +32,13 @@ dependencies:
   # server counts every mint against a 40/hour ceiling.
   vdocipher_flutter: 2.8.5
 
+  # Self-hosted playback. `POST /video/playback` answers with kind:"local" for a lesson whose
+  # source is our own server (backend/app/api/v1/local_hls.py): AES-128 encrypted HLS, with
+  # the signed token in every playlist, segment and key URI. ExoPlayer fetches the key and
+  # decrypts natively, so nothing here handles key material. The viewer watermark is text on
+  # this path rather than baked into the stream, and LocalPlayerView is what draws it.
+  video_player: 2.14.0
+
   # NOTE: screen_protector was evaluated and deliberately NOT used. It only wraps
   # FLAG_SECURE, which MainActivity already sets natively, and it does not do the thing
   # that actually matters on Android: ALLOW_CAPTURE_BY_NONE, which silences the audio in a

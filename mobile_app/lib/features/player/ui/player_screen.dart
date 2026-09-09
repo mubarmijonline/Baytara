@@ -9,6 +9,11 @@
 //
 // Every refusal from the mint is mapped to the thing the user can actually do about it,
 // which is what PlaybackRecovery is for.
+//
+// Which player draws the picture is the server's call, not this screen's: a lesson is either
+// VdoCipher-hosted or self-hosted (`Lesson.source`), and POST /video/playback answers with
+// the half of the contract that path needs. Both feed the same PlaybackTelemetryBridge, so
+// the heartbeat, the coverage rules and the capture guard behave identically either way.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,8 +26,10 @@ import '../../../core/providers.dart';
 import '../../../core/theme/tokens.dart';
 import '../application/playback_guard.dart';
 import '../application/playback_session_controller.dart';
+import '../application/telemetry_bridge.dart';
 import '../data/playback_dto.dart';
 import '../data/playback_repository.dart';
+import 'local_player_view.dart';
 
 final playbackRepositoryProvider = Provider<PlaybackRepository>(
   (ref) => PlaybackRepository(client: ref.watch(apiClientProvider)),
@@ -42,6 +49,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   final _guard = PlaybackGuard();
 
   PlaybackSessionController? _controller;
+  PlaybackTelemetryBridge? _telemetry;
   VdoPlayerController? _player;
 
   bool _loading = true;
@@ -50,6 +58,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// True while a capture is running. Playback stays down and the surface stays covered
   /// until the user explicitly restarts it: the condition clearing is not consent.
   bool _blockedByCapture = false;
+
+  /// Where the server says this viewer stopped. The tracker was already told about it; the
+  /// player was not, so a resumed lesson still opened at zero.
+  int _resumeSeconds = 0;
+
+  /// The VdoPlayer widget is rebuilt by every setState on this screen, and a second
+  /// listener on the same controller would double every event the server counts.
+  bool _vdoListenerAttached = false;
+
+  /// A seek issued before the video is loaded goes nowhere, so the resume waits for the
+  /// first real duration and then happens exactly once.
+  bool _vdoResumeApplied = false;
 
   @override
   void initState() {
@@ -78,11 +98,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       );
       if (session.resumePositionSeconds > 0) {
         controller.onSeek(session.resumePositionSeconds);
+        _resumeSeconds = session.resumePositionSeconds;
       }
 
       if (!mounted) return;
       setState(() {
         _controller = controller;
+        _telemetry = PlaybackTelemetryBridge(controller);
         _loading = false;
       });
     } on ApiException catch (e) {
@@ -99,7 +121,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (signal.captured) {
       _player?.pause();
       setState(() => _blockedByCapture = true);
-      _controller?.reportSuspicious(signal.reason);
+      _telemetry?.onBlocked(signal.reason);
     } else {
       // The recording stopped, but playback does not resume on its own.
       setState(() => _blockedByCapture = false);
@@ -118,12 +140,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     setState(() {
       _controller?.dispose();
       _controller = null;
+      _telemetry = null;
       _refusal = ApiErrorCode.sessionClosed;
     });
   }
 
   @override
   void dispose() {
+    // Bank the run before tearing the session down: leaving mid-lesson without a pause lets
+    // the server's sweep close the session as abandoned and loses the coverage.
+    _telemetry?.onLeave();
     _controller?.dispose();
     _guard.disable();
     super.dispose();
@@ -157,25 +183,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Widget _playerBody(L10n l) {
     final controller = _controller;
-    if (controller == null) return const SizedBox.shrink();
+    final telemetry = _telemetry;
+    if (controller == null || telemetry == null) return const SizedBox.shrink();
 
     return Stack(
       children: [
         Center(
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: VdoPlayer(
-              embedInfo: EmbedInfo.streaming(
-                otp: controller.sessionOtp,
-                playbackInfo: controller.sessionPlaybackInfo,
+          child: switch (controller.kind) {
+            PlaybackKind.vdocipher => AspectRatio(
+                aspectRatio: 16 / 9,
+                child: _vdoPlayer(controller, telemetry),
               ),
-              onPlayerCreated: (player) => _player = player,
-              onError: (error) => controller.reportPlayerError(
-                error.code.toString(),
-                message: error.message,
+            PlaybackKind.local => LocalPlayerView(
+                url: controller.sessionUrl!,
+                watermark: controller.sessionWatermark,
+                resumePositionSeconds: _resumeSeconds,
+                paused: _blockedByCapture,
+                onSnapshot: telemetry.onSnapshot,
+                onError: (code, message) =>
+                    controller.reportPlayerError(code, message: message),
               ),
-            ),
-          ),
+          },
         ),
         if (_blockedByCapture)
           Positioned.fill(
@@ -195,6 +223,45 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _vdoPlayer(
+    PlaybackSessionController controller,
+    PlaybackTelemetryBridge telemetry,
+  ) {
+    return VdoPlayer(
+      embedInfo: EmbedInfo.streaming(
+        otp: controller.sessionOtp!,
+        playbackInfo: controller.sessionPlaybackInfo!,
+      ),
+      onPlayerCreated: (player) {
+        _player = player;
+        if (_vdoListenerAttached) return;
+        _vdoListenerAttached = true;
+        // VdoPlayerController is a ValueNotifier, so this is where the DRM path's telemetry
+        // comes from. It was never attached before, which is why no session it opened ever
+        // sent a single event.
+        player.addListener(() {
+          final v = player.value;
+          telemetry.onSnapshot(PlayerSnapshot(
+            position: v.position,
+            duration: v.duration,
+            isPlaying: v.isPlaying,
+            isEnded: v.isEnded,
+          ));
+          if (!_vdoResumeApplied &&
+              _resumeSeconds > 0 &&
+              v.duration > Duration.zero) {
+            _vdoResumeApplied = true;
+            player.seek(Duration(seconds: _resumeSeconds));
+          }
+        });
+      },
+      onError: (error) => controller.reportPlayerError(
+        error.code.toString(),
+        message: error.message,
+      ),
     );
   }
 }
