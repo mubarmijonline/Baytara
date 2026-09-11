@@ -19,6 +19,7 @@ const COPY = {
     addVideoLocal: 'خادم بيطرة — بدون DRM',
     addVideoVdoHint: 'الخيار الموصى به للمحتوى المدفوع: يمنع تسجيل الشاشة على iPhone وعلى أجهزة أندرويد المدعومة.',
     addVideoLocalHint: 'مناسب للمحتوى المجاني فقط: الصورة قابلة للتسجيل على أي جهاز، والعلامة المائية وحدها هي ما يحدّد الحساب.',
+    addVideoPaidOnlyVdo: 'هذه الدورة مدفوعة، لذلك تُرفع فيديوهاتها على VdoCipher فقط. سيرفر بيطرة بلا حماية DRM ومخصص للمحتوى المجاني.',
     addVideoProtect: 'تفعيل منع تسجيل الشاشة (يمنع التشغيل من متصفح الجوال إذا كان إلزام التطبيق مُفعّلاً)',
     addVideoFile: 'ملف الفيديو',
     addVideoSubmit: 'رفع وإضافة للدورة',
@@ -33,6 +34,7 @@ const COPY = {
     remove: 'إزالة {title} من هذه الدورة', removeConfirm: 'إزالة الفيديو من هذه الدورة فقط؟ سيبقى الفيديو في المكتبة والدورات الأخرى.',
     orderConflict: 'تغيّر ترتيب الدورة في جلسة أخرى. أعد التحميل ثم حاول مجدداً.', reload: 'إعادة التحميل',
     addError: 'تعذّر تعيين الفيديوهات المحددة.', removeError: 'تعذّرت إزالة الفيديو من الدورة.', courses: 'دورات', minutes: 'د',
+    plays: 'مشاهدة',
     units: 'الوحدات', newUnit: 'وحدة جديدة', unitName: 'اسم الوحدة', renameUnit: 'إعادة تسمية الوحدة',
     deleteUnit: 'حذف الوحدة', deleteUnitConfirm: 'حذف هذه الوحدة؟ ستبقى الفيديوهات في الدورة بلا وحدة.',
     noUnit: 'بدون وحدة', unitOf: 'الوحدة', unitError: 'تعذّر تحديث الوحدات.',
@@ -48,6 +50,7 @@ const COPY = {
     addVideoLocal: 'Baytara server — no DRM',
     addVideoVdoHint: 'The choice for paid content: it blocks screen recording on iPhone and on supported Android devices.',
     addVideoLocalHint: 'Free content only: the picture can be recorded on any device, and only the watermark identifies the account.',
+    addVideoPaidOnlyVdo: 'This course is paid, so its videos go to VdoCipher only. The Baytara server has no DRM and is for free content.',
     addVideoProtect: 'Enforce the screen-recording rule (blocks mobile browsers while the app-only setting is on)',
     addVideoFile: 'Video file',
     addVideoSubmit: 'Upload and add to the course',
@@ -61,6 +64,7 @@ const COPY = {
     removeConfirm: 'Remove this video from this course only? It remains in the library and other courses.',
     orderConflict: 'The course order changed in another session. Reload it and try again.', reload: 'Reload',
     addError: 'Unable to assign the selected videos.', removeError: 'Unable to remove the video from this course.', courses: 'courses', minutes: 'min',
+    plays: 'plays',
     units: 'Units', newUnit: 'New unit', unitName: 'Unit name', renameUnit: 'Rename unit',
     deleteUnit: 'Delete unit', deleteUnitConfirm: 'Delete this unit? Its videos stay in the course, ungrouped.',
     noUnit: 'No unit', unitOf: 'Unit', unitError: 'Unable to update units.',
@@ -98,6 +102,10 @@ function DeliveryChip({ video, copy }) {
 function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
   const [title, setTitle] = useState('');
   const [destination, setDestination] = useState('vdocipher');
+  // Our server has no DRM, so a paid course cannot put its videos there. The server
+  // refuses it too (paid_requires_vdocipher); this just keeps the option from being
+  // offered, with the reason on screen instead of an error after the upload.
+  const paid = course?.access_type === 'baytarian' || course?.access_type === 'general';
   const [protect, setProtect] = useState(true);
   const [file, setFile] = useState(null);
   const [phase, setPhase] = useState('');
@@ -130,7 +138,7 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
 
     try {
       let videoId;
-      if (destination === 'local') {
+      if (destination === 'local' && !paid) {
         setPhase('creating');
         const created = await api.videoCreate(metadata(), { silent: true });
         videoId = (created.video || created).id;
@@ -171,10 +179,10 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
       <Field label={copy.addVideoTitle}>
         <input value={title} onChange={(event) => setTitle(event.target.value)} disabled={working} />
       </Field>
-      <Field label={copy.addVideoWhere} hint={destination === 'vdocipher' ? copy.addVideoVdoHint : copy.addVideoLocalHint}>
-        <select value={destination} onChange={(event) => setDestination(event.target.value)} disabled={working}>
+      <Field label={copy.addVideoWhere} hint={paid ? copy.addVideoPaidOnlyVdo : destination === 'vdocipher' ? copy.addVideoVdoHint : copy.addVideoLocalHint}>
+        <select value={paid ? 'vdocipher' : destination} onChange={(event) => setDestination(event.target.value)} disabled={working || paid}>
           <option value="vdocipher">{copy.addVideoVdo}</option>
-          <option value="local">{copy.addVideoLocal}</option>
+          {!paid && <option value="local">{copy.addVideoLocal}</option>}
         </select>
       </Field>
       {destination === 'vdocipher' && (
@@ -374,7 +382,7 @@ export default function CourseContent({ routeParams = {} }) {
               <GripVertical size={18} className="drag-handle" aria-hidden="true" />
               <span className="order-number">{index + 1}</span>
               <div className="ordered-video-poster">{poster ? <img src={poster} alt="" /> : <Video size={20} aria-hidden="true" />}</div>
-              <div className="ordered-video-copy"><strong>{title}</strong><span>{video.category ? localizedCatalogValue(video.category, 'name', language) : '—'} · {video.assignment_count ?? 1} {c.courses}</span><div className="ordered-video-meta"><DeliveryChip video={video} copy={c} /><span className="chip chip-role">{t(`catalog.access.${video.access_type}`)}</span>{minutes ? <span><Clock3 size={13} aria-hidden="true" /> {minutes} {c.minutes}</span> : null}</div></div>
+              <div className="ordered-video-copy"><strong>{title}</strong><span>{video.category ? localizedCatalogValue(video.category, 'name', language) : '—'} · {video.assignment_count ?? 1} {c.courses}</span><div className="ordered-video-meta"><DeliveryChip video={video} copy={c} /><span className="chip chip-role">{t(`catalog.access.${video.access_type}`)}</span>{video.plays != null ? <span className="chip chip-role" title={t('video.playsHint')}>{video.plays} {c.plays}</span> : null}{minutes ? <span><Clock3 size={13} aria-hidden="true" /> {minutes} {c.minutes}</span> : null}</div></div>
               <div className="ordered-video-actions">
                 <select aria-label={`${c.unitOf}: ${title}`} disabled={controlsBusy}
                   value={videoUnit[video.id] ?? ''} onChange={(event) => setUnitFor(video.id, event.target.value)}>

@@ -497,3 +497,104 @@ def test_admin_user_email_is_validated_and_normalised(admin_client, app):
                               json={"email": "email: x@y.com"}).status_code == 422
     fixed = admin_client.patch(f"/api/v1/admin/users/{uid}", json={"email": "Correct@Yahoo.com"})
     assert fixed.status_code == 200 and fixed.get_json()["user"]["email"] == "correct@yahoo.com"
+
+
+def test_paid_video_cannot_be_uploaded_to_local_storage(app, admin_client, catalog_data):
+    """Our server has no DRM. That trade is agreed for free content only, so a paid
+    video is refused before a byte is read -- the check does not wait for the file."""
+    created = admin_client.post("/api/v1/admin/videos", json={
+        "title": "Paid lecture", "access_type": "general", "price": 150,
+        **CATALOG_DEFAULTS,
+    }).get_json()["video"]
+    response = admin_client.post(f"/api/v1/admin/videos/{created['id']}/upload",
+                                 data={}, content_type="multipart/form-data")
+    assert response.status_code == 422
+    assert response.get_json()["error"] == "paid_requires_vdocipher"
+
+
+def test_local_video_cannot_be_repriced_as_paid(app, admin_client, catalog_data):
+    """The same rule from the other direction: re-pricing a self-hosted video would put
+    paid content behind no DRM at all."""
+    created = admin_client.post("/api/v1/admin/videos", json={
+        "title": "Free clip", "access_type": "free", **CATALOG_DEFAULTS,
+    }).get_json()["video"]
+    with app.app_context():
+        lesson = db.session.get(Lesson, created["id"])
+        lesson.source = "local"
+        lesson.local_status = "ready"
+        db.session.commit()
+    response = admin_client.patch(f"/api/v1/admin/videos/{created['id']}",
+                                  json={"access_type": "baytarian", "price": 99})
+    assert response.status_code == 422
+    assert response.get_json()["error"] == "paid_requires_vdocipher"
+    # and a free re-save of the same row is still fine
+    ok = admin_client.patch(f"/api/v1/admin/videos/{created['id']}", json={"title": "Free clip 2"})
+    assert ok.status_code == 200, ok.get_json()
+
+
+def test_video_list_and_detail_carry_play_counts(app, admin_client, catalog_data):
+    """Plays are sessions that reached a first frame; viewers are distinct accounts. An
+    OTP that was minted and never played is not a view, and a denied attempt is not one."""
+    from datetime import datetime, timezone
+    from app.models import VideoPlaybackSession
+
+    created = admin_client.post("/api/v1/admin/videos", json={
+        "title": "Watched clip", "access_type": "free", **CATALOG_DEFAULTS,
+    }).get_json()["video"]
+    with app.app_context():
+        viewers = [User(name=f"V{i}", email=f"viewer{i}@example.test", password_hash="h", role="student")
+                   for i in range(2)]
+        db.session.add_all(viewers)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+
+        def session(pid, user, played, status="playing"):
+            return VideoPlaybackSession(
+                public_id=pid, user_id=user.id, video_id=created["id"], video_title="Watched clip",
+                access_type="free", status=status, started_at=now, last_event_at=now,
+                first_played_at=now if played else None,
+            )
+        db.session.add_all([
+            session("00000000-0000-4000-8000-000000000001", viewers[0], True),
+            session("00000000-0000-4000-8000-000000000002", viewers[0], True),   # same person, twice
+            session("00000000-0000-4000-8000-000000000003", viewers[1], True),
+            session("00000000-0000-4000-8000-000000000004", viewers[1], False, status="issued"),
+            session("00000000-0000-4000-8000-000000000005", viewers[1], False, status="denied"),
+        ])
+        db.session.commit()
+
+    listed = admin_client.get("/api/v1/admin/videos").get_json()["items"]
+    row = next(item for item in listed if item["id"] == created["id"])
+    assert (row["plays"], row["viewers"]) == (3, 2)
+
+    detail = admin_client.get(f"/api/v1/admin/videos/{created['id']}").get_json()["video"]
+    assert (detail["plays"], detail["viewers"]) == (3, 2)
+
+
+def test_course_content_carries_play_counts_per_video(app, admin_client, catalog_data):
+    """The course screen lists videos from /courses/<id>, not /videos, so the counts have
+    to ride on that payload too -- on the flat list and inside each unit."""
+    from datetime import datetime, timezone
+    from app.models import VideoPlaybackSession
+
+    course_id = catalog_data["courses"][0]
+    created = admin_client.post("/api/v1/admin/videos", json={
+        "title": "In course", "access_type": "free", "course_ids": [course_id], **CATALOG_DEFAULTS,
+    }).get_json()["video"]
+    with app.app_context():
+        viewer = User(name="V", email="course-viewer@example.test", password_hash="h", role="student")
+        db.session.add(viewer)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+        db.session.add(VideoPlaybackSession(
+            public_id="00000000-0000-4000-8000-00000000c001", user_id=viewer.id, video_id=created["id"],
+            video_title="In course", access_type="free", status="playing",
+            started_at=now, last_event_at=now, first_played_at=now,
+        ))
+        db.session.commit()
+
+    course = admin_client.get(f"/api/v1/admin/courses/{course_id}").get_json()["course"]
+    flat = next(v for v in course["videos"] if v["id"] == created["id"])
+    assert (flat["plays"], flat["viewers"]) == (1, 1)
+    grouped = [v for unit in course["modules"] for v in unit["videos"] if v["id"] == created["id"]]
+    assert grouped and grouped[0]["plays"] == 1

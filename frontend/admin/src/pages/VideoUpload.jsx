@@ -160,6 +160,9 @@ export default function VideoUpload() {
   const missing = () => {
     if (!form.category_id) return t('video.validation.category');
     if (!form.instructor_id) return t('video.validation.instructor');
+    // This page uploads to our own server, which has no DRM. Paid content is refused
+    // server-side (paid_requires_vdocipher); saying so here saves the transfer.
+    if (form.access_type === 'baytarian' || form.access_type === 'general') return t('catalog.error.paid_requires_vdocipher');
     return '';
   };
 

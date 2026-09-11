@@ -8,6 +8,8 @@ import NotFound from './NotFound.jsx';
 import { colors, gradients } from '../theme/tokens.js';
 import { auth, isAuthed, useFetch, webapi } from '../lib/api.js';
 import { primeAudioWatermark } from '../lib/audioWatermark.js';
+import { captureProtected, useBrowserSupport } from '../lib/browserSupport.js';
+import BrowserGuidance from '../components/BrowserGuidance.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 
 const DARK = colors.utilityBar;
@@ -63,19 +65,25 @@ export default function Learn() {
   );
   const index = activeLesson ? videos.findIndex((v) => v.id === activeLesson.id) : -1;
 
+  // Asked once per page load. A protected lesson on a browser the server would refuse
+  // gets the guidance screen instead of a mint that fails; a free one plays anyway.
+  const caps = useBrowserSupport();
+  const blockedHere = Boolean(caps?.blocked && captureProtected(activeLesson));
+
   // Fresh DRM OTP whenever the active lesson changes. The guard is what keeps a locked
   // or anonymous viewer from ever hitting /video/playback.
   useEffect(() => {
     setVideo(null);
     setVideoErr('');
     if (!course || !isAuthed() || !activeLesson?.id || !activeLesson.has_video) return undefined;
+    if (!caps || blockedHere) return undefined;
     let alive = true;
     auth.playback(activeLesson.id, course.id)
       .then((r) => alive && setVideo(r))
       .catch((e) => alive && setVideoErr(playbackMessage(e, t)));
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLesson?.id, course?.id]);
+  }, [activeLesson?.id, course?.id, caps, blockedHere]);
 
   const completeCurrent = useCallback(async () => {
     if (!activeLesson?.id || !isAuthed()) return;
@@ -146,6 +154,8 @@ export default function Learn() {
                   />
                 );
               })()
+            ) : blockedHere ? (
+              <BrowserGuidance caps={caps} mode="block" />
             ) : (
               <>
                 <span aria-hidden="true" style={{ width: 74, height: 74, borderRadius: '50%', background: 'rgba(48,72,160,.92)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 22 }}>▶</span>
@@ -158,6 +168,7 @@ export default function Learn() {
               {t('video.protectedPlayback')}
             </span>
           </div>
+          {!captureProtected(activeLesson) && <BrowserGuidance caps={caps} mode="nudge" />}
 
           <div style={{ flex: 1, background: colors.surface, padding: '24px 26px 30px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, marginBottom: 18, flexWrap: 'wrap' }}>

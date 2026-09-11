@@ -90,6 +90,22 @@ def protected_browser(ua=None):
     return False                                     # Linux, ChromeOS, unknown -> software DRM
 
 
+def platform_class(ua=None):
+    """Coarse platform for guidance copy ("open this in Safari" vs "in Edge")."""
+    ua = _ua(ua)
+    if any(m in ua for m in _IOS_MARKERS):
+        return "ios"
+    if "Android" in ua:
+        return "android"
+    if any(m in ua for m in _MAC_MARKERS):
+        return "mac"
+    if "Windows" in ua:
+        return "windows"
+    if "Linux" in ua or "X11" in ua:
+        return "linux"
+    return "other"
+
+
 def strict_browser_policy():
     """Admin switch: serve protected video only to hardware-DRM browsers (default off)."""
     from .models import Setting

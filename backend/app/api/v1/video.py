@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 
 from ...extensions import db
@@ -19,7 +20,8 @@ from ...services.video_monitoring import (
     trusted_request_ip,
 )
 from ...utils import (baytara_app, inapp_webview, mac_without_safari, mobile_browser,
-                      mobile_requires_app, protected_browser, req_lang, strict_browser_policy)
+                      mobile_requires_app, platform_class, protected_browser, req_lang,
+                      strict_browser_policy)
 
 bp = Blueprint("video", __name__)
 
@@ -35,6 +37,18 @@ OTP_PER_WINDOW = 40                       # a fresh lesson every 90 seconds, all
 # and playback stops until the window passes.
 SUSPICIOUS_WINDOW = timedelta(minutes=15)
 SUSPICIOUS_LIMIT = 3
+
+
+def _whitelist_href():
+    """The hostname a browser must be on to use an OTP, from SITE_URL.
+
+    Local development runs the site on localhost, where a hostname rule would refuse
+    every play, so nothing is sent there. Production is the only place it applies.
+    """
+    host = (urlparse(current_app.config.get("SITE_URL") or "").hostname or "").lower()
+    if not host or host in ("localhost", "127.0.0.1"):
+        return None
+    return host
 
 
 def _current_user():
@@ -177,6 +191,31 @@ def my_video_progress():
     return jsonify(videos=latest)
 
 
+@bp.get("/video/capabilities")
+def capabilities():
+    """What this browser would be told if it asked for a protected lesson, before it asks.
+
+    Same rules in the same order as the mint below, so a page can show the guidance
+    screen instead of a failed player. It is a preview, not permission: the mint still
+    decides, and a spoofed User-Agent gets exactly as far here as it does there.
+
+    `protected` says whether the picture is hardware-DRM on this browser regardless of
+    policy; free videos use it to suggest a better browser without refusing anyone.
+    """
+    ua = request.headers.get("User-Agent") or ""
+    blocked = None
+    if not baytara_app(ua):
+        if mobile_browser(ua) and mobile_requires_app():
+            blocked = "app_required"
+        elif mac_without_safari(ua):
+            blocked = "mac_needs_safari"
+        elif inapp_webview(ua):
+            blocked = "unsupported_browser"
+        elif strict_browser_policy() and not protected_browser(ua):
+            blocked = "browser_not_supported"
+    return jsonify(protected=protected_browser(ua), blocked=blocked, platform=platform_class(ua))
+
+
 @bp.post("/video/playback")
 @jwt_required(optional=True)
 def playback():
@@ -315,6 +354,10 @@ def playback():
         res = provider.issue_otp(
             lesson.vdocipher_video_id,
             annotate=watermark_for(user, ip_address, session.public_id),
+            # Pin the OTP to this address and, for a browser, to our own pages. The app
+            # sends no referrer, so a hostname rule would refuse every native play.
+            ip_address=ip_address,
+            whitelist_href=None if baytara_app(user_agent) else _whitelist_href(),
         )
     except VideoProviderError as e:
         session.status = "provider_failed"

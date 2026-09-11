@@ -9,6 +9,8 @@ import LocalHlsPlayer from '../components/LocalHlsPlayer.jsx';
 import { primeAudioWatermark } from '../lib/audioWatermark.js';
 import CaptureProbe from '../components/CaptureProbe.jsx';
 import { useAuth } from '../lib/auth.jsx';
+import { captureProtected, useBrowserSupport } from '../lib/browserSupport.js';
+import BrowserGuidance from '../components/BrowserGuidance.jsx';
 
 // Playback denials the viewer can act on; anything else falls back to the generic message.
 const PLAY_ERROR_KEYS = {
@@ -33,6 +35,8 @@ export default function VideoDetail() {
   const [posterFailed, setPosterFailed] = useState(false);
   const video = data?.video;
   const anonymous = video && (!isAuthed() || video.requires_auth);
+  const caps = useBrowserSupport();
+  const blockedHere = Boolean(caps?.blocked && captureProtected(video));
 
   const play = async () => {
     // must run inside the tap: iOS refuses to start an AudioContext later
@@ -68,7 +72,9 @@ export default function VideoDetail() {
                   <img className="video-detail-poster" src={video.poster} alt="" draggable={false}
                        onError={() => setPosterFailed(true)} />
                 )}
-                {video.can_play ? (
+                {video.can_play && blockedHere ? (
+                  <BrowserGuidance caps={caps} mode="block" />
+                ) : video.can_play ? (
                   <button
                     type="button"
                     data-testid="video-touch-target"
@@ -94,6 +100,7 @@ export default function VideoDetail() {
                 )}
               </>}
             </div>
+            {!captureProtected(video) && <BrowserGuidance caps={caps} mode="nudge" />}
             {playError && (
               <p role="alert" style={{ color: '#9b2626' }}>
                 {t(PLAY_ERROR_KEYS[playError] || 'video.playError')}

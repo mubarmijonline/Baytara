@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { I18nProvider } from '../lib/i18n.jsx';
+import { resetBrowserSupport } from '../lib/browserSupport.js';
 
 const lessons = [
   { id: 11, title: 'Welcome', duration_minutes: 4, access_type: 'free', has_video: true },
@@ -33,9 +34,10 @@ function json(data) {
   }));
 }
 
-function mockApi() {
+function mockApi({ caps = { protected: true, blocked: null, platform: 'mac' } } = {}) {
   vi.stubGlobal('fetch', vi.fn((input) => {
     const url = String(input);
+    if (url.includes('/video/capabilities')) return json(caps);
     if (url.includes('/video/playback')) {
       return json({ otp: 'viewer-otp', playbackInfo: 'info', session_id: 's1' });
     }
@@ -60,6 +62,7 @@ function renderLesson(lessonId = 12) {
 }
 
 beforeEach(() => {
+  resetBrowserSupport();
   localStorage.clear();
   localStorage.setItem('baytara_lang', 'en');
   window.scrollTo = vi.fn();
@@ -112,4 +115,25 @@ it('offers the all-content browser as a second sidebar tab', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'All content' }));
   expect(await screen.findByRole('searchbox', { name: /Search courses and videos/ })).toBeVisible();
   expect(screen.getByRole('button', { name: 'Large animals' })).toBeVisible();
+});
+
+it('shows the guidance screen instead of minting on a browser the server would refuse', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi({ caps: { protected: false, blocked: 'browser_not_supported', platform: 'windows' } });
+  renderLesson(12);   // paid lesson
+
+  expect(await screen.findByTestId('browser-block')).toBeVisible();
+  expect(screen.getByText('Open this page in Microsoft Edge.')).toBeVisible();
+  await waitFor(() => expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/capabilities'))).toBe(true));
+  expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
+});
+
+it('still plays a free lesson on an unprotected browser, with a nudge', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi({ caps: { protected: false, blocked: null, platform: 'windows' } });
+  renderLesson(11);   // free lesson
+
+  const player = await screen.findByTitle('Welcome');
+  expect(player).toHaveAttribute('src', expect.stringContaining('otp=viewer-otp'));
+  expect(screen.getByTestId('browser-nudge')).toHaveTextContent('Open this page in Microsoft Edge.');
 });

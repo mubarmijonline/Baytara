@@ -57,6 +57,17 @@ function Duration({ video }) {
   return minutes ? `${minutes} ${t('video.minutes')}` : t('video.notAvailable');
 }
 
+// Counted server-side from playback sessions that reached a first frame. Absent on a
+// row the server did not count for (an upload response, say), so it says nothing
+// rather than a misleading zero.
+function Plays({ video }) {
+  const { t } = useAdminLanguage();
+  const plays = video.catalog?.plays ?? video.plays;
+  if (plays == null) return t('video.notAvailable');
+  const viewers = video.catalog?.viewers ?? video.viewers ?? 0;
+  return <span title={t('video.playsHint')}>{plays} · {viewers} {t('video.viewers')}</span>;
+}
+
 function Assignments({ video, names = false }) {
   const { language, t } = useAdminLanguage();
   const courses = video.catalog?.courses || [];
@@ -93,6 +104,7 @@ function detailRows(video, language, t) {
     [t('video.duration'), <Duration video={video} />],
     [t('video.uploadDate'), video.uploaded_at || t('video.notAvailable')],
     [t('video.assignments'), <Assignments video={video} names />],
+    [t('video.plays'), <Plays video={video} />],
   ];
 }
 

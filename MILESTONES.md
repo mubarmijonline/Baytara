@@ -105,6 +105,9 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] Certificates — issued on course completion, public verification at `/certificates/<serial>`
 - [ ] Courses/videos listing redesigned to match
 - [ ] Blog & consultations (the profile's consultations tile waits on this)
+- [x] Video protection hardening — OTPs pinned to viewer IP and site hostname, user id in
+  the watermark, paid content refused on the DRM-less server, per-video play counts in
+  the admin. Browser warn-vs-block awaits the client. `docs/milestones/14-*.md`
 
 ## Phase 9 — Deployment
 - [x] NginX + HTTPS + security headers (HSTS, CSP, X-Content-Type-Options, X-Frame-Options,

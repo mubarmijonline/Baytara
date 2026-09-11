@@ -12,7 +12,7 @@ from ...models import (
     User, UserDevice, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
     CourseReview, Certificate, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
-    push_notification, refresh_course_rating,
+    push_notification, refresh_course_rating, VideoPlaybackSession,
 )
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
@@ -498,7 +498,19 @@ def course_get(cid):
     c = db.session.get(Course, cid)
     if not c:
         return jsonify(error="not_found"), 404
-    return jsonify(course=c.to_dict(with_content=True))
+    payload = c.to_dict(with_content=True)
+    # The content screen lists this course's videos from here, not from /videos, so the
+    # play counts ride along on both the flat list and the per-unit groups.
+    ids = [video["id"] for video in payload.get("videos", [])]
+    counts = _play_counts(ids)
+    for video in payload.get("videos", []):
+        stats = counts.get(video["id"]) or {"plays": 0, "viewers": 0}
+        video.update(stats)
+    for unit in payload.get("modules", []):
+        for video in unit.get("videos", []):
+            stats = counts.get(video["id"]) or {"plays": 0, "viewers": 0}
+            video.update(stats)
+    return jsonify(course=payload)
 
 
 def _objectives(data, key):
@@ -824,6 +836,11 @@ def video_upload(lid):
     lesson = db.session.get(Lesson, lid)
     if not lesson:
         return jsonify(error="not_found"), 404
+    # Our own server has no DRM: the picture is recordable on every device and only the
+    # watermark names the account. That is the agreed trade for free content and nothing
+    # else, so a paid video goes to VdoCipher or it does not go up at all.
+    if access_is_paid(lesson.access_type):
+        return jsonify(error="paid_requires_vdocipher"), 422
     f = request.files.get("file")
     if not f or not f.filename:
         return jsonify(error="file_required"), 400
@@ -1289,8 +1306,36 @@ def path_delete(pid):
 
 # ------------------------------ video catalog ------------------------------
 
-def _video_dict(l):
+def _play_counts(lesson_ids):
+    """Real plays per video: sessions that reached a first frame, and distinct accounts.
+
+    Counted from video_playback_sessions rather than a new column, so nothing has to be
+    kept in sync and it is right for every video that has ever played -- local ones
+    included, which is what the client asked to see. One grouped query per page, not
+    one per row.
+    """
+    if not lesson_ids:
+        return {}
+    rows = (
+        db.session.query(
+            VideoPlaybackSession.video_id,
+            db.func.count(VideoPlaybackSession.id),
+            db.func.count(db.func.distinct(VideoPlaybackSession.user_id)),
+        )
+        .filter(VideoPlaybackSession.video_id.in_(lesson_ids),
+                VideoPlaybackSession.first_played_at.isnot(None))
+        .group_by(VideoPlaybackSession.video_id)
+        .all()
+    )
+    return {video_id: {"plays": plays, "viewers": viewers} for video_id, plays, viewers in rows}
+
+
+def _video_dict(l, counts=None):
     d = l.to_dict()
+    if counts is not None:
+        stats = counts.get(l.id) or {"plays": 0, "viewers": 0}
+        d["plays"] = stats["plays"]
+        d["viewers"] = stats["viewers"]
     d["title_en"] = l.title_en
     d["description_en"] = l.description_en
     d["vdocipher_video_id"] = l.vdocipher_video_id
@@ -1459,7 +1504,8 @@ def videos_list():
     page = max(request.args.get("page", 1, type=int), 1)
     per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
     pg = db.paginate(q.order_by(Lesson.created_at.desc(), Lesson.id.desc()), page=page, per_page=per_page, error_out=False)
-    return jsonify(items=[_video_dict(l) for l in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
+    counts = _play_counts([l.id for l in pg.items])
+    return jsonify(items=[_video_dict(l, counts) for l in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
 
 
 VIDEO_PROVIDER_STATUSES = ("ready", "preparing", "queued", "failed")
@@ -1552,9 +1598,10 @@ def video_library():
     except VdoCipherAdminError as exc:
         return _vdocipher_error(exc)
 
+    provider_lessons = Lesson.query.filter(Lesson.vdocipher_video_id.isnot(None)).order_by(Lesson.id).all()
+    counts = _play_counts([lesson.id for lesson in provider_lessons])
     catalog_by_provider = {
-        lesson.vdocipher_video_id: _video_dict(lesson)
-        for lesson in Lesson.query.filter(Lesson.vdocipher_video_id.isnot(None)).order_by(Lesson.id).all()
+        lesson.vdocipher_video_id: _video_dict(lesson, counts) for lesson in provider_lessons
     }
     local_filters = bool(category_id or access_type or publication or course_id or assignment == "assigned")
     normalized = []
@@ -1598,7 +1645,7 @@ def video_get(vid):
     l = db.session.get(Lesson, vid)
     if not l:
         return jsonify(error="not_found"), 404
-    return jsonify(video=_video_dict(l))
+    return jsonify(video=_video_dict(l, _play_counts([l.id])))
 
 
 @bp.post("/videos")
@@ -1649,6 +1696,10 @@ def video_update(vid):
     catalog, error = _catalog_video_fields(d, current=l)
     if error:
         return error
+    # The same rule from the other direction: re-pricing a self-hosted video would put
+    # paid content behind no DRM. Re-upload it to VdoCipher first.
+    if l.source == "local" and access_is_paid(catalog["access_type"]):
+        return jsonify(error="paid_requires_vdocipher"), 422
     try:
         validate_video_bundle_compatibility(l, access_type=catalog["access_type"])
     except CatalogValidationError as exc:

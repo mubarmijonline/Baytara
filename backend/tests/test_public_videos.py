@@ -22,9 +22,11 @@ def public_video_app(tmp_path, monkeypatch):
     captured = {}
 
     class FakeProvider:
-        def issue_otp(self, video_id, annotate=None, ttl=300):
+        def issue_otp(self, video_id, annotate=None, ttl=300, ip_address=None, whitelist_href=None):
             captured["video_id"] = video_id
             captured["annotate"] = annotate
+            captured["ip_address"] = ip_address
+            captured["whitelist_href"] = whitelist_href
             return {
                 "otp": f"otp-{video_id}",
                 "playbackInfo": "public-playback-info",
@@ -32,6 +34,7 @@ def public_video_app(tmp_path, monkeypatch):
 
     import app.api.v1.video as video_api
     monkeypatch.setattr(video_api, "provider", FakeProvider())
+    app.extensions["otp_captured"] = captured
 
     with app.app_context():
         db.create_all()
@@ -375,3 +378,53 @@ def test_categories_carry_published_video_counts(public_video_app):
     # large-animals holds the free row, the paid row and a draft; the draft must not count
     assert counts["large-animals"] == 2, counts
     assert counts["equine"] == 1, counts
+
+
+def test_otp_is_pinned_to_the_viewer_ip_and_to_our_site(public_video_app):
+    """VdoCipher recommends pinning the OTP to the requesting IP; the page hostname rule
+    stops a copied OTP being embedded elsewhere. Both are the server's call per mint."""
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "pin-browser")
+
+    response = client.post(
+        "/api/v1/video/playback", headers=headers,
+        json={"lesson_id": ids["Introduction"]},
+        environ_base={"REMOTE_ADDR": "203.0.113.9"},
+    )
+    assert response.status_code == 200, response.get_json()
+    captured = app.extensions["otp_captured"]
+    assert captured["ip_address"] == "203.0.113.9"
+    # SITE_URL defaults to https://baytara.app; the rule is the bare hostname.
+    assert captured["whitelist_href"] == "baytara.app"
+
+
+def test_app_mint_carries_no_hostname_rule(public_video_app):
+    """The native app sends no referrer, so a hostname rule would refuse every play."""
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "pin-app")
+    response = client.post(
+        "/api/v1/video/playback", headers={**headers, "User-Agent": "BaytaraApp/1 Android"},
+        json={"lesson_id": ids["Introduction"]},
+        environ_base={"REMOTE_ADDR": "203.0.113.9"},
+    )
+    assert response.status_code == 200, response.get_json()
+    captured = app.extensions["otp_captured"]
+    assert captured["whitelist_href"] is None
+    assert captured["ip_address"] == "203.0.113.9"
+
+
+def test_watermark_names_the_account_id(public_video_app):
+    """A name, email or phone can all change; the id is the one field that cannot."""
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "wm-browser")
+    response = client.post("/api/v1/video/playback", headers=headers,
+                           json={"lesson_id": ids["Introduction"]})
+    assert response.status_code == 200, response.get_json()
+    with app.app_context():
+        student = User.query.filter_by(email="public-video-student@example.test").one()
+        student_id = student.id
+    lines = [row["text"] for row in app.extensions["otp_captured"]["annotate"]]
+    assert any(f"ID {student_id}" in line for line in lines), lines

@@ -261,6 +261,8 @@ export const auth = {
 };
 
 export const webapi = {
+  // What this browser would be told at mint time, asked before minting.
+  capabilities: () => get('/video/capabilities'),
   courses: (params) => get('/courses' + qs(params)),
   course: (slug) => get('/courses/' + slug),
   courseReviews: (slug, params) => get(`/courses/${slug}/reviews` + qs(params)),
