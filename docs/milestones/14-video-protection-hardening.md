@@ -80,6 +80,19 @@ Tests and the build must run as the `.env`/`node_modules` owner
 - Read the live values of the two policy switches (Admin → Settings → Integrations).
 - Confirm on the VdoCipher dashboard that FairPlay is active for the account.
 - Flip `strict_browser_policy` on once FairPlay is confirmed (the client chose the block).
-- Any existing paid videos already on local storage: the new rule stops new ones, it does
-  not migrate old ones. Count them with
-  `select count(*) from lessons where source='local' and access_type in ('baytarian','general')`.
+- Migrate the paid videos already on local storage (below).
+
+## Migrating the old rows
+
+`flask migrate-paid-videos` (`backend/app/services/video_migration.py`). The source file
+is deleted after packaging, so the MP4 is rebuilt from the encrypted HLS with the key we
+hold, uploaded through the same S3 form the admin SPA uses, and the row switched to
+VdoCipher. Three steps, deliberately separate:
+
+1. no flag -- list what would move, change nothing;
+2. `--apply` -- rebuild, upload, switch the row; **the local package is kept**;
+3. `--cleanup` -- delete a package only once `get_video()` reports the VdoCipher copy
+   `ready`. A failed or half-processed upload never costs the only copy.
+
+Run as the service user from `backend/` with the production env. Each migrated video is
+unwatchable for the minutes VdoCipher takes to process it, the same as a fresh upload.
