@@ -25,7 +25,7 @@ The playback endpoint decides, per request. Measured responses:
 
 Also enforced on every request, all platforms: enrollment/tier, 2-device limit, device bound
 to the token, one concurrent stream per account, 40 playback tokens per hour, and the
-`suspicious_activity` cut-off after 5 guard events in 15 minutes. Every allow and every
+`suspicious_activity` cut-off after 3 guard events in 15 minutes. Every allow and every
 refusal is written to `video_playback_sessions`.
 
 ## 2. What the viewer does on the page — we control most of it
@@ -35,12 +35,12 @@ picture and records the reason:
 
 | Behaviour | Desktop | Mobile |
 |---|---|---|
-| Switching app / tab, losing focus | ✅ pause + cover + logged | ✅ pause + cover + logged |
+| Switching app / tab, losing focus | ✅ pause only — **not** logged, not an offence | ✅ pause only |
 | Opening the macOS Screenshot app | ✅ (it takes focus) | — |
 | PrintScreen key | ✅ Windows/Linux | n/a |
 | Ctrl/Cmd + S / U / P | ✅ blocked + logged | n/a |
-| Right-click, drag, copy | ✅ blocked + logged | ✅ |
-| DevTools opened | ✅ pause + logged | n/a |
+| Right-click, drag, copy | ✅ blocked, **not** logged | ✅ |
+| DevTools opened | ⚠️ logged only, no pause (cannot be told from a zoom change) | n/a |
 | **⌘⇧3 / ⌘⇧4 / ⌘⇧5 on macOS** | ❌ the OS swallows the keys | n/a |
 | A recorder already running in the background | ❌ no signal exists anywhere | ❌ |
 

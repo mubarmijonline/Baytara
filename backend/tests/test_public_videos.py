@@ -428,3 +428,35 @@ def test_watermark_names_the_account_id(public_video_app):
         student_id = student.id
     lines = [row["text"] for row in app.extensions["otp_captured"]["annotate"]]
     assert any(f"ID {student_id}" in line for line in lines), lines
+
+
+def test_playback_says_whether_the_lesson_enforces_the_capture_rule(public_video_app):
+    """The player runs its activity guard only when the answer is yes.
+
+    On a free lesson it used to run anyway, reporting ordinary tab-switching as
+    suspicious -- and three of those in fifteen minutes block the account from playback
+    and notify every admin.
+    """
+    app, ids = public_video_app
+    client = app.test_client()
+
+    with app.app_context():
+        lesson = db.session.get(Lesson, ids["Introduction"])
+        # what production's free lessons look like
+        assert lesson.is_protected is False, "a free lesson defaults to open"
+    # One device throughout: two devices inside the two-minute grace is `already_playing`,
+    # which is the concurrency rule doing its job rather than anything to do with capture.
+    headers = _viewer_headers(client, "cap-browser")
+    free = client.post("/api/v1/video/playback", headers=headers,
+                       json={"lesson_id": ids["Introduction"]})
+    assert free.status_code == 200, free.get_json()
+    assert free.get_json()["capture_protected"] is False
+
+    with app.app_context():
+        student = User.query.filter_by(email="public-video-student@example.test").one()
+        db.session.add(VideoEntitlement(user_id=student.id, video_id=ids["مدفوع"], source="purchase"))
+        db.session.commit()
+    paid = client.post("/api/v1/video/playback", headers=headers,
+                       json={"lesson_id": ids["مدفوع"]})
+    assert paid.status_code == 200, paid.get_json()
+    assert paid.get_json()["capture_protected"] is True

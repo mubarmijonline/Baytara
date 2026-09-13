@@ -343,6 +343,10 @@ def playback():
         db.session.commit()
         return jsonify(
             kind="local",
+            # Whether this lesson enforces the capture rule at all. The player runs its
+            # activity guard only when it does; on a free lesson the guard reported
+            # ordinary tab-switching and spent the account's block allowance on it.
+            capture_protected=capture_protected(lesson),
             url=f"/api/v1/video/hls/{lesson.id}/master.m3u8?t={issue_token(lesson.id, user.id, session.public_id)}",
             session_id=session.public_id,
             resume_position_seconds=resume_position_seconds,
@@ -372,6 +376,7 @@ def playback():
     return jsonify(
         otp=res["otp"],
         playbackInfo=res["playbackInfo"],
+        capture_protected=capture_protected(lesson),
         session_id=session.public_id,
         resume_position_seconds=resume_position_seconds,
         # Inaudible audio watermark payload (docs/AUDIO_WATERMARK.md). A screen recorder

@@ -293,7 +293,13 @@ class Lesson(db.Model):
     duration_minutes = db.Column(db.Integer)
     poster = db.Column(db.String(1000))
     vdocipher_video_id = db.Column(db.String(120))
-    is_protected = db.Column(db.Boolean, nullable=False, default=True)
+    # Whether the screen-capture rule is enforced. Paid tiers are forced on by
+    # capture_protected() whatever this says, so the default only decides free content --
+    # and the rule there is that it plays in any browser unless an admin ticks the box.
+    # Defaulting to True meant a free lesson created outside the admin API silently ran
+    # the capture guard, which is what made the "suspicious activity" notice appear on
+    # open content.
+    is_protected = db.Column(db.Boolean, nullable=False, default=False)
     # Where the video lives: "vdocipher" (DRM provider) or "local" (this server, encrypted
     # HLS served behind a signed token). Same catalog, same gates, different delivery.
     source = db.Column(db.String(20), nullable=False, default="vdocipher", index=True)

@@ -90,9 +90,12 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
     };
     Object.entries(handlers).forEach(([name, fn]) => video.addEventListener(name, fn));
 
-    // watch for the behaviour that surrounds a capture attempt: pause, and record it
-    const stopGuard = startActivityGuard({
-      onSuspicious: (reason) => {
+    // Only a video that actually enforces the capture rule is worth guarding. A free
+    // lesson plays in any browser by design, so watching for screenshots on one produced
+    // nothing but noise -- and every one of those reports counted toward the account's
+    // fifteen-minute playback block.
+    const stopGuard = !playback.capture_protected ? null : startActivityGuard({
+      onCaptureAttempt: (reason, { pause = true } = {}) => {
         diagLog('SUSPICIOUS', reason);
         auth.playbackEvent(playback.session_id, {
           event_id: (crypto.randomUUID ? crypto.randomUUID() : String(Math.random())),
@@ -103,8 +106,7 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
           covered_seconds: Math.max(0, Math.round(video.currentTime || 0)),
           metadata: { reason },   // whitelisted server-side
         }).catch(() => { /* the pause already happened; never break playback on a report */ });
-      },
-      onPause: (reason) => {
+        if (!pause) return;
         if (!video.paused) video.pause();
         setHalted(reason);
         setStrikes((count) => {
@@ -120,6 +122,9 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
           return next;
         });
       },
+      // Tab switched, window blurred, phone locked. Stop playing to nobody, but this is
+      // not an offence: no report, no strike, and no notice to argue with on return.
+      onInterrupted: () => { if (!video.paused) video.pause(); },
     });
 
     // the native shell tells us a recording started (iOS) — stop playing
@@ -131,7 +136,7 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
     return () => {
       Object.entries(handlers).forEach(([name, fn]) => video.removeEventListener(name, fn));
       if (stopWatermark) stopWatermark();
-      stopGuard();
+      if (stopGuard) stopGuard();
       delete window.__baytaraCaptureChanged;
     };
   }, [playback, onEnded, onSecurityError]);
