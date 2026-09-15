@@ -175,12 +175,23 @@ def issue_certificate_if_earned(enrollment):
     the unique constraint plus this lookup mean re-completing a lesson cannot mint a
     second one. Returns the certificate when there is one, else None.
     """
+    from .exam import CourseExam, passed_attempt
+
     course = enrollment.course
     if not course or not course.has_certificate:
         return None
     percent, _, total = enrollment.completion()
     if not total or percent < 100:
         return None
+
+    # Watching every video is no longer enough on a course that sets an exam: the
+    # certificate says the learner passed it. A course with no exam, or one still being
+    # written, is unaffected -- `is_live()` is false for both, so nothing that used to
+    # issue a certificate stops doing so.
+    exam = CourseExam.query.filter_by(course_id=course.id).first()
+    if exam and exam.is_live() and not passed_attempt(exam.id, enrollment.user_id):
+        return None
+
     existing = Certificate.query.filter_by(user_id=enrollment.user_id, course_id=course.id).first()
     if existing:
         return existing

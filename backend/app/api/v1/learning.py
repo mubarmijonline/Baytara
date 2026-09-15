@@ -7,8 +7,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
 from ...models import (
-    Certificate, Course, CourseModule, Lesson, Enrollment, LessonProgress, Payment, User,
-    issue_certificate_if_earned,
+    Certificate, Course, CourseExam, CourseModule, ExamAttempt, Lesson, Enrollment,
+    LessonProgress, Payment, User, grade, issue_certificate_if_earned, passed_attempt,
 )
 from ...models.catalog import loc
 from ...models.video_monitoring import VideoPlaybackSession
@@ -215,6 +215,105 @@ def update_progress():
     percent, completed, total = enrollment.completion()
     return jsonify(progress={"percent": percent, "completed_lessons": completed, "total_lessons": total},
                    certificate=certificate.to_dict(req_lang()) if certificate else None)
+
+
+# ------------------------------ course exam ------------------------------
+
+def _exam_context(slug):
+    """The course, its live exam and this learner's enrollment, or an error response.
+
+    Sitting the exam needs the same standing as earning the certificate it leads to:
+    enrolled, not expired, and every video watched. A course with no exam, or one still
+    being written, answers 404 -- there is nothing to sit.
+    """
+    course = Course.query.filter_by(slug=slug).first()
+    if not course:
+        return None, None, None, (jsonify(error="course_not_found"), 404)
+    exam = CourseExam.query.filter_by(course_id=course.id).first()
+    if not exam or not exam.is_live():
+        return None, None, None, (jsonify(error="no_exam"), 404)
+
+    enrollment = Enrollment.query.filter_by(user_id=_uid(), course_id=course.id,
+                                            status="active").first()
+    if not enrollment:
+        return None, None, None, (jsonify(error="not_enrolled"), 403)
+    if enrollment.is_expired():
+        return None, None, None, (jsonify(error="access_expired"), 403)
+    return course, exam, enrollment, None
+
+
+@bp.get("/courses/<slug>/exam")
+@jwt_required()
+def get_exam(slug):
+    """The paper, shuffled, with no answers in it.
+
+    Also returned before the course is finished, with `eligible` false, so the course page
+    can say an exam is waiting rather than hiding it until the last video ends.
+    """
+    course, exam, enrollment, error = _exam_context(slug)
+    if error:
+        return error
+
+    percent, _, total = enrollment.completion()
+    eligible = bool(total) and percent >= 100
+    attempts = (ExamAttempt.query
+                .filter_by(exam_id=exam.id, user_id=_uid())
+                .order_by(ExamAttempt.submitted_at.desc(), ExamAttempt.id.desc()).all())
+    best = max((a.score_percent for a in attempts), default=None)
+
+    payload = exam.to_dict(req_lang())
+    payload.update({
+        "eligible": eligible,
+        "course_percent": percent,
+        "attempt_count": len(attempts),
+        "best_score_percent": best,
+        "passed": any(a.passed for a in attempts),
+        "attempts": [a.to_dict() for a in attempts[:10]],
+    })
+    # The questions themselves only go out to someone who may actually sit it.
+    if eligible:
+        payload["questions"] = exam.paper_for()
+    return jsonify(exam=payload)
+
+
+@bp.post("/courses/<slug>/exam/attempts")
+@jwt_required()
+def submit_exam(slug):
+    """Mark a submission, and issue the certificate when it is a pass.
+
+    Attempts are unlimited by decision, so there is no counter to check. A pass already
+    held is never revoked by a later, worse attempt: the certificate lookup is idempotent
+    and `passed_attempt` only ever needs one.
+    """
+    course, exam, enrollment, error = _exam_context(slug)
+    if error:
+        return error
+
+    percent, _, total = enrollment.completion()
+    if not total or percent < 100:
+        return jsonify(error="course_not_complete", course_percent=percent), 403
+
+    body = request.get_json(silent=True) or {}
+    answers = body.get("answers")
+    if not isinstance(answers, dict):
+        return jsonify(error="answers_required"), 422
+
+    score, correct, question_count, rows = grade(exam, answers)
+    attempt = ExamAttempt(
+        exam_id=exam.id, user_id=_uid(), score_percent=score, correct_count=correct,
+        question_count=question_count, passed=score >= exam.pass_percent,
+    )
+    attempt.answers = rows
+    db.session.add(attempt)
+    db.session.flush()
+
+    certificate = issue_certificate_if_earned(enrollment) if attempt.passed else None
+    db.session.commit()
+    return jsonify(
+        attempt=attempt.to_dict(),
+        pass_percent=exam.pass_percent,
+        certificate=certificate.to_dict(req_lang()) if certificate else None,
+    ), 201
 
 
 # ------------------------------ certificates ------------------------------

@@ -17,6 +17,10 @@ from .catalog import (
 from .learning import (
     Certificate, Enrollment, LessonProgress, VideoEntitlement, issue_certificate_if_earned,
 )
+from .exam import (
+    CourseExam, ExamAttempt, ExamAttemptAnswer, ExamOption, ExamQuestion,
+    PASS_PERCENT_DEFAULT, grade, passed_attempt,
+)
 from .payment import InstapayAccount, InstapayPayment, Payment
 from .content import Setting, Article, ContactMessage, Notification, push_notification
 from .video_monitoring import (
@@ -31,6 +35,8 @@ __all__ = [
     "Bundle", "CourseReview", "refresh_course_rating", "LearningPath", "PathCourse", "LEVELS",
     "bundle_courses", "bundle_videos",
     "Certificate", "issue_certificate_if_earned",
+    "CourseExam", "ExamQuestion", "ExamOption", "ExamAttempt", "ExamAttemptAnswer",
+    "PASS_PERCENT_DEFAULT", "grade", "passed_attempt",
     "Enrollment", "LessonProgress", "VideoEntitlement", "InstapayAccount", "InstapayPayment",
     "Payment", "Setting", "Article", "ContactMessage", "Notification", "push_notification",
     "PLAYBACK_EVENT_TYPES", "PLAYBACK_SESSION_STATUSES", "VideoPlaybackEvent", "VideoPlaybackSession",
