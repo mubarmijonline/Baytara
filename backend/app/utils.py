@@ -98,6 +98,27 @@ def protected_browser(ua=None):
     return False                                     # Linux, ChromeOS, unknown -> software DRM
 
 
+def public_cache(response, seconds=120):
+    """Mark a response the edge and the browser may reuse.
+
+    Only for endpoints that carry the same bytes for everyone: no JWT, nothing derived
+    from the caller. `/settings`, `/categories` and `/instructors` are refetched on every
+    navigation and every one of them is a round trip to this server, which is most of what
+    makes a page feel slow from Egypt.
+
+    Language rides in the `?lang=` query string, so it is part of the cache key already;
+    `Vary: Accept-Language` covers a caller that omits it and relies on the header instead.
+    stale-while-revalidate lets the edge answer instantly while it refreshes behind the
+    scenes, so an admin edit is visible within a couple of minutes rather than held for the
+    whole window.
+    """
+    response.headers["Cache-Control"] = (
+        f"public, max-age={seconds}, stale-while-revalidate={seconds * 4}"
+    )
+    response.headers["Vary"] = "Accept-Language"
+    return response
+
+
 def platform_class(ua=None):
     """Coarse platform for guidance copy ("open this in Safari" vs "in Edge")."""
     ua = _ua(ua)

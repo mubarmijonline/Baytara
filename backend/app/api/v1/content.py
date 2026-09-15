@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 from ...extensions import db
 from ...models import Setting, Article, ContactMessage
 from ...site_settings import public_settings
-from ...utils import req_lang
+from ...utils import public_cache, req_lang
 
 bp = Blueprint("content", __name__)
 
@@ -16,7 +16,7 @@ bp = Blueprint("content", __name__)
 def settings():
     """Public site config. Keys prefixed 'secret_' are admin-only and never exposed."""
     rows = {setting.key: setting.value for setting in Setting.query.all()}
-    return jsonify(settings=public_settings(rows, req_lang()))
+    return public_cache(jsonify(settings=public_settings(rows, req_lang())))
 
 
 @bp.get("/uploads/<name>")

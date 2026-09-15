@@ -15,7 +15,10 @@ export const getLang = () => {
   if (previewLanguage === 'ar' || previewLanguage === 'en') return previewLanguage;
   return localStorage.getItem(LANG_KEY) || 'ar';
 };
-export const setLang = (l) => { localStorage.setItem(LANG_KEY, l === 'en' ? 'en' : 'ar'); };
+export const setLang = (l) => {
+  localStorage.setItem(LANG_KEY, l === 'en' ? 'en' : 'ar');
+  clearPublicCache();   // every cached body was localised by the old language
+};
 
 // ---- stable device id (contract البند2: 2-device limit) ----
 const DEVICE_KEY = 'baytara_device_id';
@@ -66,6 +69,31 @@ export function getDeviceGroup() {
   const signature = `${parts[0]}-${hash.toString(16)}`;
   try { localStorage.setItem(GROUP_KEY, signature); } catch { /* fine, recomputed next time */ }
   return signature;
+}
+
+// Public reads that are identical for every visitor and change rarely. Without this they
+// are refetched on every navigation -- categories and instructors alone are two round
+// trips per page, and from Egypt each is a few hundred milliseconds of a page that looks
+// like it is still loading. Held for the session only, in memory: a reload gets fresh data,
+// and nothing user-specific is ever put in here.
+const PUBLIC_TTL_MS = 5 * 60 * 1000;
+const publicCache = new Map();
+
+export function clearPublicCache() {
+  publicCache.clear();
+}
+
+function cachedGet(path) {
+  const key = getLang() + '|' + path;
+  const hit = publicCache.get(key);
+  if (hit && Date.now() - hit.at < PUBLIC_TTL_MS) return hit.promise;
+  const promise = get(path).catch((error) => {
+    // A failure must not be remembered, or one blip poisons the rest of the visit.
+    publicCache.delete(key);
+    throw error;
+  });
+  publicCache.set(key, { at: Date.now(), promise });
+  return promise;
 }
 
 const qs = (p) => {
@@ -271,18 +299,18 @@ export const webapi = {
   courseReviews: (slug, params) => get(`/courses/${slug}/reviews` + qs(params)),
   videos: (params) => get('/videos' + qs(params), true),
   video: (id) => get('/videos/' + id, true),
-  categories: () => get('/categories'),
+  categories: () => cachedGet('/categories'),
   bundles: () => get('/bundles'),
   bundle: (slug) => get('/bundles/' + slug),
   certificate: (serial) => get('/certificates/' + serial),
   paths: () => get('/paths'),
   path: (slug) => get('/paths/' + slug),
-  instructors: () => get('/instructors'),
+  instructors: () => cachedGet('/instructors'),
   instructor: (id) => get('/instructors/' + id),
   instapayAccounts: () => get('/payment/instapay/accounts'),
   articles: (type) => get('/articles' + qs({ type })),
   article: (slug) => get('/articles/' + slug),
-  settings: () => get('/settings'),
+  settings: () => cachedGet('/settings'),
   contact: (body) =>
     fetch(BASE + '/contact', {
       method: 'POST',

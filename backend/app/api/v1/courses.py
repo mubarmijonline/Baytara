@@ -8,7 +8,7 @@ from ...models import (
 )
 from ...services.catalog_access import ACCESS_TYPES, audience_error
 from ...models.catalog import LEVELS
-from ...utils import req_lang
+from ...utils import public_cache, req_lang
 
 bp = Blueprint("courses", __name__)
 
@@ -75,7 +75,7 @@ def list_categories():
         .group_by(Lesson.category_id)
         .all()
     )
-    return jsonify(categories=[{**c.to_dict(lang), "video_count": counts.get(c.id, 0)} for c in cats])
+    return public_cache(jsonify(categories=[{**c.to_dict(lang), "video_count": counts.get(c.id, 0)} for c in cats]))
 
 
 @bp.get("/courses")
@@ -286,7 +286,7 @@ def list_instructors():
         p = u.public_profile(lang)
         p.update(_instructor_stats(u, courses))
         out.append(p)
-    return jsonify(instructors=out)
+    return public_cache(jsonify(instructors=out))
 
 
 @bp.get("/instructors/<int:user_id>")
