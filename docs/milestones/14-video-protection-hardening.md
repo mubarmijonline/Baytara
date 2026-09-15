@@ -64,6 +64,34 @@ working, because with FairPlay inactive it leaves Mac users no browser at all. O
 confirm FairPlay, then Settings → Integrations → strict on. `mobile_requires_app` waits
 for the apps to be in the stores.
 
+### The IP pin was pinning to Cloudflare, not the viewer
+
+Found on 2026-09-15, before the first paid course was published, and it would have broken
+protected playback for every visitor.
+
+DNS for baytara.app is proxied through Cloudflare, so the TCP peer nginx sees is a
+Cloudflare edge address. `nginx` set `X-Real-IP $remote_addr` with no `real_ip`
+configuration, so `trusted_request_ip()` returned Cloudflare's address and the `ipGeo` rule
+pinned each OTP to *Cloudflare*. The viewer's own player then connects to VdoCipher from
+their real address and is refused. It had never fired only because every published lesson
+is self-hosted -- no VdoCipher OTP had been minted in production since the pin shipped.
+
+Fixed in nginx rather than in the app: `deploy/nginx-cloudflare-realip.conf` lists
+Cloudflare's published ranges with `real_ip_header CF-Connecting-IP`, included by each
+Baytara server block. `$remote_addr` is then the real viewer everywhere, which also repairs
+two things that had been silently wrong for longer than the pin: the IP burned into the
+dynamic watermark, and the `ip_address` column of the playback audit trail. Other sites on
+this host are untouched -- the include is scoped to the Baytara server blocks.
+
+`deploy.sh` installs the snippet, and `deploy/nginx-baytara.conf` carries the include, so a
+deploy cannot silently revert it. Cloudflare adds ranges occasionally; the file says so, and
+the symptom is edge addresses reappearing in the access log.
+
+Verified against production: a request through Cloudflare now logs the caller's real address,
+and a denied playback attempt records that same address rather than an edge IP. Separately,
+VdoCipher was checked to accept the OTP payload in all four combinations (plain, `ipGeo`
+only, `whitelisthref` only, both), so the rules themselves are well-formed.
+
 ## Verification
 
 Backend: `tests/test_video_provider.py` (wire payload), `tests/test_public_videos.py`
