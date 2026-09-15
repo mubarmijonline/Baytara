@@ -8,6 +8,7 @@ import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { setToken } from '../lib/api.js';
 import { I18nProvider } from '../lib/i18n.jsx';
+import { clearPublicCache } from '../lib/api.js';
 
 function json(data, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), {
@@ -31,6 +32,7 @@ function renderRoute(path) {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   localStorage.clear();
   localStorage.setItem('baytara_lang', 'en');
   window.scrollTo = vi.fn();

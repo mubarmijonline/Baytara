@@ -6,6 +6,7 @@ import { catalogErrorCodes, durationLabel, localizedCatalogValue, posterFor } fr
 import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 import { ErrText, Field, catalogErrorText } from '../ui.jsx';
+import CourseExamEditor from '../components/CourseExamEditor.jsx';
 import { uploadForm } from '../vdocipher-upload.js';
 
 const COPY = {
@@ -28,6 +29,32 @@ const COPY = {
     addVideoNoInstructor: 'لا يمكن الرفع: هذه الدورة بلا محاضر.',
     addVideoPhase: { creating: 'جارٍ التحضير…', uploading: 'جارٍ الرفع', importing: 'جارٍ التسجيل في المكتبة…', attaching: 'جارٍ الإضافة للدورة…' },
 
+    exam: {
+      heading: 'اختبار نهاية الدورة',
+      intro: 'اختيار من متعدد، الطالب بيدخله بعد ما يخلّص كل الفيديوهات. الشهادة متطلعش غير لما ينجح.',
+      passPercent: 'درجة النجاح %',
+      passHint: 'المتفق عليه ٧٠٪.',
+      publish: 'نشر الاختبار',
+      publishWarning: 'أول ما تنشر الاختبار، مفيش شهادة هتطلع في الدورة دي غير للطالب اللي ينجح فيه.',
+      live: 'منشور', notLive: 'غير منشور',
+      addQuestion: 'إضافة سؤال', questionText: 'نص السؤال',
+      optionsHint: 'حدد الإجابة الصحيحة من الدائرة جنب الاختيار. لازم اختيارين على الأقل.',
+      option: 'اختيار', addOption: 'إضافة اختيار', removeOption: 'حذف الاختيار',
+      markCorrect: 'الإجابة الصحيحة',
+      save: 'حفظ', cancel: 'إلغاء', edit: 'تعديل السؤال', remove: 'حذف السؤال',
+      removeConfirm: 'حذف السؤال ده؟',
+      notAnswerable: 'السؤال ده ناقص: محتاج اختيارين على الأقل وإجابة صحيحة واحدة. مش محسوب في الاختبار.',
+      summary: '{answerable} سؤال محسوب من {total}.',
+      loadError: 'تعذّر تحميل الاختبار.', saveError: 'تعذّر الحفظ.',
+      errors: {
+        at_least_two_options_required: 'لازم اختيارين على الأقل.',
+        exactly_one_correct_option_required: 'حدد إجابة صحيحة واحدة بالظبط.',
+        option_text_required: 'اكتب نص كل اختيار.',
+        question_text_required: 'اكتب نص السؤال.',
+        invalid_pass_percent: 'درجة النجاح لازم تكون بين ١ و ١٠٠.',
+        exam_has_no_answerable_questions: 'مش ممكن تنشر اختبار من غير أسئلة مكتملة.',
+      },
+    },
     upload: 'رفع وتعيين', search: 'البحث في الفيديوهات القابلة لإعادة الاستخدام', available: 'مكتبة الفيديوهات',
     assigned: 'الفيديوهات المرتبة', add: 'إضافة الفيديوهات المحددة', noAvailable: 'لا توجد فيديوهات مطابقة.',
     noAssigned: 'لا توجد فيديوهات في هذه الدورة.', moveUp: 'نقل {title} لأعلى', moveDown: 'نقل {title} لأسفل',
@@ -58,6 +85,32 @@ const COPY = {
     addVideoFileRequired: 'Choose a video file.',
     addVideoNoInstructor: 'Cannot upload: this course has no instructor.',
     addVideoPhase: { creating: 'Preparing…', uploading: 'Uploading', importing: 'Recording it in the library…', attaching: 'Adding it to the course…' },
+    exam: {
+      heading: 'End-of-course exam',
+      intro: 'Multiple choice, sat once the learner has watched every video. No certificate without a pass.',
+      passPercent: 'Pass mark %',
+      passHint: 'Agreed at 70%.',
+      publish: 'Publish the exam',
+      publishWarning: 'Once published, no one on this course earns a certificate without passing it.',
+      live: 'Published', notLive: 'Not published',
+      addQuestion: 'Add a question', questionText: 'Question',
+      optionsHint: 'Mark the correct answer with the radio beside it. At least two options.',
+      option: 'Option', addOption: 'Add an option', removeOption: 'Remove option',
+      markCorrect: 'Correct answer',
+      save: 'Save', cancel: 'Cancel', edit: 'Edit question', remove: 'Delete question',
+      removeConfirm: 'Delete this question?',
+      notAnswerable: 'Incomplete: needs at least two options and exactly one correct answer. Not counted.',
+      summary: '{answerable} of {total} questions count.',
+      loadError: 'Unable to load the exam.', saveError: 'Unable to save.',
+      errors: {
+        at_least_two_options_required: 'At least two options are required.',
+        exactly_one_correct_option_required: 'Mark exactly one correct answer.',
+        option_text_required: 'Every option needs text.',
+        question_text_required: 'The question needs text.',
+        invalid_pass_percent: 'The pass mark must be between 1 and 100.',
+        exam_has_no_answerable_questions: 'An exam with no complete questions cannot be published.',
+      },
+    },
     upload: 'Upload and assign', search: 'Search reusable videos', available: 'Video library', assigned: 'Ordered videos',
     add: 'Add selected videos', noAvailable: 'No matching videos.', noAssigned: 'No videos in this course.',
     moveUp: 'Move {title} up', moveDown: 'Move {title} down', remove: 'Remove {title} from this course',
@@ -400,6 +453,7 @@ export default function CourseContent({ routeParams = {} }) {
       </section>
       <AddVideoToCourse course={course} courseId={courseId} copy={c} t={t}
         onAdded={() => loadCourse({ showLoading: false })} />
+      <CourseExamEditor courseId={courseId} copy={c.exam} t={t} />
 
       <aside className="catalog-panel reusable-video-panel"><h3>{c.available}</h3>
         <input className="catalog-search" type="search" aria-label={c.search} placeholder={c.search} value={query} onChange={(event) => setQuery(event.target.value)} />

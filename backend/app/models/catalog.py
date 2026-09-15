@@ -214,6 +214,13 @@ class Course(db.Model):
         if with_content:
             # The flat list stays: the player and the existing clients read it.
             d["videos"] = [l.to_dict(lang, user=user) for l in vids]
+            # Only on the detail view: a listing would run this per row, and no listing
+            # needs it. Says an exam exists and is sittable, not whether this viewer may
+            # sit it -- that is the exam endpoint's answer.
+            from .exam import CourseExam
+
+            exam = CourseExam.query.filter_by(course_id=self.id).first()
+            d["has_exam"] = bool(exam and exam.is_live())
             d["modules"] = self.grouped_videos(lang=lang, user=user)
             # Every unit the course owns, including ones with nothing in them yet. The
             # grouped list above drops those, which would hide a unit the admin just made.

@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { I18nProvider } from '../lib/i18n.jsx';
+import { clearPublicCache } from '../lib/api.js';
 
 const settings = {
   header: { welcome: 'Configured welcome', app_label: 'Configured app', help_label: 'Configured help' },
@@ -45,6 +46,7 @@ function renderRoute(path) {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   localStorage.clear();
   window.scrollTo = vi.fn();
   vi.stubGlobal('fetch', vi.fn((input) => {

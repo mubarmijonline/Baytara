@@ -8,6 +8,7 @@ import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { I18nProvider } from '../lib/i18n.jsx';
 import { SiteSettingsProvider } from '../lib/site-settings.jsx';
+import { clearPublicCache } from '../lib/api.js';
 
 const category = { id: 1, name: 'Poultry', slug: 'poultry', video_count: 4 };
 
@@ -55,6 +56,7 @@ function renderRoute(path) {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   localStorage.clear();
   localStorage.setItem('baytara_lang', 'en');
   window.scrollTo = vi.fn();

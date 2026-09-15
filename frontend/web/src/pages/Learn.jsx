@@ -110,6 +110,9 @@ export default function Learn() {
   if (error || !course) return <NotFound />;
 
   const percent = progress?.percent ?? 0;
+  // The exam is the last step of a course that sets one, so it belongs here rather than
+  // only on the course page: this is the screen someone is on when they finish.
+  const examReady = Boolean(course?.has_exam) && percent >= 100;
   const watched = activeLesson ? (progress?.lessons?.[activeLesson.id]?.watched_seconds || 0) : 0;
   const done = activeLesson ? !!doneIds[activeLesson.id] : false;
   const status = done ? t('learn.completed') : watched > 0 ? t('learn.inProgress') : null;
@@ -133,6 +136,14 @@ export default function Learn() {
             </span>
             <span style={{ fontSize: 12.5, fontWeight: 700 }}>{percent}%</span>
           </div>
+        )}
+        {examReady && (
+          <Link to={`/courses/${courseId}/exam`}
+            style={{ marginInlineStart: 10, background: colors.gold, color: '#1a1a1a',
+              padding: '10px 18px', borderRadius: 10, fontWeight: 800, fontSize: 13,
+              textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            {t('course.takeExam')}
+          </Link>
         )}
       </div>
 

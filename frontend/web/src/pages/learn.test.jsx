@@ -8,6 +8,7 @@ import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { I18nProvider } from '../lib/i18n.jsx';
 import { resetBrowserSupport } from '../lib/browserSupport.js';
+import { clearPublicCache } from '../lib/api.js';
 
 const lessons = [
   { id: 11, title: 'Welcome', duration_minutes: 4, access_type: 'free', has_video: true },
@@ -62,6 +63,7 @@ function renderLesson(lessonId = 12) {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   resetBrowserSupport();
   localStorage.clear();
   localStorage.setItem('baytara_lang', 'en');

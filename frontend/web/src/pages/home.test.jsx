@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { I18nProvider } from '../lib/i18n.jsx';
+import { clearPublicCache } from '../lib/api.js';
 
 const settings = {
   hero: {
@@ -74,6 +75,7 @@ function renderHome() {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   localStorage.clear();
   localStorage.setItem('baytara_lang', 'en');
   window.scrollTo = vi.fn();

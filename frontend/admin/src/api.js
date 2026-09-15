@@ -161,6 +161,11 @@ export const api = {
 
   // videos (directly under a course, ordered; or standalone)
   videos: (params) => req('/admin/videos' + qs(params)),
+  courseExam: (cid) => req(`/admin/courses/${cid}/exam`),
+  courseExamSave: (cid, body) => req(`/admin/courses/${cid}/exam`, { method: 'PUT', body: JSON.stringify(body) }),
+  examQuestionCreate: (cid, body) => req(`/admin/courses/${cid}/exam/questions`, { method: 'POST', body: JSON.stringify(body) }),
+  examQuestionUpdate: (qid, body) => req(`/admin/exam-questions/${qid}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  examQuestionDelete: (qid) => req(`/admin/exam-questions/${qid}`, { method: 'DELETE' }),
   catalogVideos: (params) => req('/admin/videos' + qs(params)),
   videoLibrary: (params, { signal } = {}) => req('/admin/video-library' + qs(params), { signal }),
   video: (id) => req(`/admin/videos/${id}`),

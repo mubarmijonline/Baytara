@@ -264,6 +264,10 @@ export const auth = {
   videoProgress: () => authFetch('/video/my-progress'),
   learningSummary: () => authFetch('/learning-summary'),
   certificates: () => authFetch('/certificates'),
+  exam: (slug) => authFetch('/courses/' + slug + '/exam'),
+  examSubmit: (slug, answers) => authFetch('/courses/' + slug + '/exam/attempts', {
+    method: 'POST', body: JSON.stringify({ answers }),
+  }),
   activity: (params) => authFetch('/activity' + qs(params)),
   nationalIdCard: (file) => {
     const form = new FormData();

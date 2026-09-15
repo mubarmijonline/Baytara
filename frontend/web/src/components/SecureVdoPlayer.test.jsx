@@ -5,6 +5,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import SecureVdoPlayer from './SecureVdoPlayer.jsx';
 import { setToken } from '../lib/api.js';
+import { clearPublicCache } from '../lib/api.js';
 
 function json(data, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), {
@@ -40,6 +41,7 @@ const playback = {
 };
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   localStorage.clear();
   setToken('viewer-token');
   vi.useFakeTimers({ shouldAdvanceTime: true });

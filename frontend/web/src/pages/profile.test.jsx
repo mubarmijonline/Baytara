@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { I18nProvider } from '../lib/i18n.jsx';
+import { clearPublicCache } from '../lib/api.js';
 
 const user = {
   id: 5, name: 'Dr Mohamed', email: 'm@example.test', phone: '+201000000000',
@@ -85,6 +86,7 @@ function renderProfile(path = '/dashboard/profile') {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   localStorage.clear();
   localStorage.setItem('baytara_lang', 'en');
   localStorage.setItem('baytara_token', 'viewer-token');
