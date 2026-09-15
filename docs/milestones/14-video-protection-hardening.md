@@ -92,6 +92,39 @@ and a denied playback attempt records that same address rather than an edge IP. 
 VdoCipher was checked to accept the OTP payload in all four combinations (plain, `ipGeo`
 only, `whitelisthref` only, both), so the rules themselves are well-formed.
 
+### Apple platforms need a certificate we do not have
+
+VdoCipher answered the FairPlay question on 2026-09-15, and it contradicted the browser
+policy this milestone shipped. Without a certificate: Widevine covers desktop and Android,
+iOS gets proprietary encryption that is **not** a DRM, and **macOS Safari does not play at
+all** -- their player tells the viewer to open Chrome.
+
+Our rule did the opposite. `mac_without_safari()` refused Mac Chrome and named Safari, so a
+Mac viewer was sent to a player that sent them back: a closed loop, and no way to watch.
+
+`fairplay_enabled` (Settings, default off) now decides every Apple rule:
+
+| | off (today) | on |
+|---|---|---|
+| macOS Safari | refused, `mac_needs_chrome` | allowed, capture-protected |
+| macOS Chrome/Firefox | allowed, Widevine, not protected | refused, `mac_needs_safari` |
+| iOS | not capture-protected | capture-protected |
+
+The capabilities endpoint returns `recommend` so the page names the right browser rather
+than guessing, because the answer inverts either side of the certificate.
+
+**The consequence, stated plainly:** with `fairplay_enabled` off and `strict_browser_policy`
+on, nothing on Apple qualifies as hardware DRM, so every Mac and iPhone is refused protected
+video. Combined with `mobile_requires_app`, paid content is watchable on Windows Edge and
+the Baytara app alone. That is the honest reading of the settings, not a regression -- and
+it is the reason the certificate matters. Three ways out: apply for FairPlay, turn
+`strict_browser_policy` off and accept unprotected desktop playback, or hold paid content
+until the app ships.
+
+The Apple Developer account this needs is the same one iOS bring-up needs (mobile-08), so
+it is not an extra cost -- but Apple approval is slow and can be refused, so it is the
+longest pole.
+
 ## Verification
 
 Backend: `tests/test_video_provider.py` (wire payload), `tests/test_public_videos.py`

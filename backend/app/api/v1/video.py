@@ -19,9 +19,9 @@ from ...services.video_monitoring import (
     start_playback_attempt,
     trusted_request_ip,
 )
-from ...utils import (baytara_app, inapp_webview, mac_without_safari, mobile_browser,
-                      mobile_requires_app, platform_class, protected_browser, req_lang,
-                      strict_browser_policy)
+from ...utils import (baytara_app, fairplay_enabled, inapp_webview, mac_safari,
+                      mac_without_safari, mobile_browser, mobile_requires_app,
+                      platform_class, protected_browser, req_lang, strict_browser_policy)
 
 bp = Blueprint("video", __name__)
 
@@ -191,6 +191,32 @@ def my_video_progress():
     return jsonify(videos=latest)
 
 
+def _recommended_browser(ua):
+    """A browser this viewer could actually switch to and be allowed, or None if none.
+
+    Naming a browser the policy would then refuse is how a viewer ends up going round in
+    circles: without a FairPlay certificate, Safari on a Mac sends them to Chrome, and a
+    strict policy refuses Chrome for being software DRM. When nothing on the platform
+    passes, the honest answer is to say so rather than to name somewhere else to try.
+    """
+    if baytara_app(ua):
+        return None
+    platform = platform_class(ua)
+    if platform in ("ios", "android"):
+        return "app" if mobile_requires_app() else None
+    strict = strict_browser_policy()
+    if platform == "mac":
+        if fairplay_enabled():
+            return "safari"
+        # Safari cannot play at all; Chrome can, but only where software DRM is accepted.
+        return None if strict else "chrome"
+    if platform == "windows":
+        # Edge is the only Windows browser the strict rule admits -- and that rests on an
+        # unverified PlayReady assumption (see protected_browser).
+        return "edge" if strict else None
+    return None
+
+
 @bp.get("/video/capabilities")
 def capabilities():
     """What this browser would be told if it asked for a protected lesson, before it asks.
@@ -207,13 +233,16 @@ def capabilities():
     if not baytara_app(ua):
         if mobile_browser(ua) and mobile_requires_app():
             blocked = "app_required"
-        elif mac_without_safari(ua):
+        elif mac_without_safari(ua) and fairplay_enabled():
             blocked = "mac_needs_safari"
+        elif mac_safari(ua) and not fairplay_enabled():
+            blocked = "mac_needs_chrome"
         elif inapp_webview(ua):
             blocked = "unsupported_browser"
         elif strict_browser_policy() and not protected_browser(ua):
             blocked = "browser_not_supported"
-    return jsonify(protected=protected_browser(ua), blocked=blocked, platform=platform_class(ua))
+    return jsonify(protected=protected_browser(ua), blocked=blocked,
+                   platform=platform_class(ua), recommend=_recommended_browser(ua))
 
 
 @bp.post("/video/playback")
@@ -285,8 +314,12 @@ def playback():
             # Admin chose app-only for phones. Off by default: a mobile browser plays,
             # it just cannot stop a recorder taking the audio.
             return deny("app_required", 403)
-        if mac_without_safari(user_agent):
+        if mac_without_safari(user_agent) and fairplay_enabled():
             return deny("mac_needs_safari", 403)
+        if mac_safari(user_agent) and not fairplay_enabled():
+            # Without the certificate VdoCipher's own player refuses Safari and tells the
+            # viewer to use Chrome. Saying so ourselves beats handing them that message.
+            return deny("mac_needs_chrome", 403)
         if inapp_webview(user_agent):
             return deny("unsupported_browser", 403)
         if strict_browser_policy() and not protected_browser(user_agent):

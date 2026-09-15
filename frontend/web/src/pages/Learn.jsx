@@ -18,7 +18,7 @@ const PLAYER_BG = '#0d1430';
 // Backend refusal codes that carry their own explanation. Anything else falls back to
 // the generic message; a 403 means "not enrolled".
 const PLAYBACK_ERRORS = [
-  'no_api_key', 'mac_needs_safari', 'unsupported_browser', 'browser_not_supported',
+  'no_api_key', 'mac_needs_safari', 'mac_needs_chrome', 'unsupported_browser', 'browser_not_supported',
   'app_required', 'suspicious_activity', 'already_playing', 'too_many_requests', 'access_expired',
 ];
 

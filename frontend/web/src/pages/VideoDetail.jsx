@@ -15,6 +15,7 @@ import BrowserGuidance from '../components/BrowserGuidance.jsx';
 // Playback denials the viewer can act on; anything else falls back to the generic message.
 const PLAY_ERROR_KEYS = {
   mac_needs_safari: 'video.macNeedsSafari',
+  mac_needs_chrome: 'video.err.mac_needs_chrome',
   unsupported_browser: 'video.unsupportedBrowser',
   already_playing: 'video.alreadyPlaying',
   app_required: 'video.appRequired',

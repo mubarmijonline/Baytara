@@ -9,9 +9,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../lib/i18n.jsx';
 
-function openHint(platform, t) {
-  const key = ['mac', 'windows', 'android', 'ios'].includes(platform) ? platform : 'other';
-  return t(`browser.open.${key}`);
+// Which browser to name. The server decides it: on a Mac the right answer is Safari with
+// a FairPlay certificate and Chrome without one, and the page has no way to know which.
+function openHint(caps, t) {
+  const named = ['safari', 'chrome', 'edge', 'app'].includes(caps.recommend) ? caps.recommend : null;
+  // No name means the policy admits nothing here. Say that, rather than sending the
+  // viewer somewhere that would refuse them too.
+  return t(named ? `browser.open.${named}` : 'browser.open.other');
 }
 
 function CopyLink({ t }) {
@@ -35,9 +39,12 @@ export default function BrowserGuidance({ caps, mode }) {
 
   if (mode === 'nudge') {
     if (caps.protected) return null;
+    // Nothing to suggest, so say nothing. The block screen's "not available here" line is
+    // the opposite of what a nudge means: this video is playing perfectly well.
+    if (!caps.recommend) return null;
     return (
       <p role="note" data-testid="browser-nudge" style={{ margin: 0, padding: '10px 18px', background: '#fff7e0', color: '#5a4300', fontSize: 13.5, lineHeight: 1.7 }}>
-        {t('browser.nudge')} {openHint(caps.platform, t)}
+        {t('browser.nudge')} {openHint(caps, t)}
       </p>
     );
   }
@@ -49,7 +56,7 @@ export default function BrowserGuidance({ caps, mode }) {
         <div style={{ fontSize: 30, marginBottom: 10 }} aria-hidden="true">&#128274;</div>
         <h2 style={{ margin: '0 0 10px', fontSize: 20 }}>{t('browser.blockedTitle')}</h2>
         <p style={{ margin: '0 0 8px', color: '#cfcfe0', lineHeight: 1.8, fontSize: 14.5 }}>{t(`video.err.${caps.blocked}`)}</p>
-        <p style={{ margin: '0 0 18px', fontWeight: 700, lineHeight: 1.8 }}>{openHint(caps.platform, t)}</p>
+        <p style={{ margin: '0 0 18px', fontWeight: 700, lineHeight: 1.8 }}>{openHint(caps, t)}</p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <CopyLink t={t} />
           <Link to="/contact" style={{ background: '#c9a227', color: '#1a1a1a', padding: '9px 16px', borderRadius: 9, fontWeight: 800, textDecoration: 'none' }}>{t('common.getApp')}</Link>

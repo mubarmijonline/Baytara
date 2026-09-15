@@ -34,7 +34,7 @@ function json(data) {
   }));
 }
 
-function mockApi({ caps = { protected: true, blocked: null, platform: 'mac' } } = {}) {
+function mockApi({ caps = { protected: true, blocked: null, platform: 'mac', recommend: null } } = {}) {
   vi.stubGlobal('fetch', vi.fn((input) => {
     const url = String(input);
     if (url.includes('/video/capabilities')) return json(caps);
@@ -119,7 +119,7 @@ it('offers the all-content browser as a second sidebar tab', async () => {
 
 it('shows the guidance screen instead of minting on a browser the server would refuse', async () => {
   localStorage.setItem('baytara_token', 'viewer-token');
-  mockApi({ caps: { protected: false, blocked: 'browser_not_supported', platform: 'windows' } });
+  mockApi({ caps: { protected: false, blocked: 'browser_not_supported', platform: 'windows', recommend: 'edge' } });
   renderLesson(12);   // paid lesson
 
   expect(await screen.findByTestId('browser-block')).toBeVisible();
@@ -130,10 +130,22 @@ it('shows the guidance screen instead of minting on a browser the server would r
 
 it('still plays a free lesson on an unprotected browser, with a nudge', async () => {
   localStorage.setItem('baytara_token', 'viewer-token');
-  mockApi({ caps: { protected: false, blocked: null, platform: 'windows' } });
+  mockApi({ caps: { protected: false, blocked: null, platform: 'windows', recommend: 'edge' } });
   renderLesson(11);   // free lesson
 
   const player = await screen.findByTitle('Welcome');
   expect(player).toHaveAttribute('src', expect.stringContaining('otp=viewer-otp'));
   expect(screen.getByTestId('browser-nudge')).toHaveTextContent('Open this page in Microsoft Edge.');
+});
+
+it('says nothing on a free lesson when there is no better browser to suggest', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  // The server names a browser only when that browser would actually be allowed. With
+  // none to name, a nudge reading "protected content cannot play on this device" would
+  // contradict the video playing underneath it.
+  mockApi({ caps: { protected: false, blocked: null, platform: 'mac', recommend: null } });
+  renderLesson(11);
+
+  expect(await screen.findByTitle('Welcome')).toBeInTheDocument();
+  expect(screen.queryByTestId('browser-nudge')).not.toBeInTheDocument();
 });

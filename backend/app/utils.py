@@ -79,14 +79,22 @@ def protected_browser(ua=None):
     if APP_UA_MARKER in ua:
         return True                                  # the app shell enforces its own
     if any(m in ua for m in _IOS_MARKERS):
-        return True                                  # every iOS browser is WebKit + FairPlay
+        # Every iOS browser is WebKit, but WebKit alone is not DRM. Without a FairPlay
+        # certificate VdoCipher serves iOS its own encryption, which stops a downloader
+        # and nothing else -- confirmed by VdoCipher, 2026-09-15.
+        return fairplay_enabled()
     if "Android" in ua:
         # Widevine L1 on Chrome / Samsung Internet; the level itself cannot be checked here
         return ("Chrome" in ua or "SamsungBrowser" in ua) and "Firefox" not in ua
     if any(m in ua for m in _MAC_MARKERS):
-        return not mac_without_safari(ua)            # Safari + FairPlay only
+        # Safari is the only macOS browser that can be capture-protected, and only once
+        # the certificate is installed. Chrome and Firefox decode Widevine in software.
+        return fairplay_enabled() and not mac_without_safari(ua)
     if "Windows" in ua:
-        return "Edg/" in ua                          # Edge + PlayReady SL3000 only
+        # UNVERIFIED. VdoCipher describe Widevine as their default desktop integration and
+        # do not mention PlayReady; if Edge is served Widevine like every other desktop
+        # browser, it is software DRM and this should be False. Asked, not yet answered.
+        return "Edg/" in ua
     return False                                     # Linux, ChromeOS, unknown -> software DRM
 
 
@@ -104,6 +112,40 @@ def platform_class(ua=None):
     if "Linux" in ua or "X11" in ua:
         return "linux"
     return "other"
+
+
+def mac_safari(ua=None):
+    """True for macOS in Safari (iOS excluded -- it has its own rules)."""
+    ua = _ua(ua)
+    if any(m in ua for m in _IOS_MARKERS):
+        return False
+    return any(m in ua for m in _MAC_MARKERS) and not mac_without_safari(ua)
+
+
+def fairplay_enabled():
+    """Admin switch: an Apple FairPlay certificate is installed on the VdoCipher account.
+
+    Off by default, because a certificate is granted by Apple to the content owner and has
+    to be applied for -- VdoCipher cannot supply it (docs/VDOCIPHER_ACCOUNT_SETUP.md).
+
+    It decides what Apple platforms can do, and the two states are near opposites:
+
+      off  macOS Safari will not play at all -- VdoCipher's player tells the viewer to
+           open Chrome -- while Chrome and Firefox play over Widevine. iOS plays with
+           proprietary encryption that is not DRM, so nothing is capture-protected.
+      on   Safari plays over FairPlay and is the only capture-protected browser on macOS;
+           iOS becomes protected too. Chrome and Firefox keep working over Widevine.
+
+    Getting this backwards is not a degraded experience, it is a closed loop: sending a Mac
+    user to Safari without a certificate lands them on a player that sends them back.
+    """
+    from .models import Setting
+    from .extensions import db
+    setting = db.session.get(Setting, "fairplay_enabled")
+    value = setting.value if setting else None
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
 
 
 def strict_browser_policy():

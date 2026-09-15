@@ -46,15 +46,20 @@ picture and records the reason:
 
 ## 3. Whether the picture can be captured — we control none of it
 
-This is decided by the platform's DRM, not by our code:
+This is decided by the platform's DRM, not by our code.
+
+**The right-hand column below was never measured.** It was what we expected VdoCipher DRM
+to do; the 2026-08-14 run tested self-hosted video only. VdoCipher answered on 2026-09-15
+and two rows were wrong: without an Apple FairPlay certificate, macOS Safari does not play
+at all, and iOS is not DRM-protected. Edge/PlayReady is still unconfirmed.
 
 | Client | Self-hosted video (today) | With VdoCipher DRM on a paid plan |
 |---|---|---|
-| macOS Safari | capturable | blocked (needs the FairPlay upgrade) |
+| macOS Safari | capturable | **will not play** without the certificate; blocked once it is installed |
 | macOS Chrome/Firefox | capturable | capturable → so we refuse them |
-| Windows Edge | capturable | blocked (PlayReady SL3000) |
+| Windows Edge | capturable | blocked (PlayReady SL3000) — **unverified, see VIDEO_PROTECTION.md** |
 | Windows Chrome/Firefox | capturable | capturable (Widevine L3) |
-| iPhone Safari | capturable | blocked (FairPlay) |
+| iPhone Safari | capturable | **capturable** without the certificate — proprietary encryption, not DRM |
 | Android Chrome | capturable | blocked on L1 devices |
 | Baytara Windows app | **blocked** — `WDA_EXCLUDEFROMCAPTURE`, no DRM needed | blocked |
 | Baytara Android app | **blocked, and silent** — `FLAG_SECURE` + `ALLOW_CAPTURE_BY_NONE` | blocked |
