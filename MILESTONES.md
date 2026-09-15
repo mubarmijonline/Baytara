@@ -103,6 +103,8 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] Lesson player rebuilt — real progress, unit-grouped curriculum, all-content browser
 - [x] Profile page — cover/avatar upload, editable fields, real stats, derived activity
 - [x] Certificates — issued on course completion, public verification at `/certificates/<serial>`
+- [x] Certificate QR — `/certificates/<serial>/qr.png`, on the printed sheet and in the app
+- [ ] Student assessment (تقويم الطالب) — not started; scope not yet agreed with the client
 - [ ] Courses/videos listing redesigned to match
 - [ ] Blog & consultations (the profile's consultations tile waits on this)
 - [x] Video protection hardening — OTPs pinned to viewer IP and site hostname, user id in

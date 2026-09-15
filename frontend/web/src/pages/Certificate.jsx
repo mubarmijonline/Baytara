@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import NotFound from './NotFound.jsx';
 import { colors, font, gradients } from '../theme/tokens.js';
-import { webapi, useFetch } from '../lib/api.js';
+import { webapi, useFetch, API_BASE } from '../lib/api.js';
 import { useI18n } from '../lib/i18n.jsx';
 
 // Public certificate. The same page verifies the serial and is what «تحميل PDF»
@@ -37,6 +37,20 @@ export default function Certificate() {
             <span>{issued}</span>
             <span style={{ fontFamily: font }}>{certificate.serial}</span>
           </div>
+          {/* Scans to this same page. Rendered by the server as a plain image so it prints
+              with the sheet -- «تحميل PDF» is the browser's own print, and anything drawn
+              after load would be a gamble. White plate because a QR needs the quiet zone
+              and the light side to stay light against the navy sheet. */}
+          <figure style={{ margin: '30px 0 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <img
+              src={`${API_BASE}/certificates/${encodeURIComponent(certificate.serial)}/qr.png`}
+              alt={t('certificate.qrAlt')}
+              width={104}
+              height={104}
+              style={{ background: '#fff', padding: 8, borderRadius: 10, display: 'block' }}
+            />
+            <figcaption style={{ fontSize: 11.5, color: '#a7aec9' }}>{t('certificate.qrCaption')}</figcaption>
+          </figure>
         </article>
 
         <div className="certificate-actions" style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>

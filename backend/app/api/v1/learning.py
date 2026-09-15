@@ -1,6 +1,8 @@
+import io
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, jsonify, request
+import qrcode
+from flask import Blueprint, Response, current_app, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
@@ -233,6 +235,38 @@ def verify_certificate(serial):
     if not certificate:
         return jsonify(error="not_found"), 404
     return jsonify(certificate=certificate.to_dict(req_lang()), valid=True)
+
+
+@bp.get("/certificates/<serial>/qr.png")
+def certificate_qr(serial):
+    """The verification link as a QR code, so a printed certificate can be checked.
+
+    Its own endpoint rather than a data URI on the certificate JSON: the image is larger
+    than the record it belongs to, every listing would carry one, and a URL can be cached
+    and pointed at by an <img> on the web and the app alike. Public, like the verification
+    page it encodes -- it contains nothing the holder of the serial does not already have.
+
+    Unknown serials 404 rather than encoding whatever string was asked for, so the endpoint
+    cannot be used to mint a QR code for a certificate that does not exist.
+    """
+    if not Certificate.query.filter_by(serial=serial).first():
+        return jsonify(error="not_found"), 404
+
+    site = (current_app.config.get("SITE_URL") or "").rstrip("/")
+    code = qrcode.QRCode(
+        error_correction=qrcode.constants.ERROR_CORRECT_M,   # readable through a print smudge
+        box_size=8, border=2,
+    )
+    code.add_data(f"{site}/certificates/{serial}")
+    code.make(fit=True)
+    image = code.make_image(fill_color="#0D1430", back_color="white")   # brand navy on white
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return Response(
+        buffer.getvalue(), mimetype="image/png",
+        # A serial's link never changes, so this is safe to keep for a long time.
+        headers={"Cache-Control": "public, max-age=604800, immutable"},
+    )
 
 
 # ------------------------------ activity ------------------------------

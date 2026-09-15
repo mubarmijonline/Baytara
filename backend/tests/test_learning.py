@@ -224,3 +224,61 @@ def demo():
 
 if __name__ == "__main__":
     demo()
+
+
+def _issued_certificate(app):
+    """One real certificate row, without walking a whole course to completion."""
+    from app.models import Certificate
+    with app.app_context():
+        user = User.query.filter_by(role="student").first() or User.query.first()
+        course = Course.query.first()
+        certificate = Certificate(serial=Certificate.new_serial(),
+                                  user_id=user.id, course_id=course.id)
+        db.session.add(certificate)
+        db.session.commit()
+        return certificate.serial
+
+
+def test_certificate_qr_encodes_the_public_verification_link(learning_app):
+    """The QR is what makes a printed certificate checkable, so it has to resolve to the
+    same page the serial does -- and be a real PNG, because the sheet prints it."""
+    app = learning_app[0] if isinstance(learning_app, tuple) else learning_app
+    serial = _issued_certificate(app)
+    client = app.test_client()
+
+    response = client.get(f"/api/v1/certificates/{serial}/qr.png")
+    assert response.status_code == 200, response.get_data()[:200]
+    assert response.mimetype == "image/png"
+    assert response.get_data()[:8] == b"\x89PNG\r\n\x1a\n"
+    # a serial's link never changes, so it is worth caching
+    assert "max-age" in response.headers.get("Cache-Control", "")
+
+    # and it really does encode the verification URL, not just any image
+    try:
+        from pyzbar.pyzbar import decode        # optional; skipped when absent
+        from PIL import Image
+        import io as _io
+        decoded = decode(Image.open(_io.BytesIO(response.get_data())))
+        assert decoded, "QR did not decode"
+        assert decoded[0].data.decode().endswith(f"/certificates/{serial}")
+    except ImportError:
+        pass
+
+
+def test_certificate_qr_refuses_a_serial_that_does_not_exist(learning_app):
+    """Otherwise the endpoint would mint a QR code for any string handed to it, which
+    would scan happily and lead to a 404 -- a certificate that looks verifiable."""
+    app = learning_app[0] if isinstance(learning_app, tuple) else learning_app
+    response = app.test_client().get("/api/v1/certificates/BT-NOTREAL99/qr.png")
+    assert response.status_code == 404
+    assert response.get_json()["error"] == "not_found"
+
+
+def test_certificate_qr_needs_no_account(learning_app):
+    """Public, like the verification page it points at: whoever holds the serial can
+    already read the page, and the image carries nothing further."""
+    app = learning_app[0] if isinstance(learning_app, tuple) else learning_app
+    serial = _issued_certificate(app)
+    client = app.test_client()
+    client.environ_base.pop("HTTP_AUTHORIZATION", None)
+    assert client.get(f"/api/v1/certificates/{serial}/qr.png").status_code == 200

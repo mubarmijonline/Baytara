@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import { thumbGradients } from '../theme/tokens.js';
 
 const BASE = '/api/v1';
+// Same base, exported for the handful of places that point an <img> or a link straight at
+// an endpoint rather than fetching JSON through this client.
+export const API_BASE = BASE;
 
 // ---- language (contract البند1: AR default, EN toggle) ----
 const LANG_KEY = 'baytara_lang';

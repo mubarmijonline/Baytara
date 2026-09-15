@@ -97,6 +97,27 @@ class _Certificate extends StatelessWidget {
           ),
         _Row(label: l.certificateSerial, value: certificate.serial, monospace: true),
         const SizedBox(height: 22),
+        // The same PNG the website prints, served by the API rather than drawn here, so a
+        // screenshot of this screen and a printed sheet carry an identical code. White
+        // plate because a QR needs its light side to stay light.
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Image.network(
+              '$kApiBaseUrl/certificates/${Uri.encodeComponent(certificate.serial)}/qr.png',
+              width: 132,
+              height: 132,
+              // A missing code must not take the certificate down with it: the serial and
+              // the link below are still enough to verify by hand.
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
         // The verification URL is the shareable artefact, not a PDF: anyone can open it and
         // confirm the certificate without an account.
         SelectableText(

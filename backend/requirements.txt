@@ -12,4 +12,6 @@ google-auth==2.55.2  # Google Sign-In ID-token verification (also a vision dep)
 requests==2.34.2  # google.auth.transport.requests
 anthropic==0.122.0
 Pillow==12.3.0
+# Certificate verification QR codes (GET /certificates/<serial>/qr.png). Renders via Pillow.
+qrcode==8.2
 gunicorn==23.0.0
