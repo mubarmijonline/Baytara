@@ -300,6 +300,7 @@ export const webapi = {
   capabilities: () => get('/video/capabilities'),
   courses: (params) => get('/courses' + qs(params)),
   course: (slug) => get('/courses/' + slug),
+  completionCertificate: (serial) => get('/completion-certificates/' + encodeURIComponent(serial)),
   courseReviews: (slug, params) => get(`/courses/${slug}/reviews` + qs(params)),
   videos: (params) => get('/videos' + qs(params), true),
   video: (id) => get('/videos/' + id, true),

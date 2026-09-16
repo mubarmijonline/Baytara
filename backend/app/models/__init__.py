@@ -15,7 +15,8 @@ from .catalog import (
     bundle_videos,
 )
 from .learning import (
-    Certificate, Enrollment, LessonProgress, VideoEntitlement, issue_certificate_if_earned,
+    Certificate, CompletionCertificate, Enrollment, LessonProgress, VideoEntitlement,
+    issue_certificate_if_earned, issue_completion_certificate_if_earned,
 )
 from .exam import (
     CourseExam, ExamAttempt, ExamAttemptAnswer, ExamOption, ExamQuestion,
@@ -35,6 +36,7 @@ __all__ = [
     "Bundle", "CourseReview", "refresh_course_rating", "LearningPath", "PathCourse", "LEVELS",
     "bundle_courses", "bundle_videos",
     "Certificate", "issue_certificate_if_earned",
+    "CompletionCertificate", "issue_completion_certificate_if_earned",
     "CourseExam", "ExamQuestion", "ExamOption", "ExamAttempt", "ExamAttemptAnswer",
     "PASS_PERCENT_DEFAULT", "grade", "passed_attempt",
     "Enrollment", "LessonProgress", "VideoEntitlement", "InstapayAccount", "InstapayPayment",

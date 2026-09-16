@@ -8,6 +8,7 @@ import Paths from './pages/Paths.jsx';
 import Profile from './pages/Profile.jsx';
 import Certificate from './pages/Certificate.jsx';
 import Exam from './pages/Exam.jsx';
+import CompletionCertificate from './pages/CompletionCertificate.jsx';
 import PathDetail from './pages/PathDetail.jsx';
 import Instructor from './pages/Instructor.jsx';
 import Pricing from './pages/Pricing.jsx';
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/dashboard/profile" element={<Profile />} />
         <Route path="/courses/:slug/exam" element={<Exam />} />
         <Route path="/certificates/:serial" element={<Certificate />} />
+        <Route path="/completion-certificates/:serial" element={<CompletionCertificate />} />
         <Route path="/about" element={<About />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />

@@ -17,6 +17,11 @@ const user = {
   created_at: '2025-03-04T00:00:00+00:00',
 };
 
+const completionCertificates = [{
+  kind: 'completion', serial: 'BC-ATTEND0001', issued_at: '2026-08-11T00:00:00+00:00',
+  learner_name: 'Student', course: { id: 9, slug: 'herd', title: 'Herd attendance' },
+}];
+
 const certificates = [{
   serial: 'BT-ABC1234567', issued_at: '2026-08-10T00:00:00+00:00',
   learner_name: 'Dr Mohamed', course: { id: 1, slug: 'herd', title: 'Herd health' },
@@ -52,7 +57,7 @@ function mockApi() {
       return json({ user: { ...user, ...JSON.parse(init.body) } });
     }
     if (url.includes('/auth/me')) return json({ user });
-    if (url.includes('/certificates')) return json({ certificates });
+    if (url.includes('/certificates')) return json({ certificates, completion_certificates: completionCertificates });
     if (url.includes('/activity')) return json({ activity });
     if (url.includes('/enrollments')) {
       return json({ enrollments: [
@@ -246,4 +251,18 @@ it('picks specialties from the live categories and sends their slugs', async () 
   expect(patched[0].specialties).toEqual(['poultry']);
   // The free-text job title rides along untouched.
   expect(patched[0].headline).toBe('Cattle disease');
+});
+
+it('lists attendance certificates separately, linked to their own page', async () => {
+  mockApi();
+  renderProfile();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Certificates' }));
+  expect(await screen.findByRole('heading', { name: 'Certificates of completion' })).toBeVisible();
+  expect(screen.getByText('Herd attendance')).toBeVisible();
+  expect(screen.getByRole('link', { name: 'Attendance certificate' }))
+    .toHaveAttribute('href', '/completion-certificates/BC-ATTEND0001');
+  // the verified one keeps its link to the public verification page
+  expect(screen.getByRole('link', { name: 'View certificate' }))
+    .toHaveAttribute('href', '/certificates/BT-ABC1234567');
 });

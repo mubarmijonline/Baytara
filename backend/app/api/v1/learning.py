@@ -7,8 +7,9 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...extensions import db
 from ...models import (
-    Certificate, Course, CourseExam, CourseModule, ExamAttempt, Lesson, Enrollment,
-    LessonProgress, Payment, User, grade, issue_certificate_if_earned, passed_attempt,
+    Certificate, CompletionCertificate, Course, CourseExam, CourseModule, ExamAttempt, Lesson,
+    Enrollment, LessonProgress, Payment, User, grade, issue_certificate_if_earned,
+    issue_completion_certificate_if_earned, passed_attempt,
 )
 from ...models.catalog import loc
 from ...models.video_monitoring import VideoPlaybackSession
@@ -211,10 +212,13 @@ def update_progress():
     db.session.flush()
     # Finishing the last lesson is what earns the certificate; the helper is idempotent.
     certificate = issue_certificate_if_earned(enrollment)
+    completion_certificate = issue_completion_certificate_if_earned(enrollment)
     db.session.commit()
     percent, completed, total = enrollment.completion()
     return jsonify(progress={"percent": percent, "completed_lessons": completed, "total_lessons": total},
-                   certificate=certificate.to_dict(req_lang()) if certificate else None)
+                   certificate=certificate.to_dict(req_lang()) if certificate else None,
+                   completion_certificate=(completion_certificate.to_dict(req_lang())
+                                           if completion_certificate else None))
 
 
 # ------------------------------ course exam ------------------------------
@@ -256,6 +260,11 @@ def get_exam(slug):
 
     percent, _, total = enrollment.completion()
     eligible = bool(total) and percent >= 100
+    # Also the backfill: someone who finished before the exam was published earns the
+    # attendance certificate the first time they open this page.
+    completion = issue_completion_certificate_if_earned(enrollment) if eligible else None
+    if completion is not None:
+        db.session.commit()
     attempts = (ExamAttempt.query
                 .filter_by(exam_id=exam.id, user_id=_uid())
                 .order_by(ExamAttempt.submitted_at.desc(), ExamAttempt.id.desc()).all())
@@ -269,6 +278,7 @@ def get_exam(slug):
         "best_score_percent": best,
         "passed": any(a.passed for a in attempts),
         "attempts": [a.to_dict() for a in attempts[:10]],
+        "completion_certificate": completion.to_dict(req_lang()) if completion else None,
     })
     # The questions themselves only go out to someone who may actually sit it.
     if eligible:
@@ -323,7 +333,12 @@ def submit_exam(slug):
 def my_certificates():
     rows = (Certificate.query.filter_by(user_id=_uid())
             .order_by(Certificate.issued_at.desc(), Certificate.id.desc()).all())
-    return jsonify(certificates=[c.to_dict(req_lang()) for c in rows])
+    completion = (CompletionCertificate.query.filter_by(user_id=_uid())
+                  .order_by(CompletionCertificate.issued_at.desc(), CompletionCertificate.id.desc()).all())
+    # A separate key rather than mixed into `certificates`: the mobile app and older builds
+    # read that list as verifiable certificates with a public page, which these are not.
+    return jsonify(certificates=[c.to_dict(req_lang()) for c in rows],
+                   completion_certificates=[c.to_dict(req_lang()) for c in completion])
 
 
 @bp.get("/certificates/<serial>")
@@ -334,6 +349,17 @@ def verify_certificate(serial):
     if not certificate:
         return jsonify(error="not_found"), 404
     return jsonify(certificate=certificate.to_dict(req_lang()), valid=True)
+
+
+@bp.get("/completion-certificates/<serial>")
+def completion_certificate(serial):
+    """The attendance certificate's printable page. Reachable by its unguessable serial so it
+    can be opened and printed without extra steps; it verifies nothing and says so by
+    omission -- no QR, no "genuine" line, no serial on the sheet."""
+    certificate = CompletionCertificate.query.filter_by(serial=serial).first()
+    if not certificate:
+        return jsonify(error="not_found"), 404
+    return jsonify(completion_certificate=certificate.to_dict(req_lang()))
 
 
 @bp.get("/certificates/<serial>/qr.png")

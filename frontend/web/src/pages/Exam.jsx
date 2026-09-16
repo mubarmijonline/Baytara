@@ -156,6 +156,16 @@ export default function Exam() {
           </Panel>
         ) : (
           <>
+            {!exam.passed && exam.completion_certificate && (
+              <Panel style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ flex: 1, minWidth: 200, color: colors.muted, lineHeight: 1.8 }}>{t('completion.examHint')}</span>
+                <Link to={`/completion-certificates/${exam.completion_certificate.serial}`}
+                  style={{ border: '1px solid #d6d9e4', color: colors.ink, padding: '10px 18px',
+                    borderRadius: 10, fontWeight: 700, textDecoration: 'none' }}>
+                  {t('completion.view')}
+                </Link>
+              </Panel>
+            )}
             {exam.passed && (
               <Panel style={{ marginBottom: 14, borderColor: '#bfe3d0', background: '#f2fbf6' }}>
                 <p style={{ margin: 0, color: '#176b45', fontWeight: 700 }}>

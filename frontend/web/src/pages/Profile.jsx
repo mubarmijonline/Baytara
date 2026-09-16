@@ -275,6 +275,7 @@ export default function Profile() {
 
   const enrollments = enrollmentData?.enrollments || [];
   const certificates = certificateData?.certificates || [];
+  const completionCertificates = certificateData?.completion_certificates || [];
   const activity = activityData?.activity || [];
   const payments = paymentData?.payments || [];
   const completedLessons = enrollments.reduce((sum, row) => sum + (row.progress?.completed_lessons || 0), 0);
@@ -496,7 +497,7 @@ export default function Profile() {
               <div className="grid-collapse-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
                 <Stat value={enrollments.length} label={t('profile.statCourses')} />
                 <Stat value={completedLessons} label={t('profile.statLessons')} />
-                <Stat value={certificates.length} label={t('profile.statCertificates')} />
+                <Stat value={certificates.length + completionCertificates.length} label={t('profile.statCertificates')} />
               </div>
 
               {activity.length > 0 ? (
@@ -556,7 +557,7 @@ export default function Profile() {
           )}
 
           {tab === 'certificates' && (
-            certificates.length ? (
+            certificates.length || completionCertificates.length ? (<>{certificates.length ? (
               <section style={card}>
                 <h2 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700, color: DARK }}>{t('profile.certificates')}</h2>
                 <div className="grid-2">
@@ -581,6 +582,28 @@ export default function Profile() {
                   ))}
                 </div>
               </section>
+            ) : null}
+            {completionCertificates.length ? (
+              <section style={{ ...card, marginTop: certificates.length ? 16 : 0 }}>
+                <h2 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700, color: DARK }}>{t('profile.completionCertificates')}</h2>
+                <div className="grid-2">
+                  {completionCertificates.map((certificate) => (
+                    <article key={certificate.serial} style={{ border: `1px solid ${colors.line2}`, borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: colors.ink, lineHeight: 1.5 }}>{certificate.course?.title}</div>
+                      <div style={{ display: 'flex', gap: 7, marginTop: 9, flexWrap: 'wrap' }}>
+                        <span style={{ background: colors.surfaceAlt, borderRadius: 7, padding: '5px 10px', fontSize: 11.5, color: colors.muted, fontWeight: 600 }}>
+                          {dateLabel(certificate.issued_at, lang)}
+                        </span>
+                        <Link to={`/completion-certificates/${certificate.serial}`}
+                          style={{ background: colors.accentSoft, borderRadius: 7, padding: '5px 10px', fontSize: 11.5, color: colors.accent, fontWeight: 700 }}>
+                          {t('completion.view')}
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}</>
             ) : <Empty>{t('profile.noCertificates')}</Empty>
           )}
 

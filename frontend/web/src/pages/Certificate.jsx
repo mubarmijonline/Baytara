@@ -27,11 +27,11 @@ export default function Certificate() {
         <article className="certificate-sheet" style={{ background: gradients.darkPanel, color: '#fff', borderRadius: 20, padding: '52px 48px', textAlign: 'center' }}>
           <img src="/brand/logo-white.png" alt="بيطرة BAYTARA" style={{ height: 44, marginBottom: 28 }} />
           <div style={{ fontFamily: font, fontSize: 12, letterSpacing: 2, color: colors.gold, marginBottom: 18 }}>
-            {t('certificate.title')}
+            {certificate.kind === 'achievement' ? t('certificate.achievementTitle') : t('certificate.title')}
           </div>
           <p style={{ margin: '0 0 10px', fontSize: 15, color: '#b9bfd6' }}>{t('certificate.awardedTo')}</p>
           <h1 style={{ margin: '0 0 22px', fontSize: 34, fontWeight: 700 }}>{certificate.learner_name}</h1>
-          <p style={{ margin: '0 0 10px', fontSize: 15, color: '#b9bfd6' }}>{t('certificate.forCompleting')}</p>
+          <p style={{ margin: '0 0 10px', fontSize: 15, color: '#b9bfd6' }}>{certificate.kind === 'achievement' ? t('certificate.forPassing') : t('certificate.forCompleting')}</p>
           <h2 style={{ margin: '0 0 28px', fontSize: 24, fontWeight: 700, color: colors.gold }}>{certificate.course?.title}</h2>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 26, flexWrap: 'wrap', fontSize: 13, color: '#a7aec9' }}>
             <span>{issued}</span>

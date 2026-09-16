@@ -373,3 +373,86 @@ def test_the_authoring_view_is_the_only_one_that_shows_the_answer(exam_app):
     client.post(f"/api/v1/admin/courses/{cid}/exam/questions", json=question_body())
     authoring = client.get(f"/api/v1/admin/courses/{cid}/exam").get_json()["exam"]
     assert "is_correct" in str(authoring), "an author must be able to see the answer"
+
+
+# ------------------------------ attendance certificate ------------------------------
+# Asked for 2026-09-17: a second, simple certificate for learners who finish the course
+# but do not want to sit the exam. Name only, no QR, no verification.
+
+def finish_via_progress(app, client, hdrs):
+    response = None
+    for lesson_id in app.config["IDS"]["lessons"]:
+        response = client.post("/api/v1/progress", headers=hdrs, json={
+            "lesson_id": lesson_id, "course_id": app.config["IDS"]["course"], "completed": True,
+        })
+        assert response.status_code == 200, response.get_json()
+    return response.get_json()
+
+
+def test_finishing_an_exam_course_earns_attendance_but_not_the_verified_certificate(exam_app):
+    build_exam(exam_app)
+    client, hdrs = headers(exam_app)
+    body = finish_via_progress(exam_app, client, hdrs)
+
+    assert body["certificate"] is None                       # unchanged: that one needs a pass
+    assert body["completion_certificate"]["kind"] == "completion"
+    assert body["completion_certificate"]["learner_name"] == "S"
+
+
+def test_a_course_without_an_exam_issues_only_the_one_certificate(exam_app):
+    """Finishing already earns the regular certificate there; a second document saying the
+    same thing would be noise."""
+    client, hdrs = headers(exam_app)
+    body = finish_via_progress(exam_app, client, hdrs)
+    assert body["certificate"] is not None
+    assert body["certificate"]["kind"] == "certificate"
+    assert body["completion_certificate"] is None
+
+
+def test_passing_leaves_the_learner_with_both_and_they_are_told_apart(exam_app):
+    """Two documents both called a certificate of completion would defeat the point, so the
+    verified one says it was earned by passing the exam."""
+    exam_id = build_exam(exam_app)
+    client, hdrs = headers(exam_app)
+    finish_via_progress(exam_app, client, hdrs)
+    result = client.post("/api/v1/courses/exam-course/exam/attempts", headers=hdrs,
+                         json={"answers": correct_answers(exam_app, exam_id)}).get_json()
+    assert result["certificate"]["kind"] == "achievement"
+
+    listed = client.get("/api/v1/certificates", headers=hdrs).get_json()
+    assert [c["kind"] for c in listed["certificates"]] == ["achievement"]
+    assert [c["kind"] for c in listed["completion_certificates"]] == ["completion"]
+
+
+def test_attendance_is_backfilled_when_the_exam_was_published_after_finishing(exam_app):
+    client, hdrs = headers(exam_app)
+    finish_via_progress(exam_app, client, hdrs)              # no exam yet: regular certificate
+    build_exam(exam_app)                                     # exam arrives later
+    exam = client.get("/api/v1/courses/exam-course/exam", headers=hdrs).get_json()["exam"]
+    assert exam["completion_certificate"]["kind"] == "completion"
+
+
+def test_attendance_certificate_page_carries_no_verification(exam_app):
+    build_exam(exam_app)
+    client, hdrs = headers(exam_app)
+    serial = finish_via_progress(exam_app, client, hdrs)["completion_certificate"]["serial"]
+
+    page = exam_app.test_client().get(f"/api/v1/completion-certificates/{serial}")
+    assert page.status_code == 200
+    assert page.get_json()["completion_certificate"]["learner_name"] == "S"
+    # it is not a verifiable certificate: the verification page and QR do not know it
+    assert exam_app.test_client().get(f"/api/v1/certificates/{serial}").status_code == 404
+    assert exam_app.test_client().get(f"/api/v1/certificates/{serial}/qr.png").status_code == 404
+    assert exam_app.test_client().get("/api/v1/completion-certificates/BC-NOPE").status_code == 404
+
+
+def test_attendance_is_not_issued_before_the_course_is_finished(exam_app):
+    build_exam(exam_app)
+    client, hdrs = headers(exam_app)
+    first = client.post("/api/v1/progress", headers=hdrs, json={
+        "lesson_id": exam_app.config["IDS"]["lessons"][0],
+        "course_id": exam_app.config["IDS"]["course"], "completed": True,
+    }).get_json()
+    assert first["completion_certificate"] is None
+    exam = client.get("/api/v1/courses/exam-course/exam", headers=hdrs).get_json()["exam"]
+    assert exam["completion_certificate"] is None
