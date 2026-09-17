@@ -318,7 +318,7 @@ function CourseRow({ course, index, t, lang, onOpen }) {
         {course.image && <img src={course.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
       </button>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="catalog-row-body" style={{ flex: 1, minWidth: 0 }}>
         <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: colors.ink, lineHeight: 1.4 }}>
           <Link to={`/courses/${course.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{course.title}</Link>
         </h3>

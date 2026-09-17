@@ -285,11 +285,18 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 /* Chips scroll sideways rather than wrapping the filter bar onto three rows. */
 .videos-chip-row { scrollbar-width: none; }
 .videos-chip-row::-webkit-scrollbar { display: none; }
-/* Course catalogue rows: thumbnail, details, price/CTA column. Below 640px the price
-   column would squeeze the title to one word per line, so it drops under the details. */
+/* Course catalogue rows: thumbnail, details, price/CTA column.
+   A long unbroken title (an English course name on an Arabic page) has to be allowed to
+   break, or it pushes past the card edge instead of wrapping. */
+.catalog-row-body h3, .catalog-row-body > div { overflow-wrap: anywhere; }
+/* Below 640px the row becomes a stacked card: image across the top, details full width,
+   price and button underneath. The thumbnail's size is set inline, so it needs !important
+   here -- without it the 196px image kept its width on a phone and squeezed the details
+   into a column one or two words wide. */
 @media (max-width: 640px) {
   .catalog-row { flex-wrap: wrap; }
-  .catalog-row > button:first-child { width: 108px; height: 78px; }
+  .catalog-row > button:first-child { width: 100% !important; height: auto !important; aspect-ratio: 16 / 9; }
+  .catalog-row-body { flex-basis: 100% !important; }
   .catalog-row-side { flex-direction: row !important; align-items: center !important;
     width: 100%; justify-content: space-between; }
   .catalog-search { flex-direction: column; }
