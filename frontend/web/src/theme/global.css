@@ -553,7 +553,10 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
   .videos-page-header { margin-bottom: 18px !important; }
   .videos-page-title { font-size: 26px !important; letter-spacing: 0 !important; }
   .videos-page-copy { font-size: 14px !important; line-height: 1.55 !important; }
-  .videos-search-form { max-width: none !important; margin-bottom: 14px !important; }
+  /* Full width on a phone. This used to set max-width: none, which cancelled the inline
+     maxWidth: 100% and left the form at its 420px desktop width -- wider than the screen,
+     so the search button sat off the edge. */
+  .videos-search-form { width: 100% !important; max-width: 100% !important; margin-bottom: 14px !important; }
   .videos-search-form input { height: 40px !important; font-size: 14px !important; }
   .videos-search-form button { height: 40px !important; padding: 0 14px !important; font-size: 14px !important; }
 

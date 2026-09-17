@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import VideoCard from '../components/VideoCard.jsx';
+import CourseCard from '../components/CourseCard.jsx';
 import { Container } from '../components/Primitives.jsx';
 import { useI18n } from '../lib/i18n.jsx';
-import { useFetch, webapi } from '../lib/api.js';
+import { mapCourse, useFetch, webapi } from '../lib/api.js';
 import { colors } from '../theme/tokens.js';
 import { categoryImage } from '../lib/category-images.js';
 
@@ -101,6 +102,15 @@ export default function Videos() {
   }
 
   const reset = (setter) => (event) => { setter(event.target.value); setPage(1); };
+  // A category opened from the home page used to show only its videos. The client asked
+  // (2026-09-17) for the courses in that category to appear with them, so someone browsing
+  // "large animals" sees everything taught on it. Fetched only when a category is chosen;
+  // the unfiltered library is about videos and stays that way.
+  const categoryCourses = useFetch(
+    () => (category ? webapi.courses({ category, per_page: 12 }) : Promise.resolve(null)),
+    [category],
+  );
+  const courseItems = (categoryCourses.data?.courses || []).map((course, index) => mapCourse(course, index));
 
   return (
     <main className="videos-page" style={{ background: colors.surface, minHeight: '70vh' }}>
@@ -116,17 +126,17 @@ export default function Videos() {
             </p>
           </div>
           <form className="videos-search-form" onSubmit={submit} style={{ display: 'flex', gap: 8, width: 420, maxWidth: '100%' }}>
-            <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, height: 46, padding: '0 14px', border: '1px solid #dfe2ec', borderRadius: 11, background: '#fafbfd' }}>
+            <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, height: 46, padding: '0 14px', border: '1px solid #dfe2ec', borderRadius: 11, background: '#fafbfd' }}>
               <Search size={16} aria-hidden="true" style={{ color: '#8189a6', flex: 'none' }} />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 aria-label={t('video.searchPlaceholder')}
                 placeholder={t('video.searchPlaceholder')}
-                style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: colors.ink }}
+                style={{ flex: 1, minWidth: 0, width: '100%', border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: colors.ink }}
               />
             </span>
-            <button type="submit" style={{ background: colors.accent, color: '#fff', fontSize: 14.5, fontWeight: 700, padding: '0 22px', height: 46, borderRadius: 11, border: 'none', cursor: 'pointer' }}>
+            <button type="submit" style={{ flex: 'none', background: colors.accent, color: '#fff', fontSize: 14.5, fontWeight: 700, padding: '0 22px', height: 46, borderRadius: 11, border: 'none', cursor: 'pointer' }}>
               {t('video.search')}
             </button>
           </form>
@@ -191,6 +201,20 @@ export default function Videos() {
             </button>
           )}
         </div>
+
+        {category && courseItems.length > 0 && (
+          <section className="videos-category-courses" style={{ marginBottom: 30 }}>
+            <h2 style={{ margin: '0 0 14px', fontSize: 19, fontWeight: 700, color: colors.utilityBar }}>
+              {t('video.categoryCourses')}
+            </h2>
+            <div className="grid-3">
+              {courseItems.map((course) => <CourseCard key={course.id} course={course} width={null} />)}
+            </div>
+            <h2 style={{ margin: '30px 0 0', fontSize: 19, fontWeight: 700, color: colors.utilityBar }}>
+              {t('video.categoryVideos')}
+            </h2>
+          </section>
+        )}
 
         {catalog.loading ? (
           <div style={{ color: colors.muted }}>{t('common.loading')}</div>
