@@ -385,7 +385,9 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
             "instructor": None,
             "instructor_id": None,
             "assignment_count": 1,
-            "is_protected": True,
+            # The stored flag defaults off since 2026-09-13; a paid video is protected by its
+            # tier through capture_protected(), not by this column.
+            "is_protected": False,
             "source": "vdocipher",
             "local_status": None,
             "has_video": False,

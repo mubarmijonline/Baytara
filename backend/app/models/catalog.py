@@ -107,9 +107,14 @@ class Course(db.Model):
         return access_is_paid(self.access_type)
 
     def visible_to(self, user):
-        """Whether the public catalog may list this course to the caller."""
-        if self.access_type == "vet_free":
-            return audience_error(user, self.access_type) is None
+        """Whether the public catalog may list this course to the caller: always.
+
+        Vet-only courses used to be hidden from anyone unverified. The client asked on
+        2026-09-17 for the whole catalogue to be visible to everyone, signed in or not,
+        because a doctor who cannot see the content before verifying finds an empty site
+        and has no reason to verify. Access is unchanged: lock_reason still says why a
+        course cannot be joined, and playback is still refused server-side.
+        """
         return True
 
     def lock_reason(self, user):

@@ -159,7 +159,10 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
   // refuses it too (paid_requires_vdocipher); this just keeps the option from being
   // offered, with the reason on screen instead of an error after the upload.
   const paid = course?.access_type === 'baytarian' || course?.access_type === 'general';
-  const [protect, setProtect] = useState(true);
+  // Protection is for paid content; it defaults off for a free course. It used to default
+  // on everywhere, and on a local upload the checkbox is not even shown, so free videos
+  // were silently put behind the strict browser rules.
+  const [protect, setProtect] = useState(null);
   const [file, setFile] = useState(null);
   const [phase, setPhase] = useState('');
   const [progress, setProgress] = useState(0);
@@ -180,7 +183,8 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
     status: 'published',
     price: 0,
     currency: course?.currency || 'EGP',
-    is_protected: protect,
+    is_protected: destination === 'local' ? false
+      : (protect ?? (course?.access_type === 'baytarian' || course?.access_type === 'general')),
   });
 
   async function submit() {
@@ -240,7 +244,7 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
       </Field>
       {destination === 'vdocipher' && (
         <label className="course-add-protect">
-          <input type="checkbox" checked={protect} onChange={(event) => setProtect(event.target.checked)} disabled={working} />
+          <input type="checkbox" checked={protect ?? (course?.access_type === 'baytarian' || course?.access_type === 'general')} onChange={(event) => setProtect(event.target.checked)} disabled={working} />
           <span>{copy.addVideoProtect}</span>
         </label>
       )}

@@ -119,8 +119,8 @@ def videos():
     elif duration == "long":
         query = query.filter(Lesson.duration_minutes > 30)
 
-    if audience_error(user, "vet_free"):
-        query = query.filter(Lesson.access_type != "vet_free")
+    # Every video is listed to everyone. can_play and lock_reason say whether this viewer
+    # may watch it; the playback endpoint is what actually refuses.
 
     order = {
         "oldest": (Lesson.created_at.asc(), Lesson.id.asc()),
@@ -150,8 +150,6 @@ def video_detail(video_id):
     playable = video and (video.vdocipher_video_id
                           or (video.source == "local" and video.local_status == "ready"))
     if not video or video.status != "published" or not playable:
-        return jsonify(error="not_found"), 404
-    if video.access_type == "vet_free" and audience_error(user, "vet_free"):
         return jsonify(error="not_found"), 404
     return jsonify(video=_public_video_dict(video, user, req_lang()))
 

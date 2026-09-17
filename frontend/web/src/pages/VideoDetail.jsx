@@ -16,6 +16,8 @@ import BrowserGuidance from '../components/BrowserGuidance.jsx';
 const PLAY_ERROR_KEYS = {
   mac_needs_safari: 'video.macNeedsSafari',
   mac_needs_chrome: 'video.err.mac_needs_chrome',
+  needs_baytarian: 'lock.needs_baytarian',
+  non_veterinarians_only: 'video.err.non_veterinarians_only',
   unsupported_browser: 'video.unsupportedBrowser',
   already_playing: 'video.alreadyPlaying',
   app_required: 'video.appRequired',
@@ -52,6 +54,7 @@ export default function VideoDetail() {
   const openRequiredAccess = () => {
     if (!isAuthed() || video.requires_auth) navigate(`/auth?next=${encodeURIComponent(`/videos/${id}`)}`);
     else if (video.requires_phone || !user?.phone) navigate(`/dashboard/profile?next=${encodeURIComponent(`/videos/${id}`)}`);
+    else if (video.lock_reason === 'needs_baytarian') navigate('/verify');
     else navigate('/dashboard');
   };
 
@@ -94,8 +97,8 @@ export default function VideoDetail() {
                         <span className="video-status-icon video-status-icon-unlock" role="img" aria-label={`${t('video.unlockToWatch')} ${video.title}`} />
                       </div>
                       <h2>{anonymous ? t('video.lockedTitle') : t('video.accessRequired')}</h2>
-                      <p>{anonymous ? t('video.lockedDescription') : t('video.watchRequiresAccount')}</p>
-                      <button type="button" className="video-access-button" onClick={openRequiredAccess}>{video.requires_phone || (isAuthed() && !user?.phone) ? t('video.addPhone') : (anonymous ? t('video.registerToWatch') : t('video.accessRequired'))}</button>
+                      <p>{anonymous ? t('video.lockedDescription') : (video.lock_reason === 'needs_baytarian' ? t('video.lockedForVets') : t('video.watchRequiresAccount'))}</p>
+                      <button type="button" className="video-access-button" onClick={openRequiredAccess}>{video.requires_phone || (isAuthed() && !user?.phone) ? t('video.addPhone') : (anonymous ? t('video.registerToWatch') : (video.lock_reason === 'needs_baytarian' ? t('membership.verify') : t('video.accessRequired')))}</button>
                     </div>
                   </div>
                 )}

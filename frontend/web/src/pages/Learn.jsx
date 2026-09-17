@@ -20,6 +20,10 @@ const PLAYER_BG = '#0d1430';
 const PLAYBACK_ERRORS = [
   'no_api_key', 'mac_needs_safari', 'mac_needs_chrome', 'unsupported_browser', 'browser_not_supported',
   'app_required', 'suspicious_activity', 'already_playing', 'too_many_requests', 'access_expired',
+  // Audience and account refusals. Without these a vet-only video refused to an unverified
+  // account fell through to the 403 default -- "subscribe to the course" -- which sent people
+  // to pay for something they needed to verify for instead.
+  'needs_baytarian', 'non_veterinarians_only', 'phone_required', 'not_entitled',
 ];
 
 function playbackMessage(error, t) {

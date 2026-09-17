@@ -105,7 +105,7 @@ def test_anonymous_video_catalog_is_published_category_aware_and_localized(publi
     assert "vdocipher_video_id" not in body["videos"][0]
 
 
-def test_anonymous_video_detail_hides_restricted_and_draft_rows(public_video_app):
+def test_anonymous_video_detail_shows_restricted_but_hides_draft_rows(public_video_app):
     app, ids = public_video_app
     client = app.test_client()
 
@@ -117,7 +117,10 @@ def test_anonymous_video_detail_hides_restricted_and_draft_rows(public_video_app
     paid = client.get(f"/api/v1/videos/{ids['مدفوع']}")
     assert paid.status_code == 200
     assert paid.get_json()["video"]["can_play"] is False
-    assert client.get(f"/api/v1/videos/{ids['خاص بالأطباء']}").status_code == 404
+    # Vet-only is listed to everyone since 2026-09-17 (locked, not hidden); drafts stay unpublished.
+    vet_only = client.get(f"/api/v1/videos/{ids['خاص بالأطباء']}")
+    assert vet_only.status_code == 200
+    assert vet_only.get_json()["video"]["can_play"] is False
     assert client.get(f"/api/v1/videos/{ids['مسودة']}").status_code == 404
 
 
@@ -348,8 +351,8 @@ def test_video_catalog_filters_by_access_length_and_sort(public_video_app):
     def titles(query=""):
         return [v["title"] for v in client.get(f"/api/v1/videos{query}").get_json()["videos"]]
 
-    # anonymous sees the two published, non-vet rows
-    assert set(titles()) == {"مقدمة", "مدفوع"}
+    # anonymous sees every published row, vet-only included (locked, not hidden)
+    assert set(titles()) == {"مقدمة", "مدفوع", "خاص بالأطباء"}
 
     # access
     assert titles("?access_type=free") == ["مقدمة"]
@@ -460,3 +463,28 @@ def test_playback_says_whether_the_lesson_enforces_the_capture_rule(public_video
                        json={"lesson_id": ids["مدفوع"]})
     assert paid.status_code == 200, paid.get_json()
     assert paid.get_json()["capture_protected"] is True
+
+
+def test_vet_only_content_is_listed_to_everyone_but_still_locked(public_video_app):
+    """Client, 2026-09-17: show the whole catalogue to every visitor, signed in or not,
+    so a doctor sees what verifying unlocks. Watching is still refused."""
+    app, ids = public_video_app
+    anon = app.test_client()
+
+    listed = anon.get("/api/v1/videos").get_json()["videos"]
+    vet_only = next((v for v in listed if v["id"] == ids["خاص بالأطباء"]), None)
+    assert vet_only is not None, "vet-only video must be listed to an anonymous visitor"
+    assert vet_only["can_play"] is False
+
+    detail = anon.get(f"/api/v1/videos/{ids['خاص بالأطباء']}")
+    assert detail.status_code == 200
+    assert detail.get_json()["video"]["can_play"] is False
+
+    # an unverified account sees it too, with the reason, and playback is refused
+    headers = _viewer_headers(anon, "vet-only-browser")
+    seen = anon.get(f"/api/v1/videos/{ids['خاص بالأطباء']}", headers=headers).get_json()["video"]
+    assert seen["lock_reason"] == "needs_baytarian"
+    refused = anon.post("/api/v1/video/playback", headers=headers,
+                        json={"lesson_id": ids["خاص بالأطباء"]})
+    assert refused.status_code == 403
+    assert refused.get_json()["error"] == "needs_baytarian"

@@ -115,9 +115,7 @@ def list_courses():
     if min_rating:
         base = base.filter(COURSE_RATING >= min_rating)
 
-    if audience_error(user, "vet_free"):
-        base = base.filter(Course.access_type != "vet_free")
-
+    # Every course is listed to everyone; lock_reason on each says who may join it.
     level = request.args.get("level")
     atype = request.args.get("access_type")
     with_level = base.filter(Course.level == level) if level in LEVELS else base
@@ -153,8 +151,6 @@ def course_detail(slug):
     course = Course.query.filter_by(slug=slug, status="published").first()
     if not course:
         return jsonify(error="not_found"), 404
-    if not course.visible_to(user):
-        return jsonify(error="not_found"), 404  # vet_free hidden from non-instructors
     return jsonify(course=course.to_dict(with_content=True, lang=req_lang(), user=user))
 
 
