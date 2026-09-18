@@ -252,7 +252,13 @@ export default function Profile() {
   const { data: categoryData } = useFetch(() => webapi.categories(), []);
   const { data: paymentData } = useFetch(() => (isAuthed() ? auth.myPayments().catch(() => null) : Promise.resolve(null)), []);
 
-  const loadDevices = () => auth.devices().then((r) => setDevices(r.devices || [])).catch(() => setDevices([]));
+  // How many self-service swaps are left, and any request already waiting on an admin.
+  const [swapState, setSwapState] = useState(null);
+  const [swapError, setSwapError] = useState('');
+  const [swapReason, setSwapReason] = useState('');
+  const loadDevices = () => auth.devices()
+    .then((r) => { setDevices(r.devices || []); setSwapState(r); })
+    .catch(() => setDevices([]));
   useEffect(() => { if (isAuthed()) loadDevices(); }, []);
 
   useEffect(() => {
@@ -321,7 +327,19 @@ export default function Profile() {
   }
 
   async function removeDevice(id) {
-    try { await auth.removeDevice(id); } catch { /* a stale row still needs the refresh */ }
+    setSwapError('');
+    try {
+      await auth.removeDevice(id);
+    } catch (failure) {
+      // The one self-service swap is spent; the answer is a request, not a retry.
+      if (failure?.data?.error === 'device_swap_limit_reached') setSwapError('limit');
+    }
+    await loadDevices();
+  }
+
+  async function askForSwap() {
+    try { await auth.requestDeviceSwap(swapReason); setSwapReason(''); }
+    catch { /* already queued, or a slot freed up in the meantime */ }
     await loadDevices();
   }
 
@@ -646,6 +664,27 @@ export default function Profile() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {!devices.length && <Empty>{t('dashboard.noDevices')}</Empty>}
+                {swapState && swapState.swaps_allowed != null && (
+                  <p style={{ margin: '0 0 12px', fontSize: 12.5, color: colors.muted }}>
+                    {t('devices.swapsLeft', { n: Math.max(0, (swapState.swaps_allowed || 0) - (swapState.swaps_used || 0)) })}
+                  </p>
+                )}
+                {swapState?.swap_request?.status === 'pending' ? (
+                  <div style={{ border: `1px solid ${colors.line2}`, borderRadius: 10, padding: 12, marginBottom: 12, fontSize: 13, color: colors.muted }}>
+                    {t('devices.requestPending')}
+                  </div>
+                ) : swapError === 'limit' && (
+                  <div style={{ border: `1px solid ${colors.line2}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 13, color: colors.ink, lineHeight: 1.8 }}>{t('devices.limitReached')}</p>
+                    <input value={swapReason} onChange={(event) => setSwapReason(event.target.value)}
+                      placeholder={t('devices.requestReason')}
+                      style={{ ...input, marginBottom: 8 }} />
+                    <button type="button" onClick={askForSwap}
+                      style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', fontWeight: 700, cursor: 'pointer' }}>
+                      {t('devices.requestSend')}
+                    </button>
+                  </div>
+                )}
                 {devices.map((device) => {
                   const isCurrent = device.device_id === thisDevice;
                   // A machine, not a browser: say how many browsers it holds, so removing

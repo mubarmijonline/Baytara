@@ -12,7 +12,7 @@ from ...models import (
     User, UserDevice, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
     CourseReview, Certificate, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
-    push_notification, refresh_course_rating, VideoPlaybackSession, CourseExam, ExamQuestion,
+    push_notification, refresh_course_rating, VideoPlaybackSession, CourseExam, ExamQuestion, DeviceSwapRequest,
 )
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
@@ -22,7 +22,7 @@ from ...services.catalog_access import (
 )
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
-from ...services import exam_authoring, vdocipher_admin
+from ...services import device_swaps, exam_authoring, vdocipher_admin
 from ...services.vdocipher_admin import VdoCipherAdminError
 
 bp = Blueprint("admin", __name__)
@@ -714,6 +714,46 @@ def admin_exam_question_delete(qid):
     exam = exam_authoring.delete_question(question)
     db.session.commit()
     return jsonify(deleted=qid, exam=exam.to_dict(with_answers=True) if exam else None)
+
+
+# ------------------------------ device swap requests ------------------------------
+
+@bp.get("/device-swap-requests")
+@require_role("admin")
+def device_swap_requests():
+    status = request.args.get("status", "pending")
+    q = DeviceSwapRequest.query
+    if status in DeviceSwapRequest.STATUSES:
+        q = q.filter_by(status=status)
+    rows = q.order_by(DeviceSwapRequest.created_at.desc(), DeviceSwapRequest.id.desc()).limit(100).all()
+    return jsonify(requests=[r.to_dict() for r in rows])
+
+
+@bp.post("/device-swap-requests/<int:rid>/<decision>")
+@require_role("admin")
+def decide_device_swap(rid, decision):
+    if decision not in ("approve", "reject"):
+        return jsonify(error="invalid_decision"), 422
+    row = db.session.get(DeviceSwapRequest, rid)
+    if not row:
+        return jsonify(error="not_found"), 404
+    if row.status != "pending":
+        return jsonify(error="already_decided", request=row.to_dict()), 409
+
+    row.status = "approved" if decision == "approve" else "rejected"
+    row.decided_at = datetime.now(timezone.utc)
+    row.decided_by_id = int(get_jwt_identity())
+    if decision == "approve":
+        # One more swap inside the learner's current window -- not a reset of their
+        # devices, so an approval cannot quietly sign anyone out.
+        device_swaps.grant_extra(row.user)
+        push_notification(row.user_id, "devices", "تمت الموافقة على تغيير الجهاز",
+                          "تقدر دلوقتي تشيل جهاز من حسابك وتضيف جهاز جديد.")
+    else:
+        push_notification(row.user_id, "devices", "طلب تغيير الجهاز",
+                          "للأسف الطلب اترفض. تواصل معانا لو محتاج مساعدة.")
+    db.session.commit()
+    return jsonify(request=row.to_dict())
 
 
 @bp.post("/courses/<int:cid>/modules")
@@ -1470,7 +1510,7 @@ def _catalog_video_fields(data, current=None):
             key: data[key]
             for key in ("status", "access_type", "price", "currency", "category_id", "access_days")
             if key in data
-        }, current=current)
+        }, current=current, require_category=False)
     except CatalogValidationError as exc:
         return None, (jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422)
     # Every new video must say which specialty it belongs to and who presents it — the
@@ -1480,9 +1520,9 @@ def _catalog_video_fields(data, current=None):
     # predating the instructor column have none, and demanding one on every PATCH would
     # block unrelated edits (changing access, fixing a title) on the whole legacy library.
     creating = current is None
-    if creating or "category_id" in data:
-        if catalog["category_id"] is None:
-            return None, (jsonify(error="catalog_validation_failed", errors=["category_required"]), 422)
+    # No section is a real answer for a video: the platform's own promo and how-to clips
+    # belong to no specialty, and the home page is where those surface. A section that is
+    # given still has to exist.
     if catalog["category_id"] is not None and not db.session.get(Category, catalog["category_id"]):
         return None, (jsonify(error="catalog_validation_failed", errors=["invalid_category"]), 422)
 

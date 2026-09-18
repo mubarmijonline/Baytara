@@ -219,6 +219,7 @@ export const auth = {
   profile: (body) => authFetch('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
   devices: () => authFetch('/auth/devices'),
   removeDevice: (id) => authFetch(`/auth/devices/${id}`, { method: 'DELETE' }),
+  requestDeviceSwap: (reason) => authFetch('/auth/devices/swap-requests', { method: 'POST', body: JSON.stringify({ reason }) }),
   enrollments: () => authFetch('/enrollments'),
   enroll: (course_id) => authFetch('/enrollments', { method: 'POST', body: JSON.stringify({ course_id }) }),
   // baytarian (verified pet-doctor) status + verification request

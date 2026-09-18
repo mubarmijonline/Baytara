@@ -2,6 +2,7 @@ import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import DeviceSwapRequests from '../components/DeviceSwapRequests.jsx';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 import { pageCopy } from '../page-copy.js';
@@ -94,6 +95,7 @@ export default function Users({ searchParams }) {
 
   return (
     <>
+      <DeviceSwapRequests />
       <h2>{copy.heading}</h2>
       <div className="toolbar">
         <select value={role} onChange={(e) => setRole(e.target.value)}>

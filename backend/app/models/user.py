@@ -60,6 +60,12 @@ class User(db.Model):
     # Per-account device allowance. NULL = the contract default (UserDevice.MAX_DEVICES).
     # Raised only for staff/testing accounts, never as a way around البند2 for buyers.
     max_devices = db.Column(db.Integer)
+    # Self-service device swaps. The client allows one per subscription window -- long
+    # enough that buying a phone is covered, short enough that passing an account around is
+    # not. `device_swap_grants` is what an admin adds when they approve a request.
+    device_swaps_used = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    device_swap_window_start = db.Column(db.DateTime(timezone=True))
+    device_swap_grants = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     # Section the instructor is listed under on the site (e.g. الخيول). NULL = unassigned.
     category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), index=True)
 
@@ -188,4 +194,41 @@ class UserDevice(db.Model):
             "label": self.label,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,
+        }
+
+
+class DeviceSwapRequest(db.Model):
+    """A learner asking an admin to free a device slot after their one swap is spent.
+
+    The client's rule (2026-09-19): a learner may swap a machine themselves once per
+    subscription window -- someone who buys a new phone should not need anyone's help --
+    and anything beyond that goes to an admin, because repeated swapping is what account
+    sharing looks like.
+    """
+
+    __tablename__ = "device_swap_requests"
+
+    STATUSES = ("pending", "approved", "rejected")
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"),
+                        nullable=False, index=True)
+    reason = db.Column(db.String(500), nullable=False, default="")
+    status = db.Column(db.String(16), nullable=False, default="pending", index=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    decided_at = db.Column(db.DateTime(timezone=True))
+    decided_by_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"))
+
+    user = db.relationship("User", foreign_keys=[user_id])
+    decided_by = db.relationship("User", foreign_keys=[decided_by_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "status": self.status,
+            "reason": self.reason,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "decided_at": self.decided_at.isoformat() if self.decided_at else None,
+            "user": {"id": self.user.id, "name": self.user.name, "email": self.user.email,
+                     "phone": self.user.phone} if self.user else None,
         }

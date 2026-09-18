@@ -173,12 +173,13 @@ def test_video_catalog_validates_canonical_fields_and_provider_id(admin_client, 
     assert invalid_category.get_json()["errors"] == ["invalid_category"]
 
     unpublished = create_video(admin_client, title="Publish me")
-    # A category is now required at creation, so the way to lose one is to clear it —
-    # and that is refused whether or not the video is being published.
+    # Since 2026-09-19 a video may have no section: that is how the platform's own promo
+    # and how-to clips are filed, and the home page is where they surface. A section that
+    # IS given must still exist (checked above), and courses still require one.
     publish = admin_client.patch(f"/api/v1/admin/videos/{unpublished['id']}",
                                  json={"status": "published", "category_id": None})
-    assert publish.status_code == 422
-    assert publish.get_json()["errors"] == ["category_required"]
+    assert publish.status_code == 200
+    assert publish.get_json()["video"]["category"] is None
 
     published = admin_client.patch(f"/api/v1/admin/videos/{unpublished['id']}", json={
         "status": "published", "category_id": category_id,

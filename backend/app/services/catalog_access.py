@@ -50,7 +50,7 @@ def audience_error(user, access_type):
     return None
 
 
-def validate_catalog_item(data, current=None):
+def validate_catalog_item(data, current=None, require_category=True):
     """Validate and normalize the shared commerce fields for a course or video."""
     current = current or {}
     if not isinstance(current, dict):
@@ -88,7 +88,10 @@ def validate_catalog_item(data, current=None):
     status = normalized.get("status", "draft")
     if status not in CATALOG_STATUSES:
         errors.append("invalid_status")
-    if status == PUBLISHED_STATUS and not normalized.get("category_id"):
+    # A course always belongs to a section. A video need not: the platform's own promo and
+    # how-to clips belong to no specialty, and forcing one put them in front of the wrong
+    # audience (the client's were filed under ruminant surgery).
+    if require_category and status == PUBLISHED_STATUS and not normalized.get("category_id"):
         errors.append("category_required")
 
     if errors:

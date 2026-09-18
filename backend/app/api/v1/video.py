@@ -99,6 +99,10 @@ def videos():
         db.or_(Lesson.vdocipher_video_id.isnot(None),
                db.and_(Lesson.source == "local", Lesson.local_status == "ready")),
     )
+    # The platform's own promo and how-to clips: published, free to watch, and filed under
+    # no specialty. `uncategorized=1` is what the home page strip asks for.
+    if request.args.get("uncategorized") == "1":
+        query = query.filter(Lesson.category_id.is_(None))
     category = request.args.get("category")
     if category:
         query = query.join(Category).filter(Category.slug == category)

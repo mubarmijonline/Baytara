@@ -139,6 +139,25 @@ function CategoriesSection() {
 
 /* ----------------------------- newest courses ----------------------------- */
 
+// The platform's own promo and how-to clips: published, free, filed under no specialty.
+// They sit under the hero and before the courses, which is where the client asked for
+// them. Hidden entirely when there are none, so the home page never carries an empty row.
+function PlatformVideosSection() {
+  const { t } = useI18n();
+  const { data } = useFetch(() => webapi.videos({ uncategorized: 1, per_page: 4 }), []);
+  const videos = data?.videos || [];
+  if (!videos.length) return null;
+
+  return (
+    <Container className="home-section" style={{ padding: '38px 24px 4px' }}>
+      <SectionHeading title={t('home.platformVideos')} subtitle={t('home.platformVideosSubtitle')} />
+      <div className="grid-3">
+        {videos.map((video) => <VideoCard key={video.id} video={video} />)}
+      </div>
+    </Container>
+  );
+}
+
 function NewestCoursesSection() {
   const settings = useSiteSettings();
   const { t } = useI18n();
@@ -380,6 +399,7 @@ export default function Home() {
       <Hero summary={summary} />
       <StatsBand />
       <CategoriesSection />
+      <PlatformVideosSection />
       <NewestCoursesSection />
       <FreeVideosSection />
       <InstructorsSection />

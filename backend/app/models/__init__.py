@@ -1,4 +1,4 @@
-from .user import User, UserDevice, BaytarianRequest
+from .user import User, UserDevice, BaytarianRequest, DeviceSwapRequest
 from .catalog import (
     LEVELS,
     Category,
@@ -32,7 +32,7 @@ from .video_monitoring import (
 )
 
 __all__ = [
-    "User", "UserDevice", "BaytarianRequest", "Category", "Course", "CourseModule", "CourseVideo", "Lesson",
+    "User", "UserDevice", "BaytarianRequest", "DeviceSwapRequest", "Category", "Course", "CourseModule", "CourseVideo", "Lesson",
     "Bundle", "CourseReview", "refresh_course_rating", "LearningPath", "PathCourse", "LEVELS",
     "bundle_courses", "bundle_videos",
     "Certificate", "issue_certificate_if_earned",

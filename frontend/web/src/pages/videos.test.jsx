@@ -54,6 +54,9 @@ beforeEach(() => {
     if (url.includes('/video/playback') && options.method === 'POST') {
       return json({ otp: 'public-otp', playbackInfo: 'public-playback' });
     }
+    // The home page also asks for the platform's own clips (no category). The fixture
+    // video has one, so the real API would not return it here either.
+    if (url.includes('uncategorized=1')) return json({ videos: [], total: 0, page: 1, pages: 1 });
     if (url.includes('/videos')) return json({ videos: [video], total: 1, page: 1, pages: 1 });
     return json({});
   }));
@@ -157,6 +160,9 @@ it('loads the next public video page', async () => {
     if (url.includes('/settings')) return json({ settings: {} });
     if (url.includes('/categories')) return json({ categories: [video.category] });
     if (url.includes('/videos') && url.includes('page=2')) return json({ videos: [{ ...video, id: 3, title: 'Second page video' }], total: 25, page: 2, pages: 2 });
+    // The home page also asks for the platform's own clips (no category). The fixture
+    // video has one, so the real API would not return it here either.
+    if (url.includes('uncategorized=1')) return json({ videos: [], total: 0, page: 1, pages: 1 });
     if (url.includes('/videos')) return json({ videos: [video], total: 25, page: 1, pages: 2 });
     return json({});
   });
@@ -184,6 +190,9 @@ it('retries a public catalog request anonymously when the stored token is stale'
     if (url.includes('/settings')) return json({ settings: {} });
     if (url.includes('/auth/me')) return json({ user: { id: 9, name: 'Viewer' } });
     if (url.includes('/categories')) return json({ categories: [video.category] });
+    // The home page also asks for the platform's own clips (no category). The fixture
+    // video has one, so the real API would not return it here either.
+    if (url.includes('uncategorized=1')) return json({ videos: [], total: 0, page: 1, pages: 1 });
     if (url.includes('/videos')) {
       catalogRequests += 1;
       if (options.headers?.Authorization) return json({ error: 'unauthorized' }, 401);

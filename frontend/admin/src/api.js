@@ -98,6 +98,8 @@ export const api = {
 
   // users
   users: (params) => req('/admin/users' + qs(params)),
+  deviceSwapRequests: (status = 'pending') => req(`/admin/device-swap-requests?status=${status}`),
+  deviceSwapDecide: (id, decision) => req(`/admin/device-swap-requests/${id}/${decision}`, { method: 'POST' }),
   userCreate: (body) => req('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
   userUpdate: (id, body) => req(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   userDelete: (id) => req(`/admin/users/${id}`, { method: 'DELETE' }),

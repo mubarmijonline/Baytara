@@ -13,8 +13,9 @@ from flask_jwt_extended import (
 )
 
 from ...extensions import db
-from ...models import Category, User, UserDevice
+from ...models import Category, DeviceSwapRequest, User, UserDevice, push_notification
 from ...security import hash_password, verify_password
+from ...services import device_swaps
 from ...services.google_auth import GoogleAuthError, verify_id_token
 from ...services.phone import normalize_mobile
 from ...services.vet_card import only_digits, parse_national_id
@@ -407,24 +408,63 @@ def logout():
 def list_devices():
     uid = int(get_jwt_identity())
     user = db.session.get(User, uid)
-    return jsonify(devices=_grouped_devices(uid), max_devices=UserDevice.limit_for(user))
+    used, allowed, resets_at = device_swaps.allowance(user)
+    pending = DeviceSwapRequest.query.filter_by(user_id=uid, status="pending").first()
+    return jsonify(devices=_grouped_devices(uid), max_devices=UserDevice.limit_for(user),
+                   swaps_used=used, swaps_allowed=allowed,
+                   swaps_reset_at=resets_at.isoformat() if resets_at else None,
+                   swap_request=pending.to_dict() if pending else None)
+
+
+@bp.post("/devices/swap-requests")
+@jwt_required()
+def request_device_swap():
+    """Ask an admin to free a slot once the self-service swap is spent."""
+    uid = int(get_jwt_identity())
+    user = db.session.get(User, uid)
+    if device_swaps.may_swap(user):
+        # Nothing to ask for; sending them back to the button is kinder than a queue.
+        return jsonify(error="swap_still_available"), 409
+    existing = DeviceSwapRequest.query.filter_by(user_id=uid, status="pending").first()
+    if existing:
+        return jsonify(request=existing.to_dict()), 200
+    body = request.get_json(silent=True) or {}
+    row = DeviceSwapRequest(user_id=uid, reason=(body.get("reason") or "").strip()[:500])
+    db.session.add(row)
+    db.session.flush()
+    for admin in User.query.filter_by(role="admin", is_active=True).all():
+        push_notification(admin.id, "devices", "طلب تغيير جهاز",
+                          f"{user.name} ({user.email}) طلب تغيير جهاز.")
+    db.session.commit()
+    return jsonify(request=row.to_dict()), 201
 
 
 @bp.delete("/devices/<int:did>")
 @jwt_required()
 def remove_device(did):
     uid = int(get_jwt_identity())
+    user = db.session.get(User, uid)
     dev = UserDevice.query.filter_by(id=did, user_id=uid).first()
     if not dev:
         return jsonify(error="not_found"), 404
+    # One self-service swap per window. Beyond that an admin decides, because a learner
+    # who keeps freeing slots is how one account ends up serving several people.
+    if not device_swaps.may_swap(user):
+        used, allowed, resets_at = device_swaps.allowance(user)
+        return jsonify(error="device_swap_limit_reached", used=used, allowed=allowed,
+                       resets_at=resets_at.isoformat() if resets_at else None), 403
     # The list shows machines, so removing one frees the whole machine — every browser
     # signed in on it. Deleting a single browser row would leave the slot occupied and
     # the user still blocked.
     freed = [row for row in UserDevice.query.filter_by(user_id=uid).all() if row.group == dev.group]
     for row in freed:
         db.session.delete(row)
+    device_swaps.record_swap(user)
     db.session.commit()
-    return jsonify(deleted=did, browsers_removed=len(freed))
+    used, allowed, resets_at = device_swaps.allowance(user)
+    return jsonify(deleted=did, browsers_removed=len(freed), swaps_used=used,
+                   swaps_allowed=allowed,
+                   swaps_reset_at=resets_at.isoformat() if resets_at else None)
 
 
 # ------------------------- national ID card (private) -------------------------
