@@ -675,7 +675,7 @@ export default function Profile() {
                   </div>
                 ) : swapError === 'limit' && (
                   <div style={{ border: `1px solid ${colors.line2}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
-                    <p style={{ margin: '0 0 8px', fontSize: 13, color: colors.ink, lineHeight: 1.8 }}>{t('devices.limitReached')}</p>
+                    <p style={{ margin: '0 0 8px', fontSize: 13, color: colors.ink, lineHeight: 1.8 }}>{t('devices.swapLimitReached')}</p>
                     <input value={swapReason} onChange={(event) => setSwapReason(event.target.value)}
                       placeholder={t('devices.requestReason')}
                       style={{ ...input, marginBottom: 8 }} />

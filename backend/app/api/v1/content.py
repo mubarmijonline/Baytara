@@ -1,11 +1,12 @@
 import os
 
 from flask import Blueprint, jsonify, request, current_app, send_from_directory
+from flask_jwt_extended import jwt_required
 from marshmallow import Schema, ValidationError, fields, validate
 from werkzeug.utils import secure_filename
 
 from ...extensions import db
-from ...models import Setting, Article, ContactMessage
+from ...models import Setting, Article, Book, ContactMessage
 from ...site_settings import public_settings
 from ...utils import public_cache, req_lang
 
@@ -27,6 +28,52 @@ def uploaded_image(name):
     if not safe or not os.path.exists(os.path.join(folder, safe)):
         return jsonify(error="not_found"), 404
     return send_from_directory(folder, safe, max_age=86400)
+
+
+# ------------------------------ the library: book summaries ------------------------------
+# Metadata is public so the pages can be found; the PDF itself needs an account, because
+# reading it here is the point. Anyone signed in may read -- no verification, by decision:
+# the content is our own summary of a published work, not restricted material.
+
+@bp.get("/books")
+def list_books():
+    lang = req_lang()
+    rows = (Book.query.filter_by(status="published")
+            .order_by(Book.position, Book.created_at.desc(), Book.id.desc()).all())
+    return public_cache(jsonify(books=[b.to_dict(lang) for b in rows]))
+
+
+@bp.get("/books/<slug>")
+def book_detail(slug):
+    book = Book.query.filter_by(slug=slug, status="published").first()
+    if not book:
+        return jsonify(error="not_found"), 404
+    return public_cache(jsonify(book=book.to_dict(req_lang())))
+
+
+@bp.get("/books/<slug>/file.pdf")
+@jwt_required()
+def book_file(slug):
+    """The summary itself, for a signed-in reader.
+
+    Served inline rather than as an attachment, from a path that is never a public URL, so
+    the file cannot be linked to or handed around without an account. That is a deterrent,
+    not DRM: anyone who can read a page can photograph it. It is proportionate here --
+    this is our own summary, and the reason for keeping it on the site is that people come
+    back to it, not that it is secret.
+    """
+    book = Book.query.filter_by(slug=slug, status="published").first()
+    if not book or not book.pdf_path:
+        return jsonify(error="not_found"), 404
+    folder = current_app.config["BOOK_DIR"]
+    path = os.path.join(folder, os.path.basename(book.pdf_path))
+    if not os.path.exists(path):
+        return jsonify(error="not_found"), 404
+    response = send_from_directory(folder, os.path.basename(book.pdf_path),
+                                   mimetype="application/pdf")
+    response.headers["Content-Disposition"] = f'inline; filename="{book.slug}.pdf"'
+    response.headers["Cache-Control"] = "private, max-age=0, no-store"
+    return response
 
 
 @bp.get("/articles")

@@ -22,6 +22,9 @@ class BaseConfig:
     UPLOAD_IMAGE_DIR = os.environ.get("UPLOAD_IMAGE_DIR", "./uploads")
     # Self-hosted video: encrypted HLS packaged onto this machine (docs/SELF_HOSTED_VIDEO.md)
     LOCAL_VIDEO_DIR = os.environ.get("LOCAL_VIDEO_DIR", "./videos")
+    # Book summaries (PDF). Outside the web root on purpose: the file is only ever handed
+    # out by an endpoint that checks for an account.
+    BOOK_DIR = os.environ.get("BOOK_DIR", "./books")
     # Video uploads need room; nginx caps the public request separately.
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", "4096")) * 1024 * 1024
     # Public site origin — used to build Fawaterak redirect + webhook URLs

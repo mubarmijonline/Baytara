@@ -12,7 +12,7 @@ from ...models import (
     User, UserDevice, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
     CourseReview, Certificate, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
-    push_notification, refresh_course_rating, VideoPlaybackSession, CourseExam, ExamQuestion, DeviceSwapRequest,
+    push_notification, refresh_course_rating, VideoPlaybackSession, CourseExam, ExamQuestion, DeviceSwapRequest, Book,
 )
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
@@ -714,6 +714,115 @@ def admin_exam_question_delete(qid):
     exam = exam_authoring.delete_question(question)
     db.session.commit()
     return jsonify(deleted=qid, exam=exam.to_dict(with_answers=True) if exam else None)
+
+
+# ------------------------------ the library: book summaries ------------------------------
+
+BOOK_PDF_TYPES = {"application/pdf"}
+
+
+def _book_dict(b):
+    d = b.to_dict()
+    d["excerpt_en"] = b.excerpt_en
+    d["pdf_path"] = b.pdf_path
+    return d
+
+
+@bp.get("/books")
+@require_role("admin")
+def admin_books():
+    rows = Book.query.order_by(Book.position, Book.id.desc()).all()
+    return jsonify(books=[_book_dict(b) for b in rows])
+
+
+@bp.post("/books")
+@require_role("admin")
+def book_create():
+    d = request.get_json() or {}
+    title = (d.get("title") or "").strip()
+    if not title:
+        return jsonify(error="title_required"), 422
+    book = Book(
+        title=title, title_en=(d.get("title_en") or None),
+        slug=slugify(d.get("slug") or d.get("title_en") or title,
+                     lambda value: Book.query.filter_by(slug=value).first()),
+        book_author=(d.get("book_author") or None),
+        excerpt=(d.get("excerpt") or None), excerpt_en=(d.get("excerpt_en") or None),
+        cover=(d.get("cover") or None), status=d.get("status", "draft"),
+        position=int(d.get("position") or 0),
+    )
+    db.session.add(book)
+    db.session.commit()
+    return jsonify(book=_book_dict(book)), 201
+
+
+@bp.patch("/books/<int:bid>")
+@require_role("admin")
+def book_update(bid):
+    book = db.session.get(Book, bid)
+    if not book:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    # Publishing without the PDF would give a reader a page with nothing to read.
+    if d.get("status") == "published" and not (book.pdf_path or d.get("pdf_path")):
+        return jsonify(error="pdf_required"), 422
+    for field in ("title", "title_en", "book_author", "excerpt", "excerpt_en", "cover", "status"):
+        if field in d:
+            setattr(book, field, (d[field] or None) if field != "status" else d[field])
+    if "position" in d:
+        book.position = int(d["position"] or 0)
+    db.session.commit()
+    return jsonify(book=_book_dict(book))
+
+
+@bp.post("/books/<int:bid>/pdf")
+@require_role("admin")
+def book_pdf_upload(bid):
+    book = db.session.get(Book, bid)
+    if not book:
+        return jsonify(error="not_found"), 404
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="file_required"), 400
+    if f.mimetype not in BOOK_PDF_TYPES:
+        return jsonify(error="unsupported_media_type", allowed=["application/pdf"]), 415
+
+    folder = current_app.config["BOOK_DIR"]
+    os.makedirs(folder, exist_ok=True)
+    # Stored under a name we choose, so the original filename can never become a URL.
+    name = f"{book.id}-{uuid.uuid4().hex[:8]}.pdf"
+    previous = book.pdf_path
+    f.save(os.path.join(folder, name))
+    book.pdf_path = name
+    try:
+        from pypdf import PdfReader
+
+        book.pdf_pages = len(PdfReader(os.path.join(folder, name)).pages)
+    except Exception:  # noqa: BLE001 — a page count is a nicety, not a reason to fail
+        book.pdf_pages = None
+    db.session.commit()
+    if previous and previous != name:
+        try:
+            os.unlink(os.path.join(folder, previous))
+        except OSError:
+            pass
+    return jsonify(book=_book_dict(book))
+
+
+@bp.delete("/books/<int:bid>")
+@require_role("admin")
+def book_delete(bid):
+    book = db.session.get(Book, bid)
+    if not book:
+        return jsonify(error="not_found"), 404
+    if book.pdf_path:
+        try:
+            os.unlink(os.path.join(current_app.config["BOOK_DIR"], book.pdf_path))
+        except OSError:
+            pass
+    db.session.delete(book)
+    db.session.commit()
+    return jsonify(deleted=bid)
 
 
 # ------------------------------ device swap requests ------------------------------

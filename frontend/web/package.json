@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Baytara \u2014 Main Website front-end (Phase 1, mock data)",
+  "description": "Baytara — Main Website front-end (Phase 1, mock data)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,6 +13,7 @@
   "dependencies": {
     "hls.js": "^1.7.1",
     "lucide-react": "^0.577.0",
+    "pdfjs-dist": "^6.3.289",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0"

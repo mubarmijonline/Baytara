@@ -1,12 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, GraduationCap, MessageSquareText, CircleUser } from 'lucide-react';
+import { Home, GraduationCap, BookOpen, CircleUser } from 'lucide-react';
 import { colors } from '../theme/tokens.js';
 import { useI18n } from '../lib/i18n.jsx';
 
+// Four fits a phone; a fifth crowds it. The library takes the third slot, because it is
+// the thing the client wants people opening daily and it had no way in on a phone at all.
 const TABS = [
   ['/', 'tab.home', Home],
   ['/courses', 'nav.courses', GraduationCap],
-  ['/content', 'tab.consultations', MessageSquareText],
+  ['/library', 'library.title', BookOpen],
   ['/dashboard', 'tab.dashboard', CircleUser],
 ];
 

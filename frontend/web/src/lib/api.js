@@ -137,6 +137,13 @@ export const setRefreshToken = (t) => (t ? localStorage.setItem(REFRESH_KEY, t) 
 export const logout = () => { setToken(''); setRefreshToken(''); };
 export const isAuthed = () => !!getToken();
 
+// The book reader fetches the PDF itself rather than pointing an <iframe> at it, so it
+// needs the same Authorization header every other authenticated call sends.
+export function authHeaders() {
+  const t = getToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 // One refresh at a time. Several requests expiring together must not each start their
 // own, or they race and all but one of the new tokens is discarded.
 let refreshing = null;
@@ -302,6 +309,8 @@ export const webapi = {
   courses: (params) => get('/courses' + qs(params)),
   course: (slug) => get('/courses/' + slug),
   completionCertificate: (serial) => get('/completion-certificates/' + encodeURIComponent(serial)),
+  books: () => get('/books'),
+  book: (slug) => get('/books/' + encodeURIComponent(slug)),
   courseReviews: (slug, params) => get(`/courses/${slug}/reviews` + qs(params)),
   videos: (params) => get('/videos' + qs(params), true),
   video: (id) => get('/videos/' + id, true),

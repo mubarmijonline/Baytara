@@ -23,7 +23,7 @@ from .exam import (
     PASS_PERCENT_DEFAULT, grade, passed_attempt,
 )
 from .payment import InstapayAccount, InstapayPayment, Payment
-from .content import Setting, Article, ContactMessage, Notification, push_notification
+from .content import Setting, Article, Book, ContactMessage, Notification, push_notification
 from .video_monitoring import (
     PLAYBACK_EVENT_TYPES,
     PLAYBACK_SESSION_STATUSES,
@@ -40,6 +40,6 @@ __all__ = [
     "CourseExam", "ExamQuestion", "ExamOption", "ExamAttempt", "ExamAttemptAnswer",
     "PASS_PERCENT_DEFAULT", "grade", "passed_attempt",
     "Enrollment", "LessonProgress", "VideoEntitlement", "InstapayAccount", "InstapayPayment",
-    "Payment", "Setting", "Article", "ContactMessage", "Notification", "push_notification",
+    "Payment", "Setting", "Article", "Book", "ContactMessage", "Notification", "push_notification",
     "PLAYBACK_EVENT_TYPES", "PLAYBACK_SESSION_STATUSES", "VideoPlaybackEvent", "VideoPlaybackSession",
 ]

@@ -105,6 +105,23 @@ export const api = {
   userDelete: (id) => req(`/admin/users/${id}`, { method: 'DELETE' }),
 
   // image upload (instructor photo, course cover) -> { url }
+  books: () => req('/admin/books'),
+  bookCreate: (body) => req('/admin/books', { method: 'POST', body: JSON.stringify(body) }),
+  bookUpdate: (id, body) => req(`/admin/books/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  bookDelete: (id) => req(`/admin/books/${id}`, { method: 'DELETE' }),
+  bookPdf: (id, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return fetch(BASE + `/admin/books/${id}/pdf`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    }).then(async (r) => {
+      const data = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+      if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
+      return data;
+    });
+  },
   uploadImage: (file) => {
     const fd = new FormData();
     fd.append('file', file);

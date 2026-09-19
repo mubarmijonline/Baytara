@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 import { pageCopy } from '../page-copy.js';
+import BooksManager from '../components/BooksManager.jsx';
 
 function ArticleForm({ article, onClose, onSaved }) {
   const { language } = useAdminLanguage();
@@ -108,6 +109,13 @@ export default function Articles() {
   const [type, setType] = useState('');
   const [form, setForm] = useState(undefined);
   const [err, setErr] = useState('');
+  // Two shelves under one heading: the articles that were already here, and the book
+  // summaries. Tabs inside this page rather than a second nav entry, which keeps it clear
+  // of the navigation rewrite in milestone 15.
+  const [shelf, setShelf] = useState('articles');
+  const LIBRARY = language === 'en'
+    ? { heading: 'Baytara Library', articles: 'Articles', books: 'Books' }
+    : { heading: 'مكتبة بيطرة', articles: 'المقالات', books: 'الكتب' };
 
   async function load() {
     setErr('');
@@ -127,7 +135,14 @@ export default function Articles() {
 
   return (
     <>
-      <h2>{copy.heading}</h2>
+      <h2>{LIBRARY.heading}</h2>
+      <div className="toolbar" style={{ gap: 8 }}>
+        <button type="button" className={`btn btn-sm ${shelf === 'articles' ? 'btn-filled' : 'btn-tonal'}`}
+          onClick={() => setShelf('articles')}>{LIBRARY.articles}</button>
+        <button type="button" className={`btn btn-sm ${shelf === 'books' ? 'btn-filled' : 'btn-tonal'}`}
+          onClick={() => setShelf('books')}>{LIBRARY.books}</button>
+      </div>
+      {shelf === 'books' ? <BooksManager /> : (<>
       <div className="toolbar">
         <select value={type} onChange={(e) => setType(e.target.value)}>
           {copy.filters.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -156,6 +171,7 @@ export default function Articles() {
         </table>
       )}
       {form !== undefined && <ArticleForm article={form} onClose={() => setForm(undefined)} onSaved={() => { setForm(undefined); load(); }} />}
+      </>)}
     </>
   );
 }
