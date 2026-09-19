@@ -50,13 +50,13 @@ export default function DeviceSwapRequests() {
     finally { setBusy(0); }
   };
 
-  // An empty queue is the normal state; it should not take up the screen.
-  if (!rows.length) return null;
-
+  // Shown even when empty. Hiding it meant nobody could find where these are reviewed
+  // until a request happened to be waiting, which is the wrong moment to go looking.
   return (
     <section className="catalog-panel" style={{ marginBottom: 18 }}>
-      <h3>{copy.heading} ({rows.length})</h3>
+      <h3>{copy.heading}{rows.length ? ` (${rows.length})` : ''}</h3>
       <p style={{ marginTop: -6, fontSize: 12.5, color: 'var(--muted, #6b6b80)' }}>{copy.hint}</p>
+      {!rows.length && <p style={{ margin: 0, fontSize: 13 }}>{copy.empty}</p>}
       {rows.map((row) => (
         <div key={row.id} style={{ display: 'flex', gap: 12, alignItems: 'center',
           flexWrap: 'wrap', borderTop: '1px solid var(--line, #e6e8f0)', padding: '10px 0' }}>

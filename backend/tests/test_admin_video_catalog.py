@@ -599,3 +599,35 @@ def test_course_content_carries_play_counts_per_video(app, admin_client, catalog
     assert (flat["plays"], flat["viewers"]) == (1, 1)
     grouped = [v for unit in course["modules"] for v in unit["videos"] if v["id"] == created["id"]]
     assert grouped and grouped[0]["plays"] == 1
+
+
+def test_a_video_outside_any_course_still_reports_its_play_count(app, admin_client, catalog_data):
+    """The library serialises provider videos and everything else down two different
+    paths. Only one of them counted plays, so a self-hosted video -- which is every video
+    not on VdoCipher, in a course or not -- showed no figure at all."""
+    from datetime import datetime, timezone
+    from app.models import Lesson, VideoPlaybackSession
+
+    created = admin_client.post("/api/v1/admin/videos", json={
+        "title": "Standalone clip", "access_type": "free", **CATALOG_DEFAULTS,
+    }).get_json()["video"]
+    with app.app_context():
+        lesson = db.session.get(Lesson, created["id"])
+        lesson.source, lesson.local_status = "local", "ready"   # no provider id
+        viewer = User(name="V", email="standalone-viewer@example.test",
+                      password_hash="h", role="student")
+        db.session.add(viewer)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+        db.session.add(VideoPlaybackSession(
+            public_id="00000000-0000-4000-8000-0000000000s1", user_id=viewer.id,
+            video_id=lesson.id, video_title="Standalone clip", access_type="free",
+            status="playing", started_at=now, last_event_at=now, first_played_at=now,
+        ))
+        db.session.commit()
+
+    row = next(v for v in admin_client.get("/api/v1/admin/videos").get_json()["items"]
+               if v["id"] == created["id"])
+    assert (row["plays"], row["viewers"]) == (1, 1)
+    detail = admin_client.get(f"/api/v1/admin/videos/{created['id']}").get_json()["video"]
+    assert detail["plays"] == 1

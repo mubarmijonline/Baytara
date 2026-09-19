@@ -1735,8 +1735,13 @@ def video_library():
         normalized.append(item)
 
     if folder_id == "root" and not provider_status:
-        for lesson in Lesson.query.filter(Lesson.vdocipher_video_id.is_(None)).order_by(Lesson.id).all():
-            catalog = _video_dict(lesson)
+        standalone = Lesson.query.filter(Lesson.vdocipher_video_id.is_(None)).order_by(Lesson.id).all()
+        # Counted here too. Without this a self-hosted video -- which is every video not on
+        # VdoCipher, course or no course -- came back with no play count at all, so the
+        # library showed a figure for some rows and nothing for others.
+        standalone_counts = _play_counts([lesson.id for lesson in standalone])
+        for lesson in standalone:
+            catalog = _video_dict(lesson, standalone_counts)
             if not _library_catalog_matches(catalog, category_id, access_type, publication, course_id, assignment, query):
                 continue
             normalized.append({
