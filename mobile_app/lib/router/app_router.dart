@@ -202,30 +202,34 @@ class _RouterListenable extends ChangeNotifier {
 
 /// The four bottom tabs, matching frontend/web/src/components/TabBar.jsx exactly so the app
 /// and the mobile web agree on what the primary destinations are.
-class _TabShell extends StatelessWidget {
+class _TabShell extends ConsumerWidget {
   const _TabShell({required this.location, required this.child});
 
   final String location;
   final Widget child;
 
-  static const _destinations = [
-    Routes.home,
-    Routes.courses,
-    Routes.content,
-    Routes.dashboard,
-  ];
+  /// The last tab is the account, but "حسابي" promises one to a visitor who has no account
+  /// yet. Signed out it becomes the way in, and the guard no longer has to explain
+  /// itself by bouncing a tap on "my account" to a sign-in screen.
+  List<String> _routes(bool signedIn) => [
+        Routes.home,
+        Routes.courses,
+        Routes.content,
+        signedIn ? Routes.dashboard : Routes.signIn,
+      ];
 
-  int get _index {
-    final i = _destinations.indexWhere(
+  int _index(List<String> destinations) {
+    final i = destinations.indexWhere(
       (d) => d == Routes.home ? location == Routes.home : location.startsWith(d),
     );
     return i < 0 ? 0 : i;
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = L10n.of(context);
     final onHome = location == Routes.home;
+    final signedIn = ref.watch(sessionProvider) is SessionSignedIn;
 
     return PopScope(
       // Back on a secondary tab returns to Home instead of leaving the app. Only Home
@@ -235,24 +239,28 @@ class _TabShell extends StatelessWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && !onHome) context.go(Routes.home);
       },
-      child: _scaffold(context, l),
+      child: _scaffold(context, l, signedIn),
     );
   }
 
-  Widget _scaffold(BuildContext context, L10n l) {
+  Widget _scaffold(BuildContext context, L10n l, bool signedIn) {
+    final destinations = _routes(signedIn);
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => context.go(_destinations[i]),
+        selectedIndex: _index(destinations),
+        onDestinationSelected: (i) => context.go(destinations[i]),
         destinations: [
           NavigationDestination(icon: const Icon(Icons.home_outlined), label: l.tabHome),
           NavigationDestination(
               icon: const Icon(Icons.school_outlined), label: l.tabCourses),
           NavigationDestination(
               icon: const Icon(Icons.forum_outlined), label: l.tabContent),
-          NavigationDestination(
-              icon: const Icon(Icons.person_outline), label: l.tabDashboard),
+          signedIn
+              ? NavigationDestination(
+                  icon: const Icon(Icons.person_outline), label: l.tabDashboard)
+              : NavigationDestination(
+                  icon: const Icon(Icons.login_outlined), label: l.tabSignIn),
         ],
       ),
     );
