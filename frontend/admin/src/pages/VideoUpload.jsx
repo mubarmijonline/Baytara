@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Upload } from 'lucide-react';
 import { api } from '../api.js';
-import { ACCESS_TYPES, CATEGORY_KEYS, localizedCatalogValue } from '../catalog.js';
+import { ACCESS_TYPES, localizedCatalogValue, orderedCategories } from '../catalog.js';
 import { Field, ErrText, catalogErrorText } from '../ui.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 
@@ -158,7 +158,8 @@ export default function VideoUpload() {
   }
 
   const missing = () => {
-    if (!form.category_id) return t('video.validation.category');
+    // No section is a real answer: that is how the platform's own promo and how-to
+    // clips are filed, and the home page is where they surface.
     if (!form.instructor_id) return t('video.validation.instructor');
     // This page uploads to our own server, which has no DRM. Paid content is refused
     // server-side (paid_requires_vdocipher); saying so here saves the transfer.
@@ -214,11 +215,10 @@ export default function VideoUpload() {
       <section className="video-editor-panel upload-panel">
         {/* One set of catalogue fields for the whole batch; the title is per file. */}
         <div className="upload-form-row">
-          <Field label={`${t('catalog.category')} *`} hint={t('videoUpload.categoryHint')}>
-            <select value={form.category_id} onChange={set('category_id')}
-                    className={form.category_id ? '' : 'field-required'} required>
+          <Field label={t('catalog.category')} hint={t('videoUpload.categoryOptionalHint')}>
+            <select value={form.category_id} onChange={set('category_id')}>
               <option value="">{t('video.chooseCategory')}</option>
-              {categories.filter((c) => CATEGORY_KEYS.includes(c.slug)).map((c) => (
+              {orderedCategories(categories).map((c) => (
                 <option key={c.id} value={c.id}>{localizedCatalogValue(c, 'name', language)}</option>
               ))}
             </select>

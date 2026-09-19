@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { confirmDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
-import { ACCESS_TYPES, CATEGORY_KEYS, localizedCatalogValue, providerReady } from '../catalog.js';
+import { ACCESS_TYPES, localizedCatalogValue, providerReady, orderedCategories } from '../catalog.js';
 import VideoFolderTree from '../components/VideoFolderTree.jsx';
 import { Field, ErrText, catalogErrorText } from '../ui.jsx';
 import { uploadForm } from '../vdocipher-upload.js';
@@ -94,7 +94,7 @@ function CatalogFields({ form, setForm, categories, instructors, courses, droppe
     <FormSection title={t('video.sectionIdentity')}>
       <div className="video-form-columns"><Field label={t('video.titleArabic')}><input value={form.title} onChange={set('title')} /></Field><Field label={t('video.titleEnglish')}><input dir="ltr" value={form.title_en} onChange={set('title_en')} /></Field></div>
       <div className="video-form-columns"><Field label={t('video.descriptionArabic')}><textarea value={form.description} onChange={set('description')} /></Field><Field label={t('video.descriptionEnglish')}><textarea dir="ltr" value={form.description_en} onChange={set('description_en')} /></Field></div>
-      <div className="video-form-columns"><Field label={t('catalog.category')}><select value={form.category_id} onChange={set('category_id')}><option value="">{t('video.chooseCategory')}</option>{categories.filter((category) => CATEGORY_KEYS.includes(category.slug)).map((category) => <option value={category.id} key={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field><Field label={t('video.duration')}><input type="number" min="0" value={form.duration_minutes} onChange={set('duration_minutes')} /></Field></div>
+      <div className="video-form-columns"><Field label={t('catalog.category')}><select value={form.category_id} onChange={set('category_id')}><option value="">{t('video.chooseCategory')}</option>{orderedCategories(categories).map((category) => <option value={category.id} key={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field><Field label={t('video.duration')}><input type="number" min="0" value={form.duration_minutes} onChange={set('duration_minutes')} /></Field></div>
     </FormSection>
 
     <FormSection title={t('video.sectionOwnership')}>

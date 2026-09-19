@@ -1,6 +1,6 @@
 import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
@@ -18,6 +18,24 @@ function ArticleForm({ article, onClose, onSaved }) {
     cover: article?.cover || '', status: article?.status || 'draft',
   });
   const [err, setErr] = useState('');
+
+  const coverRef = useRef(null);
+
+  // The field was a bare text box expecting a URL, so there was no way to actually put a
+  // picture on an article. Same endpoint the course cover and instructor photos use.
+  async function pickCover(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setErr('');
+    try {
+      const { url } = await api.uploadImage(file);
+      setF((current) => ({ ...current, cover: url }));
+    } catch (failure) {
+      setErr(apiError(failure));
+    } finally {
+      if (coverRef.current) coverRef.current.value = '';
+    }
+  }
   const [loaded, setLoaded] = useState(!editing);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
@@ -47,7 +65,16 @@ function ArticleForm({ article, onClose, onSaved }) {
           <Field label={copy.titleEn}><input dir="ltr" value={f.title_en} onChange={set('title_en')} /></Field>
           <Field label={copy.excerptAr}><input value={f.excerpt} onChange={set('excerpt')} /></Field>
           <Field label={copy.excerptEn}><input dir="ltr" value={f.excerpt_en} onChange={set('excerpt_en')} /></Field>
-          <Field label={copy.cover}><input value={f.cover} onChange={set('cover')} dir="ltr" /></Field>
+          <Field label={copy.cover}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {f.cover && <img src={f.cover} alt="" style={{ width: 96, height: 60, objectFit: 'cover', borderRadius: 8 }} />}
+              <input ref={coverRef} type="file" accept="image/*" onChange={pickCover} />
+              {f.cover && (
+                <button className="btn btn-tonal btn-sm" type="button"
+                  onClick={() => setF((c) => ({ ...c, cover: '' }))}>×</button>
+              )}
+            </div>
+          </Field>
           <Field label={copy.contentAr}>
             <textarea value={f.body} onChange={set('body')} rows={8}
               style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12, font: 'inherit', resize: 'vertical' }} />

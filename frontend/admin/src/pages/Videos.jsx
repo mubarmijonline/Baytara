@@ -2,7 +2,7 @@ import { Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { ACCESS_TYPES, CATEGORY_KEYS, VIDEO_VIEWS } from '../catalog.js';
+import { ACCESS_TYPES, VIDEO_VIEWS, orderedCategories } from '../catalog.js';
 import VideoFolderTree from '../components/VideoFolderTree.jsx';
 import VideoViews, { VideoViewSwitcher } from '../components/VideoViews.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
@@ -161,7 +161,7 @@ export default function Videos({ searchParams, setSearchParams }) {
     <header className="video-library-header"><div><h2>{t('pages.videoLibrary')}</h2><p>{t('video.librarySubtitle')}</p></div><div className="video-library-actions"><button className="btn btn-tonal btn-sm" type="button" disabled={loading || searchPending} onClick={() => load(true)}>{t('common.refresh')}</button><button className="btn btn-filled btn-sm" type="button" onClick={() => navigate('/videos/new')}><Upload size={16} /> {t('video.uploadVideo')}</button></div></header>
     <div className="video-library-layout"><VideoFolderTree selectedId={folder} onSelect={(id) => updateQuery({ folder: id === 'root' ? '' : id })} /><div className="video-library-main"><div className="video-library-toolbar">
       <input aria-label={t('common.search')} value={query} placeholder={t('video.searchPlaceholder')} onChange={(event) => updateQuery({ q: event.target.value })} />
-      <select aria-label={t('catalog.category')} value={categorySlug} onChange={(event) => updateQuery({ category: event.target.value })}><option value="">{t('video.allCategories')}</option>{categories.filter((category) => CATEGORY_KEYS.includes(category.slug)).map((category) => <option key={category.id} value={category.slug}>{language === 'en' ? category.name_en || category.name : category.name || category.name_en}</option>)}</select>
+      <select aria-label={t('catalog.category')} value={categorySlug} onChange={(event) => updateQuery({ category: event.target.value })}><option value="">{t('video.allCategories')}</option>{orderedCategories(categories).map((category) => <option key={category.id} value={category.slug}>{language === 'en' ? category.name_en || category.name : category.name || category.name_en}</option>)}</select>
       <select aria-label={t('catalog.accessType')} value={access} onChange={(event) => updateQuery({ access: event.target.value })}><option value="">{t('video.allAccess')}</option>{ACCESS_TYPES.map((value) => <option key={value} value={value}>{t(`catalog.access.${value}`)}</option>)}</select>
       <select aria-label={t('video.providerState')} value={providerStatus} onChange={(event) => updateQuery({ status: event.target.value })}><option value="">{t('video.allProviderStatuses')}</option>{PROVIDER_STATUSES.map((value) => <option key={value} value={value}>{t(`video.providerStatus.${value}`)}</option>)}</select>
       <select aria-label={t('video.publication')} value={publication} onChange={(event) => updateQuery({ publication: event.target.value })}><option value="">{t('video.allPublications')}</option>{PUBLICATION_STATUSES.map((value) => <option key={value} value={value}>{t(`catalog.status.${value}`)}</option>)}</select>
