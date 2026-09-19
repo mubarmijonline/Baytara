@@ -1622,23 +1622,16 @@ def _catalog_video_fields(data, current=None):
         }, current=current, require_category=False)
     except CatalogValidationError as exc:
         return None, (jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422)
-    # Every new video must say which specialty it belongs to and who presents it — the
-    # library filters on one and the video page credits the other.
-    #
-    # On an update the rule applies only to what the caller actually sends. Videos
-    # predating the instructor column have none, and demanding one on every PATCH would
-    # block unrelated edits (changing access, fixing a title) on the whole legacy library.
-    creating = current is None
-    # No section is a real answer for a video: the platform's own promo and how-to clips
-    # belong to no specialty, and the home page is where those surface. A section that is
-    # given still has to exist.
+    # Neither a section nor a presenter is required: the library filters on one and the
+    # video page credits the other, and a clip that has neither is still a clip worth
+    # publishing. What is given, though, has to exist.
     if catalog["category_id"] is not None and not db.session.get(Category, catalog["category_id"]):
         return None, (jsonify(error="catalog_validation_failed", errors=["invalid_category"]), 422)
 
-    instructor_id = data.get("instructor_id", current.instructor_id if current else None)
-    if creating or "instructor_id" in data:
-        if not instructor_id:
-            return None, (jsonify(error="catalog_validation_failed", errors=["instructor_required"]), 422)
+    # A presenter is optional. The platform's own clips -- promos, how-tos, anything the
+    # client records himself -- have no instructor to credit, and demanding one blocked
+    # the upload outright. A presenter that is named still has to be a real instructor.
+    instructor_id = data.get("instructor_id", current.instructor_id if current else None) or None
     if instructor_id and not User.query.filter_by(id=instructor_id, role="instructor").first():
         return None, (jsonify(error="catalog_validation_failed", errors=["invalid_instructor"]), 422)
     catalog["instructor_id"] = instructor_id

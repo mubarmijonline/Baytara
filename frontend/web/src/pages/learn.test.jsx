@@ -96,6 +96,12 @@ it('plays the lesson and shows real course progress when signed in', async () =>
   expect(screen.getByText('Lesson 2 of 2', { selector: 'span' })).toBeVisible();
   // watched but not completed -> the in-progress chip, derived not invented
   expect(screen.getByText('In progress')).toBeVisible();
+
+  // The player is pinned inside a 16:9 stage that clips. Without this, WebKit sized the
+  // iframe from the video's intrinsic height and the picture ran off an iPhone screen.
+  const stage = player.closest('.player-stage');
+  expect(stage).not.toBeNull();
+  expect(player.closest('.secure-video-shell')).not.toBeNull();
 });
 
 it('groups the sidebar by unit and marks completed lessons', async () => {

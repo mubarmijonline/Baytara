@@ -16,6 +16,8 @@ const COPY = {
     add: 'كتاب جديد', title: 'عنوان الملخص', titleEn: 'العنوان بالإنجليزية',
     author: 'مؤلف الكتاب الأصلي', excerpt: 'نبذة مختصرة (تظهر في البحث ومعاينة الروابط)',
     cover: 'صورة الغلاف', pdf: 'ملف الـ PDF', pages: 'صفحة',
+    pdfChosen: 'الملف جاهز، هيترفع مع الحفظ.', pdfHint: 'PDF فقط. يتقرأ على الموقع ولا يُحمَّل.',
+    uploading: 'جارٍ رفع الملف...',
     save: 'حفظ', cancel: 'إلغاء', edit: 'تعديل', remove: 'حذف',
     removeConfirm: 'حذف الكتاب وملفه؟',
     publish: 'منشور', draft: 'مسودة',
@@ -34,6 +36,8 @@ const COPY = {
     add: 'New book', title: 'Summary title', titleEn: 'English title',
     author: "Original book's author", excerpt: 'Short description (used in search and link previews)',
     cover: 'Cover image', pdf: 'PDF file', pages: 'pages',
+    pdfChosen: 'File ready, it uploads when you save.', pdfHint: 'PDF only. Read on the site, never downloaded.',
+    uploading: 'Uploading the file...',
     save: 'Save', cancel: 'Cancel', edit: 'Edit', remove: 'Delete',
     removeConfirm: 'Delete this book and its file?',
     publish: 'Published', draft: 'Draft',
@@ -59,6 +63,11 @@ export default function BooksManager() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const coverRef = useRef(null);
+  const pdfRef = useRef(null);
+  // The PDF the form is holding for a book that has no id yet. A new book is a row first
+  // and a file second, so the file waits here and goes up the moment the row exists --
+  // otherwise the only way to attach one was to save, find the row, and upload from there.
+  const [pendingPdf, setPendingPdf] = useState(null);
 
   const load = async () => {
     try { setRows((await api.books()).books || []); }
@@ -71,13 +80,25 @@ export default function BooksManager() {
   const save = async () => {
     setBusy(true); setError('');
     try {
-      if (draft.id) await api.bookUpdate(draft.id, draft);
-      else await api.bookCreate(draft);
+      const saved = draft.id
+        ? await api.bookUpdate(draft.id, draft)
+        : await api.bookCreate(draft);
+      const id = draft.id || (saved.book || saved).id;
+      if (pendingPdf && id) await api.bookPdf(id, pendingPdf);
       setDraft(null);
+      setPendingPdf(null);
       await load();
     } catch (failure) { fail(failure); }
     finally { setBusy(false); }
   };
+
+  const holdPdf = (event) => {
+    const file = event.target.files?.[0];
+    if (file) setPendingPdf(file);
+    event.target.value = '';
+  };
+
+  const editBook = (book) => { setPendingPdf(null); setError(''); setDraft({ ...book }); };
 
   const pickCover = async (event) => {
     const file = event.target.files?.[0];
@@ -123,13 +144,23 @@ export default function BooksManager() {
               <input ref={coverRef} type="file" accept="image/*" onChange={pickCover} />
             </div>
           </Field>
+          <Field label={copy.pdf} hint={copy.pdfHint}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input ref={pdfRef} type="file" accept="application/pdf" onChange={holdPdf} />
+              {pendingPdf
+                ? <span style={{ fontSize: 12.5 }}>{pendingPdf.name} — {copy.pdfChosen}</span>
+                : draft.has_pdf ? <span style={{ fontSize: 12.5 }}>PDF ✓</span> : null}
+            </div>
+          </Field>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-filled btn-sm" type="button" disabled={busy} onClick={save}>{copy.save}</button>
-            <button className="btn btn-tonal btn-sm" type="button" onClick={() => setDraft(null)}>{copy.cancel}</button>
+            <button className="btn btn-filled btn-sm" type="button" disabled={busy} onClick={save}>
+              {busy && pendingPdf ? copy.uploading : copy.save}
+            </button>
+            <button className="btn btn-tonal btn-sm" type="button" onClick={() => { setDraft(null); setPendingPdf(null); }}>{copy.cancel}</button>
           </div>
         </div>
       ) : (
-        <button className="btn btn-filled" type="button" onClick={() => setDraft({ ...BLANK })}>
+        <button className="btn btn-filled" type="button" onClick={() => { setPendingPdf(null); setError(''); setDraft({ ...BLANK }); }}>
           <Plus size={16} /> {copy.add}
         </button>
       )}
@@ -155,7 +186,7 @@ export default function BooksManager() {
             <Upload size={14} /> {book.has_pdf ? 'PDF ✓' : copy.pdf}
             <input type="file" accept="application/pdf" hidden onChange={(e) => pickPdf(book, e)} />
           </label>
-          <button className="btn btn-tonal btn-sm" type="button" onClick={() => setDraft({ ...book })}>{copy.edit}</button>
+          <button className="btn btn-tonal btn-sm" type="button" onClick={() => editBook(book)}>{copy.edit}</button>
           <button className="btn btn-tonal btn-sm" type="button" onClick={() => togglePublish(book)}>
             {book.status === 'published' ? copy.draft : copy.publish}
           </button>

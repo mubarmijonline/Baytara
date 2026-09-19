@@ -97,6 +97,10 @@ def validate_catalog_item(data, current=None, require_category=True):
     if errors:
         raise CatalogValidationError(errors)
 
+    # "No section" arrives as 0 from a <select> whose empty option went through Number(),
+    # and as "" from a form post. Both mean the same thing as absent, and treating them
+    # as a section id is what made every uncategorised upload fail with invalid_category.
+    normalized["category_id"] = normalized.get("category_id") or None
     normalized["access_type"] = access_type
     normalized["currency"] = currency
     normalized["price"] = price

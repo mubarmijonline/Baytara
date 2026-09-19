@@ -140,11 +140,14 @@ export default function VideoUpload() {
       if (!id) {
         // Catalogue row first, file second: a failed transfer leaves something editable
         // behind rather than nothing at all.
+        // An empty <select> is "", and Number("") is 0 -- which the API reads as section
+        // zero and refuses with invalid_category. Both optional fields go as null when
+        // nothing was picked.
         const res = await api.videoCreate({
           ...form,
           title: item.title,
-          category_id: Number(form.category_id),
-          instructor_id: Number(form.instructor_id),
+          category_id: form.category_id ? Number(form.category_id) : null,
+          instructor_id: form.instructor_id ? Number(form.instructor_id) : null,
           price: Number(form.price || 0),
         }, { silent: true });
         id = (res.video || res).id;
@@ -158,9 +161,8 @@ export default function VideoUpload() {
   }
 
   const missing = () => {
-    // No section is a real answer: that is how the platform's own promo and how-to
-    // clips are filed, and the home page is where they surface.
-    if (!form.instructor_id) return t('video.validation.instructor');
+    // Neither a section nor a presenter is required: that is how the platform's own
+    // promo and how-to clips are filed, and the home page is where they surface.
     // This page uploads to our own server, which has no DRM. Paid content is refused
     // server-side (paid_requires_vdocipher); saying so here saves the transfer.
     if (form.access_type === 'baytarian' || form.access_type === 'general') return t('catalog.error.paid_requires_vdocipher');
@@ -223,9 +225,8 @@ export default function VideoUpload() {
               ))}
             </select>
           </Field>
-          <Field label={`${t('video.instructor')} *`} hint={t('videoUpload.instructorHint')}>
-            <select value={form.instructor_id} onChange={set('instructor_id')}
-                    className={form.instructor_id ? '' : 'field-required'} required>
+          <Field label={t('video.instructor')} hint={t('videoUpload.instructorHint')}>
+            <select value={form.instructor_id} onChange={set('instructor_id')}>
               <option value="">{t('video.chooseInstructor')}</option>
               {instructors.map((person) => (
                 <option key={person.id} value={person.id}>{person.name}</option>

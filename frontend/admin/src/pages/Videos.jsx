@@ -50,8 +50,11 @@ export default function Videos({ searchParams, setSearchParams }) {
   const requestController = useRef(null);
   const loadingRef = useRef(false);
   const categorySlug = searchParams.get('category') || '';
-  const fixedCategory = CATEGORY_KEYS.includes(categorySlug);
-  const categoryId = fixedCategory ? categories.find((category) => category.slug === categorySlug)?.id : undefined;
+  // Any section that exists is filterable, not only the six the platform ships with.
+  // Restricting this to the built-in keys is what made a section the client had created
+  // himself vanish from the filter the moment it was picked.
+  const categoryId = categories.find((category) => category.slug === categorySlug)?.id;
+  const knownCategory = categoryId !== undefined;
   const query = searchParams.get('q') || '';
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const searchPending = query !== debouncedQuery;
@@ -119,8 +122,8 @@ export default function Videos({ searchParams, setSearchParams }) {
     if (rawPage && String(page) !== rawPage) updateQuery({ page: page === 1 ? '' : String(page) }, false);
   }, [page, rawPage]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (categoriesLoaded && categorySlug && (!fixedCategory || !categoryId)) updateQuery({ category: '' });
-  }, [categoriesLoaded, categorySlug, fixedCategory, categoryId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (categoriesLoaded && categorySlug && !knownCategory) updateQuery({ category: '' });
+  }, [categoriesLoaded, categorySlug, knownCategory]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (query === debouncedQuery) return undefined;
     abortRequest();
@@ -133,7 +136,7 @@ export default function Videos({ searchParams, setSearchParams }) {
     return () => clearTimeout(timeout);
   }, [query, debouncedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (searchPending || !categoriesLoaded || (categorySlug && (!fixedCategory || !categoryId))) return undefined;
+    if (searchPending || !categoriesLoaded || (categorySlug && !knownCategory)) return undefined;
     const controller = load();
     return () => abortRequest(controller);
     /* eslint-disable-next-line react-hooks/exhaustive-deps */

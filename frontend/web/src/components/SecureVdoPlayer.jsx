@@ -233,7 +233,6 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
       allow="encrypted-media; fullscreen"
       allowFullScreen
       referrerPolicy="strict-origin-when-cross-origin"
-      style={{ width: '100%', height: '100%', border: 0 }}
     />
     </div>
   );

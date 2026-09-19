@@ -631,3 +631,33 @@ def test_a_video_outside_any_course_still_reports_its_play_count(app, admin_clie
     assert (row["plays"], row["viewers"]) == (1, 1)
     detail = admin_client.get(f"/api/v1/admin/videos/{created['id']}").get_json()["video"]
     assert detail["plays"] == 1
+
+
+def test_a_video_can_be_created_with_neither_a_section_nor_a_presenter(admin_client, catalog_data):
+    """The client's own promo and how-to clips have neither, and the upload page sends
+    both as an empty <select>. Number("") is 0, which used to be read as section zero and
+    refused with invalid_category."""
+    for payload in ({"category_id": None, "instructor_id": None},
+                    {"category_id": 0, "instructor_id": 0},
+                    {"category_id": "", "instructor_id": ""}):
+        response = admin_client.post("/api/v1/admin/videos", json={
+            "title": "Platform promo", "access_type": "free", **payload,
+        })
+        assert response.status_code == 201, response.get_json()
+        video = response.get_json()["video"]
+        assert video.get("category") in (None, {})
+        assert video.get("instructor") in (None, {})
+
+
+def test_a_section_or_presenter_that_is_named_still_has_to_exist(admin_client, catalog_data):
+    refused = admin_client.post("/api/v1/admin/videos", json={
+        "title": "Ghost section", "access_type": "free", "category_id": 99999,
+    })
+    assert refused.status_code == 422
+    assert "invalid_category" in refused.get_json()["errors"]
+
+    refused = admin_client.post("/api/v1/admin/videos", json={
+        "title": "Ghost presenter", "access_type": "free", "instructor_id": 99999,
+    })
+    assert refused.status_code == 422
+    assert "invalid_instructor" in refused.get_json()["errors"]

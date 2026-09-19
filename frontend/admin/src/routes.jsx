@@ -1,5 +1,6 @@
-import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import Shell from './Shell.jsx';
+import PageErrorBoundary from './components/PageErrorBoundary.jsx';
 import { useAdminLanguage } from './i18n.jsx';
 import Articles from './pages/Articles.jsx';
 import Baytarian from './pages/Baytarian.jsx';
@@ -62,14 +63,18 @@ const sectionRoutes = [
 
 function RoutedPage({ Page, onLogout }) {
   const routeParams = useParams();
+  const { pathname } = useLocation();
+  const { language } = useAdminLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   return (
-    <Page
-      onLogout={onLogout}
-      routeParams={routeParams}
-      searchParams={searchParams}
-      setSearchParams={setSearchParams}
-    />
+    <PageErrorBoundary routeKey={pathname} language={language}>
+      <Page
+        onLogout={onLogout}
+        routeParams={routeParams}
+        searchParams={searchParams}
+        setSearchParams={setSearchParams}
+      />
+    </PageErrorBoundary>
   );
 }
 

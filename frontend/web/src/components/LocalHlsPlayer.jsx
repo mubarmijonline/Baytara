@@ -169,7 +169,7 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
         playsInline
         controlsList="nodownload noplaybackrate"
         disablePictureInPicture
-        style={{ width: '100%', height: '100%', display: 'block', background: '#000' }}
+        style={{ background: '#000' }}
       />
       {halted && (
         <div data-testid="local-video-halted"

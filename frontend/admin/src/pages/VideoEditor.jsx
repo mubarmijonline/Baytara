@@ -295,8 +295,9 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const validate = (requiresUpload) => {
     if (!form.title.trim()) return t('video.validation.title');
     if (requiresUpload && !form.description.trim()) return t('video.validation.description');
-    if (!form.category_id) return t('video.validation.category');
-    if (!form.instructor_id) return t('video.validation.instructor');
+    // Section and presenter are both optional, here as on the upload page: a promo or a
+    // how-to clip belongs to no specialty and credits nobody, and refusing to save one
+    // over that was blocking edits to videos that were already live.
     if (creating && !file) return t('video.validation.file');
     if (file && !file.type.startsWith('video/')) return t('video.validation.videoFile');
     return '';

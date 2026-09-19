@@ -154,7 +154,7 @@ export default function Learn() {
       <div className="grid-collapse-2" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', alignItems: 'start' }}>
         {/* ---- player column ---- */}
         <div style={{ background: PLAYER_BG, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <div style={{ aspectRatio: '16 / 9', background: gradients.darkPanel, position: 'relative', display: 'grid', placeItems: 'center' }}>
+          <div className="player-stage" style={{ background: gradients.darkPanel }}>
             {video ? (
               // Two delivery paths, one player contract: VdoCipher when the lesson has
               // a provider id, our own encrypted HLS when the file lives on this server.
