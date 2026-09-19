@@ -10,7 +10,7 @@ const COLUMNS = [
     ['/bundles', 'nav.bundles'], ['/pricing', 'nav.pricing'],
   ]],
   ['footer.col.company', [
-    ['/about', 'nav.about'], ['/blog', 'nav.blog'], ['/business', 'nav.business'],
+    ['/about', 'nav.about'], ['/library', 'library.title'], ['/business', 'nav.business'],
     ['/content', 'nav.consultations'], ['/contact', 'nav.contact'],
   ]],
   ['footer.col.help', [

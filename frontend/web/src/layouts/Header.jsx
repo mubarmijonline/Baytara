@@ -147,7 +147,7 @@ const NAV = [
   ['/courses', 'nav.courses'],
   ['/videos', 'nav.videos'],
   ['/content', 'nav.consultations'],
-  ['/blog', 'nav.blog'],
+  ['/library', 'library.title'],
   ['/pricing', 'nav.pricing'],
   ['/business', 'nav.business'],
 ];

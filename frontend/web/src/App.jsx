@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './layouts/Layout.jsx';
 import Home from './pages/Home.jsx';
 import Courses from './pages/Courses.jsx';
@@ -64,7 +64,9 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/library" element={<Library />} />
         <Route path="/library/:slug" element={<BookDetail />} />
-        <Route path="/blog" element={<Blog />} />
+        {/* The blog index is the library now. Article URLs are unchanged, so anything
+            already shared still opens. */}
+        <Route path="/blog" element={<Navigate to="/library" replace />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/content" element={<Content />} />
         <Route path="/contact" element={<Contact />} />
