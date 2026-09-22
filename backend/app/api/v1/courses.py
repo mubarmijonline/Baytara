@@ -144,11 +144,25 @@ def _facet(query, column, keys):
     return {key: rows.get(key, 0) for key in keys}
 
 
+def _course_by_slug_or_id(slug):
+    """A published course by its slug, or by its numeric id.
+
+    The lesson player takes whatever is in the URL and asks for it by name. Links that
+    carry the id instead -- ones already shared, and the course page's own button until
+    it was fixed -- resolved to nothing and put a 404 in front of the reader. Ids are not
+    slugs on this site, so accepting both costs nothing and keeps those links alive.
+    """
+    course = Course.query.filter_by(slug=slug, status="published").first()
+    if course or not str(slug).isdigit():
+        return course
+    return Course.query.filter_by(id=int(slug), status="published").first()
+
+
 @bp.get("/courses/<slug>")
 @jwt_required(optional=True)
 def course_detail(slug):
     user = _current_user()
-    course = Course.query.filter_by(slug=slug, status="published").first()
+    course = _course_by_slug_or_id(slug)
     if not course:
         return jsonify(error="not_found"), 404
     return jsonify(course=course.to_dict(with_content=True, lang=req_lang(), user=user))
@@ -178,7 +192,7 @@ def bundle_detail(slug):
 # ------------------------------ course reviews ------------------------------
 
 def _published_course(slug):
-    return Course.query.filter_by(slug=slug, status="published").first()
+    return _course_by_slug_or_id(slug)
 
 
 @bp.get("/courses/<slug>/reviews")

@@ -632,3 +632,113 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 @media (max-width: 900px) {
   .course-action-bar { display: flex; }
 }
+
+/* ===================== homepage motion =====================
+   Compositor-only: every rule below animates transform or opacity and nothing else.
+   No width, height, margin or top/left is ever transitioned, so nothing here can
+   trigger layout during a scroll. The whole block is switched off for anyone who has
+   asked their system for reduced motion -- see the end of the section. */
+
+/* Scroll reveal. The element starts shifted and transparent and is put back by the
+   `is-in` class that lib/motion.js adds when it comes into view. `will-change` is
+   deliberately absent: promoting dozens of cards costs more memory than the one
+   transition saves. */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition: opacity .52s ease, transform .52s cubic-bezier(.22, .61, .36, 1);
+}
+.reveal.is-in { opacity: 1; transform: none; }
+
+
+/* Hero entrance. Runs on mount rather than on scroll, because it is already on screen. */
+@keyframes heroRise {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.hero-rise {
+  opacity: 0;
+  animation: heroRise .62s cubic-bezier(.22, .61, .36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* Course thumbnails: the frame clips, the picture grows. Only the image moves, so the
+   card's own box never changes size and nothing around it shifts. */
+.zoom-frame { overflow: hidden; }
+.zoom-frame img { transition: transform .45s cubic-bezier(.22, .61, .36, 1); }
+.hover-lift:hover .zoom-frame img,
+.hover-card:hover .zoom-frame img,
+.zoom-frame:hover img { transform: scale(1.04); }
+/* Same idea where the picture is a background rather than an <img>. */
+.zoom-bg { transition: transform .45s cubic-bezier(.22, .61, .36, 1); }
+.hover-lift:hover .zoom-bg, .hover-card:hover .zoom-bg { transform: scale(1.04); }
+
+/* A grid whose children arrive one after another. The delays live here rather than on
+   each card, so no markup has to carry an index. */
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition: opacity .52s ease, transform .52s cubic-bezier(.22, .61, .36, 1);
+}
+.reveal-stagger.is-in > * { opacity: 1; transform: none; }
+.reveal-stagger.is-in > *:nth-child(2) { transition-delay: 70ms; }
+.reveal-stagger.is-in > *:nth-child(3) { transition-delay: 140ms; }
+.reveal-stagger.is-in > *:nth-child(4) { transition-delay: 210ms; }
+.reveal-stagger.is-in > *:nth-child(5) { transition-delay: 280ms; }
+.reveal-stagger.is-in > *:nth-child(n+6) { transition-delay: 350ms; }
+
+/* The existing hover helpers transitioned `all`, which quietly included layout
+   properties. Naming them keeps the work on the compositor and the paint list short. */
+.hover-lift { transition: transform .2s ease, box-shadow .2s ease; }
+.hover-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+
+/* Primary call to action: a slow breath, not a throb. Scale only, and it stops on hover
+   so it never competes with the cursor. */
+@keyframes ctaBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.018); }
+}
+.cta-breathe { animation: ctaBreathe 3.6s ease-in-out infinite; }
+.cta-breathe:hover, .cta-breathe:focus-visible { animation-play-state: paused; }
+
+/* Counting statistics. Tabular figures plus a reserved width mean the digits change
+   without the text around them moving -- the count contributes nothing to CLS. */
+.stat-count { display: inline-block; font-variant-numeric: tabular-nums; text-align: center; }
+
+/* Back to top. Fades and lifts into place; `pointer-events` keeps it unclickable while
+   hidden rather than an invisible target in the corner. */
+.to-top {
+  position: fixed; inset-inline-end: 18px; bottom: 18px; z-index: 40;
+  width: 42px; height: 42px; border: 1px solid var(--line, #e6e8f0); border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  background: #fff; color: #1E2A5E; box-shadow: 0 10px 28px rgba(20, 30, 66, .14);
+  opacity: 0; transform: translate3d(0, 10px, 0); pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.to-top.is-in { opacity: 1; transform: none; pointer-events: auto; }
+.to-top:hover { transform: translate3d(0, -2px, 0); }
+@media (max-width: 760px) {
+  /* clear of the phone tab bar */
+  .to-top { bottom: 76px; }
+}
+
+/* Footer and social links: colour and a hair of lift, nothing more. */
+.micro-lift { transition: transform .18s ease, color .18s ease, opacity .18s ease; }
+.micro-lift:hover { transform: translate3d(0, -2px, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Not "slower" -- off. Everything is shown in its finished state straight away. */
+  .reveal, .reveal.is-in { opacity: 1; transform: none; transition: none; }
+  .reveal-stagger > *, .reveal-stagger.is-in > * {
+    opacity: 1; transform: none; transition: none; transition-delay: 0s;
+  }
+  .zoom-bg, .hover-lift:hover .zoom-bg, .hover-card:hover .zoom-bg { transform: none; transition: none; }
+  .hero-rise { opacity: 1; animation: none; }
+  .cta-breathe { animation: none; }
+  .zoom-frame img { transition: none; }
+  .hover-lift, .hover-card, .micro-lift, .to-top { transition: none; }
+  .hover-lift:hover, .hover-card:hover, .micro-lift:hover, .to-top:hover,
+  .zoom-frame:hover img, .hover-lift:hover .zoom-frame img, .hover-card:hover .zoom-frame img {
+    transform: none;
+  }
+}

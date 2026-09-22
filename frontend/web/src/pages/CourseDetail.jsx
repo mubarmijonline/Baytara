@@ -131,7 +131,7 @@ function PurchaseCard({ course, slug, preview, firstLessonId }) {
             type="button"
             onClick={() => (isPaid
               ? navigate(`/buy/${slug}`)
-              : navigate(firstLessonId ? `/learn/${course.id}/${firstLessonId}` : `/courses/${slug}`))}
+              : navigate(firstLessonId ? `/learn/${slug}/${firstLessonId}` : `/courses/${slug}`))}
             disabled={!isPaid && !firstLessonId}
             style={{ width: '100%', background: colors.accent, border: 'none', borderRadius: 11, color: '#fff', fontSize: 15.5, fontWeight: 700, padding: 15, cursor: 'pointer', marginBottom: 18, opacity: (!isPaid && !firstLessonId) ? 0.6 : 1 }}
           >
@@ -395,7 +395,7 @@ export default function CourseDetail() {
             disabled={!(course.is_paid ?? course.price > 0) && !firstLessonId}
             onClick={() => ((course.is_paid ?? course.price > 0)
               ? navigate(`/buy/${slug}`)
-              : firstLessonId && navigate(`/learn/${course.id}/${firstLessonId}`))}
+              : firstLessonId && navigate(`/learn/${slug}/${firstLessonId}`))}
           >
             {(course.is_paid ?? course.price > 0) ? t('course.buyAndStart') : t('course.watchFree')}
           </button>

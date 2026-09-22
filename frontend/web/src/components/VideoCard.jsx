@@ -20,7 +20,8 @@ export default function VideoCard({ video }) {
         type="button"
         onClick={() => navigate(`/videos/${video.id}`)}
         aria-label={`${t('video.open')}: ${video.title}`}
-        style={{ display: 'block', width: '100%', padding: 0, border: 0, background: colors.ink, cursor: 'pointer', position: 'relative', aspectRatio: '16 / 9', overflow: 'hidden' }}
+        className="zoom-frame"
+        style={{ display: 'block', width: '100%', padding: 0, border: 0, background: colors.ink, cursor: 'pointer', position: 'relative', aspectRatio: '16 / 9' }}
       >
         {video.poster && !posterFailed ? (
           <img src={video.poster} alt={video.title} onError={() => setPosterFailed(true)} style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />

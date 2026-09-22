@@ -12,8 +12,9 @@ from ...models.payment import PAYMENT_KINDS
 from ...models.learning import merge_access_expiry
 from ...security import require_role
 from ...services.catalog_access import access_is_paid, audience_error, video_is_standalone
-from ...services import fawaterk
+from ...services import fawaterk, kashier
 from ...services.fawaterk import FawaterkError
+from ...services.kashier import KashierError
 from ...utils import renewal_percent
 
 bp = Blueprint("payment", __name__)
@@ -205,17 +206,40 @@ def payment_quote():
                    renewal_percent=renewal_percent() if kind == "renewal" else None)
 
 
+def active_gateway():
+    """Which gateway checkout should use, or None while neither is set up.
+
+    Kashier wins when its keys are present: it is the one being onboarded, and having
+    both configured at once is a migration window, not a permanent state.
+    """
+    if kashier.configured():
+        return "kashier"
+    if fawaterk.configured():
+        return "fawaterk"
+    return None
+
+
+@bp.get("/payment/gateway")
+def gateway_status():
+    """What the site can charge with right now. Public because the course page needs to
+    know whether to offer a card button or say payment is not open yet -- a locked
+    checkout that 503s after three form fields is worse than one that never appeared."""
+    gateway = active_gateway()
+    return jsonify(gateway=gateway, ready=bool(gateway))
+
+
 @bp.post("/payment/checkout")
 @jwt_required()
 def checkout():
-    """Create a pending Payment and a Fawaterak hosted invoice; return the redirect URL."""
+    """Create a pending Payment and a hosted checkout; return the redirect URL."""
     d = request.get_json() or {}
     kind = d.get("kind", "enroll")
     ctx, err = _resolve_target(kind, d.get("course_id"), d.get("bundle_id"), d.get("video_id"), _uid())
     if err:
         body, code = err
         return body, code
-    if not fawaterk.configured():
+    gateway = active_gateway()
+    if not gateway:
         return jsonify(error="gateway_not_configured"), 503
 
     user = db.session.get(User, _uid())
@@ -223,11 +247,29 @@ def checkout():
                 course_id=ctx["course"].id if ctx["course"] else None,
                 bundle_id=ctx["bundle"].id if ctx["bundle"] else None,
                 video_id=ctx["video"].id if ctx["video"] else None,
-                amount=ctx["expected"], currency="EGP", status="pending", gateway="fawaterk")
+                amount=ctx["expected"], currency="EGP", status="pending", gateway=gateway)
     db.session.add(p)
-    db.session.flush()  # assign p.id for payLoad
+    db.session.flush()  # assign p.id, which is the order reference both gateways echo back
 
     site = current_app.config["SITE_URL"].rstrip("/")
+    if gateway == "kashier":
+        try:
+            r = kashier.create_session(
+                ctx["expected"], "EGP", p.id,
+                {"email": user.email, "reference": user.id},
+                ctx["title"],
+                redirect_url=f"{site}/payment/callback?pid={p.id}",
+                webhook_url=f"{site}/api/v1/payment/kashier/webhook",
+                failure_url=f"{site}/payment/callback?status=fail&pid={p.id}",
+            )
+        except KashierError as e:
+            db.session.rollback()
+            return jsonify(error="gateway_error", detail=str(e)), 502
+        p.invoice_key = r["session_id"]
+        p.pay_url = r["url"]
+        db.session.commit()
+        return jsonify(url=r["url"], payment_id=p.id, gateway=gateway), 201
+
     parts = (user.name or "").strip().split(" ", 1)
     customer = {"first_name": parts[0] or "Baytara", "last_name": (parts[1] if len(parts) > 1 else "."),
                 "email": user.email, "phone": user.phone or ""}
@@ -248,7 +290,7 @@ def checkout():
     p.invoice_key = r["invoice_key"]
     p.pay_url = r["url"]
     db.session.commit()
-    return jsonify(url=r["url"], payment_id=p.id), 201
+    return jsonify(url=r["url"], payment_id=p.id, gateway=gateway), 201
 
 
 @bp.get("/payment/mine")
@@ -296,6 +338,71 @@ def fawaterk_webhook():
             _apply_paid(p)  # atomic grant
         elif res["status"] in ("failed", "expired", "refunded") and p.status != "paid":
             p.status = res["status"]
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        raise
+    return jsonify(ok=True)
+
+
+# ----------------------------- Kashier webhook (public, signature-verified) -----------------------------
+
+def _kashier_payment(result):
+    """The Payment a Kashier event belongs to.
+
+    Our order reference is the Payment id, and Kashier echoes it back under one of two
+    names depending on the call, so try both before falling back to the session id we
+    stored at checkout.
+    """
+    for reference in (result.get("merchant_order_id"), result.get("order_reference")):
+        if reference and str(reference).isdigit():
+            payment = db.session.get(Payment, int(reference))
+            if payment and payment.gateway == "kashier":
+                return payment
+    # Later events on the same purchase -- a refund, say -- can be matched on the
+    # Kashier order id the first webhook left behind.
+    order_id = result.get("kashier_order_id")
+    if order_id:
+        return Payment.query.filter_by(invoice_id=order_id, gateway="kashier").first()
+    return None
+
+
+@bp.post("/payment/kashier/webhook")
+def kashier_webhook():
+    payload = request.get_json(silent=True) or {}
+    result = kashier.verify_webhook(payload, request.headers.get("x-kashier-signature"))
+    if not result.get("ok"):
+        return jsonify(error="invalid_signature"), 400
+
+    p = _kashier_payment(result)
+    if not p:
+        return jsonify(error="unknown_payment"), 404
+
+    # A correctly signed event for the wrong amount is not this purchase. Refusing to
+    # grant on it is the difference between a gateway and an honour system.
+    if result["status"] == "paid":
+        try:
+            charged = float(result.get("amount") or 0)
+        except (TypeError, ValueError):
+            charged = 0.0
+        if round(charged, 2) != round(float(p.amount), 2) or (result.get("currency") or p.currency) != p.currency:
+            current_app.logger.warning(
+                "kashier amount mismatch on payment %s: charged %s %s, expected %s %s",
+                p.id, charged, result.get("currency"), float(p.amount), p.currency,
+            )
+            return jsonify(error="amount_mismatch"), 409
+
+    p.payment_method = result.get("payment_method") or p.payment_method
+    p.reference_number = result.get("transaction_id") or p.reference_number
+    p.invoice_id = result.get("kashier_order_id") or p.invoice_id
+    try:
+        if result["status"] == "paid":
+            if p.status != "paid":
+                _apply_paid(p)   # atomic grant; a repeated webhook must not enroll twice
+        elif result["status"] == "refunded":
+            p.status = "refunded"
+        elif result["status"] == "failed" and p.status != "paid":
+            p.status = "failed"
         db.session.commit()
     except Exception:  # noqa: BLE001
         db.session.rollback()

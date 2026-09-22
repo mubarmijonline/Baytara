@@ -39,8 +39,11 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
     >
       {/* A cover when there is one, the brand gradient when there is not — an unset
           `grad` left a white block with white text on it. */}
-      <div style={{ height: 158, position: 'relative', overflow: 'hidden',
-        background: course.image ? `center/cover url(${course.image})` : (course.grad || gradients.darkPanel) }}>
+      <div style={{ height: 158, position: 'relative', overflow: 'hidden' }}>
+        {/* The picture is its own layer so hovering can grow it without dragging the
+            badges and the instructor's name along with it. */}
+        <span aria-hidden="true" className="zoom-bg" style={{ position: 'absolute', inset: 0,
+          background: course.image ? `center/cover url(${course.image})` : (course.grad || gradients.darkPanel) }} />
         {/* The instructor name sits on this image, so it needs something to sit on. */}
         <span aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(20,30,66,0) 40%, rgba(20,30,66,.62) 100%)' }} />
         {categoryName && <span

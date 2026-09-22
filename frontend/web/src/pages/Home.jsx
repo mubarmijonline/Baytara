@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ChevronUp } from 'lucide-react';
 import { Container, SectionHeading } from '../components/Primitives.jsx';
 import Avatar from '../components/Avatar.jsx';
 import ResumeCard from '../components/ResumeCard.jsx';
@@ -10,6 +11,7 @@ import { auth, compact, isAuthed, useFetch, webapi } from '../lib/api.js';
 import { categoryImage } from '../lib/category-images.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useSiteSettings } from '../lib/site-settings.jsx';
+import { useCountUp, useReveal, useScrolledPastFold } from '../lib/motion.js';
 
 const DARK = colors.utilityBar;
 
@@ -24,6 +26,43 @@ const ghostBtn = {
 
 function SectionLink({ to, children }) {
   return <Link to={to} style={{ fontSize: 14, fontWeight: 700, color: colors.accent }}>{children} ←</Link>;
+}
+
+/* A grid whose cards arrive one after another as it scrolls in. The delays are in CSS
+   keyed off child position, so nothing here has to thread an index through the cards. */
+function Stagger({ className = '', children, ...rest }) {
+  const ref = useReveal();
+  return <div ref={ref} className={`${className} reveal-stagger`.trim()} {...rest}>{children}</div>;
+}
+
+/* One statistic, counted up the first time it is looked at. */
+function Stat({ num, label, style, labelStyle }) {
+  const [ref, text, width] = useCountUp(num);
+  return (
+    <>
+      <div ref={ref} style={style}>
+        <span className="stat-count" style={width ? { minWidth: `${width}ch` } : undefined}>{text}</span>
+      </div>
+      <div style={labelStyle}>{label}</div>
+    </>
+  );
+}
+
+function BackToTop() {
+  const { t } = useI18n();
+  const shown = useScrolledPastFold();
+  return (
+    <button
+      type="button"
+      className={`to-top${shown ? ' is-in' : ''}`}
+      aria-label={t('common.backToTop')}
+      aria-hidden={!shown}
+      tabIndex={shown ? 0 : -1}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+    >
+      <ChevronUp size={19} aria-hidden="true" />
+    </button>
+  );
 }
 
 /* ------------------------------- hero ------------------------------- */
@@ -44,21 +83,21 @@ function Hero({ summary }) {
         }}
       >
         <div>
-          <div style={{ fontFamily: font, fontSize: 12, letterSpacing: 2, color: colors.gold, marginBottom: 18 }}>
+          <div className="hero-rise" style={{ '--i': 0, fontFamily: font, fontSize: 12, letterSpacing: 2, color: colors.gold, marginBottom: 18 }}>
             {hero.eyebrow}
           </div>
-          <h1 className="home-hero-title" style={{ margin: '0 0 20px', fontSize: 50, lineHeight: 1.22, fontWeight: 700, letterSpacing: '-1.2px' }}>
+          <h1 className="home-hero-title hero-rise" style={{ '--i': 1, margin: '0 0 20px', fontSize: 50, lineHeight: 1.22, fontWeight: 700, letterSpacing: '-1.2px' }}>
             {hero.title}
           </h1>
-          <p className="home-hero-copy" style={{ margin: '0 0 32px', fontSize: 18, lineHeight: 1.85, color: '#b9bfd6', maxWidth: 490 }}>
+          <p className="home-hero-copy hero-rise" style={{ '--i': 2, margin: '0 0 32px', fontSize: 18, lineHeight: 1.85, color: '#b9bfd6', maxWidth: 490 }}>
             {hero.subtitle}
           </p>
-          <div className="home-hero-actions" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 30 }}>
-            <button type="button" style={filledBtn} onClick={() => navigate('/courses')}>{hero.primary_cta}</button>
+          <div className="home-hero-actions hero-rise" style={{ '--i': 3, display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 30 }}>
+            <button type="button" className="cta-breathe" style={filledBtn} onClick={() => navigate('/courses')}>{hero.primary_cta}</button>
             <button type="button" style={ghostBtn} onClick={() => navigate('/videos?access_type=free')}>{hero.secondary_cta}</button>
           </div>
           {trust.length > 0 && (
-            <div className="home-hero-trust" style={{ display: 'flex', alignItems: 'center', gap: 26, fontSize: 13.5, color: '#a7aec9', flexWrap: 'wrap' }}>
+            <div className="home-hero-trust hero-rise" style={{ '--i': 4, display: 'flex', alignItems: 'center', gap: 26, fontSize: 13.5, color: '#a7aec9', flexWrap: 'wrap' }}>
               {trust.map((item, i) => <span key={i}>{item.label}</span>)}
             </div>
           )}
@@ -83,8 +122,12 @@ function StatsBand() {
       >
         {stats.map((stat, i) => (
           <div key={i} style={{ textAlign: 'center', borderInlineStart: i ? `1px solid ${colors.line}` : 'none' }}>
-            <div style={{ fontSize: 26, fontWeight: 700, color: DARK }}>{stat.num}</div>
-            <div style={{ fontSize: 13.5, color: colors.muted }}>{stat.label}</div>
+            <Stat
+              num={stat.num}
+              label={stat.label}
+              style={{ fontSize: 26, fontWeight: 700, color: DARK }}
+              labelStyle={{ fontSize: 13.5, color: colors.muted }}
+            />
           </div>
         ))}
       </Container>
@@ -111,7 +154,7 @@ function CategoriesSection() {
         subtitle={settings.home?.categories_subtitle}
         action={<SectionLink to="/courses">{t('common.viewAllCategories')}</SectionLink>}
       />
-      <div className="grid-3 home-category-grid" style={{ gap: 14 }}>
+      <Stagger className="grid-3 home-category-grid" style={{ gap: 14 }}>
         {categories.map((category) => (
           <button
             key={category.id}
@@ -132,7 +175,7 @@ function CategoriesSection() {
             </div>
           </button>
         ))}
-      </div>
+      </Stagger>
     </Container>
   );
 }
@@ -151,9 +194,9 @@ function PlatformVideosSection() {
   return (
     <Container className="home-section" style={{ padding: '38px 24px 4px' }}>
       <SectionHeading title={t('home.platformVideos')} subtitle={t('home.platformVideosSubtitle')} />
-      <div className="grid-3">
+      <Stagger className="grid-3">
         {videos.map((video) => <VideoCard key={video.id} video={video} />)}
-      </div>
+      </Stagger>
     </Container>
   );
 }
@@ -175,9 +218,9 @@ function NewestCoursesSection() {
         action={<SectionLink to="/courses">{t('common.viewAll')}</SectionLink>}
       />
       {/* width={null} so the cards fill the grid rather than keeping their carousel size. */}
-      <div className="grid-3">
+      <Stagger className="grid-3">
         {courses.map((course, index) => <CourseCard key={course.id} course={course} width={null} isNew={index === 0} />)}
-      </div>
+      </Stagger>
     </Container>
   );
 }
@@ -198,9 +241,9 @@ function FreeVideosSection() {
           subtitle={t('home.freeVideosSubtitle')}
           action={<SectionLink to="/videos">{t('video.allVideos')}</SectionLink>}
         />
-        <div className="grid-3">
+        <Stagger className="grid-3">
           {videos.map((video) => <VideoCard key={video.id} video={video} />)}
-        </div>
+        </Stagger>
       </Container>
     </div>
   );
@@ -275,7 +318,11 @@ function Testimonials() {
           </h2>
         </Container>
       )}
-      <Container className="home-section grid-3" style={{ padding: '46px 24px', gap: 20 }}>
+      {/* The brief asks for carousel transitions here; this section has never been a
+          carousel, it is a three-up grid. It gets the same arrival as the other rows
+          rather than a slider nobody asked to scroll. */}
+      <Container className="home-section" style={{ padding: '46px 24px' }}>
+      <Stagger className="grid-3" style={{ gap: 20 }}>
         {items.map((item, i) => (
           <figure key={i} style={{ background: colors.surface, border: `1px solid ${colors.line}`, borderRadius: 16, padding: 26, margin: 0 }}>
             <div aria-hidden="true" style={{ color: colors.star, fontSize: 14, marginBottom: 12 }}>★★★★★</div>
@@ -293,6 +340,7 @@ function Testimonials() {
             </figcaption>
           </figure>
         ))}
+      </Stagger>
       </Container>
     </div>
   );
@@ -406,6 +454,7 @@ export default function Home() {
       <Testimonials />
       <BusinessBanner />
       <FinalCta />
+      <BackToTop />
     </div>
   );
 }

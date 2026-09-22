@@ -148,7 +148,7 @@ export default function Exam() {
             <p style={{ margin: '0 0 16px', color: colors.muted, lineHeight: 1.9 }}>
               {t('exam.notYetBody').replace('{percent}', exam.course_percent)}
             </p>
-            <Link to={`/learn/${slug}`}
+            <Link to={`/learn/${slug}/first`}
               style={{ background: colors.accent, color: '#fff', padding: '12px 22px',
                 borderRadius: 11, fontWeight: 700, textDecoration: 'none' }}>
               {t('exam.continueCourse')}

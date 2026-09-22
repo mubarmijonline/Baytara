@@ -210,6 +210,13 @@ export default function Settings() {
               <Field label={copy.integrations.hash}><input type="password" dir="ltr" value={draft.secret_fawaterk_vendor || ''} onChange={(event) => setKey('secret_fawaterk_vendor', event.target.value)} /></Field>
               <Field label={copy.integrations.mode}><select value={draft.fawaterk_mode || 'staging'} onChange={(event) => setKey('fawaterk_mode', event.target.value)}><option value="staging">{copy.integrations.staging}</option><option value="production">{copy.integrations.production}</option></select></Field>
             </Section>
+            <Section title={copy.sections.kashier}>
+              <p style={{ marginTop: -4, fontSize: 12.5, color: 'var(--muted, #6b6b80)' }}>{copy.integrations.kashierHint}</p>
+              <Field label={copy.integrations.kashierMerchant}><input type="password" dir="ltr" value={draft.secret_kashier_merchant_id || ''} onChange={(event) => setKey('secret_kashier_merchant_id', event.target.value)} /></Field>
+              <Field label={copy.integrations.kashierSecret}><input type="password" dir="ltr" value={draft.secret_kashier_secret || ''} onChange={(event) => setKey('secret_kashier_secret', event.target.value)} /></Field>
+              <Field label={copy.integrations.kashierApiKey}><input type="password" dir="ltr" value={draft.secret_kashier_api_key || ''} onChange={(event) => setKey('secret_kashier_api_key', event.target.value)} /></Field>
+              <Field label={copy.integrations.mode}><select value={draft.kashier_mode || 'test'} onChange={(event) => setKey('kashier_mode', event.target.value)}><option value="test">{copy.integrations.test}</option><option value="live">{copy.integrations.live}</option></select></Field>
+            </Section>
             <Section title={copy.sections.vdocipher}>
               <Field label={copy.integrations.vdoSecret}><input type="password" dir="ltr" value={draft.secret_vdocipher || ''} onChange={(event) => setKey('secret_vdocipher', event.target.value)} /></Field>
               <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '4px 0 12px' }}>
