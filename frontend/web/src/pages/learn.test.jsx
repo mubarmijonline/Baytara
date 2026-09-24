@@ -35,11 +35,21 @@ function json(data) {
   }));
 }
 
-function mockApi({ caps = { protected: true, blocked: null, platform: 'mac', recommend: null } } = {}) {
+function deny(error, status = 403) {
+  return Promise.resolve(new Response(JSON.stringify({ error }), {
+    status, headers: { 'Content-Type': 'application/json' },
+  }));
+}
+
+function mockApi({
+  caps = { protected: true, blocked: null, platform: 'mac', recommend: null },
+  playbackError = null,
+} = {}) {
   vi.stubGlobal('fetch', vi.fn((input) => {
     const url = String(input);
     if (url.includes('/video/capabilities')) return json(caps);
     if (url.includes('/video/playback')) {
+      if (playbackError) return deny(playbackError);
       return json({ otp: 'viewer-otp', playbackInfo: 'info', session_id: 's1' });
     }
     if (url.includes('/progress')) return json(progress);
@@ -83,6 +93,31 @@ it('never requests playback for an anonymous viewer', async () => {
   expect(await screen.findByRole('heading', { name: 'Core concepts', level: 1 })).toBeVisible();
   await waitFor(() => expect(fetch).toHaveBeenCalled());
   expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
+});
+
+it('tells an unverified viewer to verify, and offers the way to do it', async () => {
+  // Reaching a locked lesson from the free "start watching" button used to leave the
+  // refusal as 12px grey text under a decorative play button, which reads as "still
+  // loading" rather than "here is what to do".
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi({ playbackError: 'needs_baytarian' });
+  renderLesson();
+
+  expect(await screen.findByText(/Verify your account to watch it/i)).toBeVisible();
+  const action = await screen.findByRole('button', { name: /Verify your account/i });
+  fireEvent.click(action);
+
+  await waitFor(() => expect(window.location.pathname).toBe('/verify'));
+  // and it carries the lesson, so finishing verification comes back here
+  expect(window.location.search).toContain(encodeURIComponent('/learn/cattle/12'));
+});
+
+it('tells a signed-out viewer why nothing is playing instead of spinning forever', async () => {
+  mockApi();
+  renderLesson();
+
+  expect(await screen.findByRole('button', { name: /Sign in to watch/i })).toBeVisible();
+  expect(screen.queryByText(/Loading the video/i)).not.toBeInTheDocument();
 });
 
 it('plays the lesson and shows real course progress when signed in', async () => {

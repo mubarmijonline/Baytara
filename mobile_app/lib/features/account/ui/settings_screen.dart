@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/i18n/app_localizations.dart';
+import '../../../core/links/app_link.dart';
 import '../../../core/i18n/locale_controller.dart';
 import '../../../core/theme/tokens.dart';
 import '../../auth/application/auth_controller.dart';
@@ -14,6 +16,15 @@ final _versionProvider = FutureProvider<String>((ref) async {
   final info = await PackageInfo.fromPlatform();
   return '${info.version} (${info.buildNumber})';
 });
+
+/// Opens a page of the website in the browser, resolved against the same origin the app
+/// talks to, so a staging build does not send someone to the live terms.
+Future<void> _openOnSite(String path) async {
+  final uri = Uri.parse('$siteOrigin$path');
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -67,6 +78,29 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ],
           const Divider(height: 24),
+          ListTile(
+            leading: const Icon(Icons.menu_book_outlined),
+            title: Text(l.libraryTitle),
+            onTap: () => context.push('/library'),
+          ),
+          // Terms, refund and delivery open on the website. Not a purchase link, so
+          // Guideline 3.1.1 has nothing to say about them, and one copy of a legal
+          // document is the only number of copies worth having.
+          ListTile(
+            leading: const Icon(Icons.gavel_outlined),
+            title: Text(l.settingsTerms),
+            onTap: () => _openOnSite('/terms'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.assignment_return_outlined),
+            title: Text(l.settingsRefund),
+            onTap: () => _openOnSite('/refund'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.local_shipping_outlined),
+            title: Text(l.settingsDelivery),
+            onTap: () => _openOnSite('/delivery'),
+          ),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text(l.settingsAbout),

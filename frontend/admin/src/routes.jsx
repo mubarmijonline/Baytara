@@ -14,6 +14,7 @@ import Hierarchy from './pages/Hierarchy.jsx';
 import Messages from './pages/Messages.jsx';
 import Paths from './pages/Paths.jsx';
 import Payments from './pages/Payments.jsx';
+import Promos from './pages/Promos.jsx';
 import Reviews from './pages/Reviews.jsx';
 import Settings from './pages/Settings.jsx';
 import Instructors from './pages/Instructors.jsx';
@@ -26,6 +27,7 @@ import VideoReports from './pages/VideoReports.jsx';
 const sectionRoutes = [
   ['dashboard', Dashboard],
   ['payments', Payments],
+  ['promos', Promos],
   ['payments/:paymentId', Payments],
   ['baytarian', Baytarian],
   ['baytarian/:requestId', Baytarian],

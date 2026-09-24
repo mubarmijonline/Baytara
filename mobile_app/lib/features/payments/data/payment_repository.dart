@@ -21,6 +21,7 @@ class PaymentRepository {
     int? courseId,
     int? bundleId,
     int? videoId,
+    String? code,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
@@ -30,6 +31,9 @@ class PaymentRepository {
           'course_id': ?courseId,
           'bundle_id': ?bundleId,
           'video_id': ?videoId,
+          // A discount code is sent as a string and judged by the server. The app never
+          // sends an amount, so it can never name its own price.
+          'code': ?code,
         },
       );
       return PaymentQuote.fromJson(res.data ?? const {});
@@ -44,6 +48,7 @@ class PaymentRepository {
     int? courseId,
     int? bundleId,
     int? videoId,
+    String? code,
   }) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>('/payment/checkout', data: {
@@ -51,6 +56,7 @@ class PaymentRepository {
         'course_id': ?courseId,
         'bundle_id': ?bundleId,
         'video_id': ?videoId,
+        'code': ?code,
       });
       return CheckoutSession.fromJson(res.data!);
     } catch (e) {

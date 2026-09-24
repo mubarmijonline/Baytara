@@ -456,3 +456,87 @@ def test_attendance_is_not_issued_before_the_course_is_finished(exam_app):
     assert first["completion_certificate"] is None
     exam = client.get("/api/v1/courses/exam-course/exam", headers=hdrs).get_json()["exam"]
     assert exam["completion_certificate"] is None
+
+
+# ---- examiner options -------------------------------------------------------------------
+
+def test_a_draw_asks_a_subset_and_marks_only_what_it_asked(exam_app):
+    """A bank of six asked five at a time must not mark the sixth as wrong."""
+    from app.models import CourseExam
+    from app.models.exam import grade
+
+    build_exam(exam_app, question_count=6)
+    with exam_app.app_context():
+        exam = CourseExam.query.first()
+        bank = exam.answerable_questions()
+        assert len(bank) >= 2, "fixture needs a couple of questions"
+        exam.questions_per_attempt = 1
+        db.session.commit()
+
+        drawn = exam.draw()
+        assert len(drawn) == 1
+
+        # Answer the drawn one correctly and nothing else.
+        answers = {drawn[0].id: drawn[0].correct_option_id()}
+        score, correct, count, _ = grade(exam, answers, questions=drawn)
+        assert count == 1
+        assert correct == 1
+        assert score == 100, "the questions never shown must not count against the score"
+
+
+def test_the_paper_token_carries_the_drawn_questions(exam_app):
+    from app.models import CourseExam
+    from app.services import exam_paper
+
+    build_exam(exam_app, question_count=4)
+    with exam_app.app_context():
+        exam = CourseExam.query.first()
+        drawn = exam.draw()
+        token = exam_paper.issue(exam, 1, drawn)
+        ids, error = exam_paper.verify(token, exam, 1)
+        assert error is None
+        assert ids == [q.id for q in drawn]
+
+        # Someone else's paper is not a submission to this exam.
+        assert exam_paper.verify(token, exam, 999)[1] == "paper_token_invalid"
+
+
+def test_an_expired_paper_is_refused(exam_app):
+    from app.models import CourseExam
+    from app.services import exam_paper
+
+    build_exam(exam_app, question_count=3)
+    with exam_app.app_context():
+        exam = CourseExam.query.first()
+        exam.time_limit_minutes = 1
+        db.session.commit()
+        token = exam_paper.issue(exam, 1, exam.draw())
+
+        # A token minted before the limit, read after it. itsdangerous measures the age
+        # from the signature, so an old token cannot be made fresh by resending it.
+        import itsdangerous
+        real_loads = itsdangerous.URLSafeTimedSerializer.loads
+
+        def expired(self, *a, **kw):
+            raise itsdangerous.SignatureExpired("too old")
+
+        itsdangerous.URLSafeTimedSerializer.loads = expired
+        try:
+            assert exam_paper.verify(token, exam, 1)[1] == "exam_time_expired"
+        finally:
+            itsdangerous.URLSafeTimedSerializer.loads = real_loads
+
+
+def test_publishing_refuses_a_draw_bigger_than_the_bank(exam_app):
+    """Otherwise the examiner sets a twenty-question paper and candidates sit six."""
+    from app.models import CourseExam
+    from app.services import exam_authoring
+
+    build_exam(exam_app, question_count=3)
+    with exam_app.app_context():
+        exam = CourseExam.query.first()
+        exam.questions_per_attempt = 99
+        db.session.commit()
+        with pytest.raises(exam_authoring.ExamValidationError) as caught:
+            exam_authoring.update_exam(exam, {"is_published": True})
+        assert caught.value.code == "questions_per_attempt_exceeds_bank"

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, BadgeCheck, Check, Clock, Upload, X } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
 import { auth, isAuthed } from '../lib/api.js';
@@ -167,9 +167,22 @@ export default function VerifyVet() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
+  // Where to go once this is over. Someone who came here from a locked lesson wants that
+  // lesson, not their profile -- being dropped on the profile after verifying is why the
+  // journey felt unfinished even when the verification succeeded.
+  //
+  // Only on a real approval. Pending means a person still has to look, and sending them
+  // back to a video that will refuse them again would read as the verification having
+  // failed silently.
+  const [sp] = useSearchParams();
+  const next = sp.get('next');
+
   useEffect(() => {
-    if (!isAuthed()) navigate('/auth?next=%2Fverify');
-  }, [navigate]);
+    if (!isAuthed()) {
+      const back = next ? `/verify?next=${encodeURIComponent(next)}` : '/verify';
+      navigate(`/auth?next=${encodeURIComponent(back)}`);
+    }
+  }, [navigate, next]);
   useEffect(() => { setNationalId(user?.national_id || ''); }, [user?.national_id]);
   // Switching route throws away whatever was uploaded for the previous one: the two
   // sides of a syndicate card are not the two sides of a student ID.
@@ -226,7 +239,10 @@ export default function VerifyVet() {
     }
   }
 
-  if (result) return <Result kind={result} t={t} onDone={() => navigate('/dashboard/profile')} />;
+  if (result) {
+    const done = (next && result !== 'pending') ? next : '/dashboard/profile';
+    return <Result kind={result} t={t} onDone={() => navigate(done)} />;
+  }
 
   // One verified status covers both kinds, so being verified ends the journey here
   // whichever document got them there.

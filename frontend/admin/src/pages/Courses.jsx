@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, EyeOff, ListVideo, Pencil, Plus, Save, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Link2, ListVideo, Pencil, Plus, Save, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
@@ -15,6 +15,8 @@ const COPY = {
     courses: 'الدورات', newCourse: 'دورة جديدة', editCourse: 'تعديل الدورة', search: 'بحث في الدورات',
     allStatuses: 'كل الحالات', title: 'العنوان', instructor: 'المدرّب', category: 'الفئة', access: 'الوصول',
     price: 'السعر', enrolled: 'المسجّلون', actions: 'الإجراءات', noCourses: 'لا توجد دورات.', loading: 'جارٍ التحميل…',
+    payLink: 'لينك الدفع', payLinkCopied: 'اتنسخ لينك الدفع — ابعته للطالب على واتساب.',
+    payLinkFailed: 'تعذّر النسخ. اللينك:',
     content: 'المحتوى', edit: 'تعديل', publish: 'نشر', unpublish: 'إخفاء', delete: 'حذف',
     cover: 'صورة الدورة', coverHint: 'تظهر في قوائم الدورات وأعلى صفحة الدورة. مقاس 16:9 يعطي أفضل نتيجة.',
     coverRemove: 'إزالة الصورة', coverError: 'تعذّر رفع الصورة.',
@@ -31,6 +33,8 @@ const COPY = {
     courses: 'Courses', newCourse: 'New course', editCourse: 'Edit course', search: 'Search courses',
     allStatuses: 'All statuses', title: 'Title', instructor: 'Instructor', category: 'Category', access: 'Access',
     price: 'Price', enrolled: 'Enrolled', actions: 'Actions', noCourses: 'No courses found.', loading: 'Loading…',
+    payLink: 'Payment link', payLinkCopied: 'Payment link copied. Send it to the student on WhatsApp.',
+    payLinkFailed: 'Could not copy. The link is:',
     content: 'Content', edit: 'Edit', publish: 'Publish', unpublish: 'Unpublish', delete: 'Delete',
     cover: 'Course image', coverHint: 'Shown in course listings and at the top of the course page. 16:9 works best.',
     coverRemove: 'Remove image', coverError: 'Could not upload the image.',
@@ -249,6 +253,18 @@ function CourseList({ initialStatus = '' }) {
     try { await api.courseUpdate(course.id, { status: course.status === 'published' ? 'unpublished' : 'published' }); await load(); }
     catch (error) { toast.error(errorMessage(error, language)); }
   }
+  async function copyPayLink(course) {
+    const url = `${window.location.origin}/buy/${course.slug}?go=1`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(c.payLinkCopied);
+    } catch {
+      // No clipboard permission, or an insecure origin. Showing the link is still useful:
+      // it can be selected out of the toast by hand.
+      toast.error(`${c.payLinkFailed} ${url}`);
+    }
+  }
+
   async function remove(course) {
     if (!await confirmDialog(c.deleteConfirm)) return;
     try { await api.courseDelete(course.id); await load(); }
@@ -271,6 +287,18 @@ function CourseList({ initialStatus = '' }) {
         <td>{course.is_paid ? `${course.price} ${course.currency}` : '—'}</td>
         <td>{course.instructor?.name || '—'}</td><td>{course.enrolled_count ?? 0}</td>
         <td className="actions">
+          {/* The direct payment link, for WhatsApp. `?go=1` sends the student straight to
+              the gateway instead of to a page with another button on it.
+
+              Only for a paid, published course: a free one has nothing to pay for, and a
+              draft's link would 404 in front of a student. It is built from the current
+              origin rather than a written-out domain so a staging admin hands out staging
+              links. */}
+          {course.is_paid && course.status === 'published' && (
+            <button className="btn btn-tonal btn-sm" type="button" onClick={() => copyPayLink(course)}>
+              <Link2 size={14} /> {c.payLink}
+            </button>
+          )}
           <Link className="btn btn-tonal btn-sm" to={`/courses/${course.id}/content`}><ListVideo size={14} /> {c.content}</Link>
           <Link className="btn btn-tonal btn-sm" to={`/courses/${course.id}/edit`}><Pencil size={14} /> {c.edit}</Link>
           <button className="btn btn-tonal btn-sm" type="button" onClick={() => togglePublish(course)}>{course.status === 'published' ? <EyeOff size={14} /> : <Eye size={14} />} {course.status === 'published' ? c.unpublish : c.publish}</button>

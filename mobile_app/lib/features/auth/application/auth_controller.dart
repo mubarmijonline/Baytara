@@ -163,7 +163,10 @@ class AuthController {
 
   Future<DeviceList> devices() => _repo.devices();
 
-  Future<void> removeDevice(int id) => _repo.removeDevice(id);
+  Future<SwapAllowance> removeDevice(int id) => _repo.removeDevice(id);
+
+  Future<DeviceSwapRequest> requestDeviceSwap({String? reason}) =>
+      _repo.requestDeviceSwap(reason: reason);
 }
 
 final authControllerProvider = Provider<AuthController>(AuthController.new);

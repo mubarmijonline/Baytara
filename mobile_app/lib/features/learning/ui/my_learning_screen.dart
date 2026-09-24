@@ -11,6 +11,7 @@ import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
+import '../../payments/data/purchase_availability.dart';
 import '../../account/ui/notifications_screen.dart';
 import '../../auth/domain/session.dart';
 import '../application/learning_providers.dart';
@@ -228,13 +229,29 @@ class _EnrollmentTile extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: BrandColors.muted2),
                 ),
                 const Spacer(),
-                // A lapsed enrolment is a past customer. Renewal, not a fresh purchase.
-                if (enrollment.isExpired)
+                // Finished the material: the exam is the next thing, and the only route
+                // to the certificate on a course that sets one. Shown whether or not the
+                // course has an exam, because only the server knows -- the exam screen
+                // says so plainly if there is none.
+                if (enrollment.progress.isComplete && !enrollment.isExpired)
                   TextButton(
-                    onPressed: () =>
-                        context.push('/buy/${course.slug}?kind=renewal'),
-                    child: Text(l.renewAccess),
+                    onPressed: () => context.push('/courses/${course.slug}/exam'),
+                    child: Text(l.examAction),
                   ),
+                // A lapsed enrolment is a past customer. Renewal, not a fresh purchase --
+                // and under the reader model it says the access ended without offering a
+                // way to pay, which would be the same steering as a buy button.
+                if (enrollment.isExpired)
+                  if (PurchaseAvailability.purchasesEnabled)
+                    TextButton(
+                      onPressed: () =>
+                          context.push('/buy/${course.slug}?kind=renewal'),
+                      child: Text(l.renewAccess),
+                    )
+                  else
+                    Text(l.errAccessExpired,
+                        style: const TextStyle(
+                            fontSize: 12, color: BrandColors.muted2)),
               ]),
             ],
           ),

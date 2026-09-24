@@ -344,7 +344,9 @@ class Article {
         title: j['title'] as String? ?? '',
         excerpt: j['excerpt'] as String?,
         body: j['body'] as String?,
-        image: resolveMediaUrl(j['image'] as String?),
+        // `cover`, which is the key Article.to_dict emits. Reading `image` meant every
+        // article cover was null, so the library shelf had nothing to show.
+        image: resolveMediaUrl(j['cover'] as String?),
         publishedAt: DateTime.tryParse(j['published_at'] as String? ?? ''),
       );
 

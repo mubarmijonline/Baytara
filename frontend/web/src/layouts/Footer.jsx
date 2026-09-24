@@ -1,4 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
+import PaymentBadges from '../components/PaymentBadges.jsx';
+import SocialIcon from '../components/SocialIcon.jsx';
 import { colors, layout } from '../theme/tokens.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useSiteSettings } from '../lib/site-settings.jsx';
@@ -28,18 +30,35 @@ export default function Footer() {
   const tagline = settings.footer?.tagline;
   // Privacy falls back to the built-in /privacy page: Google's OAuth branding
   // form needs a privacy link that always resolves on baytara.app.
+  // Every one of these falls back to its built-in page. The terms link used to have no
+  // fallback, so with `terms_url` unset in the CMS -- which it is -- the filter dropped it
+  // and the site published no terms link at all. A payment gateway's merchant review looks
+  // for exactly these four in the footer, so "only if an admin remembered to paste a URL"
+  // is not good enough for any of them.
   const legal = [
     [settings.footer?.privacy_url || '/privacy', t('footer.privacy')],
-    [settings.footer?.terms_url, t('footer.terms')],
+    [settings.footer?.terms_url || '/terms', t('footer.terms')],
     [settings.footer?.refund_url || '/refund', t('footer.refund')],
+    [settings.footer?.delivery_url || '/delivery', t('footer.delivery')],
   ].filter(([url]) => typeof url === 'string' && (/^https?:\/\//i.test(url) || url.startsWith('/')));
+  const contact = settings.contact || {};
+  const contactRows = [
+    { key: 'email', icon: '✉', value: (contact.email || '').trim(), href: (v) => `mailto:${v}` },
+    // tel: strips to digits and a leading +, which is what a dialler expects; the text
+    // keeps the spacing a human reads.
+    { key: 'phone', icon: '☎', value: (contact.phone || '').trim(), href: (v) => `tel:${v.replace(/[^0-9+]/g, '')}` },
+    { key: 'address', icon: '⌂', value: (contact.address || '').trim(), href: null },
+  ]
+    .filter((row) => row.value)
+    .map((row) => ({ ...row, href: row.href ? row.href(row.value) : null }));
+
   const configuredSocials = Object.entries(settings.socials || {})
     .filter(([, url]) => typeof url === 'string' && /^https?:\/\//i.test(url));
   return (
     <footer style={{ background: colors.footer, color: '#b6b6cc' }}>
       <div style={{ maxWidth: layout.maxWidth, margin: '0 auto', padding: '56px 24px 30px' }}>
         <div
-          className="grid-collapse-2"
+          className="footer-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: '1.4fr 1fr 1fr 1fr',
@@ -48,7 +67,7 @@ export default function Footer() {
             borderBottom: '1px solid rgba(255,255,255,.1)',
           }}
         >
-          <div>
+          <div className="footer-brand">
             <img
               src="/brand/logo-white.png"
               alt="بيطرة BAYTARA"
@@ -66,6 +85,26 @@ export default function Footer() {
               {tagline ||
                 'منصة التعلّم البيطري الأولى في العالم العربي — نُتيح المعرفة للأطباء والطلاب ومربّي الحيوان بمحتوى عربي أصيل من نخبة الخبراء.'}
             </p>
+            {contactRows.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: '0 0 20px' }}>
+                {contactRows.map(({ key, href, value, icon }) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5 }}>
+                    <span aria-hidden="true" style={{ opacity: 0.65, flex: 'none' }}>{icon}</span>
+                    {href ? (
+                      // dir="ltr" so an address or a number keeps its own order inside the
+                      // right-to-left column.
+                      <a href={href} dir="ltr" className="link-muted"
+                        style={{ color: 'inherit', textDecoration: 'none', overflowWrap: 'anywhere' }}>
+                        {value}
+                      </a>
+                    ) : (
+                      <span style={{ overflowWrap: 'anywhere' }}>{value}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10 }}>
               {(configuredSocials.length ? configuredSocials : PLACEHOLDER_SOCIALS.map((name) => [name, ''])).map(([name, url]) => (
                 <a
@@ -89,7 +128,7 @@ export default function Footer() {
                     textDecoration: 'none',
                   }}
                 >
-                  {name.slice(0, 2).toUpperCase()}
+                  <SocialIcon name={name} />
                 </a>
               ))}
             </div>
@@ -107,12 +146,17 @@ export default function Footer() {
             </div>
           ))}
         </div>
+        <div style={{ paddingTop: 22 }}>
+          <PaymentBadges tone="dark" />
+        </div>
+
         <div
+          className="footer-bottom"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingTop: 22,
+            paddingTop: 18,
             fontSize: 13,
             flexWrap: 'wrap',
             gap: 12,
@@ -120,7 +164,7 @@ export default function Footer() {
         >
           <span>{settings.footer?.copyright || '© 2026 بيطرة Baytara. جميع الحقوق محفوظة.'}</span>
           {legal.length > 0 && (
-            <div style={{ display: 'flex', gap: 18 }}>
+            <div className="footer-legal" style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
               {legal.map(([url, label]) => (url.startsWith('/') ? (
                 <span key={label} style={{ cursor: 'pointer' }} onClick={() => navigate(url)}>{label}</span>
               ) : (

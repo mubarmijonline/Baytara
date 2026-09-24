@@ -71,6 +71,8 @@ dependencies:
   url_launcher: 6.3.2
 
   intl: any
+  pdfx: 2.11.0
+  share_plus: 13.3.0
 
 dev_dependencies:
   flutter_test:

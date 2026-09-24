@@ -110,12 +110,27 @@ class LearningRepository {
 
   /// Public verification. No token required, which is the point: anyone holding the serial
   /// can confirm the certificate is real.
-  Future<Certificate> verifyCertificate(String serial) async {
+  /// Verifies a serial, whichever of the two kinds it is.
+  ///
+  /// There are two certificates and two endpoints: the achievement certificate for
+  /// passing the exam, and the attendance one for finishing the material on a course that
+  /// sets an exam. A holder does not know which serial they are carrying, and the app
+  /// used to ask only the first -- so a completion certificate read as "not found".
+  Future<Certificate> verifyCertificate(String serial, {bool completion = false}) async {
+    final path = completion ? '/completion-certificates/$serial' : '/certificates/$serial';
     try {
-      final res = await _dio.get<Map<String, dynamic>>('/certificates/$serial');
-      return Certificate.fromJson(res.data!['certificate'] as Map<String, dynamic>);
+      final res = await _dio.get<Map<String, dynamic>>(path);
+      final body = res.data!;
+      final row = (body['certificate'] ?? body['completion_certificate'])
+          as Map<String, dynamic>;
+      return Certificate.fromJson(row);
     } catch (e) {
-      throw asApiException(e);
+      final failure = asApiException(e);
+      // Fall through to the other kind before giving up, so one link works for both.
+      if (!completion && failure.statusCode == 404) {
+        return verifyCertificate(serial, completion: true);
+      }
+      throw failure;
     }
   }
 

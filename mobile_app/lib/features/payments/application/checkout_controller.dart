@@ -127,6 +127,7 @@ class CheckoutController {
     int? courseId,
     int? bundleId,
     int? videoId,
+    String? code,
   }) async {
     _emit(state.copyWith(stage: CheckoutStage.quoting, clearError: true));
     try {
@@ -135,6 +136,7 @@ class CheckoutController {
         courseId: courseId,
         bundleId: bundleId,
         videoId: videoId,
+        code: code,
       );
       _emit(state.copyWith(stage: CheckoutStage.idle, quote: quote));
       return quote;
@@ -154,6 +156,7 @@ class CheckoutController {
     int? courseId,
     int? bundleId,
     int? videoId,
+    String? code,
   }) async {
     _emit(state.copyWith(stage: CheckoutStage.quoting, clearError: true));
     try {
@@ -162,6 +165,7 @@ class CheckoutController {
         courseId: courseId,
         bundleId: bundleId,
         videoId: videoId,
+        code: code,
       );
       _emit(state.copyWith(stage: CheckoutStage.atGateway));
       return session;

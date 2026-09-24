@@ -29,6 +29,9 @@ abstract final class Routes {
   static const _public = <String>{
     home, courses, content, signIn, '/videos', '/bundles', '/paths',
     '/instructors', '/blog', '/about', '/contact', '/pricing', '/certificates',
+    // The library is public on purpose, book pages included: the summary itself asks for
+    // an account, the page that describes it does not.
+    '/library', '/articles',
   };
 
   static bool isPublic(String location) {

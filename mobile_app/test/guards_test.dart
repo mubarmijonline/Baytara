@@ -171,6 +171,19 @@ void main() {
     });
   });
 
+  group('the library', () {
+    // Public on purpose: the summary itself asks for an account, the page that describes
+    // it does not, or it could never be found or shared.
+    for (final location in ['/library', '/library/merck-summary', '/articles/a-post']) {
+      test('$location is open to a visitor', () {
+        expect(
+          guardRedirect(session: const SessionSignedOut(), location: location),
+          isNull,
+        );
+      });
+    }
+  });
+
   test('a signed-in user has no use for the sign-in screen', () {
     expect(
       guardRedirect(session: const SessionSignedIn(_withPhone), location: Routes.signIn),

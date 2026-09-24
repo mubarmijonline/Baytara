@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_initializing_formals
 // Payment shapes, from backend/app/api/v1/payment.py and models/payment.py.
 /// The four things that can be bought. `PAYMENT_KINDS` in models/payment.py.
 ///
@@ -25,7 +26,11 @@ class PaymentQuote {
     required this.expectedAmount,
     required this.title,
     this.renewalPercent,
-  });
+    this.discount = 0,
+    double? finalAmount,
+    this.promoCode,
+    this.promoError,
+  }) : _finalAmount = finalAmount;
 
   factory PaymentQuote.fromJson(Map<String, dynamic> j) => PaymentQuote(
         kind: PaymentKind.fromWire(j['kind'] as String?),
@@ -34,12 +39,26 @@ class PaymentQuote {
         // Only present for a renewal. Worth showing: "30% of the original price" explains
         // the number far better than the number alone.
         renewalPercent: (j['renewal_percent'] as num?)?.toDouble(),
+        discount: (j['discount'] as num?)?.toDouble() ?? 0,
+        finalAmount: (j['final_amount'] as num?)?.toDouble(),
+        promoCode: (j['promo'] as Map?)?['code'] as String?,
+        // A code that did not apply is reported rather than raised: the quote is still a
+        // valid price, just not the discounted one the buyer hoped for.
+        promoError: j['promo_error'] as String?,
       );
 
   final PaymentKind kind;
   final double expectedAmount;
   final String title;
   final double? renewalPercent;
+  final double discount;
+  final double? _finalAmount;
+  final String? promoCode;
+  final String? promoError;
+
+  /// What the buyer is actually charged. Falls back to the list price for an older server
+  /// that does not send `final_amount`, so a missing field cannot read as a free course.
+  double get payable => _finalAmount ?? expectedAmount;
 }
 
 /// A payment row. Status is the server's word, never inferred from a redirect.

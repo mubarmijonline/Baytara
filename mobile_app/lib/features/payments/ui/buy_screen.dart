@@ -48,6 +48,13 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
   /// plainly what did and did not happen.
   PaymentMethodChoice? _testOutcome;
 
+  /// The discount code, once the server has accepted it. Held rather than re-typed so the
+  /// same code goes to checkout that was used for the quote the buyer agreed to.
+  String? _appliedCode;
+  final TextEditingController _codeField = TextEditingController();
+  bool _checkingCode = false;
+  String? _codeError;
+
   @override
   void initState() {
     super.initState();
@@ -62,8 +69,50 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
     );
   }
 
+  Future<void> _applyCode() async {
+    final entered = _codeField.text.trim();
+    if (entered.isEmpty) return;
+    setState(() {
+      _checkingCode = true;
+      _codeError = null;
+    });
+    final quote = await _checkout.loadQuote(
+      kind: widget.kind,
+      courseId: widget.courseId,
+      bundleId: widget.bundleId,
+      videoId: widget.videoId,
+      code: entered,
+    );
+    if (!mounted) return;
+    setState(() {
+      _checkingCode = false;
+      if (quote == null) return;
+      if (quote.promoError != null) {
+        _appliedCode = null;
+        _codeError = promoErrorMessage(quote.promoError!, L10n.of(context));
+      } else {
+        _appliedCode = entered;
+      }
+    });
+  }
+
+  Future<void> _clearCode() async {
+    _codeField.clear();
+    setState(() {
+      _appliedCode = null;
+      _codeError = null;
+    });
+    await _checkout.loadQuote(
+      kind: widget.kind,
+      courseId: widget.courseId,
+      bundleId: widget.bundleId,
+      videoId: widget.videoId,
+    );
+  }
+
   @override
   void dispose() {
+    _codeField.dispose();
     _checkout.dispose();
     super.dispose();
   }
@@ -100,6 +149,8 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
       courseId: widget.courseId,
       bundleId: widget.bundleId,
       videoId: widget.videoId,
+      // The code, not the discounted figure. The server recomputes the charge.
+      code: _appliedCode,
     );
     if (session == null || !mounted) return;
 
@@ -163,7 +214,17 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
                 actionLabel: l.commonRetry,
                 onAction: _pay,
               ),
-            _ => _Quote(quote: _state.quote, title: widget.title, onPay: _pay),
+            _ => _Quote(
+                quote: _state.quote,
+                title: widget.title,
+                onPay: _pay,
+                codeField: _codeField,
+                appliedCode: _appliedCode,
+                codeError: _codeError,
+                checkingCode: _checkingCode,
+                onApplyCode: _applyCode,
+                onClearCode: _clearCode,
+              ),
           },
         ),
       ),
@@ -172,7 +233,24 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
 }
 
 class _Quote extends StatelessWidget {
-  const _Quote({required this.quote, required this.onPay, this.title});
+  const _Quote({
+    required this.quote,
+    required this.onPay,
+    required this.codeField,
+    required this.onApplyCode,
+    required this.onClearCode,
+    this.title,
+    this.appliedCode,
+    this.codeError,
+    this.checkingCode = false,
+  });
+
+  final TextEditingController codeField;
+  final VoidCallback onApplyCode;
+  final VoidCallback onClearCode;
+  final String? appliedCode;
+  final String? codeError;
+  final bool checkingCode;
 
   final PaymentQuote? quote;
   final VoidCallback onPay;
@@ -202,10 +280,27 @@ class _Quote extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${q.expectedAmount.toStringAsFixed(0)} EGP',
-                  style: const TextStyle(
-                      fontSize: 26, fontWeight: FontWeight.w800,
-                      color: BrandColors.accent)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('${q.payable.toStringAsFixed(0)} EGP',
+                      style: const TextStyle(
+                          fontSize: 26, fontWeight: FontWeight.w800,
+                          color: BrandColors.accent)),
+                  if (q.discount > 0) ...[
+                    const SizedBox(width: 10),
+                    // The list price stays visible, struck through: a discount nobody can
+                    // see the original of is just a price.
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('${q.expectedAmount.toStringAsFixed(0)} EGP',
+                          style: const TextStyle(
+                              fontSize: 15, color: BrandColors.muted2,
+                              decoration: TextDecoration.lineThrough)),
+                    ),
+                  ],
+                ],
+              ),
               // The bare number does not explain itself on a renewal; the percentage does.
               if (q.kind == PaymentKind.renewal && q.renewalPercent != null) ...[
                 const SizedBox(height: 6),
@@ -216,6 +311,43 @@ class _Quote extends StatelessWidget {
             ],
           ),
         ),
+        if (PurchaseAvailability.purchasesEnabled) ...[
+          const SizedBox(height: 16),
+          if (appliedCode != null)
+            Row(
+              children: [
+                Expanded(
+                  child: Text('$appliedCode · −${q.discount.toStringAsFixed(0)} EGP',
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A7F4B))),
+                ),
+                TextButton(onPressed: onClearCode, child: Text(l.promoRemove)),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: codeField,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: l.promoPlaceholder,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      errorText: codeError,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: checkingCode ? null : onApplyCode,
+                  child: Text(checkingCode ? '…' : l.promoApply),
+                ),
+              ],
+            ),
+        ],
         const Spacer(),
         if (PurchaseAvailability.purchasesEnabled)
           SizedBox(

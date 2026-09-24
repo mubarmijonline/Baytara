@@ -13,7 +13,9 @@ from ...models import (
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
     CourseReview, Certificate, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
     push_notification, refresh_course_rating, VideoPlaybackSession, CourseExam, ExamQuestion, DeviceSwapRequest, Book,
+    PromoCode,
 )
+from ...models.payment import PROMO_KINDS
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
 from ...services.catalog_access import (
@@ -22,7 +24,7 @@ from ...services.catalog_access import (
 )
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
-from ...services import device_swaps, exam_authoring, vdocipher_admin
+from ...services import device_swaps, exam_authoring, promo as promo_service, vdocipher_admin
 from ...services.vdocipher_admin import VdoCipherAdminError
 
 bp = Blueprint("admin", __name__)
@@ -2478,3 +2480,120 @@ def broadcast():
         n += 1
     db.session.commit()
     return jsonify(sent=n)
+
+
+# ------------------------------ promo codes ------------------------------
+# Issued by hand to partners and influencers. The discount itself is computed in
+# services/promo.py and never comes from a client; these endpoints only manage the codes.
+
+def _promo_dt(value):
+    """An ISO date/datetime from the admin form, or None. Refuses garbage rather than
+    silently storing a null that would read as "no expiry"."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError("invalid_date")
+
+
+@bp.get("/promo-codes")
+@require_role("admin")
+def promo_list():
+    rows = PromoCode.query.order_by(PromoCode.created_at.desc(), PromoCode.id.desc()).all()
+    # Usage is a count over payments, so it is fetched per row. The list is short by
+    # nature -- these are handed out to named partners, not generated in bulk.
+    return jsonify(codes=[r.to_dict(uses=promo_service.uses(r)) for r in rows])
+
+
+@bp.post("/promo-codes")
+@require_role("admin")
+def promo_create():
+    d = request.get_json() or {}
+    code = promo_service.normalize(d.get("code"))
+    if not code:
+        return jsonify(error="code_required"), 422
+    if PromoCode.query.filter_by(code=code).first():
+        return jsonify(error="code_taken"), 409
+    kind = d.get("kind") or "percent"
+    if kind not in PROMO_KINDS:
+        return jsonify(error="invalid_kind"), 422
+    try:
+        value = float(d.get("value") or 0)
+    except (TypeError, ValueError):
+        return jsonify(error="invalid_value"), 422
+    # A percentage over 100 would price the course below zero; discount_for() floors the
+    # result anyway, but storing it would mean the admin list shows a number that lies.
+    if value <= 0 or (kind == "percent" and value > 100):
+        return jsonify(error="invalid_value"), 422
+
+    try:
+        row = PromoCode(
+            code=code, kind=kind, value=value,
+            partner=(d.get("partner") or "").strip()[:160] or None,
+            note=(d.get("note") or "").strip()[:300] or None,
+            is_active=bool(d.get("is_active", True)),
+            starts_at=_promo_dt(d.get("starts_at")),
+            expires_at=_promo_dt(d.get("expires_at")),
+            max_uses=int(d["max_uses"]) if str(d.get("max_uses") or "").strip() else None,
+            per_user_limit=int(d.get("per_user_limit") or 1),
+        )
+    except ValueError:
+        return jsonify(error="invalid_date"), 422
+    db.session.add(row)
+    db.session.commit()
+    return jsonify(code=row.to_dict(uses=0)), 201
+
+
+@bp.patch("/promo-codes/<int:pid>")
+@require_role("admin")
+def promo_update(pid):
+    row = db.session.get(PromoCode, pid)
+    if not row:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    # The code string itself is not editable. Partners have already handed it out, and
+    # renaming it would silently break every link and poster carrying the old one.
+    if "is_active" in d:
+        row.is_active = bool(d["is_active"])
+    if "value" in d:
+        try:
+            value = float(d["value"])
+        except (TypeError, ValueError):
+            return jsonify(error="invalid_value"), 422
+        if value <= 0 or (row.kind == "percent" and value > 100):
+            return jsonify(error="invalid_value"), 422
+        row.value = value
+    for field in ("partner", "note"):
+        if field in d:
+            setattr(row, field, (d.get(field) or "").strip() or None)
+    try:
+        if "starts_at" in d:
+            row.starts_at = _promo_dt(d.get("starts_at"))
+        if "expires_at" in d:
+            row.expires_at = _promo_dt(d.get("expires_at"))
+    except ValueError:
+        return jsonify(error="invalid_date"), 422
+    if "max_uses" in d:
+        row.max_uses = int(d["max_uses"]) if str(d.get("max_uses") or "").strip() else None
+    if "per_user_limit" in d:
+        row.per_user_limit = int(d.get("per_user_limit") or 1)
+    db.session.commit()
+    return jsonify(code=row.to_dict(uses=promo_service.uses(row)))
+
+
+@bp.delete("/promo-codes/<int:pid>")
+@require_role("admin")
+def promo_delete(pid):
+    row = db.session.get(PromoCode, pid)
+    if not row:
+        return jsonify(error="not_found"), 404
+    # A code that has been used is part of the payment record. Deactivating keeps the
+    # history intact and stops it working just as well as deleting would.
+    if promo_service.uses(row):
+        row.is_active = False
+        db.session.commit()
+        return jsonify(code=row.to_dict(uses=promo_service.uses(row)), deactivated=True)
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify(deleted=pid)

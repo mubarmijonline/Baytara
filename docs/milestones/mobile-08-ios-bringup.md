@@ -94,8 +94,17 @@ app:
 - **Account deletion.** App Store review asks for it and **no endpoint exists**.
 - **Password reset.** **No endpoint exists.** Not a blocker for review, but it will be the
   first support request after launch.
-- **Universal Links** for the payment return need an `apple-app-site-association` file on
-  `baytara.app`, the iOS counterpart of the `assetlinks.json` already noted in milestone 5.
+- **Universal Links** now cover the shared library pages as well as the payment return
+  (milestone 10). The entitlement is already in the project —
+  `ios/Runner/Runner.entitlements`, referenced by all three Runner build configurations —
+  so two things are left, both outside this repo:
+    1. enable **Associated Domains** for the App ID in the Apple Developer portal, or the
+       build is rejected at signing;
+    2. publish `apple-app-site-association` on `baytara.app`, which
+       `APPLE_TEAM_ID=... deploy/gen_applinks.sh` writes. nginx already has the location
+       block and serves it as `application/json`.
+  The `components` list in that file must stay in step with the intent filters in
+  `AndroidManifest.xml` and with `locationForLink()` in `lib/core/links/app_link.dart`.
 - A privacy policy URL (exists, `https://baytara.app/privacy`) and App Privacy answers.
 
 ## Acceptance, when a Mac exists
@@ -110,3 +119,5 @@ app:
 - [ ] The app-switcher snapshot is covered.
 - [ ] Sign-in, catalogue, payments (per the IAP decision) and verification all work.
 - [ ] Both locales render correctly, RTL included.
+- [ ] A `https://baytara.app/library/<slug>` link tapped in Messages or WhatsApp opens the
+      app on that book, and opens Safari on a device without the app.

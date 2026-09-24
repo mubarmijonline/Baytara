@@ -39,6 +39,20 @@ class CourseExam(db.Model):
     pass_percent = db.Column(db.Integer, nullable=False, default=PASS_PERCENT_DEFAULT,
                              server_default=str(PASS_PERCENT_DEFAULT))
     is_published = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
+
+    # Minutes to finish, or null for no limit. Enforced on the server against the signed
+    # token issued with the paper -- a countdown in a browser is a courtesy, not a rule.
+    time_limit_minutes = db.Column(db.Integer)
+
+    # Draw this many questions at random from the pool, or null to use every one. This is
+    # what turns a bank of forty questions into a ten-question exam that differs per
+    # sitting, which is the usual reason an examiner writes more questions than they ask.
+    questions_per_attempt = db.Column(db.Integer)
+
+    # Show the candidate which ones they got wrong, and the explanation, after marking.
+    # Off by default: on a course with unlimited attempts, handing back the full answer key
+    # turns the second attempt into a copying exercise.
+    show_results = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
     updated_at = db.Column(db.DateTime(timezone=True), default=_now, onupdate=_now)
 
@@ -61,18 +75,31 @@ class CourseExam(db.Model):
         """Published and actually sittable. Anything else is treated as no exam."""
         return bool(self.is_published) and len(self.answerable_questions()) > 0
 
-    def paper_for(self, rng=None):
-        """The questions as one attempt sees them: shuffled, and stripped of the answers.
+    def draw(self, rng=None):
+        """The questions this sitting asks: shuffled, and cut to `questions_per_attempt`.
 
-        A retry changes the order of the questions and of each question's options, and
-        nothing else -- the client asked for exactly that. Order carries no meaning
-        because an answer is submitted by option id, so shuffling here cannot affect
-        marking.
+        Returns the model objects, because the caller has to mark against exactly this set
+        -- marking against the whole bank would count questions the candidate was never
+        shown as wrong.
         """
         rng = rng or random
         questions = list(self.answerable_questions())
         rng.shuffle(questions)
-        return [q.to_paper_dict(rng) for q in questions]
+        limit = self.questions_per_attempt
+        if limit and limit > 0:
+            questions = questions[:limit]
+        return questions
+
+    def paper_for(self, rng=None, questions=None):
+        """The questions as one attempt sees them: shuffled, and stripped of the answers.
+
+        A retry changes the order of the questions and of each question's options, and
+        which questions are drawn when the exam asks for a subset. Order carries no
+        meaning because an answer is submitted by option id, so shuffling cannot affect
+        marking.
+        """
+        rng = rng or random
+        return [q.to_paper_dict(rng) for q in (questions if questions is not None else self.draw(rng))]
 
     def to_dict(self, lang="ar", with_answers=False):
         from .catalog import loc
@@ -84,7 +111,13 @@ class CourseExam(db.Model):
             "title_en": self.title_en,
             "pass_percent": self.pass_percent,
             "is_published": self.is_published,
-            "question_count": len(self.answerable_questions()),
+            "time_limit_minutes": self.time_limit_minutes,
+            "questions_per_attempt": self.questions_per_attempt,
+            "show_results": self.show_results,
+            "bank_count": len(self.answerable_questions()),
+            "question_count": (min(self.questions_per_attempt, len(self.answerable_questions()))
+                               if self.questions_per_attempt
+                               else len(self.answerable_questions())),
             "is_live": self.is_live(),
         }
         if with_answers:
@@ -103,6 +136,11 @@ class ExamQuestion(db.Model):
     text = db.Column(db.Text, nullable=False)
     text_en = db.Column(db.Text)
     position = db.Column(db.Integer, nullable=False, default=0)
+
+    # Why the right answer is right. Shown after marking when the exam allows it; never
+    # part of the paper, or it would carry the answer with it.
+    explanation = db.Column(db.Text)
+    explanation_en = db.Column(db.Text)
 
     exam = db.relationship("CourseExam", back_populates="questions")
     options = db.relationship(
@@ -137,6 +175,8 @@ class ExamQuestion(db.Model):
             "text": loc(self.text, self.text_en, lang),
             "text_en": self.text_en,
             "position": self.position,
+            "explanation": loc(self.explanation, self.explanation_en, lang),
+            "explanation_en": self.explanation_en,
             "is_answerable": self.is_answerable(),
             "options": [o.to_dict(lang, with_answers=with_answers) for o in self.options],
         }
@@ -216,14 +256,18 @@ class ExamAttemptAnswer(db.Model):
     attempt = db.relationship("ExamAttempt", back_populates="answers")
 
 
-def grade(exam, answers):
+def grade(exam, answers, questions=None):
     """Mark one submission. `answers` maps question id -> chosen option id.
 
     Returns (score_percent, correct_count, question_count, rows) where rows are unsaved
     ExamAttemptAnswer records. Only answerable questions count, so a half-written one
     cannot cost a candidate marks.
+
+    `questions` is the set this sitting was actually shown. It matters once an exam draws
+    a subset from a bank: marking against the whole bank would count every question the
+    candidate never saw as wrong.
     """
-    questions = exam.answerable_questions()
+    questions = list(questions) if questions is not None else exam.answerable_questions()
     rows = []
     correct_count = 0
     for question in questions:

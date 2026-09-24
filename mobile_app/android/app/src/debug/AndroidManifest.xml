@@ -4,4 +4,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Debug builds only, and merged into debug builds only: lets the screenshot
+         entrypoint (lib/demo_main.dart) play a demo clip served over plain HTTP from the
+         host machine at 10.0.2.2. Release builds are unaffected. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

@@ -79,6 +79,11 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] Course lifecycle (draft/publish/unpublish/delete) + modules/lessons editor
 - [~] Video: lesson `vdocipher_video_id` field editable; no upload UI yet (VdoCipher = Phase 5)
 - [ ] Reports, instructor permissions, audit logs, settings (need new backend tables)
+- [~] Navigation + dashboard refresh (milestone 15) — seventeen flat destinations grouped
+  into four sections with a `Ctrl+K` quick search, a real drawer below 900px, and `paths`
+  finally in the sidebar instead of reachable only from one tile. The dashboard leads with
+  the queues that are actually waiting instead of thirty tiles of equal weight. Nothing
+  removed: every destination, link target and figure kept, in Arabic and English.
 
 ## Phase 8 — Notifications, content/blog, i18n scaffolding, hardening
 - [x] Notifications (SQL) — emitted on payment approve/reject + admin broadcast (all/role); student API
@@ -110,6 +115,42 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] Video protection hardening — OTPs pinned to viewer IP and site hostname, user id in
   the watermark, paid content refused on the DRM-less server, per-video play counts in
   the admin. Browser warn-vs-block awaits the client. `docs/milestones/14-*.md`
+
+## Phase 13 — Selling on the web (client decision, 2026-09-22)
+- [x] Reader model on iOS — the app shows prices and plays what the account owns, and
+  offers no purchase and no link to one, because a link out is what Guideline 3.1.1
+  actually forbids. All five purchase entry points now ask the flag; three did not, and
+  the flag's own comment claimed otherwise. A source-scanning test keeps that honest.
+- [x] Direct payment link — `/buy/<slug>?go=1` goes straight to the gateway after the
+  server quote, and survives the sign-in round trip. Meant for WhatsApp and email, which
+  is where Apple has no say and where this audience already is.
+- [x] A refused lesson says why and offers the way out, in the middle of the player rather
+  than as grey text under a dead play button; a signed-out viewer is told at all, instead
+  of watching "loading the video" forever. Verification returns to the lesson that asked
+  for it. `docs/milestones/17-*.md`
+- [x] Admin can copy a course's payment link (paid and published only), so sending one is
+  copy and paste rather than assembling a URL by hand.
+- [x] Discount codes — percentage or fixed, optional start/expiry, a total cap and a
+  per-buyer cap that defaults to one. The browser sends a code and never an amount: the
+  charge is recomputed from the code at checkout, so no client can name its own price, and
+  a code refused at that moment fails the checkout rather than quietly charging full price.
+  Usage counts paid payments only, so an abandoned checkout does not burn a one-use code.
+  Website checkout, admin page and the Android app. `docs/milestones/20-promo-codes.md`
+- [x] Exam everywhere — the instructor portal gained the builder it never had (the
+  endpoints existed, the screen did not), the app gained the exam entirely, and the
+  examiner gained a time limit, a random draw from a question bank, an optional marking
+  view and per-question explanations. A signed paper token carries which questions were
+  drawn and when, so a sitting is marked against the questions it asked and a late
+  submission is refused by the server rather than by a countdown. Parity pass closed three
+  policy pages and the second certificate kind in the app.
+  `docs/milestones/21-exam-everywhere.md`
+- [ ] Check Google Play's billing policy against in-app checkout before the Play submission.
+- [ ] Schema drift found while migrating: autogenerate wants to drop unique constraints on
+  `certificates.serial`, `learning_paths.slug`, `video_playback_events.client_event_id` and
+  `video_playback_sessions.public_id`. Kept out of the promo migration; needs its own pass.
+- [x] Header wordmark enlarged and given clear air, laptop and phone, with the header's
+  height finally a CSS variable instead of a literal repeated across five rules.
+  `docs/milestones/18-header-logo.md`
 
 ## Phase 9 — Deployment
 - [x] NginX + HTTPS + security headers (HSTS, CSP, X-Content-Type-Options, X-Frame-Options,
@@ -165,6 +206,22 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
   handling so every self-hosted video was unplayable; no session ever sent an event, so no
   heartbeat ran, no progress was recorded and no course could complete from the app; and a
   resumed lesson opened at zero. 217 tests. **Still nothing on hardware.**
+- [x] mobile-10 Library + the device rule in full — مكتبة بيطرة in the app (articles and
+  book summaries, two shelves, `/blog` redirecting exactly as the website's does) with a
+  read-only reader: pages drawn as images, no download/share/print/selection, the player's
+  capture guard on the route. Not DRM, and the code says so. The device screen now reads
+  the swap allowance, says when the window resets, and offers the admin request once the
+  one self-service change is spent. Fixed three silent defects: `GET /articles` was
+  filtered by `kind`, which the server does not read, so both shelves got every article of
+  both kinds; every article cover was null (`image` vs `cover`); and the blocking
+  device screen offered a Remove button that called a `@jwt_required` endpoint with no
+  token, so it could only ever 401. A book or article can now be shared as an ordinary
+  `baytara.app` link that opens the app for whoever has it and the website for whoever does
+  not; the app claims those paths and translates between the two URL spaces, since an
+  article is `/blog/<slug>` on the site and `/articles/<slug>` in the app. 247 tests.
+  **Still nothing on hardware, and the hand-off stays a disambiguation dialog until
+  `assetlinks.json` is published — which needs a release keystore that does not exist yet.**
+  `docs/milestones/mobile-10-*.md`
 - [ ] mobile-08 iOS bring-up — **BLOCKED: needs macOS. No Swift in this repo has ever been
   compiled.** iOS project prepared (bundle id, deployment target, Info.plist permissions,
   CaptureGuard added to the Xcode project). Handover in `docs/milestones/mobile-08-*.md`.
@@ -175,5 +232,12 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
 - No password-reset endpoint.
 - No account-deletion endpoint — App Store review will ask for one.
 - No push infrastructure; notifications are a 60s poll.
+- A device-limit refusal carries no token, so neither `DELETE /auth/devices/<id>` nor the
+  swap request can be reached from the screen that refusal lands on. A learner whose two
+  registered machines are both gone cannot free a slot from a new phone at all.
+- No endpoint for book reading progress; the app keeps the page per install.
+- No release keystore: release builds still sign with the debug key, which blocks both the
+  Play upload and the App Links fingerprint (`deploy/gen_applinks.sh` writes the file once
+  it exists).
 - `mobile_requires_app` must be switched on only *after* the apps publish — it removes
   protected playback from mobile web entirely.

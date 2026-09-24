@@ -51,7 +51,7 @@
   "phoneSave": "Save and continue",
   "devicesTitle": "Your devices",
   "devicesLimitTitle": "You have reached the device limit",
-  "devicesLimitBody": "Your account allows {max} devices. Remove one to sign in on this device.",
+  "devicesLimitBody": "Your account allows {max} devices. Sign in on one of the devices below, remove a device under Your devices, then come back here.",
   "devicesRemove": "Remove",
   "devicesThisDevice": "This device",
   "devicesLastSeen": "Last seen: {when}",
@@ -225,7 +225,7 @@
   "checkoutPendingTitle": "Payment is processing",
   "checkoutPendingBody": "We do not have a final answer yet. Some payment methods take a few minutes. You will find the status in your payments history, and you do not need to pay again.",
   "checkoutFailedTitle": "Payment did not go through",
-  "checkoutUnavailableOnThisPlatform": "Purchases are not available in the app on this device.",
+  "checkoutUnavailableOnThisPlatform": "To activate a subscription or buy a course, please visit our website baytara.app",
   "renewalExplainer": "Renewal costs {n}% of the course price.",
   "paymentsTitle": "Payments",
   "paymentsEmpty": "No payments yet.",
@@ -432,5 +432,103 @@
   "onboard2Title": "Verification opens the specialist content",
   "onboard2Body": "Free content is open to any account. The specialist veterinary material needs you verified as a vet, not just paid up.",
   "onboard3Title": "Protected content, carrying your details",
-  "onboard3Body": "Your name and phone number are watermarked into every video, which is why we ask for a number before playback. Screen recordings come out black."
+  "onboard3Body": "Your name and phone number are watermarked into every video, which is why we ask for a number before playback. Screen recordings come out black.",
+  "navLibrary": "Library",
+  "libraryTitle": "Baytara Library",
+  "librarySubtitle": "Articles and book summaries, open to everyone.",
+  "libraryArticles": "Articles",
+  "libraryBooks": "Books",
+  "libraryPages": "{n} pages",
+  "@libraryPages": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryEmpty": "Nothing here yet.",
+  "librarySignInToRead": "Create a free account to read the full summary.",
+  "librarySignIn": "Sign in",
+  "libraryNoFile": "This summary is not available yet.",
+  "readerPageOf": "{page} of {total}",
+  "@readerPageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "readerCaptureBlocked": "Hidden while a screen recording is running. Stop the recording to carry on reading.",
+  "readerFailed": "Unable to open the summary.",
+  "devicesSwapsLeft": "Device changes: {used} of {allowed} used in the current period.",
+  "@devicesSwapsLeft": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "allowed": {
+        "type": "int"
+      }
+    }
+  },
+  "devicesSwapResets": "Resets on {when}.",
+  "@devicesSwapResets": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesSwapSpentTitle": "Your device change is used up",
+  "devicesSwapSpentBody": "You have already changed a device in this period. Removing another one needs an admin to agree — tell us why and we will review it.",
+  "devicesResetReason": "Why you need this (optional)",
+  "devicesResetSubmit": "Send the request to an admin",
+  "devicesResetPending": "Your request is being reviewed. Do not send another one — the answer arrives in your notifications.",
+  "devicesResetSentAt": "Sent on {when}.",
+  "@devicesResetSentAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "errDeviceSwapLimit": "You have used your device change for this period.",
+  "errSwapStillAvailable": "You still have a change available — remove the device directly.",
+  "shareTooltip": "Share",
+  "promoPlaceholder": "Discount code",
+  "promoApply": "Apply",
+  "promoRemove": "Remove",
+  "errPromoNotFound": "That discount code is not valid.",
+  "errPromoInactive": "That discount code is not active.",
+  "errPromoExpired": "That discount code has expired.",
+  "errPromoNotStarted": "That discount code is not available yet.",
+  "errPromoExhausted": "This code has reached its usage limit.",
+  "errPromoAlreadyUsed": "You have already used this code.",
+  "errPromoNoEffect": "This code does not change the price.",
+  "examTitle": "End-of-course exam",
+  "examPassMark": "Pass mark {percent}%. Multiple choice, one correct answer per question.",
+  "@examPassMark": {"placeholders": {"percent": {"type": "int"}}},
+  "examNotEligible": "Finish every lesson first. You are at {percent}% so far.",
+  "@examNotEligible": {"placeholders": {"percent": {"type": "int"}}},
+  "examEmpty": "This exam has no questions yet.",
+  "examSubmit": "Submit answers",
+  "examPartialWarning": "{count} questions are unanswered. Press submit again to continue; an unanswered question is marked wrong.",
+  "@examPartialWarning": {"placeholders": {"count": {"type": "int"}}},
+  "examScoreLine": "{correct} correct out of {total}.",
+  "@examScoreLine": {"placeholders": {"correct": {"type": "int"}, "total": {"type": "int"}}},
+  "examPassed": "You passed. Your certificate is ready.",
+  "examFailed": "You did not reach the pass mark ({percent}%). Attempts are unlimited, try again.",
+  "@examFailed": {"placeholders": {"percent": {"type": "int"}}},
+  "examRetry": "Try again",
+  "examViewCertificate": "View certificate",
+  "examReview": "Review your answers",
+  "examCorrectAnswer": "Correct answer: {answer}",
+  "@examCorrectAnswer": {"placeholders": {"answer": {"type": "String"}}},
+  "examAction": "Take the exam",
+  "settingsTerms": "Terms and conditions",
+  "settingsRefund": "Refund policy",
+  "settingsDelivery": "Delivery and access"
 }

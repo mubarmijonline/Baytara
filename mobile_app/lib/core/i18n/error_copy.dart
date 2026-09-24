@@ -18,6 +18,8 @@ extension ApiErrorCopy on ApiErrorCode {
         ApiErrorCode.googleNotConfigured => l.errGoogleUnavailable,
 
         ApiErrorCode.deviceLimitReached => l.errDeviceLimit,
+        ApiErrorCode.deviceSwapLimitReached => l.errDeviceSwapLimit,
+        ApiErrorCode.swapStillAvailable => l.errSwapStillAvailable,
         ApiErrorCode.deviceRequired ||
         ApiErrorCode.deviceMismatch ||
         ApiErrorCode.deviceNotRegistered =>
@@ -105,3 +107,19 @@ extension PlaybackRecoveryFor on ApiErrorCode {
         _ => PlaybackRecovery.terminal,
       };
 }
+
+/// A promo refusal, as the buyer reads it.
+///
+/// Separate from [ApiErrorCopy] because these codes arrive two ways: as an `error` on a
+/// refused checkout, and as `promo_error` on a quote that still succeeded. The second is
+/// not an exception at all, so it never reaches the ApiErrorCode mapper.
+String promoErrorMessage(String wire, L10n l) => switch (wire) {
+      'promo_not_found' => l.errPromoNotFound,
+      'promo_inactive' => l.errPromoInactive,
+      'promo_expired' => l.errPromoExpired,
+      'promo_not_started' => l.errPromoNotStarted,
+      'promo_exhausted' => l.errPromoExhausted,
+      'promo_already_used' => l.errPromoAlreadyUsed,
+      'promo_no_effect' => l.errPromoNoEffect,
+      _ => l.errUnknown,
+    };

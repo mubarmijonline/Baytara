@@ -1,6 +1,7 @@
 /* @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
+import { SUPPORT_EMAIL } from '../lib/support.js';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
@@ -108,8 +109,12 @@ it('reaches the privacy policy from the footer, with the configured support emai
 
   expect(window.location.pathname).toBe('/privacy');
   expect(await screen.findByRole('heading', { name: 'سياسة الخصوصية' })).toBeVisible();
-  expect(screen.getByRole('link', { name: 'configured@baytara.app' }))
-    .toHaveAttribute('href', 'mailto:configured@baytara.app');
+  // Plural since the footer started publishing the contact details too: the address now
+  // appears both in the policy and at the bottom of every page, and both must be a live
+  // mailto rather than plain text.
+  const emailLinks = screen.getAllByRole('link', { name: 'configured@baytara.app' });
+  expect(emailLinks.length).toBeGreaterThan(0);
+  emailLinks.forEach((link) => expect(link).toHaveAttribute('href', 'mailto:configured@baytara.app'));
 });
 
 it('reaches the refund policy from the footer, and publishes no placeholder WhatsApp', async () => {
@@ -120,8 +125,11 @@ it('reaches the refund policy from the footer, and publishes no placeholder What
 
   expect(window.location.pathname).toBe('/refund');
   expect(await screen.findByRole('heading', { name: 'سياسة الاسترجاع والإلغاء' })).toBeVisible();
-  expect(screen.getByRole('link', { name: 'support@baytara.app' }))
-    .toHaveAttribute('href', 'mailto:support@baytara.app');
+  // Asserted against the shared constant rather than a literal: the address changes when
+  // the mailbox does, and a test that pins the old one turns a deliberate change into a
+  // failure.
+  expect(screen.getByRole('link', { name: SUPPORT_EMAIL }))
+    .toHaveAttribute('href', `mailto:${SUPPORT_EMAIL}`);
   // No WhatsApp number is configured in these settings, so the clause must not render.
   expect(screen.queryByText(/واتساب/)).toBeNull();
 });

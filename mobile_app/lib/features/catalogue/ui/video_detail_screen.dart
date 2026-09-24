@@ -15,6 +15,7 @@ import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
+import '../../payments/data/purchase_availability.dart';
 import '../../auth/domain/session.dart';
 import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
@@ -163,6 +164,11 @@ class _Cta extends StatelessWidget {
     // A video with no media attached cannot be played however entitled the user is.
     if (!video.hasVideo) {
       return _Notice(text: l.errNoVideo);
+    }
+
+    if (access.reason == LockReason.needsPurchase &&
+        !PurchaseAvailability.purchasesEnabled) {
+      return _Notice(text: l.checkoutUnavailableOnThisPlatform);
     }
 
     final (label, onTap) = switch (access.reason) {

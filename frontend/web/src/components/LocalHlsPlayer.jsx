@@ -1,9 +1,116 @@
+import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { auth } from '../lib/api.js';
 import { startAudioWatermark } from '../lib/audioWatermark.js';
 import { diagEnabled, diagLog } from '../lib/diag.js';
 import { startActivityGuard } from '../lib/activityGuard.js';
+
+/* ---- the control bar ------------------------------------------------------------------
+   Our own, because the browser's could not be made to work here.
+
+   The native bar's fullscreen button puts the <video> element full screen, and the
+   identity watermark is a sibling of that element, so it is left behind on the page. The
+   previous attempt caught that and redirected full screen onto the container, which failed
+   in the two places it was most needed: on Android the re-request landed outside the user
+   gesture and was refused, so the picture flashed and came back (the "lag then nothing"),
+   and on an iPhone there is no element full screen at all, so the video simply opened in
+   iOS's own player where no overlay can follow it.
+
+   With `controls` off, the video has no way to escape on its own. The bar below looks and
+   behaves like the standard one, and its full screen button acts on the shell.
+*/
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function ControlBar({ videoRef, shellRef, fullscreen, onToggleFullscreen }) {
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [muted, setMuted] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+    const sync = () => {
+      setPlaying(!video.paused && !video.ended);
+      setCurrent(video.currentTime || 0);
+      setDuration(Number.isFinite(video.duration) ? video.duration : 0);
+      setMuted(video.muted);
+    };
+    const events = ['play', 'pause', 'timeupdate', 'durationchange', 'volumechange', 'ended', 'loadedmetadata'];
+    events.forEach((name) => video.addEventListener(name, sync));
+    sync();
+    return () => events.forEach((name) => video.removeEventListener(name, sync));
+  }, [videoRef]);
+
+  // Read at call time, never captured during render: on the first render the ref is still
+  // null, so a captured `video` left the very first tap on play doing nothing at all.
+  const percent = duration > 0 ? (current / duration) * 100 : 0;
+
+  const btn = {
+    background: 'transparent', border: 0, color: '#fff', cursor: 'pointer',
+    padding: 6, display: 'grid', placeItems: 'center', lineHeight: 1,
+  };
+
+  return (
+    <div
+      className="local-player-bar"
+      // Stops a tap on the bar counting as a tap on the picture.
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'absolute', insetInline: 0, bottom: 0, zIndex: 4,
+        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+        background: 'linear-gradient(transparent, rgba(0,0,0,.72))',
+        direction: 'ltr',
+      }}
+    >
+      <button type="button" style={btn} aria-label={playing ? 'إيقاف مؤقت' : 'تشغيل'}
+        data-testid="local-video-play"
+        onClick={() => {
+          const video = videoRef.current;
+          if (!video) return;
+          if (playing) video.pause(); else video.play();
+        }}>
+        {playing ? <Pause size={20} /> : <Play size={20} />}
+      </button>
+
+      <span style={{ color: '#fff', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', minWidth: 78 }}>
+        {formatTime(current)} / {formatTime(duration)}
+      </span>
+
+      <input
+        type="range" min="0" max="100" step="0.1" value={percent}
+        aria-label="موضع التشغيل"
+        onChange={(e) => {
+          const video = videoRef.current;
+          if (video && duration > 0) video.currentTime = (Number(e.target.value) / 100) * duration;
+        }}
+        style={{ flex: 1, accentColor: '#3048A0', cursor: 'pointer' }}
+      />
+
+      <button type="button" style={btn} aria-label={muted ? 'تشغيل الصوت' : 'كتم الصوت'}
+        onClick={() => {
+          const video = videoRef.current;
+          if (video) video.muted = !video.muted;
+        }}>
+        {muted ? <VolumeX size={19} /> : <Volume2 size={19} />}
+      </button>
+
+      {/* The same icon as before, and the only one. It acts on the shell, so the
+          watermark goes full screen with the picture. */}
+      <button type="button" style={btn} data-testid="local-video-fullscreen"
+        aria-label={fullscreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}
+        onClick={onToggleFullscreen}>
+        {fullscreen ? <Minimize size={19} /> : <Maximize size={19} />}
+      </button>
+    </div>
+  );
+}
 
 // Player for self-hosted lessons (encrypted HLS from this server). Safari plays HLS
 // natively; everywhere else hls.js does. The moving overlay carries the viewer's identity,
@@ -13,6 +120,7 @@ import { startActivityGuard } from '../lib/activityGuard.js';
 // The two watermarks are what make a capture traceable.
 export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityError }) {
   const videoRef = useRef(null);
+  const shellRef = useRef(null);
   const [offset, setOffset] = useState({ top: '12%', left: '8%' });
   const [halted, setHalted] = useState('');
   const [strikes, setStrikes] = useState(0);      // suspicious events in this session
@@ -148,6 +256,81 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
     return () => clearTimeout(timer);
   }, [cooldown]);
 
+  // ---- fullscreen ----
+  //
+  // The shell goes full screen, never the <video>. The watermark is a sibling of the video
+  // element, so a video that goes full screen on its own leaves the identity mark behind
+  // on the page -- at the moment it matters most.
+  //
+  // Catching the browser's own request and redirecting it was tried and failed in the two
+  // places it was needed most: on Android the re-request landed outside the user gesture
+  // and was refused, so the picture flashed and came back, and an iPhone has no element
+  // full screen at all, so the video opened in iOS's own player where no overlay follows.
+  //
+  // So the native controls are off entirely and the bar is ours. There is nothing left
+  // that can put the bare video full screen.
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // iOS on iPhone has no Element.requestFullscreen. The fallback is what every web player
+  // does there: pin the shell over the viewport with CSS. It is not the OS full screen,
+  // but it fills the screen and, unlike the native player, it carries the watermark.
+  const canElementFullscreen = typeof document !== 'undefined'
+    && (document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  const [pinned, setPinned] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => {
+      const active = document.fullscreenElement || document.webkitFullscreenElement || null;
+      setFullscreen(Boolean(active));
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
+
+  // The page must not scroll behind a pinned player, and the class has to come off if the
+  // component unmounts while pinned.
+  useEffect(() => {
+    if (!pinned) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [pinned]);
+
+  const toggleFullscreen = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    if (!canElementFullscreen) {
+      setPinned((on) => !on);
+      setFullscreen((on) => !on);
+      return;
+    }
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+      return;
+    }
+    // Called straight from the click, so the user gesture is intact -- which is exactly
+    // what the old redirect lost.
+    const request = shell.requestFullscreen || shell.webkitRequestFullscreen;
+    try {
+      const result = request?.call(shell);
+      if (result?.catch) {
+        result.catch(() => {
+          // Refused: fall back to pinning rather than leaving the button doing nothing.
+          diagLog('FULLSCREEN', 'element request refused; pinning instead');
+          setPinned(true);
+          setFullscreen(true);
+        });
+      }
+    } catch {
+      setPinned(true);
+      setFullscreen(true);
+    }
+  };
+
   // ---- moving identity watermark ----
   useEffect(() => {
     if (!playback?.watermark) return undefined;
@@ -160,17 +343,30 @@ export default function LocalHlsPlayer({ playback, title, onEnded, onSecurityErr
   }, [playback, strikes]);
 
   return (
-    <div className="secure-video-shell" data-testid="local-video-shell"
+    <div ref={shellRef}
+         className={`secure-video-shell${pinned ? ' secure-video-shell-pinned' : ''}`}
+         data-testid="local-video-shell"
          onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
       <video
         ref={videoRef}
         title={title}
-        controls
+        // No native controls: they are the only thing that could put the bare video full
+        // screen, and on iOS that means handing it to a player no overlay can reach.
+        // `playsInline` is what stops iOS doing that on play as well.
         playsInline
         controlsList="nodownload noplaybackrate"
         disablePictureInPicture
-        style={{ background: '#000' }}
+        onClick={() => {
+          const video = videoRef.current;
+          if (!video) return;
+          if (video.paused) video.play(); else video.pause();
+        }}
+        style={{ background: '#000', cursor: 'pointer' }}
       />
+      {!halted && (
+        <ControlBar videoRef={videoRef} shellRef={shellRef} fullscreen={fullscreen}
+          onToggleFullscreen={toggleFullscreen} />
+      )}
       {halted && (
         <div data-testid="local-video-halted"
              style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 20,

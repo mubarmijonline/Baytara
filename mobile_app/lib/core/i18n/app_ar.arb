@@ -51,7 +51,7 @@
   "phoneSave": "حفظ ومتابعة",
   "devicesTitle": "أجهزتك",
   "devicesLimitTitle": "وصلت للحد الأقصى من الأجهزة",
-  "devicesLimitBody": "يسمح حسابك بـ {max} جهازين. احذف جهازاً لتسجيل الدخول على هذا الجهاز.",
+  "devicesLimitBody": "يسمح حسابك بـ {max} جهازين. سجّل الدخول من أحد الأجهزة التالية، واحذف جهازاً من «أجهزتك» في الحساب، ثم ارجع هنا.",
   "devicesRemove": "حذف",
   "devicesThisDevice": "هذا الجهاز",
   "devicesLastSeen": "آخر ظهور: {when}",
@@ -225,7 +225,7 @@
   "checkoutPendingTitle": "الدفع قيد المعالجة",
   "checkoutPendingBody": "لم تصلنا نتيجة نهائية بعد. بعض وسائل الدفع تستغرق دقائق. ستجد الحالة في سجل المدفوعات، ولا حاجة للدفع مرة أخرى.",
   "checkoutFailedTitle": "لم تتم العملية",
-  "checkoutUnavailableOnThisPlatform": "الشراء غير متاح داخل التطبيق على هذا الجهاز.",
+  "checkoutUnavailableOnThisPlatform": "لتفعيل الاشتراك أو شراء الدورة، يرجى زيارة موقعنا الإلكتروني baytara.app",
   "renewalExplainer": "رسوم التجديد {n}% من سعر الدورة.",
   "paymentsTitle": "المدفوعات",
   "paymentsEmpty": "لا توجد مدفوعات.",
@@ -432,5 +432,103 @@
   "onboard2Title": "التوثيق يفتح المحتوى المتخصص",
   "onboard2Body": "المحتوى المجاني متاح لأي حساب. أما المحتوى البيطري المتخصص فيحتاج توثيق أنك طبيب بيطري، وليس دفعاً فقط.",
   "onboard3Title": "محتوى محمي، وبياناتك عليه",
-  "onboard3Body": "يظهر اسمك ورقم هاتفك كعلامة مائية داخل كل فيديو، ولهذا نطلب رقم الهاتف قبل التشغيل. تسجيل الشاشة يخرج بصورة سوداء."
+  "onboard3Body": "يظهر اسمك ورقم هاتفك كعلامة مائية داخل كل فيديو، ولهذا نطلب رقم الهاتف قبل التشغيل. تسجيل الشاشة يخرج بصورة سوداء.",
+  "navLibrary": "المكتبة",
+  "libraryTitle": "مكتبة بيطرة",
+  "librarySubtitle": "مقالات وملخصات كتب، متاحة للجميع.",
+  "libraryArticles": "المقالات",
+  "libraryBooks": "الكتب",
+  "libraryPages": "{n} صفحة",
+  "@libraryPages": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryEmpty": "لا يوجد محتوى حتى الآن.",
+  "librarySignInToRead": "سجّل حساب مجاني عشان تقرأ الملخص كامل.",
+  "librarySignIn": "تسجيل الدخول",
+  "libraryNoFile": "الملخص مش متاح دلوقتي.",
+  "readerPageOf": "{page} من {total}",
+  "@readerPageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "readerCaptureBlocked": "أوقفنا العرض لأن تسجيل الشاشة شغّال. أوقف التسجيل وارجع للصفحة.",
+  "readerFailed": "تعذّر فتح الملخص.",
+  "devicesSwapsLeft": "تغييرات الأجهزة: استخدمت {used} من {allowed} في الفترة الحالية.",
+  "@devicesSwapsLeft": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "allowed": {
+        "type": "int"
+      }
+    }
+  },
+  "devicesSwapResets": "تتجدّد في {when}.",
+  "@devicesSwapResets": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesSwapSpentTitle": "استهلكت التغيير المتاح",
+  "devicesSwapSpentBody": "غيّرت جهازاً بالفعل في هذه الفترة. لحذف جهاز آخر نحتاج موافقة الإدارة — اكتب السبب وسنراجع الطلب.",
+  "devicesResetReason": "سبب الطلب (اختياري)",
+  "devicesResetSubmit": "إرسال الطلب للإدارة",
+  "devicesResetPending": "طلبك قيد المراجعة. لا ترسل طلباً آخر — سنرد عليك في الإشعارات.",
+  "devicesResetSentAt": "أُرسل في {when}.",
+  "@devicesResetSentAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "errDeviceSwapLimit": "استهلكت تغيير الجهاز المتاح في هذه الفترة.",
+  "errSwapStillAvailable": "لسه عندك تغيير متاح — احذف الجهاز مباشرة.",
+  "shareTooltip": "مشاركة",
+  "promoPlaceholder": "كود الخصم",
+  "promoApply": "تطبيق",
+  "promoRemove": "إزالة",
+  "errPromoNotFound": "كود الخصم غير صحيح.",
+  "errPromoInactive": "كود الخصم غير مُفعّل.",
+  "errPromoExpired": "انتهت صلاحية كود الخصم.",
+  "errPromoNotStarted": "كود الخصم لم يبدأ بعد.",
+  "errPromoExhausted": "انتهى عدد مرات استخدام هذا الكود.",
+  "errPromoAlreadyUsed": "استخدمت هذا الكود من قبل.",
+  "errPromoNoEffect": "هذا الكود لا يُغيّر السعر.",
+  "examTitle": "اختبار نهاية الدورة",
+  "examPassMark": "درجة النجاح {percent}%. الأسئلة اختيار من متعدد، وإجابة واحدة صحيحة لكل سؤال.",
+  "@examPassMark": {"placeholders": {"percent": {"type": "int"}}},
+  "examNotEligible": "أكمل كل دروس الدورة أولاً. أنجزت {percent}% حتى الآن.",
+  "@examNotEligible": {"placeholders": {"percent": {"type": "int"}}},
+  "examEmpty": "لا توجد أسئلة في هذا الاختبار بعد.",
+  "examSubmit": "تسليم الإجابات",
+  "examPartialWarning": "لديك {count} سؤالاً بدون إجابة. اضغط تسليم مرة أخرى للمتابعة، فالسؤال غير المُجاب يُحتسب خطأً.",
+  "@examPartialWarning": {"placeholders": {"count": {"type": "int"}}},
+  "examScoreLine": "{correct} إجابة صحيحة من {total}.",
+  "@examScoreLine": {"placeholders": {"correct": {"type": "int"}, "total": {"type": "int"}}},
+  "examPassed": "نجحت. مبروك، شهادتك جاهزة.",
+  "examFailed": "لم تبلغ درجة النجاح ({percent}%). المحاولات غير محدودة، جرّب مرة أخرى.",
+  "@examFailed": {"placeholders": {"percent": {"type": "int"}}},
+  "examRetry": "إعادة المحاولة",
+  "examViewCertificate": "عرض الشهادة",
+  "examReview": "مراجعة الإجابات",
+  "examCorrectAnswer": "الإجابة الصحيحة: {answer}",
+  "@examCorrectAnswer": {"placeholders": {"answer": {"type": "String"}}},
+  "examAction": "دخول الاختبار",
+  "settingsTerms": "الشروط والأحكام",
+  "settingsRefund": "سياسة الاسترجاع",
+  "settingsDelivery": "تقديم وتفعيل الخدمات"
 }

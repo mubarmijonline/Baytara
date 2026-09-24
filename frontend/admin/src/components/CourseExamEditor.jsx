@@ -19,6 +19,7 @@ const BLANK = { text: '', options: [{ text: '', is_correct: true }, { text: '', 
 function QuestionForm({ initial, copy, onCancel, onSave, saving }) {
   const [draft, setDraft] = useState(() => ({
     text: initial?.text || '',
+    explanation: initial?.explanation || '',
     options: (initial?.options || BLANK.options).map((o) => ({ text: o.text, is_correct: !!o.is_correct })),
   }));
   const setOption = (index, patch) => setDraft((d) => ({
@@ -57,6 +58,10 @@ function QuestionForm({ initial, copy, onCancel, onSave, saving }) {
           )}
         </div>
       ))}
+      <Field label={copy.explanation} hint={copy.explanationHint}>
+        <textarea rows={2} value={draft.explanation}
+          onChange={(event) => setDraft((d) => ({ ...d, explanation: event.target.value }))} />
+      </Field>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
         <button className="btn btn-tonal btn-sm" type="button"
           onClick={() => setDraft((d) => ({ ...d, options: [...d.options, { text: '', is_correct: false }] }))}>
@@ -112,6 +117,25 @@ export default function CourseExamEditor({ courseId, copy, t }) {
                 onChange={(event) => setExam((e) => ({ ...(e || {}), pass_percent: event.target.value }))}
                 onBlur={(event) => run(() => api.courseExamSave(courseId, { pass_percent: Number(event.target.value) }))} />
             </Field>
+            <Field label={copy.timeLimit} hint={copy.timeLimitHint}>
+              <input type="number" min="0" style={{ width: 110 }}
+                value={exam?.time_limit_minutes ?? ''}
+                placeholder={copy.noLimit}
+                onChange={(event) => setExam((e) => ({ ...(e || {}), time_limit_minutes: event.target.value }))}
+                onBlur={(event) => run(() => api.courseExamSave(courseId, { time_limit_minutes: event.target.value }))} />
+            </Field>
+            <Field label={copy.perAttempt} hint={copy.perAttemptHint}>
+              <input type="number" min="0" style={{ width: 110 }}
+                value={exam?.questions_per_attempt ?? ''}
+                placeholder={copy.allQuestions}
+                onChange={(event) => setExam((e) => ({ ...(e || {}), questions_per_attempt: event.target.value }))}
+                onBlur={(event) => run(() => api.courseExamSave(courseId, { questions_per_attempt: event.target.value }))} />
+            </Field>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10 }}>
+              <input type="checkbox" checked={!!exam?.show_results} disabled={saving}
+                onChange={(event) => run(() => api.courseExamSave(courseId, { show_results: event.target.checked }))} />
+              <span title={copy.showResultsHint}>{copy.showResults}</span>
+            </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10 }}>
               <input type="checkbox" checked={!!exam?.is_published} disabled={saving}
                 onChange={(event) => run(() => api.courseExamSave(courseId, { is_published: event.target.checked }))} />

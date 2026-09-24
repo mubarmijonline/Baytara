@@ -24,17 +24,26 @@ class FakePaymentRepo implements PaymentRepository {
     return answer as Payment;
   }
 
+  /// The code the screen sent, so a test can assert it was passed through rather than
+  /// dropped on the way to the server.
+  String? lastQuoteCode;
+  String? lastCheckoutCode;
+
   @override
   Future<PaymentQuote> quote({
-    required PaymentKind kind, int? courseId, int? bundleId, int? videoId,
-  }) async =>
-      const PaymentQuote(kind: PaymentKind.enroll, expectedAmount: 450, title: 't');
+    required PaymentKind kind, int? courseId, int? bundleId, int? videoId, String? code,
+  }) async {
+    lastQuoteCode = code;
+    return const PaymentQuote(kind: PaymentKind.enroll, expectedAmount: 450, title: 't');
+  }
 
   @override
   Future<CheckoutSession> checkout({
-    required PaymentKind kind, int? courseId, int? bundleId, int? videoId,
-  }) async =>
-      const CheckoutSession(url: 'https://gateway.test/pay/1', paymentId: 1);
+    required PaymentKind kind, int? courseId, int? bundleId, int? videoId, String? code,
+  }) async {
+    lastCheckoutCode = code;
+    return const CheckoutSession(url: 'https://gateway.test/pay/1', paymentId: 1);
+  }
 
   @override
   Future<List<Payment>> history() async => const [];
@@ -55,6 +64,7 @@ Payment _payment(String status) => Payment(
 Future<void> _noWait(Duration _) async {}
 
 void main() {
+  _promoTests();
   group('payment status', () {
     test('only paid is paid', () {
       expect(_payment('paid').isPaid, isTrue);
@@ -190,5 +200,35 @@ void main() {
           {'kind': 'enroll', 'expected_amount': 450.0, 'title': 'x', 'renewal_percent': null});
       expect(q.renewalPercent, isNull);
     });
+  });
+}
+
+// ---- discount codes -------------------------------------------------------------------
+
+void _promoTests() {
+  test('a quote reads the discount the server worked out', () {
+    final q = PaymentQuote.fromJson({
+      'kind': 'enroll', 'expected_amount': 500, 'title': 't',
+      'discount': 50, 'final_amount': 450, 'promo': {'code': 'SAVE10'},
+    });
+    expect(q.expectedAmount, 500);
+    expect(q.discount, 50);
+    expect(q.payable, 450);
+    expect(q.promoCode, 'SAVE10');
+    expect(q.promoError, isNull);
+  });
+
+  test('a refused code leaves the full price standing', () {
+    final q = PaymentQuote.fromJson({
+      'kind': 'enroll', 'expected_amount': 500, 'title': 't', 'promo_error': 'promo_expired',
+    });
+    expect(q.promoError, 'promo_expired');
+    expect(q.payable, 500, reason: 'a bad code must not read as a free course');
+    expect(q.discount, 0);
+  });
+
+  test('an older server that sends no final_amount still charges the list price', () {
+    final q = PaymentQuote.fromJson({'kind': 'enroll', 'expected_amount': 500, 'title': 't'});
+    expect(q.payable, 500);
   });
 }

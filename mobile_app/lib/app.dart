@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'core/i18n/app_localizations.dart';
 import 'core/i18n/locale_controller.dart';
+import 'core/links/app_link.dart';
 import 'core/theme/app_theme.dart';
 import 'features/payments/application/checkout_controller.dart';
 import 'features/payments/application/deep_links.dart';
@@ -29,10 +33,27 @@ class _BaytaraAppState extends ConsumerState<BaytaraApp> {
 
   void _onDeepLink(Uri uri) {
     final callback = parsePaymentCallback(uri);
-    if (callback.paymentId == null) return;
-    // Only the id is used, and only to ask the server what happened. The `status` parameter
-    // in the URL is never treated as an outcome.
-    ref.read(routerProvider).push('/payment/callback?pid=${callback.paymentId}');
+    if (callback.paymentId != null) {
+      // Only the id is used, and only to ask the server what happened. The `status`
+      // parameter in the URL is never treated as an outcome.
+      ref.read(routerProvider).push('/payment/callback?pid=${callback.paymentId}');
+      return;
+    }
+
+    // A shared page: a book summary or an article. The OS handed it to us because the app
+    // claims those paths on baytara.app, so the reader lands on the screen rather than in
+    // a browser -- and someone without the app installed gets the website, which is the
+    // point of sharing the site's URL rather than a private scheme.
+    final location = locationForLink(uri);
+    if (location != null) {
+      ref.read(routerProvider).push(location);
+      return;
+    }
+
+    // Claimed but unmapped. Rather than swallowing the tap, hand it back to the browser so
+    // the reader still gets the page. `externalApplication` is what stops it bouncing
+    // straight back into this app.
+    unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
   }
 
   @override

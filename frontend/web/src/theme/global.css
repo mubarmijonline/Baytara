@@ -13,7 +13,22 @@
   --ink: #1E2A5E;
   --muted: #5A6180;
   --line: #ececf2;
+
+  /* The header bar and the wordmark inside it.
+     Variables rather than numbers because four other things are pinned to the header's
+     height -- the sticky profile tab strip, the notification sheet on a phone and its
+     max-height -- and they were written as literal 74px and 54px. Growing the logo by
+     hand meant finding all of them; now it is one value. */
+  --site-header-h: 86px;
+  --site-logo-h: 56px;
 }
+
+/* A little air after the wordmark, on top of the row's own 20px gap. Deliberately small:
+   the separation people actually notice comes from the nav being centred in the space
+   between the mark and the account cluster, not from padding the logo. A big margin here
+   plus the auto-margin on the right pooled all the slack into one void in the middle of
+   the bar, which read as an unfinished header rather than a spacious one. */
+.site-logo { margin-inline-end: 12px; }
 
 * {
   box-sizing: border-box;
@@ -129,6 +144,12 @@ textarea {
 }
 
 @media (max-width: 1100px) {
+  /* A narrow laptop still shows all six nav items, so the wordmark takes the middle size
+     rather than the large one. The client asked for a noticeable bump, not a header that
+     pushes the menu off its own bar. */
+  :root { --site-header-h: 78px; --site-logo-h: 48px; }
+  .site-logo { margin-inline-end: 8px; }
+
   .videos-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
@@ -186,7 +207,7 @@ textarea {
 
 /* The tab strip pins under the site header so switching tabs never means scrolling
    back past the cover photo. scroll-margin-top keeps the panel clear of both bars. */
-.profile-tabs-bar { position: sticky; top: 74px; z-index: 20; }
+.profile-tabs-bar { position: sticky; top: var(--site-header-h); z-index: 20; }
 .profile-body { scroll-margin-top: 132px; }
 
 @media (max-width: 760px) {
@@ -203,7 +224,7 @@ textarea {
   .profile-body { padding: 16px !important; scroll-margin-top: 104px; }
   /* The six tabs scroll sideways rather than wrapping into a second row. */
   .profile-tabs { padding: 0 16px !important; gap: 18px !important; }
-  .profile-tabs-bar { top: 54px; }
+  .profile-tabs-bar { top: var(--site-header-h); }
   .profile-photo-grid { grid-template-columns: 1fr !important; }
 }
 
@@ -235,12 +256,12 @@ textarea {
   .notif-panel {
     position: fixed;
     inset-inline: 10px;
-    top: 60px;
+    top: calc(var(--site-header-h) + 6px);
     width: auto;
     /* Clears the 54px header above and the fixed bottom tab bar below; dvh so the
        phone browser's own chrome does not push the last row out of reach. */
-    max-height: calc(100vh - 148px);
-    max-height: calc(100dvh - 148px);
+    max-height: calc(100vh - var(--site-header-h) - 94px);
+    max-height: calc(100dvh - var(--site-header-h) - 94px);
     border-radius: 16px;
     z-index: 70;
   }
@@ -344,6 +365,38 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 .secure-video-shell iframe, .secure-video-shell video {
   display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%;
   object-fit: contain; border: 0; }
+
+/* Full screen. The shell is what goes fullscreen, not the <video>, so the identity
+   watermark stays on the picture — see LocalHlsPlayer.jsx. Its normal `position:absolute;
+   inset:0` is meaningless once it is the fullscreen root, so the size is stated here. */
+.secure-video-shell:fullscreen,
+.secure-video-shell:-webkit-full-screen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+/* The iPhone fallback. Safari on iPhone has no Element.requestFullscreen at all — only the
+   video's own native player, which no overlay can follow, so the watermark would be lost
+   exactly where it is needed. Pinning the shell over the viewport is what every web player
+   does there: not the OS full screen, but it fills the screen and keeps the mark.
+   dvh rather than vh so the browser's own chrome does not push the control bar off. */
+.secure-video-shell-pinned {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 9999;
+  background: #000;
+  border-radius: 0;
+}
+
+/* The bar sits above the watermark and below nothing. */
+.local-player-bar { touch-action: manipulation; }
+.local-player-bar input[type="range"] { height: 22px; }
 
 /* 16:9 stage that holds a player. overflow:hidden is the second half of the iOS fix:
    even if something inside does overrun, it is clipped to the box instead of pushing the
@@ -516,14 +569,41 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 .site-tabbar a { padding: 6px 0; }
 
 @media (max-width: 760px) {
+  /* A phone bar cannot be as tall as a laptop one, but the wordmark still grows: 32px was
+     small enough that the icons beside it read as equally important. */
+  :root { --site-header-h: 64px; --site-logo-h: 40px; }
+
   body { font-size: 15px; }
   .site-utility-bar { display: none !important; }
   .site-tabbar { display: grid; }
   /* Keep the last section clear of the fixed bar. */
   .site-main { padding-bottom: 4px; }
   footer { padding-bottom: 64px; }
-  .site-header-inner { height: 54px !important; padding: 0 16px !important; gap: 10px !important; }
-  .site-logo { height: 32px !important; }
+
+  /* The footer used to collapse to a single column, which left every link hugging one
+     edge with the other half of the screen empty and made the whole thing 1160px tall on
+     a 390px phone. Two columns for the link groups halves that and uses the width. The
+     brand block keeps the full row because the tagline and the contact lines need it. */
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 26px 20px !important;
+  }
+  .footer-brand { grid-column: 1 / -1; }
+
+  /* Stacked and centred rather than pushed to opposite ends: at this width
+     space-between puts the copyright alone on one line and the four policy links on
+     another, ragged against the edge. */
+  .footer-bottom {
+    flex-direction: column;
+    align-items: center !important;
+    text-align: center;
+    gap: 14px !important;
+  }
+  .footer-legal { justify-content: center; gap: 10px 16px !important; }
+  /* Height and logo size come from the variables at the top of the file; only the
+     spacing is a phone-specific choice. */
+  .site-header-inner { padding: 0 14px !important; gap: 10px !important; }
+  footer > div { padding-left: 18px !important; padding-right: 18px !important; }
   .show-md[aria-label] { padding: 10px !important; border-radius: 8px !important; }
 
   .home-hero-inner { padding: 30px 16px 32px !important; gap: 18px !important; }
@@ -534,9 +614,21 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
   .home-hero-trust { gap: 8px 14px !important; font-size: 12px !important; }
   .home-hero-media > div:first-child { max-width: 250px !important; border-radius: 12px !important; }
 
-  .home-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; padding: 20px 16px !important; gap: 14px !important; }
+  /* One per row. Two columns suited the four numeric stats that used to sit here (2x2);
+     the three descriptive lines that replaced them came out as 2 + 1 with the odd one
+     stranded under the gap. */
+  .home-stats-grid { grid-template-columns: minmax(0, 1fr) !important; padding: 18px 16px !important; gap: 0 !important; }
   .home-stats-grid > div > div:first-child { font-size: 24px !important; }
   .home-stats-grid > div > div:last-child { font-size: 13px !important; }
+
+  /* A descriptive line is a sentence, not a figure, so it keeps a readable size rather
+     than inheriting the small label size above. Declared after those rules on purpose. */
+  .home-stats-grid .home-stat-text { font-size: 15px !important; line-height: 1.8 !important; }
+
+  /* Stacked, the divider belongs between rows. An inline-start border on a full-width row
+     is a stray vertical line down the side of the page. */
+  .home-stat-cell { border-inline-start: none !important; padding: 12px 4px; }
+  .home-stat-cell + .home-stat-cell { border-top: 1px solid var(--line); }
 
   .home-section { padding-left: 16px !important; padding-right: 16px !important; padding-top: 34px !important; padding-bottom: 28px !important; }
   .home-carousel { padding-bottom: 12px !important; }

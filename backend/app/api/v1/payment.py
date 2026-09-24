@@ -12,7 +12,7 @@ from ...models.payment import PAYMENT_KINDS
 from ...models.learning import merge_access_expiry
 from ...security import require_role
 from ...services.catalog_access import access_is_paid, audience_error, video_is_standalone
-from ...services import fawaterk, kashier
+from ...services import fawaterk, kashier, promo as promo_service
 from ...services.fawaterk import FawaterkError
 from ...services.kashier import KashierError
 from ...utils import renewal_percent
@@ -202,8 +202,23 @@ def payment_quote():
     if err:
         body, code = err
         return body, code
-    return jsonify(kind=ctx["kind"], expected_amount=ctx["expected"], title=ctx["title"],
-                   renewal_percent=renewal_percent() if kind == "renewal" else None)
+    body = dict(kind=ctx["kind"], expected_amount=ctx["expected"], title=ctx["title"],
+                renewal_percent=renewal_percent() if kind == "renewal" else None,
+                discount=0, final_amount=ctx["expected"], promo=None, promo_error=None)
+
+    # A code on the quote is a preview, so a bad one is reported rather than raised: the
+    # buyer should still see the price they would pay without it, with a line saying why
+    # the code did not apply.
+    code = request.args.get("code")
+    if code:
+        applied, discount, final_amount, error = promo_service.apply(code, _uid(), ctx["expected"])
+        if error:
+            body["promo_error"] = error
+        else:
+            body.update(discount=float(discount), final_amount=final_amount,
+                        promo={"code": applied.code, "kind": applied.kind,
+                               "value": float(applied.value)})
+    return jsonify(**body)
 
 
 def active_gateway():
@@ -243,11 +258,28 @@ def checkout():
         return jsonify(error="gateway_not_configured"), 503
 
     user = db.session.get(User, _uid())
+
+    # The charge is recomputed here from the code alone. The client sends a string; it
+    # never sends an amount, and the figure it showed on the quote is not trusted -- the
+    # code could have expired or hit its cap between the two calls.
+    #
+    # A bad code fails the checkout rather than quietly charging full price: someone who
+    # typed a code and then saw the full amount leave their account has been overcharged
+    # as far as they are concerned, whatever the small print says.
+    charge, discount, applied = ctx["expected"], 0, None
+    code = (d.get("code") or "").strip()
+    if code:
+        applied, discount, charge, error = promo_service.apply(code, user.id, ctx["expected"])
+        if error:
+            return jsonify(error=error), 422
+
     p = Payment(user_id=user.id, kind=ctx["kind"],
                 course_id=ctx["course"].id if ctx["course"] else None,
                 bundle_id=ctx["bundle"].id if ctx["bundle"] else None,
                 video_id=ctx["video"].id if ctx["video"] else None,
-                amount=ctx["expected"], currency="EGP", status="pending", gateway=gateway)
+                promo_code_id=applied.id if applied else None,
+                discount=discount or 0,
+                amount=charge, currency="EGP", status="pending", gateway=gateway)
     db.session.add(p)
     db.session.flush()  # assign p.id, which is the order reference both gateways echo back
 
@@ -255,7 +287,7 @@ def checkout():
     if gateway == "kashier":
         try:
             r = kashier.create_session(
-                ctx["expected"], "EGP", p.id,
+                charge, "EGP", p.id,
                 {"email": user.email, "reference": user.id},
                 ctx["title"],
                 redirect_url=f"{site}/payment/callback?pid={p.id}",
@@ -273,7 +305,7 @@ def checkout():
     parts = (user.name or "").strip().split(" ", 1)
     customer = {"first_name": parts[0] or "Baytara", "last_name": (parts[1] if len(parts) > 1 else "."),
                 "email": user.email, "phone": user.phone or ""}
-    items = [{"name": ctx["title"][:120], "price": float(ctx["expected"]), "quantity": 1}]
+    items = [{"name": ctx["title"][:120], "price": float(charge), "quantity": 1}]
     redirect_urls = {
         "successUrl": f"{site}/payment/callback?status=success&pid={p.id}",
         "failUrl": f"{site}/payment/callback?status=fail&pid={p.id}",
@@ -281,7 +313,7 @@ def checkout():
         "webhookUrl": f"{site}/api/v1/payment/fawaterk/webhook",
     }
     try:
-        r = fawaterk.create_invoice_link(ctx["expected"], "EGP", customer, items,
+        r = fawaterk.create_invoice_link(charge, "EGP", customer, items,
                                          {"payment_id": p.id}, redirect_urls)
     except FawaterkError as e:
         db.session.rollback()

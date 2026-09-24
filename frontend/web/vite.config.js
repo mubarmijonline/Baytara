@@ -17,4 +17,10 @@ export default defineConfig({
     port: 4173,
     allowedHosts: true,
   },
+  test: {
+    setupFiles: ['./vitest.setup.js'],
+    // The per-test budget, above the async helper deadline in the setup file so a slow
+    // assertion reports its own failure rather than being cut off by the runner.
+    testTimeout: 15000,
+  },
 });

@@ -95,9 +95,34 @@ class AuthRepository {
     }
   }
 
-  Future<void> removeDevice(int id) async {
+  /// Frees a device slot, and returns what the account has left.
+  ///
+  /// The response carries the new allowance, so the screen does not have to re-read the
+  /// list to find out whether the user has just spent their one swap. A refusal arrives as
+  /// `device_swap_limit_reached`, which is not a failure to report and forget: it is the
+  /// point at which the emergency request becomes the only way forward.
+  Future<SwapAllowance> removeDevice(int id) async {
     try {
-      await _dio.delete<dynamic>('/auth/devices/$id');
+      final res = await _dio.delete<Map<String, dynamic>>('/auth/devices/$id');
+      return SwapAllowance.fromJson(res.data ?? const {});
+    } catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  /// Asks an admin to free a slot once the self-service swap is spent.
+  ///
+  /// The server answers 200 with the existing request rather than creating a second one, so
+  /// a double tap cannot queue two asks, and 409 `swap_still_available` when the user could
+  /// simply remove a device themselves.
+  Future<DeviceSwapRequest> requestDeviceSwap({String? reason}) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/auth/devices/swap-requests',
+        data: {'reason': reason ?? ''},
+      );
+      return DeviceSwapRequest.fromJson(
+          res.data!['request'] as Map<String, dynamic>);
     } catch (e) {
       throw asApiException(e);
     }

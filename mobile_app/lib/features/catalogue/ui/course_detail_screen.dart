@@ -14,6 +14,7 @@ import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../../auth/domain/session.dart';
+import '../../payments/data/purchase_availability.dart';
 import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
 import 'widgets/access_badge.dart';
@@ -202,6 +203,15 @@ class _Cta extends StatelessWidget {
     // button here would be a promise the server will not keep.
     if (access.reason == LockReason.nonVeterinariansOnly) {
       return _Notice(text: l.lockNonVets, icon: Icons.info_outline);
+    }
+
+    // Reader model (iOS): the price is still on the page above, but there is no button and
+    // no link out, because a call to action pointing anywhere other than In-App Purchase is
+    // what Guideline 3.1.1 refuses. See purchase_availability.dart.
+    if (access.reason == LockReason.needsPurchase &&
+        !PurchaseAvailability.purchasesEnabled) {
+      return _Notice(
+          text: l.checkoutUnavailableOnThisPlatform, icon: Icons.info_outline);
     }
 
     final (label, route) = switch (access.reason) {

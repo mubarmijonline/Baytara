@@ -41,14 +41,50 @@ def update_exam(exam, data):
             raise ExamValidationError("invalid_pass_percent")
         exam.pass_percent = value
 
+    if "time_limit_minutes" in data:
+        exam.time_limit_minutes = _optional_positive(
+            data["time_limit_minutes"], "invalid_time_limit", ceiling=600)
+
+    if "questions_per_attempt" in data:
+        exam.questions_per_attempt = _optional_positive(
+            data["questions_per_attempt"], "invalid_questions_per_attempt", ceiling=500)
+
+    if "show_results" in data:
+        exam.show_results = bool(data["show_results"])
+
     if "is_published" in data:
         publish = bool(data["is_published"])
         # Publishing an exam is what starts withholding certificates on that course, so it
         # must not be possible while there is nothing to answer.
         if publish and not exam.answerable_questions():
             raise ExamValidationError("exam_has_no_answerable_questions")
+        # Asking for more questions than exist would hand out a shorter paper than the
+        # examiner thinks they set, silently. Better to refuse than to quietly shrink it.
+        if publish and exam.questions_per_attempt and \
+                exam.questions_per_attempt > len(exam.answerable_questions()):
+            raise ExamValidationError("questions_per_attempt_exceeds_bank")
         exam.is_published = publish
     return exam
+
+
+def _optional_positive(raw, error, ceiling):
+    """A positive whole number, or None for "no limit".
+
+    Empty string and null both mean no limit, because an admin clearing a field sends one
+    or the other depending on the form. Zero means the same thing rather than "zero
+    minutes", which is not a sitting anybody could pass.
+    """
+    if raw is None or str(raw).strip() == "":
+        return None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        raise ExamValidationError(error)
+    if value <= 0:
+        return None
+    if value > ceiling:
+        raise ExamValidationError(error)
+    return value
 
 
 def _apply_options(question, options):
@@ -84,7 +120,10 @@ def create_question(exam, data):
     if position is None:
         position = len(exam.questions)
     question = ExamQuestion(exam_id=exam.id, text=text,
-                            text_en=(data.get("text_en") or None), position=int(position))
+                            text_en=(data.get("text_en") or None),
+                            explanation=(data.get("explanation") or None),
+                            explanation_en=(data.get("explanation_en") or None),
+                            position=int(position))
     db.session.add(question)
     db.session.flush()
     _apply_options(question, data.get("options"))
@@ -99,6 +138,10 @@ def update_question(question, data):
         question.text = text
     if "text_en" in data:
         question.text_en = (data["text_en"] or None)
+    if "explanation" in data:
+        question.explanation = (data["explanation"] or None)
+    if "explanation_en" in data:
+        question.explanation_en = (data["explanation_en"] or None)
     if "position" in data:
         question.position = int(data["position"])
     if "options" in data:

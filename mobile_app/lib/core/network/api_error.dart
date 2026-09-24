@@ -32,6 +32,12 @@ enum ApiErrorCode {
   deviceMismatch('device_mismatch'),
   deviceNotRegistered('device_not_registered'),
   deviceLimitReached('device_limit_reached'),
+  /// The account has already used its self-service device change for this window. Not a
+  /// dead end: the emergency request below is what comes next.
+  deviceSwapLimitReached('device_swap_limit_reached'),
+  /// Asking an admin when the user could still swap a device themselves. Means send them
+  /// back to the button, not into a queue.
+  swapStillAvailable('swap_still_available'),
 
   // --- entitlement ---
   notEntitled('not_entitled'),

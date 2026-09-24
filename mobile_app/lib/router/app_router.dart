@@ -27,7 +27,10 @@ import '../features/catalogue/ui/pricing_screen.dart';
 import '../features/catalogue/ui/request_demo_screen.dart';
 import '../features/catalogue/ui/video_detail_screen.dart';
 import '../features/catalogue/ui/videos_screen.dart';
+import '../features/exam/ui/exam_screen.dart';
 import '../features/learning/ui/certificate_screen.dart';
+import '../features/library/ui/book_detail_screen.dart';
+import '../features/library/ui/library_screen.dart';
 import '../features/onboarding/ui/onboarding_screen.dart';
 import '../features/learning/ui/my_learning_screen.dart';
 import '../features/payments/data/payment_dto.dart';
@@ -129,6 +132,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             CourseDetailScreen(slug: state.pathParameters['slug']!),
       ),
+      // The exam. Same path the website uses, so a link to it works on either.
+      GoRoute(
+        path: '/courses/:slug/exam',
+        builder: (_, state) => ExamScreen(slug: state.pathParameters['slug']!),
+      ),
       GoRoute(path: '/videos', builder: (_, _) => const VideosScreen()),
 
       // Was missing entirely: every video card pushes this, so tapping one did nothing.
@@ -166,13 +174,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             PathDetailScreen(slug: state.pathParameters['slug']!),
       ),
-      GoRoute(path: '/blog', builder: (_, _) => const ContentScreen(kind: 'blog')),
+      // The library. Two shelves, articles and book summaries, exactly as the website
+      // carries them -- `?shelf=books` on either side opens the same one.
+      GoRoute(
+        path: '/library',
+        builder: (_, state) =>
+            LibraryScreen(shelf: state.uri.queryParameters['shelf'] ?? 'articles'),
+      ),
+      GoRoute(
+        path: '/library/:slug',
+        builder: (_, state) =>
+            BookDetailScreen(slug: state.pathParameters['slug']!),
+      ),
+
+      // The blog index became the library in September; the website redirects the same
+      // way. Article URLs are unchanged, so nothing shared before then breaks.
+      GoRoute(path: '/blog', redirect: (_, _) => '/library'),
       GoRoute(
         path: '/articles/:slug',
         builder: (_, state) => ArticleScreen(slug: state.pathParameters['slug']!),
       ),
 
       // Public: anyone holding the serial can verify a certificate, no account needed.
+      // Two kinds of serial, one screen. The verification falls through from one endpoint
+      // to the other, so either link opens.
+      GoRoute(
+        path: '/completion-certificates/:serial',
+        builder: (_, state) =>
+            CertificateScreen(serial: state.pathParameters['serial']!),
+      ),
       GoRoute(
         path: '/certificates/:serial',
         builder: (_, state) =>

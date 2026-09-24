@@ -3,6 +3,8 @@
 //
 // Nothing else belongs here. Catalogue caching goes to ordinary storage; per the contract
 // doc §9, OTPs and playbackInfo are never persisted anywhere at all.
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureStore {
@@ -27,6 +29,13 @@ class SecureStore {
   /// cleared with the session rather than outliving a sign-out in plain preferences.
   static const _cachedUser = 'baytara_cached_user';
 
+  /// Where each book summary was last left off, as `{"<slug>": <page>}`. Not a secret
+  /// either, and it lives here for the same reason the onboarding flag does: one storage
+  /// mechanism. Per install rather than per account, like the website's, because a page
+  /// number is not worth a round trip on every page turn and the backend has no endpoint
+  /// for it.
+  static const _bookPagesKey = 'baytara_book_pages';
+
   /// Whether the first-run tour has been seen. Not a secret, but it lives here so the app
   /// needs only one storage mechanism, and it deliberately survives sign-out: someone who
   /// signs out has still seen the tour, and showing it again would be a bug, not a welcome.
@@ -43,6 +52,32 @@ class SecureStore {
       (await _storage.read(key: _onboardingSeen)) == '1';
   Future<void> markOnboardingSeen() =>
       _storage.write(key: _onboardingSeen, value: '1');
+
+  /// The saved page for [slug], or null when this reader has not opened it before.
+  ///
+  /// Never throws: a corrupt or half-written value costs the reader their place, which is
+  /// a small loss, and must not cost them the book.
+  Future<int?> bookPage(String slug) async {
+    final page = (await _bookPages())[slug];
+    return (page is int && page > 0) ? page : null;
+  }
+
+  Future<void> setBookPage(String slug, int page) async {
+    final pages = await _bookPages();
+    pages[slug] = page;
+    await _storage.write(key: _bookPagesKey, value: jsonEncode(pages));
+  }
+
+  Future<Map<String, dynamic>> _bookPages() async {
+    try {
+      final raw = await _storage.read(key: _bookPagesKey);
+      if (raw == null || raw.isEmpty) return {};
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : {};
+    } on FormatException {
+      return {};
+    }
+  }
 
   Future<String?> get cachedUser => _storage.read(key: _cachedUser);
   Future<void> setCachedUser(String? json) => _write(_cachedUser, json);

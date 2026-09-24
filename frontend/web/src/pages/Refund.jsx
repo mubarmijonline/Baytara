@@ -2,6 +2,7 @@ import { Container } from '../components/Primitives.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { colors } from '../theme/tokens.js';
 import { useI18n } from '../lib/i18n.jsx';
+import { SUPPORT_EMAIL } from '../lib/support.js';
 import { useSiteSettings } from '../lib/site-settings.jsx';
 
 // Refund and cancellation policy. Required by the payment gateway's review, which
@@ -127,9 +128,6 @@ const COPY = {
   },
 };
 
-// The policy names this address itself, so it is not read from site settings: the
-// document and the page must not be able to disagree.
-const SUPPORT_EMAIL = 'support@baytara.app';
 
 export default function Refund() {
   const { lang } = useI18n();
@@ -138,7 +136,14 @@ export default function Refund() {
   const copy = COPY[key];
   // Rendered only when a real number is configured — a published placeholder is
   // worse than no WhatsApp line at all, especially on a page a payment gateway reviews.
+  //
+  // The setting holds a wa.me URL, because the footer only renders a social entry that
+  // looks like a URL. Printing that URL in the middle of a sentence reads as sloppy, so
+  // the link text is the support phone when one is set and only falls back to the raw
+  // value when it is not.
   const whatsapp = (settings.contact?.whatsapp || settings.socials?.whatsapp || '').trim();
+  const whatsappDigits = whatsapp.replace(/[^0-9]/g, '');
+  const whatsappLabel = (settings.contact?.phone || '').trim() || whatsapp;
 
   return (
     <div>
@@ -167,9 +172,9 @@ export default function Refund() {
                 {whatsapp && (
                   <>
                     {' '}{copy.whatsapp}{' '}
-                    <a href={`https://wa.me/${whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer"
+                    <a href={`https://wa.me/${whatsappDigits}`} target="_blank" rel="noreferrer"
                       style={{ color: colors.accent, fontWeight: 700 }} dir="ltr">
-                      {whatsapp}
+                      {whatsappLabel}
                     </a>
                   </>
                 )}

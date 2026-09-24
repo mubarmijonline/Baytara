@@ -205,10 +205,14 @@ export default function Header() {
             padding: '8px 24px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            // Everything on the far side, so the corner directly above the wordmark stays
+            // empty. Spread apart, the welcome line sat one row above the logo and shared
+            // its edge, which is the crowding the client asked us to clear.
+            justifyContent: 'flex-end',
+            gap: 18,
           }}
         >
-          <span>{header.welcome}</span>
+          <span className="hide-sm">{header.welcome}</span>
           <div className="hide-sm" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <span style={{ cursor: 'pointer' }}>{header.app_label}</span>
             <span style={{ opacity: 0.4 }}>|</span>
@@ -239,7 +243,9 @@ export default function Header() {
             maxWidth: layout.maxWidth,
             margin: '0 auto',
             padding: '0 24px',
-            height: 74,
+            // Both sizes live in global.css so the sticky strips pinned to this bar cannot
+            // drift out of step with it.
+            height: 'var(--site-header-h)',
             display: 'flex',
             alignItems: 'center',
             gap: 20,
@@ -251,22 +257,35 @@ export default function Header() {
             alt="بيطرة BAYTARA"
             onClick={() => navigate('/')}
             style={{
-              height: 44,
+              height: 'var(--site-logo-h)',
               width: 'auto',
               objectFit: 'contain',
               cursor: 'pointer',
               flex: 'none',
+              // The clear air after it is in global.css with the sizes, because how much
+              // room it can take depends on the breakpoint.
             }}
           />
 
+          {/* Takes the slack and centres itself in it. Before, the nav hugged the logo and
+              the account cluster hugged the far edge, so every spare pixel pooled into one
+              gap in the middle of the bar. */}
           <nav
             className="hide-md"
-            style={{ display: 'flex', alignItems: 'center', gap: 22, fontSize: 14.5, fontWeight: 600 }}
+            style={{
+              display: 'flex',
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 22,
+              fontSize: 14.5,
+              fontWeight: 600,
+            }}
           >
             {NAV.map(([to, key]) => navItem(to, t(key)))}
           </nav>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginInlineStart: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginInlineStart: 'auto', flex: 'none' }}>
             <button
               className="hide-sm"
               aria-label={t('nav.search')}

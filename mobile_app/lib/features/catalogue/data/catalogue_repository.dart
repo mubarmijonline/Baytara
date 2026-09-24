@@ -238,11 +238,16 @@ class CatalogueRepository {
   }
 
   /// [kind] selects the collection: the blog, or the free-content shelf.
+  ///
+  /// The parameter on the wire is `type`, which is what `list articles` reads in
+  /// backend/app/api/v1/content.py. It was sent as `kind`, which the server ignores, so
+  /// both shelves quietly received every article of both kinds -- the blog listed advisory
+  /// content and the free shelf listed blog posts.
   Future<List<Article>> articles({String? kind}) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         '/articles',
-        queryParameters: {'kind': ?kind},
+        queryParameters: {'type': ?kind},
       );
       return [
         for (final a in (res.data?['articles'] as List? ?? const []))

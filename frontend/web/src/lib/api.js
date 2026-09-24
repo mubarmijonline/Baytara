@@ -273,8 +273,11 @@ export const auth = {
   learningSummary: () => authFetch('/learning-summary'),
   certificates: () => authFetch('/certificates'),
   exam: (slug) => authFetch('/courses/' + slug + '/exam'),
-  examSubmit: (slug, answers) => authFetch('/courses/' + slug + '/exam/attempts', {
-    method: 'POST', body: JSON.stringify({ answers }),
+  // paperToken ties the submission to the paper that was issued: it carries which
+  // questions were drawn and when, both of which the server needs and neither of which it
+  // can take from the candidate. See backend/app/services/exam_paper.py.
+  examSubmit: (slug, answers, paperToken) => authFetch('/courses/' + slug + '/exam/attempts', {
+    method: 'POST', body: JSON.stringify({ answers, paper_token: paperToken }),
   }),
   activity: (params) => authFetch('/activity' + qs(params)),
   nationalIdCard: (file) => {

@@ -121,13 +121,24 @@ function StatsBand() {
         style={{ padding: '26px 24px', display: 'grid', gridTemplateColumns: `repeat(${stats.length},1fr)`, gap: 20 }}
       >
         {stats.map((stat, i) => (
-          <div key={i} style={{ textAlign: 'center', borderInlineStart: i ? `1px solid ${colors.line}` : 'none' }}>
-            <Stat
-              num={stat.num}
-              label={stat.label}
-              style={{ fontSize: 26, fontWeight: 700, color: DARK }}
-              labelStyle={{ fontSize: 13.5, color: colors.muted }}
-            />
+          <div key={i} className="home-stat-cell"
+            style={{ textAlign: 'center', borderInlineStart: i ? `1px solid ${colors.line}` : 'none' }}>
+            {String(stat.num || '').trim() ? (
+              <Stat
+                num={stat.num}
+                label={stat.label}
+                style={{ fontSize: 26, fontWeight: 700, color: DARK }}
+                labelStyle={{ fontSize: 13.5, color: colors.muted }}
+              />
+            ) : (
+              /* No number: the description carries the tile on its own, in the weight the
+                 number used to have. Leaving an empty slot above it made the band look
+                 like it had failed to load. */
+              <div className="home-stat-text"
+                style={{ fontSize: 16, fontWeight: 700, color: DARK, lineHeight: 1.75 }}>
+                {stat.label}
+              </div>
+            )}
           </div>
         ))}
       </Container>

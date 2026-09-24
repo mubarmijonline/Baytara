@@ -70,11 +70,23 @@ SITE_SETTING_DEFAULTS = {
         ),
         "bar_cta": _text("الحزم التعليمية", "Learning bundles"),
     },
+    # Descriptions, not counters. The numbers that used to sit here -- 120 courses, 45
+    # experts, 8,000 learners, a 4.8/5 average -- were none of them measured: the database
+    # holds 36 accounts and zero reviews. An unverifiable figure on a landing page is a
+    # claim the platform cannot stand behind, and a `num` left empty renders the label in
+    # the weight the number had (see StatsBand in frontend/web/src/pages/Home.jsx).
+    #
+    # If a figure is wanted back, it should come from a query rather than from here.
     "stats": [
-        {"num": "+120", "label": _text("دورة متخصصة", "Specialist courses")},
-        {"num": "+45", "label": _text("خبير ومدرب", "Experts and instructors")},
-        {"num": "+8,000", "label": _text("متعلم", "Learners")},
-        {"num": "4.8/5", "label": _text("متوسط التقييم", "Average rating")},
+        {"num": "", "label": _text(
+            "دورات متميزة في كافة التخصصات البيطرية",
+            "Specialist courses across every veterinary field")},
+        {"num": "", "label": _text(
+            "أفضل الخبراء والمدربين في العالم العربي",
+            "The best experts and instructors in the Arab world")},
+        {"num": "", "label": _text(
+            "مجتمع متنامٍ من الأطباء والطلاب",
+            "A growing community of vets and students")},
     ],
     "testimonials": [
         {

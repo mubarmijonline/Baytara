@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_localizations.dart';
 import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/links/share_button.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/access/access.dart';
 import '../../auth/domain/session.dart';
@@ -109,6 +110,9 @@ Widget _list(
   return ListView(
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
     children: [
+      // The library is the other free shelf, and until now nothing in the app led to it:
+      // `/blog` was routed but never linked, exactly as the website's was before September.
+      const _LibraryLink(),
       if (enrolled.isNotEmpty) ...[
         if (showHeadings) _Heading(l.myCourses),
         for (final e in enrolled)
@@ -131,6 +135,33 @@ Widget _list(
       ],
     ],
   );
+}
+
+/// The way into مكتبة بيطرة from the free shelf. A card rather than an icon in the bar:
+/// this is a destination, not an action on this screen.
+class _LibraryLink extends StatelessWidget {
+  const _LibraryLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L10n.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        leading: const Icon(Icons.menu_book_outlined, color: BrandColors.accent),
+        title: Text(l.libraryTitle,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(l.librarySubtitle,
+              style: const TextStyle(fontSize: 12.5, color: BrandColors.muted2)),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: BrandColors.muted2),
+        onTap: () => context.push('/library'),
+      ),
+    );
+  }
 }
 
 class _Heading extends StatelessWidget {
@@ -198,7 +229,14 @@ class ArticleScreen extends ConsumerWidget {
     final async = ref.watch(articleProvider(slug));
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        actions: [
+          // The article's public URL is /blog/<slug>, not this screen's own path;
+          // shareUrl() does that translation.
+          if (async.value case final article?)
+            ShareLinkButton(location: '/articles/${article.slug}', title: article.title),
+        ],
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(

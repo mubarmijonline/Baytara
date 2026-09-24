@@ -8,7 +8,7 @@
 // is refuse to submit a half-finished paper without saying so first: an unanswered
 // question is marked wrong, and losing a pass to a question the learner simply scrolled
 // past would feel like a bug rather than a result.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Container } from '../components/Primitives.jsx';
 import NotFound from './NotFound.jsx';
@@ -79,6 +79,10 @@ export default function Exam() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [confirmPartial, setConfirmPartial] = useState(false);
+  // Seconds left, when the exam sets a limit. Display only: the server refuses a paper
+  // submitted late whatever this says, so a stopped clock buys nobody anything.
+  const [remaining, setRemaining] = useState(null);
+  const submitRef = useRef(null);
 
   const exam = data?.exam;
   const questions = exam?.questions || [];
@@ -103,11 +107,31 @@ export default function Exam() {
     );
   }
 
+  // The countdown starts when the paper arrives and runs to zero, at which point the
+  // paper is submitted as it stands. Not doing that would leave a candidate staring at a
+  // finished clock and a submit button the server has already decided to refuse.
+  useEffect(() => {
+    if (!exam?.time_limit_minutes || !exam?.paper_token || result) return undefined;
+    setRemaining(exam.time_limit_minutes * 60);
+    const timer = setInterval(() => {
+      setRemaining((left) => {
+        if (left === null) return null;
+        if (left <= 1) { clearInterval(timer); return 0; }
+        return left - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [exam?.paper_token, exam?.time_limit_minutes, result]);
+
+  useEffect(() => {
+    if (remaining === 0 && !result && !submitting) submitRef.current?.();
+  }, [remaining, result, submitting]);
+
   const title = course.data?.course?.title || '';
   const answered = Object.keys(answers).length;
 
-  const submit = async () => {
-    if (answered < questions.length && !confirmPartial) {
+  const submit = async (force = false) => {
+    if (!force && answered < questions.length && !confirmPartial) {
       // Say it once, then let them through -- an unanswered question is simply wrong,
       // and forcing a full paper would be a rule the client never asked for.
       setConfirmPartial(true);
@@ -116,13 +140,15 @@ export default function Exam() {
     setSubmitting(true);
     setSubmitError('');
     try {
-      setResult(await auth.examSubmit(slug, answers));
+      setResult(await auth.examSubmit(slug, answers, exam?.paper_token));
     } catch (failure) {
       setSubmitError(t(`exam.err.${failure?.data?.error}`) || t('exam.err.generic'));
     } finally {
       setSubmitting(false);
     }
   };
+
+  submitRef.current = () => submit(true);
 
   return (
     <div style={{ background: colors.surfaceMuted, padding: '34px 0 70px' }}>
@@ -133,6 +159,13 @@ export default function Exam() {
             {t('exam.title')}
           </div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{title}</h1>
+          {remaining !== null && !result && (
+            <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: remaining <= 60 ? 'rgba(179,38,30,.85)' : 'rgba(255,255,255,.12)',
+              borderRadius: 9, padding: '7px 14px', fontWeight: 800, fontSize: 15 }} dir="ltr">
+              ⏱ {String(Math.floor(remaining / 60)).padStart(2, '0')}:{String(remaining % 60).padStart(2, '0')}
+            </div>
+          )}
           <p style={{ margin: '10px 0 0', fontSize: 13.5, color: '#b9bfd6', lineHeight: 1.8 }}>
             {t('exam.rules')
               .replace('{pass}', exam.pass_percent)

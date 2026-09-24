@@ -26,6 +26,34 @@ const PLAYBACK_ERRORS = [
   'needs_baytarian', 'non_veterinarians_only', 'phone_required', 'not_entitled',
 ];
 
+/// What the viewer can actually do about a refusal, or null when there is nothing to
+/// offer. Deliberately the same set of destinations as `openRequiredAccess` in
+/// VideoDetail.jsx: one refusal should not send people two different ways depending on
+/// which page they happened to open.
+function recovery(code, { slug, lessonId, t }) {
+  const back = encodeURIComponent(`/learn/${slug}/${lessonId}`);
+  switch (code) {
+    case 'authentication_required':
+      return { label: t('video.signIn'), to: `/auth?next=${back}` };
+    case 'phone_required':
+      return { label: t('video.addPhone'), to: `/dashboard/profile?next=${back}` };
+    case 'needs_baytarian':
+      // Carries the lesson, so finishing verification returns to the video that sent them
+      // rather than to the profile page.
+      return { label: t('membership.verify'), to: `/verify?next=${back}` };
+    case 'not_entitled':
+    case 'forbidden':
+      return { label: t('course.buyAndStart'), to: `/buy/${slug}` };
+    case 'access_expired':
+      return { label: t('renew.pay'), to: `/buy/${slug}?kind=renewal` };
+    // non_veterinarians_only, the browser-capability refusals, already_playing and the
+    // rate limits all have no action the viewer can take here. The sentence alone is the
+    // honest answer; a button would be a promise the server will not keep.
+    default:
+      return null;
+  }
+}
+
 function playbackMessage(error, t) {
   const code = error?.data?.error;
   if (PLAYBACK_ERRORS.includes(code)) return t(`video.err.${code}`);
@@ -45,6 +73,10 @@ export default function Learn() {
   const [doneIds, setDoneIds] = useState({});
   const [video, setVideo] = useState(null);      // { otp, playbackInfo, session_id, … }
   const [videoErr, setVideoErr] = useState('');
+  // The refusal code, kept alongside the sentence. A message on its own leaves the viewer
+  // reading "verify your account to watch" with nothing to press; the code is what turns
+  // it into a way out.
+  const [denyCode, setDenyCode] = useState('');
   const [tab, setTab] = useState('course');
 
   useEffect(() => {
@@ -79,12 +111,25 @@ export default function Learn() {
   useEffect(() => {
     setVideo(null);
     setVideoErr('');
-    if (!course || !isAuthed() || !activeLesson?.id || !activeLesson.has_video) return undefined;
+    setDenyCode('');
+    if (!course || !activeLesson?.id || !activeLesson.has_video) return undefined;
+    // A signed-out visitor was never told anything: the mint is skipped, so no error ever
+    // arrived and the box sat on "loading the video" forever. Landing here from the free
+    // "start watching" button is exactly how that happened.
+    if (!isAuthed()) {
+      setDenyCode('authentication_required');
+      setVideoErr(t('video.lockedDescription'));
+      return undefined;
+    }
     if (!caps || blockedHere) return undefined;
     let alive = true;
     auth.playback(activeLesson.id, course.id)
       .then((r) => alive && setVideo(r))
-      .catch((e) => alive && setVideoErr(playbackMessage(e, t)));
+      .catch((e) => {
+        if (!alive) return;
+        setVideoErr(playbackMessage(e, t));
+        setDenyCode(e?.data?.error || (e?.status === 403 ? 'forbidden' : 'generic'));
+      });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLesson?.id, course?.id, caps, blockedHere]);
@@ -171,11 +216,29 @@ export default function Learn() {
               })()
             ) : blockedHere ? (
               <BrowserGuidance caps={caps} mode="block" />
+            ) : denyCode ? (
+              /* A refusal is a screen of its own, not a caption. It was 12px grey text
+                 under a play button that did nothing, which reads as "still loading"
+                 rather than "here is what to do". */
+              <div style={{ textAlign: 'center', padding: '28px 24px', maxWidth: 420 }}>
+                <span aria-hidden="true" style={{ display: 'inline-grid', placeItems: 'center', width: 54, height: 54, borderRadius: '50%', background: 'rgba(255,255,255,.12)', color: '#fff', fontSize: 22, marginBottom: 14 }}>🔒</span>
+                <p style={{ margin: '0 0 18px', color: '#e7e7f2', fontSize: 15, lineHeight: 1.9, fontWeight: 600 }}>{videoErr}</p>
+                {(() => {
+                  const next = recovery(denyCode, { slug: courseId, lessonId: activeLesson?.id, t });
+                  if (!next) return null;
+                  return (
+                    <button type="button" onClick={() => navigate(next.to)}
+                      style={{ background: colors.accent, border: 'none', borderRadius: 11, color: '#fff', fontSize: 15, fontWeight: 800, padding: '13px 26px', cursor: 'pointer' }}>
+                      {next.label}
+                    </button>
+                  );
+                })()}
+              </div>
             ) : (
               <>
                 <span aria-hidden="true" style={{ width: 74, height: 74, borderRadius: '50%', background: 'rgba(48,72,160,.92)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 22 }}>▶</span>
                 <span style={{ position: 'absolute', insetInline: 0, bottom: 0, padding: '12px 18px', background: 'linear-gradient(transparent, rgba(0,0,0,.7))', color: '#cfcfe0', fontSize: 12 }}>
-                  {videoErr || (activeLesson?.has_video ? t('learn.loadingVideo') : t('learn.previewOnly'))}
+                  {activeLesson?.has_video ? t('learn.loadingVideo') : t('learn.previewOnly')}
                 </span>
               </>
             )}

@@ -2,6 +2,7 @@ import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import ExamEditor from '../components/ExamEditor.jsx';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
 
 const statusLabel = (s) => ({ draft: 'مسودة', published: 'منشورة', unpublished: 'غير منشورة' }[s] || s);
@@ -99,6 +100,11 @@ function CourseContent({ courseId, perms, onClose }) {
               ))}
             </div>
           ))}
+          {/* The exam sits under the content, because it is written last: it cannot be
+              published until there are questions, and it asks about the lessons above. */}
+          <div style={{ marginTop: 16 }}>
+            <ExamEditor courseId={courseId} />
+          </div>
         </>
       )}
       <div className="row" style={{ marginTop: 8 }}><button className="btn btn-filled" onClick={onClose}>تم</button></div>

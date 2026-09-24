@@ -14,6 +14,7 @@ from ...models import (
 from ...models.catalog import loc
 from ...models.video_monitoring import VideoPlaybackSession
 from ...utils import req_lang
+from ...services import exam_paper
 
 bp = Blueprint("learning", __name__)
 
@@ -282,7 +283,11 @@ def get_exam(slug):
     })
     # The questions themselves only go out to someone who may actually sit it.
     if eligible:
-        payload["questions"] = exam.paper_for()
+        drawn = exam.draw()
+        payload["questions"] = exam.paper_for(questions=drawn)
+        # Which questions, and when. Marking needs both, and neither can be taken from the
+        # candidate's own submission -- see services/exam_paper.py.
+        payload["paper_token"] = exam_paper.issue(exam, _uid(), drawn)
     return jsonify(exam=payload)
 
 
@@ -308,7 +313,27 @@ def submit_exam(slug):
     if not isinstance(answers, dict):
         return jsonify(error="answers_required"), 422
 
-    score, correct, question_count, rows = grade(exam, answers)
+    # An exam that limits time or draws from a bank can only be marked against the paper
+    # that was issued. One that does neither is markable from the bank alone, so an older
+    # client that sends no token is still answered rather than refused.
+    questions = None
+    needs_paper = bool(exam.time_limit_minutes) or bool(exam.questions_per_attempt)
+    token = body.get("paper_token")
+    if needs_paper or token:
+        ids, paper_error = exam_paper.verify(token, exam, _uid())
+        if paper_error:
+            if paper_error == "paper_token_required" and not needs_paper:
+                ids = None
+            else:
+                return jsonify(error=paper_error), 403
+        if ids:
+            by_id = {q.id: q for q in exam.answerable_questions()}
+            # A question deleted since the paper was issued simply drops out; it cannot be
+            # marked, and failing the whole submission over it would punish the candidate
+            # for an edit they never saw.
+            questions = [by_id[i] for i in ids if i in by_id]
+
+    score, correct, question_count, rows = grade(exam, answers, questions=questions)
     attempt = ExamAttempt(
         exam_id=exam.id, user_id=_uid(), score_percent=score, correct_count=correct,
         question_count=question_count, passed=score >= exam.pass_percent,
@@ -319,9 +344,28 @@ def submit_exam(slug):
 
     certificate = issue_certificate_if_earned(enrollment) if attempt.passed else None
     db.session.commit()
+    review = None
+    if exam.show_results:
+        # Only what this sitting asked, and only when the examiner turned it on: handing
+        # back the answer key on an exam with unlimited retries makes the next attempt a
+        # copying exercise.
+        lang = req_lang()
+        asked = {q.id: q for q in (questions or exam.answerable_questions())}
+        review = [
+            {
+                "question_id": row.question_id,
+                "is_correct": row.is_correct,
+                "chosen_option_id": row.option_id,
+                "correct_option_id": asked[row.question_id].correct_option_id(),
+                "explanation": asked[row.question_id].to_dict(lang).get("explanation"),
+            }
+            for row in rows if row.question_id in asked
+        ]
+
     return jsonify(
         attempt=attempt.to_dict(),
         pass_percent=exam.pass_percent,
+        review=review,
         certificate=certificate.to_dict(req_lang()) if certificate else None,
     ), 201
 
