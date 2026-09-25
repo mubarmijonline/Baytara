@@ -52,9 +52,14 @@ function ControlBar({ videoRef, shellRef, fullscreen, onToggleFullscreen }) {
   // null, so a captured `video` left the very first tap on play doing nothing at all.
   const percent = duration > 0 ? (current / duration) * 100 : 0;
 
+  // flex: 'none' matters more than it looks. These sit at the end of a flex row, and the
+  // fullscreen button is the very last item: let the row overflow and that button is the
+  // one pushed out of the box, where the stage's `overflow: hidden` clips it. The bar then
+  // shows play, timeline and volume and silently loses full screen, which is exactly what
+  // a narrow player looks like.
   const btn = {
     background: 'transparent', border: 0, color: '#fff', cursor: 'pointer',
-    padding: 6, display: 'grid', placeItems: 'center', lineHeight: 1,
+    padding: 6, display: 'grid', placeItems: 'center', lineHeight: 1, flex: 'none',
   };
 
   return (
@@ -64,7 +69,9 @@ function ControlBar({ videoRef, shellRef, fullscreen, onToggleFullscreen }) {
       onClick={(e) => e.stopPropagation()}
       style={{
         position: 'absolute', insetInline: 0, bottom: 0, zIndex: 4,
-        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+        // Nothing here may push a control out of the box.
+        flexWrap: 'nowrap', overflow: 'hidden', maxWidth: '100%', boxSizing: 'border-box',
         background: 'linear-gradient(transparent, rgba(0,0,0,.72))',
         direction: 'ltr',
       }}
@@ -79,7 +86,10 @@ function ControlBar({ videoRef, shellRef, fullscreen, onToggleFullscreen }) {
         {playing ? <Pause size={20} /> : <Play size={20} />}
       </button>
 
-      <span style={{ color: '#fff', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', minWidth: 78 }}>
+      {/* Hidden below 360px of bar rather than allowed to squeeze the controls out. */}
+      <span className="local-player-time"
+        style={{ color: '#fff', fontSize: 12.5, fontVariantNumeric: 'tabular-nums',
+          whiteSpace: 'nowrap', flex: 'none' }}>
         {formatTime(current)} / {formatTime(duration)}
       </span>
 
@@ -90,7 +100,7 @@ function ControlBar({ videoRef, shellRef, fullscreen, onToggleFullscreen }) {
           const video = videoRef.current;
           if (video && duration > 0) video.currentTime = (Number(e.target.value) / 100) * duration;
         }}
-        style={{ flex: 1, accentColor: '#3048A0', cursor: 'pointer' }}
+        style={{ flex: '1 1 40px', minWidth: 0, accentColor: '#3048A0', cursor: 'pointer' }}
       />
 
       <button type="button" style={btn} aria-label={muted ? 'تشغيل الصوت' : 'كتم الصوت'}

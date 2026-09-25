@@ -398,6 +398,15 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 .local-player-bar { touch-action: manipulation; }
 .local-player-bar input[type="range"] { height: 22px; }
 
+/* A narrow player -- a vertical reel on a phone, or the video page's stage -- has room for
+   the controls or for the clock, not both. The controls win: losing the time display is a
+   inconvenience, losing the full screen button off the end of the row is a missing
+   feature. Container queries would be neater; this player is inside a 16:9 stage whose
+   width tracks the viewport, so a media query gets the same answer. */
+@media (max-width: 560px) {
+  .local-player-bar .local-player-time { display: none; }
+}
+
 /* 16:9 stage that holds a player. overflow:hidden is the second half of the iOS fix:
    even if something inside does overrun, it is clipped to the box instead of pushing the
    page out. aspect-ratio itself needs Safari 15, which every iPhone that can install the
