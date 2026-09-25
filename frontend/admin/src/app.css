@@ -552,11 +552,24 @@ body:has(.login-card) { background: radial-gradient(1200px 520px at 50% -10%, #e
 .report-status-good { color: var(--success); background: var(--success-container); }
 .report-status-bad { color: var(--on-error-container); background: var(--error-container); }
 .report-status-neutral { color: var(--on-primary-container); background: var(--surface-container-high); }
-.report-pagination { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 14px; color: var(--muted); font-size: 13px; }
-.report-pagination .btn { border-radius: 5px; border: 1px solid var(--border); min-width: 84px; }
-/* An empty label made these read as blank space. A border and a minimum width mean a
-   control is always visibly a control, whatever happens to its text. */
-.report-pagination .btn:disabled { opacity: .45; }
+/* Pagination.
+   Centred, not pushed to the end of the row. On a right-to-left page `flex-end` puts this
+   at the far LEFT, which is the last place an Arabic reader looks -- and it sits below the
+   fold under a long table, in the palest styling on a page where every other control is
+   loud. The labels were there and it still read as empty space. Centre is findable from
+   either direction. */
+.report-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 18px; color: var(--muted); font-size: 13px; }
+.report-pagination .btn {
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  font-weight: 700;
+  min-width: 96px;
+}
+.report-pagination .btn:not(:disabled):hover { background: var(--primary-container); filter: none; }
+/* A dead end should look like one rather than like something worth pressing. */
+.report-pagination .btn:disabled { opacity: 1; border-color: var(--border); color: var(--muted); background: var(--surface); }
 .report-detail-sections { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding-block: 0; border-block: 0; }
 .report-detail-sections section, .report-timeline { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 28px rgba(20,30,66,.04); }
 .report-detail h3 { margin: 0 0 12px; font-size: 15px; }
