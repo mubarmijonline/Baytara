@@ -20,7 +20,7 @@ const COPY = {
     addVideoLocal: 'خادم بيطرة — بدون DRM',
     addVideoVdoHint: 'الخيار الموصى به للمحتوى المدفوع: يمنع تسجيل الشاشة على iPhone وعلى أجهزة أندرويد المدعومة.',
     addVideoLocalHint: 'مناسب للمحتوى المجاني فقط: الصورة قابلة للتسجيل على أي جهاز، والعلامة المائية وحدها هي ما يحدّد الحساب.',
-    addVideoPaidOnlyVdo: 'هذه الدورة مدفوعة، لذلك تُرفع فيديوهاتها على VdoCipher فقط. سيرفر بيطرة بلا حماية DRM ومخصص للمحتوى المجاني.',
+    addVideoLocalPreviewHint: 'سيرفر بيطرة بلا حماية DRM، لذلك يُرفع الفيديو هنا كـ«معاينة مجانية» يشاهدها أي زائر. للمحتوى المدفوع في هذه الدورة استخدم VdoCipher.',
     addVideoProtect: 'تفعيل منع تسجيل الشاشة (يمنع التشغيل من متصفح الجوال إذا كان إلزام التطبيق مُفعّلاً)',
     addVideoFile: 'ملف الفيديو',
     addVideoSubmit: 'رفع وإضافة للدورة',
@@ -89,7 +89,7 @@ const COPY = {
     addVideoLocal: 'Baytara server — no DRM',
     addVideoVdoHint: 'The choice for paid content: it blocks screen recording on iPhone and on supported Android devices.',
     addVideoLocalHint: 'Free content only: the picture can be recorded on any device, and only the watermark identifies the account.',
-    addVideoPaidOnlyVdo: 'This course is paid, so its videos go to VdoCipher only. The Baytara server has no DRM and is for free content.',
+    addVideoLocalPreviewHint: 'The Baytara server has no DRM, so a video uploaded here becomes a free preview anyone can watch. Paid lessons in this course must go to VdoCipher.',
     addVideoProtect: 'Enforce the screen-recording rule (blocks mobile browsers while the app-only setting is on)',
     addVideoFile: 'Video file',
     addVideoSubmit: 'Upload and add to the course',
@@ -203,7 +203,11 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
     title: title.trim(),
     category_id: course?.category?.id || null,
     instructor_id: course?.instructor?.id || null,
-    access_type: course?.access_type || 'free',
+    // Local storage has no DRM, and the server refuses to play a paid lesson from it
+    // (`paid_requires_vdocipher`). So a local upload is a free lesson by definition --
+    // which is exactly what an intro or preview video is, and it is what puts the
+    // "معاينة مجانية" badge on it in the curriculum.
+    access_type: destination === 'local' ? 'free' : (course?.access_type || 'free'),
     status: 'published',
     price: 0,
     currency: course?.currency || 'EGP',
@@ -260,10 +264,18 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
       <Field label={copy.addVideoTitle}>
         <input value={title} onChange={(event) => setTitle(event.target.value)} disabled={working} />
       </Field>
-      <Field label={copy.addVideoWhere} hint={paid ? copy.addVideoPaidOnlyVdo : destination === 'vdocipher' ? copy.addVideoVdoHint : copy.addVideoLocalHint}>
-        <select value={paid ? 'vdocipher' : destination} onChange={(event) => setDestination(event.target.value)} disabled={working || paid}>
+      {/* Open on every course. A paid course still needs an intro or two that anyone can
+          watch, and those do not need DRM -- they need to be free, which is what choosing
+          local storage makes them. */}
+      <Field
+        label={copy.addVideoWhere}
+        hint={destination === 'local'
+          ? (paid ? copy.addVideoLocalPreviewHint : copy.addVideoLocalHint)
+          : copy.addVideoVdoHint}
+      >
+        <select value={destination} onChange={(event) => setDestination(event.target.value)} disabled={working}>
           <option value="vdocipher">{copy.addVideoVdo}</option>
-          {!paid && <option value="local">{copy.addVideoLocal}</option>}
+          <option value="local">{copy.addVideoLocal}</option>
         </select>
       </Field>
       {destination === 'vdocipher' && (
