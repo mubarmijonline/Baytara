@@ -3,6 +3,11 @@ const COPY = {
     common: {
       loading: 'جارٍ التحميل…', loadError: 'تعذّر التحميل.', empty: 'لا نتائج.', actions: 'إجراءات',
       save: 'حفظ', cancel: 'إلغاء', edit: 'تعديل', delete: 'حذف', all: 'الكل', status: 'الحالة',
+      // Pagination, shared. These existed only inside `videoReports`, so the users table
+      // read them off `common`, got undefined, and rendered buttons with no label at all:
+      // the pager worked perfectly and was invisible, found only by the cursor changing
+      // over an apparently empty strip.
+      previous: 'السابق', next: 'التالي', page: 'صفحة', of: 'من',
     },
     dashboard: {
       heading: 'لوحة القيادة',
@@ -207,6 +212,7 @@ const COPY = {
     common: {
       loading: 'Loading…', loadError: 'Unable to load.', empty: 'No results.', actions: 'Actions',
       save: 'Save', cancel: 'Cancel', edit: 'Edit', delete: 'Delete', all: 'All', status: 'Status',
+      previous: 'Previous', next: 'Next', page: 'Page', of: 'of',
     },
     dashboard: {
       heading: 'Dashboard',
