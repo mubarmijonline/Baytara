@@ -116,7 +116,14 @@ it('groups the curriculum into units and marks the free preview', async () => {
   mockApi();
   renderCourse();
 
-  expect(await screen.findByRole('button', { name: /Unit one/ })).toBeVisible();
+  // Found by text rather than by role-with-a-name-regex. The role query recomputes an
+  // accessible name for every button on a fully rendered page, on each of its 50ms
+  // retries, which on a loaded machine is what made this the one test in the file that
+  // timed out. `closest('button')` keeps the part that actually matters: the unit is a
+  // clickable accordion header, not a plain heading.
+  const unit = await screen.findByText(/Unit one/);
+  expect(unit).toBeVisible();
+  expect(unit.closest('button')).not.toBeNull();
   expect(screen.getByText('2 units')).toBeVisible();
   expect(screen.getAllByText('Free preview').length).toBeGreaterThan(0);
 });

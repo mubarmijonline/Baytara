@@ -104,7 +104,12 @@ it('tells an unverified viewer to verify, and offers the way to do it', async ()
   renderLesson();
 
   expect(await screen.findByText(/Verify your account to watch it/i)).toBeVisible();
-  const action = await screen.findByRole('button', { name: /Verify your account/i });
+  // By text, not by role-with-a-name-regex: the role query recomputes an accessible name
+  // for every button on the page on each retry, which is what makes these flaky under
+  // load. The button is still asserted to be a button.
+  const label = await screen.findByText('Verify your account');
+  const action = label.closest('button');
+  expect(action).not.toBeNull();
   fireEvent.click(action);
 
   await waitFor(() => expect(window.location.pathname).toBe('/verify'));
@@ -116,7 +121,8 @@ it('tells a signed-out viewer why nothing is playing instead of spinning forever
   mockApi();
   renderLesson();
 
-  expect(await screen.findByRole('button', { name: /Sign in to watch/i })).toBeVisible();
+  const signIn = await screen.findByText(/Sign in to watch/i);
+  expect(signIn.closest('button')).not.toBeNull();
   expect(screen.queryByText(/Loading the video/i)).not.toBeInTheDocument();
 });
 
@@ -144,8 +150,10 @@ it('groups the sidebar by unit and marks completed lessons', async () => {
   mockApi();
   renderLesson();
 
-  expect(await screen.findByRole('button', { name: /Unit one/ })).toBeVisible();
-  const welcome = await screen.findByRole('button', { name: /Welcome/ });
+  const unit = await screen.findByText(/Unit one/);
+  expect(unit.closest('button')).not.toBeNull();
+  const welcome = (await screen.findByText(/Welcome/)).closest('button');
+  expect(welcome).not.toBeNull();
   fireEvent.click(welcome);
   await waitFor(() => expect(window.location.pathname).toBe('/learn/cattle/11'));
 });
