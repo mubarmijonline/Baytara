@@ -223,7 +223,11 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
 
     try {
       let videoId;
-      if (destination === 'local' && !paid) {
+      // `destination` alone. This used to carry `&& !paid`, left over from when the
+      // selector was disabled on paid courses: unlocking the dropdown without removing it
+      // meant choosing local storage on a paid course silently uploaded to VdoCipher
+      // instead, which is the opposite of what the form said it would do.
+      if (destination === 'local') {
         setPhase('creating');
         const created = await api.videoCreate(metadata(), { silent: true });
         videoId = (created.video || created).id;

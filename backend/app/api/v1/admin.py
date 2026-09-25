@@ -2300,7 +2300,11 @@ def vdocipher_import():
         duration_minutes=d.get("duration_minutes"),
         poster=d.get("poster") or None,
         vdocipher_video_id=d["video_id"],
-        is_protected=True,
+        # Capture protection follows the access type, as it does everywhere else that
+        # creates a video. It was hardcoded True here, so every VdoCipher import came out
+        # protected -- including a free one, which then refused to play outside Edge and
+        # told the viewer to go and find another browser for content that costs nothing.
+        is_protected=d.get("is_protected", access_is_paid(catalog["access_type"])),
     )
     db.session.add(l)
     db.session.flush()
