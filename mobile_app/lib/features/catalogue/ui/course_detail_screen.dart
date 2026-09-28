@@ -19,6 +19,7 @@ import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
 import 'widgets/access_badge.dart';
 import 'widgets/course_card.dart';
+import 'widgets/verify_prompt.dart';
 
 class CourseDetailScreen extends ConsumerWidget {
   const CourseDetailScreen({super.key, required this.slug});
@@ -213,11 +214,15 @@ class _Cta extends StatelessWidget {
       return _Notice(
           text: l.checkoutUnavailableOnThisPlatform, icon: Icons.info_outline);
     }
+    if (access.reason == LockReason.needsBaytarian) {
+      return const VerifyToWatchPrompt();
+    }
 
     final (label, route) = switch (access.reason) {
       LockReason.needsAccount => (l.authSignIn, '/auth'),
       LockReason.needsPhone => (l.phoneSave, '/auth/phone'),
-      LockReason.needsBaytarian => (l.verifyToWatch, '/verify'),
+      // Returned early above, with the sentence and the button the website shows.
+      LockReason.needsBaytarian => (l.verifyNow, '/verify'),
       LockReason.needsPurchase => (
           '${l.lockNeedsPurchase} · ${priceLabel(course.price, course.currency, l)}',
           '/buy/${course.slug}'

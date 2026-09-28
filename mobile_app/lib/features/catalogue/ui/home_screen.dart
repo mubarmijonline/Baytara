@@ -1,7 +1,7 @@
 // Home.
 //
-// Mirrors the eight sections of frontend/web/src/pages/Home.jsx, in the same order, driven
-// by the same CMS blocks. Two rules run through it:
+// Mirrors the sections of frontend/web/src/pages/Home.jsx, in the same order, driven by
+// the same CMS blocks. Two rules run through it:
 //
 //   1. Every section hides itself when it has nothing. The catalogue is uneven -- there may
 //      be videos but no courses, or copy but no testimonials -- and a page wired to one list
@@ -20,6 +20,7 @@ import '../../../core/theme/tokens.dart';
 import '../../auth/domain/session.dart';
 import '../../learning/application/learning_providers.dart';
 import '../application/catalogue_providers.dart';
+import '../data/catalogue_dto.dart';
 import '../data/catalogue_repository.dart';
 import '../data/site_settings.dart';
 import 'widgets/course_card.dart';
@@ -38,6 +39,7 @@ class HomeScreen extends ConsumerWidget {
     final videos = ref.watch(videosProvider);
     final categories = ref.watch(categoriesProvider);
     final instructors = ref.watch(instructorsProvider);
+    final platformVideos = ref.watch(platformVideosProvider).value ?? const <Video>[];
     final session = ref.watch(sessionProvider);
 
     // Only asked for when signed in: the endpoint 401s otherwise, and the hero shows the
@@ -57,6 +59,7 @@ class HomeScreen extends ConsumerWidget {
             ..invalidate(settingsProvider)
             ..invalidate(categoriesProvider)
             ..invalidate(instructorsProvider)
+            ..invalidate(platformVideosProvider)
             ..invalidate(learningSummaryProvider);
           await Future.wait([
             ref.read(coursesProvider.notifier).refresh(),
@@ -121,6 +124,29 @@ class HomeScreen extends ConsumerWidget {
 
             if (loading)
               const SliverToBoxAdapter(child: HomeSkeleton()),
+
+            // Getting started: the platform's own clips, pinned ones first. Sits between
+            // categories and the video shelf, where the website has it, and is absent
+            // rather than empty when there are none.
+            if (platformVideos.isNotEmpty)
+              SliverToBoxAdapter(
+                child: HomeSection(
+                  title: l.homePlatformVideos,
+                  subtitle: l.homePlatformVideosSubtitle,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        for (final v in platformVideos)
+                          VideoCard(
+                            video: v,
+                            onTap: () => context.push('/videos/${v.id}'),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // 4. Free videos.
             if (videos.items.isNotEmpty)

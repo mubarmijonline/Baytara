@@ -179,6 +179,21 @@ class CatalogueRepository {
     }
   }
 
+  /// The platform's own clips, for the home page's "getting started" strip: the same
+  /// request the website's home makes. Filed under no specialty, and in the order the
+  /// admin pinned them, newest first after that.
+  Future<List<Video>> platformVideos({int limit = 4}) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/videos',
+        queryParameters: {'uncategorized': 1, 'per_page': limit},
+      );
+      return Paged.fromJson(res.data!, 'videos', Video.fromJson).items;
+    } catch (e) {
+      throw asApiException(e);
+    }
+  }
+
   Future<Video> video(int id) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>('/videos/$id');

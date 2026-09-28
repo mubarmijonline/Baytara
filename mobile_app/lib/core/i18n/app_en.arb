@@ -21,7 +21,7 @@
   "errDeviceMismatch": "Sign in again on this device.",
   "errNotEntitled": "This content is not part of your access.",
   "errAccessExpired": "Your access to this course has ended. You can renew it.",
-  "errNeedsBaytarian": "This content is for verified veterinarians. Verify your account to reach it.",
+  "errNeedsBaytarian": "This content is for verified veterinarians. Verify your account as a veterinarian to watch.",
   "errNonVetsOnly": "This tier is for non-veterinarians.",
   "errNoVideo": "This lesson is not available yet.",
   "errLessonNotFound": "We could not find that lesson.",
@@ -531,5 +531,8 @@
   "settingsTerms": "Terms and conditions",
   "settingsRefund": "Refund policy",
   "settingsDelivery": "Delivery and access",
-  "verifyToWatch": "Verify your account as a veterinarian to watch"
+  "verifyToWatch": "Verify your account as a veterinarian to watch",
+  "verifyNow": "Verify my account now",
+  "homePlatformVideos": "Getting started",
+  "homePlatformVideosSubtitle": "Short videos on how to use Baytara."
 }

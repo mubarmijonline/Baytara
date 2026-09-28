@@ -27,6 +27,10 @@ final videoDetailProvider = FutureProvider.family<Video, int>(
   (ref, id) => ref.watch(catalogueRepositoryProvider).video(id),
 );
 
+final platformVideosProvider = FutureProvider<List<Video>>(
+  (ref) => ref.watch(catalogueRepositoryProvider).platformVideos(),
+);
+
 final instructorsProvider = FutureProvider<List<InstructorRef>>(
   (ref) => ref.watch(catalogueRepositoryProvider).instructors(),
 );

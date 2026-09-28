@@ -289,7 +289,8 @@ class _RefusalView extends StatelessWidget {
       PlaybackRecovery.phoneGate => (l.phoneSave, '/auth/phone'),
       PlaybackRecovery.devices => (l.devicesTitle, '/account/devices'),
       PlaybackRecovery.reAuth => (l.authSignIn, '/auth'),
-      PlaybackRecovery.verify => (l.verifyToWatch, '/verify'),
+      // errNeedsBaytarian above already carries the sentence; the button is the step.
+      PlaybackRecovery.verify => (l.verifyNow, '/verify'),
       PlaybackRecovery.purchase => (l.lockNeedsPurchase, '/pricing'),
       PlaybackRecovery.renew => (l.lockNeedsPurchase, '/pricing'),
       _ => (null, null),

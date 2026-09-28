@@ -21,6 +21,7 @@ import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
 import 'widgets/access_badge.dart';
 import 'widgets/course_card.dart';
+import 'widgets/verify_prompt.dart';
 
 class VideoDetailScreen extends ConsumerWidget {
   const VideoDetailScreen({super.key, required this.videoId});
@@ -170,6 +171,9 @@ class _Cta extends StatelessWidget {
         !PurchaseAvailability.purchasesEnabled) {
       return _Notice(text: l.checkoutUnavailableOnThisPlatform);
     }
+    if (access.reason == LockReason.needsBaytarian) {
+      return const VerifyToWatchPrompt();
+    }
 
     final (label, onTap) = switch (access.reason) {
       LockReason.none => (
@@ -179,12 +183,8 @@ class _Cta extends StatelessWidget {
         ),
       LockReason.needsAccount => (l.authSignIn, () => context.push('/auth')),
       LockReason.needsPhone => (l.phoneSave, () => context.push('/auth/phone')),
-      LockReason.needsBaytarian => (
-          // The button says what to do, not what is missing: "verification required"
-          // left a first-time visitor not knowing what to press.
-          l.verifyToWatch,
-          () => context.push('/verify'),
-        ),
+      // Returned early above, with the sentence and the button the website shows.
+      LockReason.needsBaytarian => (l.verifyNow, () => context.push('/verify')),
       LockReason.needsPurchase => (
           '${l.lockNeedsPurchase} · ${priceLabel(video.price, video.currency, l)}',
           () => context.push('/buy/${video.id}?kind=video&video_id=${video.id}'),
