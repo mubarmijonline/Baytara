@@ -16,7 +16,10 @@ const FIELDS = ['name', 'profession', 'registration_no', 'governorate', 'license
 // not; the other two are read by a model, which sometimes cannot tell — and when it
 // cannot, the request goes to a person instead of turning the applicant away.
 const ROUTES = ['card', 'national_id', 'other'];
-const NEEDS_ID = { card: true, national_id: true, other: false };
+// Where the optional national ID field is offered. Optional since 2026-09-28: applicants
+// from other Arab countries have no Egyptian number to type, and the document is the
+// proof. Whatever number the document carries is read from it and recorded server-side.
+const OFFERS_ID = { card: true, national_id: true, other: false };
 
 const card = { background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 16, padding: 22 };
 
@@ -192,7 +195,7 @@ export default function VerifyVet() {
   // are in and not on every keystroke. The other routes have no preview at all — every
   // preview there is a model call, and the answer is the same as the submit.
   useEffect(() => {
-    if (route !== 'card' || !front || !back || !user?.national_id) { setReport(null); return undefined; }
+    if (route !== 'card' || !front || !back) { setReport(null); return undefined; }
     let alive = true;
     setBusy(true); setPhase('reading'); setError('');
     auth.baytarianCard(front, back, true)
@@ -200,7 +203,7 @@ export default function VerifyVet() {
       .catch((e) => alive && setError(t(`verify.error.${e.data?.error || 'generic'}`)))
       .finally(() => { if (alive) { setBusy(false); setPhase(''); } });
     return () => { alive = false; };
-  }, [route, front, back, user?.national_id, t]);
+  }, [route, front, back, user?.national_id, t]);   // a newly saved ID re-reads the card
 
   async function saveNationalId(event) {
     event.preventDefault();
@@ -262,12 +265,11 @@ export default function VerifyVet() {
     );
   }
 
-  const needsId = NEEDS_ID[route];
+  const offersId = OFFERS_ID[route];
   const locked = !!user?.national_id;
-  const idReady = !needsId || locked;
   // The syndicate card only submits once every field is green. The other routes have
   // nothing to show first, so having a photo is the whole precondition.
-  const ready = route === 'card' ? !!report?.complete : (idReady && !!front);
+  const ready = route === 'card' ? !!report?.complete : !!front;
 
   return (
     <main style={{ background: colors.surfaceMuted, minHeight: '70vh' }}>
@@ -306,9 +308,10 @@ export default function VerifyVet() {
           </div>
         </section>
 
-        {/* The national ID is what ties a card to this account. A student card carries
-            no national ID, so that route does not ask for one. */}
-        {needsId && (
+        {/* Optional. When typed, the card has to carry it; when not, the number printed on
+            the document is what the server records. A student card carries none, so that
+            route does not offer the field. */}
+        {offersId && (
           <section style={card}>
             <h2 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: colors.ink }}>{t('verify.step1')}</h2>
             <p style={{ margin: '0 0 14px', fontSize: 13.5, color: colors.muted, lineHeight: 1.8 }}>
@@ -342,7 +345,7 @@ export default function VerifyVet() {
 
         {/* The photos. The syndicate card needs both sides and shows a sample of each;
             the others take whatever the document has. */}
-        <section style={{ ...card, opacity: idReady ? 1 : 0.55, pointerEvents: idReady ? 'auto' : 'none' }}>
+        <section style={card}>
           <h2 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: colors.ink }}>{t('verify.step2')}</h2>
           <p style={{ margin: '0 0 14px', fontSize: 13.5, color: colors.muted, lineHeight: 1.8 }}>
             {t(route === 'card' ? 'verify.uploadHint' : 'verify.uploadHintOther')}

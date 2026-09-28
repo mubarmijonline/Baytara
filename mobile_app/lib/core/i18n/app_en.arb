@@ -247,7 +247,7 @@
   "verifyRouteNationalId": "National ID",
   "verifyRouteNationalIdHint": "If the printed occupation reads veterinarian.",
   "verifyRouteOther": "Another document",
-  "verifyRouteOtherHint": "College card or enrolment letter. May need human review.",
+  "verifyRouteOtherHint": "College card, enrolment letter, or a syndicate card or ID from another country. May need human review.",
   "verifyCaptureFront": "Front",
   "verifyCaptureBack": "Back",
   "verifyCaptureDocument": "Document photo",

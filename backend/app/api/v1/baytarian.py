@@ -137,12 +137,20 @@ def _check_card(user, texts, today=None):
     fields = report["fields"]
     problems = []
 
-    if not user.national_id:
-        problems.append("national_id_missing_on_profile")
-    elif fields["national_id"]["ok"] and fields["national_id"]["value"] != user.national_id:
-        # The card belongs to somebody, but not to whoever is holding this account.
+    # A national ID typed on the profile is optional (client, 2026-09-28: applicants from
+    # other Arab countries have no Egyptian number to type, and the card is proof enough).
+    # When there is one, the card must carry it. When there is not, the number printed on
+    # the card must not already belong to another account, and submit records it, which
+    # is the same rule the document route applies.
+    card_id = fields["national_id"]["value"] if fields["national_id"]["ok"] else None
+    if user.national_id:
+        if card_id and card_id != user.national_id:
+            # The card belongs to somebody, but not to whoever is holding this account.
+            fields["national_id"]["ok"] = False
+            fields["national_id"]["problem"] = "does_not_match_profile"
+    elif card_id and User.query.filter(User.national_id == card_id, User.id != user.id).first():
         fields["national_id"]["ok"] = False
-        fields["national_id"]["problem"] = "does_not_match_profile"
+        fields["national_id"]["problem"] = "card_already_used"
 
     decoded = fields.get("national_id_decoded")
     printed = fields["governorate"]["value"]
@@ -207,9 +215,6 @@ def submit_card():
         return jsonify(error="already_verified"), 409
     if BaytarianRequest.query.filter_by(user_id=_uid(), status="pending").first():
         return jsonify(error="request_pending"), 409
-    if not user.national_id:
-        return jsonify(error="national_id_required"), 422
-
     files, failure = _collect_sides()
     if failure:
         return failure
@@ -239,6 +244,10 @@ def submit_card():
     req.spot_check = req.id % SPOT_CHECK_EVERY == 0
 
     user.is_baytarian = True
+    if not user.national_id:
+        # Write-once, as on the profile: it is now what stops this card verifying a
+        # second account.
+        user.national_id = fields["national_id"]["value"]
     user.vet_registration_no = fields["registration_no"]["value"]
     user.vet_license_no = fields["license_no"]["value"]
     user.vet_governorate = fields["governorate"]["value"]

@@ -126,3 +126,49 @@ def test_the_apps_newest_sort_still_leads_with_pinned_videos(app):
     client.put("/api/v1/admin/videos/pinned", json={"video_ids": [v1]}, headers=_admin(client))
     assert _public_titles(client, sort="newest")[0] == "V1"
     assert _public_titles(client, uncategorized=1)[0] == "V1"
+
+
+def test_adding_to_a_saved_list_keeps_what_was_already_pinned(app):
+    """The client's report, 2026-09-28: four pinned fine, and saving a fifth wiped the four.
+
+    The four kept their positions, so the save set each to the rank it already held. The
+    ranks had been cleared by a bulk UPDATE the loaded rows did not see, so those writes
+    looked like no change and were never sent: the database kept the four cleared.
+    """
+    client = app.test_client()
+    headers = _admin(client)
+    with app.app_context():
+        ids = [Lesson.query.filter_by(title=f"V{i}").first().id for i in range(1, 6)]
+    client.put("/api/v1/admin/videos/pinned", json={"video_ids": ids[:4]}, headers=headers)
+
+    r = client.put("/api/v1/admin/videos/pinned", json={"video_ids": ids}, headers=headers)
+    assert [v["id"] for v in r.get_json()["videos"]] == ids
+    assert _public_titles(client)[:5] == ["V1", "V2", "V3", "V4", "V5"]
+
+
+def test_reordering_keeps_the_videos_whose_place_did_not_change(app):
+    client = app.test_client()
+    headers = _admin(client)
+    with app.app_context():
+        a, b, c = (Lesson.query.filter_by(title=t).first().id for t in ("V1", "V2", "V3"))
+    client.put("/api/v1/admin/videos/pinned", json={"video_ids": [a, b, c]}, headers=headers)
+    # Swap the first two; the third keeps rank 3.
+    r = client.put("/api/v1/admin/videos/pinned", json={"video_ids": [b, a, c]}, headers=headers)
+    assert [v["id"] for v in r.get_json()["videos"]] == [b, a, c]
+
+
+def test_twelve_can_be_pinned_and_a_thirteenth_is_refused(app):
+    client = app.test_client()
+    headers = _admin(client)
+    with app.app_context():
+        for i in range(6, 14):
+            db.session.add(Lesson(title=f"V{i}", status="published", access_type="free",
+                                  source="local", local_status="ready", price=0))
+        db.session.commit()
+        ids = [l.id for l in Lesson.query.order_by(Lesson.id).all()]
+    # One at a time, the way the panel is used: each save adds one to the saved list.
+    for n in range(1, 13):
+        r = client.put("/api/v1/admin/videos/pinned", json={"video_ids": ids[:n]}, headers=headers)
+        assert [v["id"] for v in r.get_json()["videos"]] == ids[:n], f"after pinning {n}"
+    assert client.put("/api/v1/admin/videos/pinned", json={"video_ids": ids[:13]},
+                      headers=headers).status_code == 422

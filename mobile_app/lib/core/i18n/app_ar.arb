@@ -247,7 +247,7 @@
   "verifyRouteNationalId": "بطاقة الرقم القومي",
   "verifyRouteNationalIdHint": "إذا كانت المهنة المدوّنة «طبيب بيطري».",
   "verifyRouteOther": "مستند آخر",
-  "verifyRouteOtherHint": "كارنيه الكلية أو إفادة قيد. قد يحتاج مراجعة بشرية.",
+  "verifyRouteOtherHint": "كارنيه الكلية أو إفادة قيد، أو كارنيه النقابة أو الهوية من دولة أخرى. قد يحتاج مراجعة بشرية.",
   "verifyCaptureFront": "الوجه الأمامي",
   "verifyCaptureBack": "الوجه الخلفي",
   "verifyCaptureDocument": "صورة المستند",

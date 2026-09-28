@@ -2650,8 +2650,13 @@ def pinned_videos_set():
     if missing:
         return jsonify(error="unknown_video_ids", ids=missing), 422
 
-    Lesson.query.filter(Lesson.library_rank.isnot(None)).update(
-        {"library_rank": None}, synchronize_session=False)
+    # Cleared through the loaded rows, not a bulk UPDATE. A bulk UPDATE left the rows already
+    # in the session holding their old ranks, so a video that kept its place was "set" to
+    # the rank it seemed to have, which reads as no change and is never written: adding a
+    # fifth to four saved videos wiped the four. Here the session sees every change and
+    # writes only the net difference.
+    for lesson in Lesson.query.filter(Lesson.library_rank.isnot(None)).all():
+        lesson.library_rank = None
     for rank, vid in enumerate(ids, start=1):
         found[vid].library_rank = rank
     db.session.commit()

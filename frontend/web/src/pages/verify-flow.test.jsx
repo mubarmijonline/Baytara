@@ -80,3 +80,26 @@ it('shows live processing while the document is read, then says a person will an
   expect(await screen.findByText(/We have your document/i)).toBeVisible();
   expect(screen.getByText(/arrive in your notifications/i)).toBeVisible();
 });
+
+it('verifies from a document with no national ID typed, which is now optional', async () => {
+  // The client, 2026-09-28: applicants from Jordan and Mauritania have no Egyptian number
+  // to type. The photo upload used to stay greyed out until one was saved.
+  setToken('viewer-token');
+  renderRoute('/verify');
+
+  fireEvent.click(await screen.findByLabelText(/National ID card/i));
+  expect(screen.getByText(/National ID \(optional\)/i)).toBeVisible();
+  expect(screen.getByText(/you can leave it empty/i)).toBeVisible();
+
+  fireEvent.change(document.querySelector('input[type="file"]'),
+    { target: { files: [new File(['x'], 'id.png', { type: 'image/png' })] } });
+  const submit = await screen.findByRole('button', { name: /verify my account|Verify/i });
+  expect(submit).toBeEnabled();
+  fireEvent.click(submit);
+
+  await waitFor(() => expect(fetch.mock.calls.some(([url]) => String(url).includes('/baytarian/document'))).toBe(true));
+  // Nothing was sent to the profile first: no number was demanded.
+  expect(fetch.mock.calls.some(([url, options]) => String(url).includes('/auth/me') && options?.method === 'PATCH')).toBe(false);
+  releaseDocument();
+  expect(await screen.findByText(/We have your document/i)).toBeVisible();
+});

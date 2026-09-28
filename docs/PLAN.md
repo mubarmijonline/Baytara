@@ -6,6 +6,17 @@ This file holds the plan for the work currently in flight.
 
 ---
 
+## Delivered, milestone 24: pinning past four, and the national ID optional
+
+See `docs/milestones/24-pinning-fix-and-optional-national-id.md`. Pinning a fifth video
+no longer wipes the first four: the save now clears ranks through the loaded rows, so a
+video that keeps its place is not silently dropped. Verified live by adding a fifth to the
+client's four and restoring them. Verification no longer needs a typed national ID on any
+route: the syndicate card records the number printed on it instead, and the website marks
+the field optional and never blocks the upload.
+
+---
+
 ## Delivered, milestone 23: admin tests green again, and milestone 22 in the app
 
 See `docs/milestones/23-admin-tests-and-app-parity.md`. The app home gained the

@@ -175,17 +175,37 @@ def test_one_card_verifies_one_account(app, monkeypatch):
     assert response.get_json()["report"]["fields"]["registration_no"]["problem"] == "card_already_used"
 
 
-def test_a_national_id_is_needed_before_the_card(app, monkeypatch):
+def test_the_card_alone_verifies_and_records_its_national_id(app, monkeypatch):
+    """No typed national ID is needed (client, 2026-09-28). This used to be refused."""
     with app.app_context():
         _account()      # no national ID recorded
     _stub_vision(monkeypatch)
     client = _client(app)
 
-    assert client.post("/api/v1/baytarian/card", data=_sides(),
-                       content_type="multipart/form-data").status_code == 422
     preview = client.post("/api/v1/baytarian/card/preview", data=_sides(),
                           content_type="multipart/form-data").get_json()["report"]
-    assert "national_id_missing_on_profile" in preview["problems"]
+    assert preview["complete"], preview
+    response = client.post("/api/v1/baytarian/card", data=_sides(),
+                           content_type="multipart/form-data")
+    assert response.status_code == 201
+    with app.app_context():
+        user = User.query.filter_by(email="vet@example.test").first()
+        assert user.is_baytarian
+        # Recorded from the card, so the same card cannot verify a second account.
+        assert user.national_id == NATIONAL_ID
+
+
+def test_without_a_typed_id_a_card_already_on_another_account_is_refused(app, monkeypatch):
+    with app.app_context():
+        _account(email="owner@example.test", national_id=NATIONAL_ID)
+        _account()      # no national ID recorded
+    _stub_vision(monkeypatch)
+    client = _client(app)
+
+    response = client.post("/api/v1/baytarian/card", data=_sides(),
+                           content_type="multipart/form-data")
+    assert response.status_code == 422
+    assert response.get_json()["report"]["fields"]["national_id"]["problem"] == "card_already_used"
 
 
 def test_an_unreadable_card_blocks_submission(app, monkeypatch):
