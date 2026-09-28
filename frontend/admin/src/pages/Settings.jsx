@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Save } from 'lucide-react';
 import { api } from '../api.js';
 import { ErrText, Field } from '../ui.jsx';
@@ -35,8 +35,12 @@ const TRUST_FIELDS = [
   { key: 'label', label: label('النص', 'label'), localized: true },
 ];
 
+// A named region, not just a heading above some fields: several sections share field
+// names ("Title" is in the hero and on the courses page), and without the region a screen
+// reader announces two identical "English title" boxes with nothing to tell them apart.
 function Section({ title, children }) {
-  return <section className="settings-section"><h3>{title}</h3>{children}</section>;
+  const id = useId();
+  return <section className="settings-section" aria-labelledby={id}><h3 id={id}>{title}</h3>{children}</section>;
 }
 
 export default function Settings() {

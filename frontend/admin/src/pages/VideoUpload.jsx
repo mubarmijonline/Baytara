@@ -201,8 +201,11 @@ export default function VideoUpload() {
       await start();
       waitingRef.current = false;
     });
+    // access_type is here because it is the one thing missing() checks. Without it, an
+    // admin who picked a paid tier, was refused, and switched back to free watched the
+    // queue sit there until they re-picked the file.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, form.category_id, form.instructor_id, running]);
+  }, [items, form.category_id, form.instructor_id, form.access_type, running]);
 
   const remove = (key) => setItems((rows) => rows.filter((row) => row.key !== key));
   const clearSettled = () => setItems((rows) => rows.filter((row) => !SETTLED.has(row.status)));

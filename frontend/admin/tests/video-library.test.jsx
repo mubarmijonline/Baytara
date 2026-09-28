@@ -395,10 +395,13 @@ it('saves canonical course assignments as a set of IDs', async () => {
   fetch.mockImplementation((input, options = {}) => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
-    if (url.endsWith('/admin/videos/7') && (!options.method || options.method === 'GET')) return json({ video: { id: 7, title: 'Exam', description: 'Notes', category: { id: 1 }, vdocipher_video_id: '', access_type: 'general', status: 'draft', courses: [{ id: 1 }] } });
+    // A video may only join its own instructor's courses (dd1a49b), so the picker lists
+    // nothing until the video has an instructor who owns some.
+    if (url.endsWith('/admin/videos/7') && (!options.method || options.method === 'GET')) return json({ video: { id: 7, title: 'Exam', description: 'Notes', category: { id: 1 }, instructor_id: 8, vdocipher_video_id: '', access_type: 'general', status: 'draft', courses: [{ id: 1 }] } });
     if (url.endsWith('/admin/videos/7')) return json({ video: {} });
     if (url.endsWith('/admin/videos/7/courses')) return json({ video: {} });
-    if (url.includes('/admin/courses')) return json({ courses: [{ id: 1, title: 'Equine 1' }, { id: 2, title: 'Equine 2' }] });
+    if (url.includes('/admin/users?')) return json({ users: [{ id: 8, name: 'Dr Sara' }] });
+    if (url.includes('/admin/courses')) return json({ courses: [{ id: 1, title: 'Equine 1', instructor_id: 8 }, { id: 2, title: 'Equine 2', instructor_id: 8 }] });
     if (url.endsWith('/categories')) return json({ categories: [{ id: 1, slug: 'equine', name: 'Equine' }] });
     return json({});
   });
@@ -410,6 +413,9 @@ it('saves canonical course assignments as a set of IDs', async () => {
   await waitFor(() => expect(fetch.mock.calls.some(([input, options]) => String(input).endsWith('/admin/videos/7/courses') && JSON.parse(options.body).course_ids.includes(1) && JSON.parse(options.body).course_ids.includes(2))).toBe(true));
 });
 
+// The upload tests pick the video file by its label. The editor has had a thumbnail picker
+// above it since 1a71993, so "the first file input" became the thumbnail, no video was
+// ever chosen, and each of these stopped at "Choose a video file".
 it('keeps the uploaded provider ID visible when local import fails', async () => {
   class SuccessfulXhr {
     constructor() { this.status = 201; this.upload = {}; }
@@ -433,7 +439,7 @@ it('keeps the uploaded provider ID visible when local import fails', async () =>
   await user.type(screen.getAllByRole('textbox')[0], 'Exam');
   await user.type(screen.getAllByRole('textbox')[2], 'Notes');
   await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
-  await user.upload(document.querySelector('input[type="file"]'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
+  await user.upload(screen.getByLabelText('Video file'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
   await user.click(screen.getByRole('button', { name: /upload video/i }));
 
   expect(await screen.findByText(/uploaded-123/i)).toBeVisible();
@@ -461,7 +467,7 @@ it('does not claim partial upload success when the signed XHR fails', async () =
   await user.type(screen.getAllByRole('textbox')[0], 'Exam');
   await user.type(screen.getAllByRole('textbox')[2], 'Notes');
   await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
-  await user.upload(document.querySelector('input[type="file"]'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
+  await user.upload(screen.getByLabelText('Video file'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
   await user.click(screen.getByRole('button', { name: /upload video/i }));
 
   expect(await screen.findByText(/unable to upload/i)).toBeVisible();
@@ -490,7 +496,7 @@ it('retries a failed import from the stored upload payload without new credentia
   await user.type(screen.getAllByRole('textbox')[2], 'Notes');
   await user.type(screen.getAllByRole('textbox')[3], 'English notes');
   await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
-  await user.upload(document.querySelector('input[type="file"]'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
+  await user.upload(screen.getByLabelText('Video file'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
   await user.click(screen.getByRole('button', { name: /upload video/i }));
   expect(await screen.findByRole('button', { name: /retry import/i })).toBeVisible();
   await user.click(screen.getByRole('button', { name: /retry import/i }));
@@ -540,6 +546,13 @@ it('backfills canonical poster and duration when provider processing finishes', 
   renderAdmin('/admin/videos/7');
 
   await waitFor(() => expect(synced).toEqual({ poster: 'https://cdn.test/exam.jpg', duration_minutes: 1 }));
+  // Once, and without reloading the page: the repair used to fire the data-changed event,
+  // which remounted the editor, which loaded the video again, which repaired it again.
+  // Here the fake server never keeps the poster, so that went on forever and hung the file.
+  const loads = () => fetch.mock.calls.filter(([input, options = {}]) => String(input).endsWith('/admin/videos/7') && (!options.method || options.method === 'GET'));
+  await new Promise((resolve) => { setTimeout(resolve, 200); });
+  expect(loads()).toHaveLength(1);
+  await waitFor(() => expect(screen.getByLabelText('Duration')).toHaveValue(1));
 });
 
 it('retries provider metadata after upload without issuing new credentials', async () => {
@@ -563,7 +576,7 @@ it('retries provider metadata after upload without issuing new credentials', asy
   await user.type(screen.getAllByRole('textbox')[0], 'Exam');
   await user.type(screen.getAllByRole('textbox')[2], 'Notes');
   await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
-  await user.upload(document.querySelector('input[type="file"]'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
+  await user.upload(screen.getByLabelText('Video file'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
   await user.click(screen.getByRole('button', { name: /upload video/i }));
   await user.click(await screen.findByRole('button', { name: /retry provider metadata/i }));
   await waitFor(() => expect(screen.queryByRole('button', { name: /retry provider metadata/i })).toBeNull());
@@ -755,7 +768,10 @@ it('removes an unknown category slug after categories load', async () => {
   await waitFor(() => expect(window.location.search).not.toContain('category=unknown'));
 });
 
-it('removes a returned category slug that is outside the fixed catalog', async () => {
+it('keeps a section the admin created, outside the six built-in ones, as a filter', async () => {
+  // The opposite of what this test used to assert. 0a428a9: dropping any slug outside the
+  // built-in six is what made a section the client created vanish from the filter the
+  // moment it was picked. A slug that exists is a filter; only an unknown one is removed.
   fetch.mockImplementation((input) => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
@@ -766,8 +782,8 @@ it('removes a returned category slug that is outside the fixed catalog', async (
     return json({});
   });
   renderAdmin('/admin/videos?category=legacy-equine');
-  await waitFor(() => expect(window.location.search).not.toContain('category=legacy-equine'));
-  expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/video-library') && String(input).includes('category_id=9'))).toBe(false);
+  await waitFor(() => expect(fetch.mock.calls.some(([input]) => String(input).includes('/admin/video-library') && String(input).includes('category_id=9'))).toBe(true));
+  expect(window.location.search).toContain('category=legacy-equine');
 });
 
 it('renders composite local-only records only on the page returned by the server', async () => {

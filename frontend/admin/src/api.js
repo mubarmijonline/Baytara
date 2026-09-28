@@ -197,7 +197,11 @@ export const api = {
   videoCreate: (body, { silent = false } = {}) => req('/admin/videos', {
     method: 'POST', body: JSON.stringify(body), skipAdminDataChanged: silent,
   }),
-  videoUpdate: (id, body) => req(`/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  // `silent` for a background repair the admin did not ask for (the editor filling in a
+  // missing poster): the event would remount the page they are typing into.
+  videoUpdate: (id, body, { silent = false } = {}) => req(`/admin/videos/${id}`, {
+    method: 'PATCH', body: JSON.stringify(body), skipAdminDataChanged: silent,
+  }),
   videoDelete: (id) => req(`/admin/videos/${id}`, { method: 'DELETE' }),
   // The few videos shown first on the home page strip and in the public library, in order.
   pinnedVideos: () => req('/admin/videos/pinned'),

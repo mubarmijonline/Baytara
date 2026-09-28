@@ -271,7 +271,19 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
         const metadata = {};
         if (!catalogVideo.poster && video.poster) metadata.poster = video.poster;
         if (!catalogVideo.duration_minutes && video.duration_seconds) metadata.duration_minutes = Math.max(1, Math.round(video.duration_seconds / 60));
-        if (Object.keys(metadata).length) await api.videoUpdate(videoId, metadata);
+        if (Object.keys(metadata).length) {
+          // Silent: this is a repair nobody asked for, and the data-changed event remounts
+          // the page. That threw away whatever the admin had started typing, and whenever
+          // the next load still lacked the poster it went round again, for good.
+          await api.videoUpdate(videoId, metadata, { silent: true });
+          // Keep the form in step, so a later Save does not send the old empty values back.
+          set(() => setForm((current) => ({
+            ...current,
+            ...(metadata.poster ? { poster: metadata.poster } : {}),
+            ...(metadata.duration_minutes && (current.duration_minutes === '' || current.duration_minutes == null)
+              ? { duration_minutes: metadata.duration_minutes } : {}),
+          })));
+        }
       } catch (error) { set(() => setProviderError(error.message)); }
     };
     (async () => {

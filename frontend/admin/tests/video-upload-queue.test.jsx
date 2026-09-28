@@ -70,28 +70,34 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it('will not upload without a category, and says which field is missing', async () => {
+const created = () => fetch.mock.calls.filter(([url, o]) => String(url).endsWith('/admin/videos') && o?.method === 'POST');
+
+it('uploads with no section and no presenter, which is how platform clips are filed', async () => {
+  // Both used to be required. 0a428a9 made them optional on purpose: a video with no
+  // section is one of the platform's own clips, and the home page is where it surfaces.
   renderUpload();
   // Picking the file is the whole gesture: there is no button to press afterwards.
   fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('one.mp4')] } });
 
-  await waitFor(() => {
-    expect(document.querySelector('.error-text')?.textContent).toBe('Category is required.');
-  });
-  // Nothing was created: the catalogue row is only made once the form is valid.
-  expect(fetch.mock.calls.some(([url, o]) => String(url).endsWith('/admin/videos') && o?.method === 'POST')).toBe(false);
+  await waitFor(() => expect(created()).toHaveLength(1));
+  const body = JSON.parse(created()[0][1].body);
+  expect(body.category_id).toBeNull();
+  expect(body.instructor_id).toBeNull();
+  expect(document.querySelector('.error-text')?.textContent || '').toBe('');
 });
 
-it('names the missing instructor instead of printing a translation key', async () => {
+it('refuses paid access on this page and says why, in words rather than a key', async () => {
+  // This page uploads to our own server, which has no DRM, so paid tiers go to VdoCipher.
   renderUpload();
-  await chooseCategory();
+  fireEvent.change(await screen.findByLabelText(/Access type/i), { target: { value: 'baytarian' } });
   fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('one.mp4')] } });
 
   await waitFor(() => {
-    expect(document.querySelector('.error-text')?.textContent).toBe('An instructor is required.');
+    expect(document.querySelector('.error-text')?.textContent).toBe('Paid content goes to VdoCipher only: the Baytara server has no DRM and is for free content.');
   });
-  // Never a raw translation key.
   expect(document.body.textContent).not.toMatch(/catalog\.error\./);
+  // Nothing was created: the catalogue row is only made once the form is valid.
+  expect(created()).toHaveLength(0);
 });
 
 it('starts on its own once the form is complete, for every file picked', async () => {
@@ -110,21 +116,21 @@ it('starts on its own once the form is complete, for every file picked', async (
   });
 });
 
-it('picks the queue up by itself when the missing field is filled in later', async () => {
+it('picks the queue up by itself when the refusal is fixed later', async () => {
   renderUpload();
+  fireEvent.change(await screen.findByLabelText(/Access type/i), { target: { value: 'baytarian' } });
   fireEvent.change(await screen.findByLabelText(/Video file/i), { target: { files: [clip('late.mp4')] } });
   await waitFor(() => {
-    expect(document.querySelector('.error-text')?.textContent).toBe('Category is required.');
+    expect(document.querySelector('.error-text')?.textContent).toMatch(/VdoCipher only/);
   });
+  expect(created()).toHaveLength(0);
 
-  await chooseCategory();
-  await chooseInstructor();
+  fireEvent.change(screen.getByLabelText(/Access type/i), { target: { value: 'free' } });
 
-  // No re-picking the file, no button: completing the form resumes the queue.
-  await waitFor(() => {
-    expect(fetch.mock.calls.some(([url, o]) => String(url).endsWith('/admin/videos') && o?.method === 'POST')).toBe(true);
-  });
+  // No re-picking the file, no button: fixing the form resumes the queue.
+  await waitFor(() => expect(created()).toHaveLength(1));
 });
+
 
 it('gives every queued row a progress bar, so waiting looks like a stage not a stall', async () => {
   localStorage.setItem('baytara_admin_upload_queue', JSON.stringify([

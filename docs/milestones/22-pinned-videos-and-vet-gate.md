@@ -1,4 +1,4 @@
-# 22 — Videos the admin puts first, and a vet-only lock that says what to do
+# 22: Videos the admin puts first, and a vet-only lock that says what to do
 
 **Status:** done and live. Backend 353 tests, website 106, app 262, pinning panel 2.
 The admin suite's failures (13 across five files, four more and a hanging test in the
@@ -64,4 +64,4 @@ tests), and then "backfills canonical poster and duration" never completes, beca
 editor re-renders continuously and starves the event loop, so even the test timeout cannot
 fire. That test passes alone in 0.4 s. Across the other admin files, 13 tests fail. All of it
 is identical when the same files are run from the previous commit, so none of it comes
-from this change. It still needs fixing on its own.
+from this change. Fixed in milestone 23, `23-admin-tests-and-app-parity.md`.

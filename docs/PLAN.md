@@ -6,7 +6,19 @@ This file holds the plan for the work currently in flight.
 
 ---
 
-## Delivered — milestone 22: pinned videos and the vet-only lock
+## Delivered, milestone 23: admin tests green again, and milestone 22 in the app
+
+See `docs/milestones/23-admin-tests-and-app-parity.md`. The app home gained the
+"تعرّف على المنصة" strip in pinned order, and its vet-only lock now shows the website's
+sentence and "توثيق الحساب الآن" button. The admin suite passes again (109 tests, about
+80 s; it used to hang). Two real bugs were behind it, both fixed: the video editor
+remounting itself after its silent poster repair, and the upload queue not resuming
+after a refused paid tier was corrected. The rest were tests that predated deliberate
+changes.
+
+---
+
+## Delivered, milestone 22: pinned videos and the vet-only lock
 
 See `docs/milestones/22-pinned-videos-and-vet-gate.md`. `lessons.library_rank` puts up to
 twelve admin-chosen videos first in the public library, the app's list and (for videos with
@@ -14,9 +26,8 @@ no section) the home page strip; an admin panel at the top of the video library 
 order. A vet-only video now tells a signed-in viewer "وثّق حسابك كطبيب بيطري للمشاهدة" with a
 "توثيق الحساب الآن" button to verification, on the website and in the app.
 
-Open: the admin test suite has failures that predate this milestone and need their own
-fix: 13 across five files, plus four and a test that never finishes in
-`tests/video-library.test.jsx`.
+The admin test failures found here predated this milestone and were fixed in
+milestone 23.
 
 ---
 
