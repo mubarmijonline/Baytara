@@ -6,6 +6,20 @@ This file holds the plan for the work currently in flight.
 
 ---
 
+## Delivered — milestone 22: pinned videos and the vet-only lock
+
+See `docs/milestones/22-pinned-videos-and-vet-gate.md`. `lessons.library_rank` puts up to
+twelve admin-chosen videos first in the public library, the app's list and (for videos with
+no section) the home page strip; an admin panel at the top of the video library sets the
+order. A vet-only video now tells a signed-in viewer "وثّق حسابك كطبيب بيطري للمشاهدة" with a
+"توثيق الحساب الآن" button to verification, on the website and in the app.
+
+Open: the admin test suite has failures that predate this milestone and need their own
+fix: 13 across five files, plus four and a test that never finishes in
+`tests/video-library.test.jsx`.
+
+---
+
 ## Delivered — milestone 16: Kashier readiness and homepage motion
 
 See `docs/milestones/16-kashier-and-homepage-motion.md`. Short version: the Kashier

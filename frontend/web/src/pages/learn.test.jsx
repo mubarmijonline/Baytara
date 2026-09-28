@@ -107,7 +107,7 @@ it('tells an unverified viewer to verify, and offers the way to do it', async ()
   // By text, not by role-with-a-name-regex: the role query recomputes an accessible name
   // for every button on the page on each retry, which is what makes these flaky under
   // load. The button is still asserted to be a button.
-  const label = await screen.findByText('Verify your account');
+  const label = await screen.findByText('Verify my account now');
   const action = label.closest('button');
   expect(action).not.toBeNull();
   fireEvent.click(action);

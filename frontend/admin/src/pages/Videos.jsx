@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { ACCESS_TYPES, VIDEO_VIEWS, orderedCategories } from '../catalog.js';
+import PinnedVideos from '../components/PinnedVideos.jsx';
 import VideoFolderTree from '../components/VideoFolderTree.jsx';
 import VideoViews, { VideoViewSwitcher } from '../components/VideoViews.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
@@ -162,6 +163,7 @@ export default function Videos({ searchParams, setSearchParams }) {
   const pageCount = library?.pages || 1;
   return <section className="video-library">
     <header className="video-library-header"><div><h2>{t('pages.videoLibrary')}</h2><p>{t('video.librarySubtitle')}</p></div><div className="video-library-actions"><button className="btn btn-tonal btn-sm" type="button" disabled={loading || searchPending} onClick={() => load(true)}>{t('common.refresh')}</button><button className="btn btn-filled btn-sm" type="button" onClick={() => navigate('/videos/new')}><Upload size={16} /> {t('video.uploadVideo')}</button></div></header>
+    <PinnedVideos />
     <div className="video-library-layout"><VideoFolderTree selectedId={folder} onSelect={(id) => updateQuery({ folder: id === 'root' ? '' : id })} /><div className="video-library-main"><div className="video-library-toolbar">
       <input aria-label={t('common.search')} value={query} placeholder={t('video.searchPlaceholder')} onChange={(event) => updateQuery({ q: event.target.value })} />
       <select aria-label={t('catalog.category')} value={categorySlug} onChange={(event) => updateQuery({ category: event.target.value })}><option value="">{t('video.allCategories')}</option>{orderedCategories(categories).map((category) => <option key={category.id} value={category.slug}>{language === 'en' ? category.name_en || category.name : category.name || category.name_en}</option>)}</select>

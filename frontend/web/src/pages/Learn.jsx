@@ -40,7 +40,7 @@ function recovery(code, { slug, lessonId, t }) {
     case 'needs_baytarian':
       // Carries the lesson, so finishing verification returns to the video that sent them
       // rather than to the profile page.
-      return { label: t('membership.verify'), to: `/verify?next=${back}` };
+      return { label: t('video.verifyNow'), to: `/verify?next=${back}` };
     case 'not_entitled':
     case 'forbidden':
       return { label: t('course.buyAndStart'), to: `/buy/${slug}` };

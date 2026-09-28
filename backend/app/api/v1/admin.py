@@ -2601,3 +2601,60 @@ def promo_delete(pid):
     db.session.delete(row)
     db.session.commit()
     return jsonify(deleted=pid)
+
+
+# ------------------------------ pinned library videos ------------------------------
+# Which videos lead the public library and the home page strip. One call sets the whole
+# order: a list of ids, first is first. Anything not in the list is unpinned and falls back
+# to newest first. Setting the list whole rather than moving videos one at a time means
+# there is never a half-applied order with two videos claiming the same place.
+
+MAX_PINNED = 12
+
+
+def _pinned_dict(lesson):
+    return {
+        "id": lesson.id,
+        "title": lesson.title,
+        "title_en": lesson.title_en,
+        "library_rank": lesson.library_rank,
+        "status": lesson.status,
+        "category_id": lesson.category_id,
+        "access_type": lesson.access_type,
+    }
+
+
+@bp.get("/videos/pinned")
+@require_role("admin")
+def pinned_videos_get():
+    rows = (Lesson.query.filter(Lesson.library_rank.isnot(None))
+            .order_by(Lesson.library_rank.asc(), Lesson.id.asc()).all())
+    return jsonify(videos=[_pinned_dict(l) for l in rows], max=MAX_PINNED)
+
+
+@bp.put("/videos/pinned")
+@require_role("admin")
+def pinned_videos_set():
+    ids = (request.get_json() or {}).get("video_ids")
+    if not isinstance(ids, list) or not all(isinstance(i, int) and not isinstance(i, bool) for i in ids):
+        return jsonify(error="invalid_video_ids"), 422
+    if len(ids) != len(set(ids)):
+        return jsonify(error="duplicate_video_ids"), 422
+    # A shelf where a dozen videos are all "pinned" has no pinned videos: the point is that
+    # a few stand out.
+    if len(ids) > MAX_PINNED:
+        return jsonify(error="too_many_pinned", max=MAX_PINNED), 422
+
+    found = {l.id: l for l in Lesson.query.filter(Lesson.id.in_(ids)).all()} if ids else {}
+    missing = [i for i in ids if i not in found]
+    if missing:
+        return jsonify(error="unknown_video_ids", ids=missing), 422
+
+    Lesson.query.filter(Lesson.library_rank.isnot(None)).update(
+        {"library_rank": None}, synchronize_session=False)
+    for rank, vid in enumerate(ids, start=1):
+        found[vid].library_rank = rank
+    db.session.commit()
+    rows = (Lesson.query.filter(Lesson.library_rank.isnot(None))
+            .order_by(Lesson.library_rank.asc()).all())
+    return jsonify(videos=[_pinned_dict(l) for l in rows], max=MAX_PINNED)

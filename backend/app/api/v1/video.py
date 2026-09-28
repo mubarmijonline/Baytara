@@ -126,11 +126,16 @@ def videos():
     # Every video is listed to everyone. can_play and lock_reason say whether this viewer
     # may watch it; the playback endpoint is what actually refuses.
 
+    # Pinned videos lead the default order, in the order the admin set, and everything
+    # else follows newest first. An explicit sort a visitor picks -- oldest, longest,
+    # shortest -- is honoured as asked instead: forcing pinned videos to the top of
+    # "longest first" would make the sort they chose look broken.
     order = {
         "oldest": (Lesson.created_at.asc(), Lesson.id.asc()),
         "longest": (Lesson.duration_minutes.desc().nullslast(), Lesson.id.desc()),
         "shortest": (Lesson.duration_minutes.asc().nullslast(), Lesson.id.desc()),
-    }.get(request.args.get("sort"), (Lesson.created_at.desc(), Lesson.id.desc()))
+    }.get(request.args.get("sort"),
+          (Lesson.library_rank.asc().nullslast(), Lesson.created_at.desc(), Lesson.id.desc()))
 
     result = db.paginate(
         query.order_by(*order),

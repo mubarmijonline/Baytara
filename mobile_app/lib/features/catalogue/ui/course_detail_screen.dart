@@ -217,7 +217,7 @@ class _Cta extends StatelessWidget {
     final (label, route) = switch (access.reason) {
       LockReason.needsAccount => (l.authSignIn, '/auth'),
       LockReason.needsPhone => (l.phoneSave, '/auth/phone'),
-      LockReason.needsBaytarian => (l.lockNeedsBaytarian, '/verify'),
+      LockReason.needsBaytarian => (l.verifyToWatch, '/verify'),
       LockReason.needsPurchase => (
           '${l.lockNeedsPurchase} · ${priceLabel(course.price, course.currency, l)}',
           '/buy/${course.slug}'

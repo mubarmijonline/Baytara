@@ -219,3 +219,26 @@ it('shows a sign-in action instead of attempting locked playback', async () => {
   expect(await screen.findByRole('button', { name: 'Register to watch' })).toBeVisible();
   expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
 });
+
+it('tells a signed-in viewer of a vet-only video to verify, and takes them there', async () => {
+  // The client's complaint: "Access required" said nothing about what to do. A signed-in
+  // viewer with a phone, locked only by verification, is told exactly that.
+  localStorage.setItem('baytara_token', 'viewer-token');
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.includes('/settings')) return json({ settings: {} });
+    if (url.includes('/auth/me')) return json({ user: { id: 9, name: 'Viewer', phone: '+201000000000' } });
+    if (url.includes('/videos/2')) {
+      return json({ video: { ...video, access_type: 'baytarian', can_play: false, requires_auth: false, lock_reason: 'needs_baytarian' } });
+    }
+    return json({});
+  });
+  renderRoute('/videos/2');
+
+  expect(await screen.findByText('Verify your account as a veterinarian to watch')).toBeVisible();
+  expect(screen.queryByText('Access required')).toBeNull();
+  fireEvent.click(screen.getByText('Verify my account now').closest('button'));
+  expect(window.location.pathname).toBe('/verify');
+  expect(new URLSearchParams(window.location.search).get('next')).toBe('/videos/2');
+  expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
+});

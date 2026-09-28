@@ -199,6 +199,9 @@ export const api = {
   }),
   videoUpdate: (id, body) => req(`/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   videoDelete: (id) => req(`/admin/videos/${id}`, { method: 'DELETE' }),
+  // The few videos shown first on the home page strip and in the public library, in order.
+  pinnedVideos: () => req('/admin/videos/pinned'),
+  pinnedVideosSet: (video_ids) => req('/admin/videos/pinned', { method: 'PUT', body: JSON.stringify({ video_ids }) }),
   videoCoursesSet: (id, course_ids) => req(`/admin/videos/${id}/courses`, { method: 'POST', body: JSON.stringify({ course_ids }) }),
   videoCoursesAdd: (id, course_ids) => req(`/admin/videos/${id}/courses/add`, { method: 'POST', body: JSON.stringify({ course_ids }) }),
   videoCourseRemove: (id, courseId) => req(`/admin/videos/${id}/courses/${courseId}`, { method: 'DELETE' }),

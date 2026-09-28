@@ -54,7 +54,7 @@ export default function VideoDetail() {
   const openRequiredAccess = () => {
     if (!isAuthed() || video.requires_auth) navigate(`/auth?next=${encodeURIComponent(`/videos/${id}`)}`);
     else if (video.requires_phone || !user?.phone) navigate(`/dashboard/profile?next=${encodeURIComponent(`/videos/${id}`)}`);
-    else if (video.lock_reason === 'needs_baytarian') navigate('/verify');
+    else if (video.lock_reason === 'needs_baytarian') navigate(`/verify?next=${encodeURIComponent(`/videos/${id}`)}`);
     else navigate('/dashboard');
   };
 
@@ -96,9 +96,28 @@ export default function VideoDetail() {
                       <div className="video-access-icon">
                         <span className="video-status-icon video-status-icon-unlock" role="img" aria-label={`${t('video.unlockToWatch')} ${video.title}`} />
                       </div>
-                      <h2>{anonymous ? t('video.lockedTitle') : t('video.accessRequired')}</h2>
-                      <p>{anonymous ? t('video.lockedDescription') : (video.lock_reason === 'needs_baytarian' ? t('video.lockedForVets') : t('video.watchRequiresAccount'))}</p>
-                      <button type="button" className="video-access-button" onClick={openRequiredAccess}>{video.requires_phone || (isAuthed() && !user?.phone) ? t('video.addPhone') : (anonymous ? t('video.registerToWatch') : (video.lock_reason === 'needs_baytarian' ? t('membership.verify') : t('video.accessRequired')))}</button>
+                      {(() => {
+                        const gate = anonymous ? 'account'
+                          : (video.requires_phone || (isAuthed() && !user?.phone)) ? 'phone'
+                          : video.lock_reason === 'needs_baytarian' ? 'verify'
+                          : 'other';
+                        // "الوصول مطلوب" said that something was needed and not what. A
+                        // first-time visitor could not tell what to do next, so each gate now
+                        // names its own action in the heading itself.
+                        const copy = {
+                          account: [t('video.lockedTitle'), t('video.lockedDescription'), t('video.registerToWatch')],
+                          phone: [t('video.phoneTitle'), t('video.phoneBody'), t('video.addPhone')],
+                          verify: [t('video.verifyTitle'), t('video.verifyBody'), t('video.verifyNow')],
+                          other: [t('video.accessRequired'), t('video.watchRequiresAccount'), t('video.accessRequired')],
+                        }[gate];
+                        return (
+                          <>
+                            <h2>{copy[0]}</h2>
+                            <p>{copy[1]}</p>
+                            <button type="button" className="video-access-button" onClick={openRequiredAccess}>{copy[2]}</button>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}

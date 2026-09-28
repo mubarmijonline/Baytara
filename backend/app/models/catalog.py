@@ -302,6 +302,11 @@ class Lesson(db.Model):
     access_type = db.Column(db.String(20), nullable=False, default="general", server_default="general", index=True)
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     position = db.Column(db.Integer, nullable=False, default=0)
+    # Where this video is pinned in the public library and the home page strip: 1 is first,
+    # null means not pinned, and unpinned videos follow newest first. A separate column
+    # rather than `position`, because `position` already means the order inside a course
+    # unit, and one number cannot mean both for a video that is in a unit and on the shelf.
+    library_rank = db.Column(db.Integer, index=True)
     duration_minutes = db.Column(db.Integer)
     poster = db.Column(db.String(1000))
     vdocipher_video_id = db.Column(db.String(120))

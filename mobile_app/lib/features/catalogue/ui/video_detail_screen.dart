@@ -180,7 +180,9 @@ class _Cta extends StatelessWidget {
       LockReason.needsAccount => (l.authSignIn, () => context.push('/auth')),
       LockReason.needsPhone => (l.phoneSave, () => context.push('/auth/phone')),
       LockReason.needsBaytarian => (
-          l.lockNeedsBaytarian,
+          // The button says what to do, not what is missing: "verification required"
+          // left a first-time visitor not knowing what to press.
+          l.verifyToWatch,
           () => context.push('/verify'),
         ),
       LockReason.needsPurchase => (
