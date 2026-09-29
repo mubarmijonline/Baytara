@@ -391,6 +391,30 @@ it('opens an unimported provider video as an import-capable detail route', async
   expect(screen.getByRole('button', { name: /secure preview/i })).toBeVisible();
 });
 
+it('links a video uploaded in the VdoCipher dashboard from the new-video page by its ID', async () => {
+  // The client's fallback for the VdoCipher plan (2026-09-29): upload there, paste the ID
+  // here. It lands on the same import screen the library opens for such a video.
+  fetch.mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/admin/stats')) return json({ payments: {}, baytarian: {}, courses: {}, users: {} });
+    if (url.endsWith('/admin/videos/v1')) return json({ error: 'not_found' }, 404);
+    if (url.endsWith('/admin/vdocipher/videos/v1')) return json({ video: { id: 'v1', title: 'Provider exam', description: 'Notes', status: 'ready' } });
+    if (url.includes('/admin/courses')) return json({ courses: [] });
+    if (url.endsWith('/categories')) return json({ categories: [{ id: 1, slug: 'equine', name: 'Equine' }] });
+    return json({});
+  });
+  const user = userEvent.setup();
+  renderAdmin('/admin/videos/new');
+
+  await user.type(await screen.findByLabelText('VdoCipher Video ID'), 'v1');
+  await user.click(screen.getByRole('button', { name: 'Open to link' }));
+
+  expect(window.location.pathname).toBe('/admin/videos/v1');
+  expect(await screen.findByRole('button', { name: /^import$/i })).toBeVisible();
+  // Filled from VdoCipher, in the catalogue title and the provider title alike.
+  expect((await screen.findAllByDisplayValue('Provider exam')).length).toBeGreaterThan(0);
+});
+
 it('saves canonical course assignments as a set of IDs', async () => {
   fetch.mockImplementation((input, options = {}) => {
     const url = String(input);
@@ -436,9 +460,9 @@ it('keeps the uploaded provider ID visible when local import fails', async () =>
   renderAdmin('/admin/videos/new');
 
   await screen.findByText(/catalog metadata/i);
-  await user.type(screen.getAllByRole('textbox')[0], 'Exam');
-  await user.type(screen.getAllByRole('textbox')[2], 'Notes');
-  await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
+  await user.type(screen.getByLabelText('Arabic title'), 'Exam');
+  await user.type(screen.getByLabelText('Arabic description'), 'Notes');
+  await user.selectOptions(screen.getByLabelText('Category'), '1');
   await user.upload(screen.getByLabelText('Video file'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
   await user.click(screen.getByRole('button', { name: /upload video/i }));
 
@@ -464,9 +488,9 @@ it('does not claim partial upload success when the signed XHR fails', async () =
   renderAdmin('/admin/videos/new');
 
   await screen.findByText(/catalog metadata/i);
-  await user.type(screen.getAllByRole('textbox')[0], 'Exam');
-  await user.type(screen.getAllByRole('textbox')[2], 'Notes');
-  await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
+  await user.type(screen.getByLabelText('Arabic title'), 'Exam');
+  await user.type(screen.getByLabelText('Arabic description'), 'Notes');
+  await user.selectOptions(screen.getByLabelText('Category'), '1');
   await user.upload(screen.getByLabelText('Video file'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
   await user.click(screen.getByRole('button', { name: /upload video/i }));
 
@@ -492,10 +516,10 @@ it('retries a failed import from the stored upload payload without new credentia
   const user = userEvent.setup();
   renderAdmin('/admin/videos/new');
   await screen.findByText(/catalog metadata/i);
-  await user.type(screen.getAllByRole('textbox')[0], 'Exam');
-  await user.type(screen.getAllByRole('textbox')[2], 'Notes');
-  await user.type(screen.getAllByRole('textbox')[3], 'English notes');
-  await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
+  await user.type(screen.getByLabelText('Arabic title'), 'Exam');
+  await user.type(screen.getByLabelText('Arabic description'), 'Notes');
+  await user.type(screen.getByLabelText('English description'), 'English notes');
+  await user.selectOptions(screen.getByLabelText('Category'), '1');
   await user.upload(screen.getByLabelText('Video file'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
   await user.click(screen.getByRole('button', { name: /upload video/i }));
   expect(await screen.findByRole('button', { name: /retry import/i })).toBeVisible();
@@ -573,9 +597,9 @@ it('retries provider metadata after upload without issuing new credentials', asy
   const user = userEvent.setup();
   renderAdmin('/admin/videos/new');
   await screen.findByText(/catalog metadata/i);
-  await user.type(screen.getAllByRole('textbox')[0], 'Exam');
-  await user.type(screen.getAllByRole('textbox')[2], 'Notes');
-  await user.selectOptions(screen.getAllByRole('combobox')[0], '1');
+  await user.type(screen.getByLabelText('Arabic title'), 'Exam');
+  await user.type(screen.getByLabelText('Arabic description'), 'Notes');
+  await user.selectOptions(screen.getByLabelText('Category'), '1');
   await user.upload(screen.getByLabelText('Video file'), new File(['video'], 'exam.mp4', { type: 'video/mp4' }));
   await user.click(screen.getByRole('button', { name: /upload video/i }));
   await user.click(await screen.findByRole('button', { name: /retry provider metadata/i }));

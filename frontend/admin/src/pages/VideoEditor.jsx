@@ -86,6 +86,25 @@ function CoursePicker({ form, setForm, courses, dropped, language, t }) {
   </>;
 }
 
+// A video uploaded in VdoCipher's own dashboard, linked by pasting its ID instead of
+// uploading a file here. It opens the screen the library already uses for a VdoCipher
+// video that has no Baytara record yet, where it is imported with its title and poster.
+function LinkExisting({ t, onOpen }) {
+  const [id, setId] = useState('');
+  const open = (event) => {
+    event.preventDefault();
+    if (id.trim()) onOpen(id.trim());
+  };
+  return <form className="video-link-existing" onSubmit={open}>
+    <strong>{t('video.linkExisting')}</strong>
+    <p>{t('video.linkExistingHint')}</p>
+    <div className="course-add-link">
+      <Field label={t('video.linkExistingId')}><input dir="ltr" value={id} placeholder="1234567890abcdef" onChange={(event) => setId(event.target.value)} /></Field>
+      <button className="btn btn-tonal" type="submit" disabled={!id.trim()}>{t('video.linkExistingOpen')}</button>
+    </div>
+  </form>;
+}
+
 function CatalogFields({ form, setForm, categories, instructors, courses, dropped, language, t, uploadLocal, removeLocal, uploading }) {
   const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
   // paid videos always enforce the macOS Safari rule; free ones are opt-in
@@ -417,6 +436,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
       )}
     </div>
     <ErrText>{message(localError)}</ErrText>
+    {creating && <LinkExisting t={t} onOpen={(id) => navigate(`/videos/${encodeURIComponent(id)}`)} />}
     <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} instructors={instructors} courses={courses} dropped={dropped} language={language} t={t} uploadLocal={uploadLocal} removeLocal={removeLocal} uploading={uploading} />
       {(creating || providerOnly) && <><h3>{t('video.folder')}</h3><VideoFolderTree selectedId={folderId} onSelect={selectFolder} picker />{creating && <Field label={t('video.file')}><input type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} /></Field>}</>}
       {creating && busy && <progress max="100" value={progress} />}

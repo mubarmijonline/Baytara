@@ -115,13 +115,18 @@ function PurchaseCard({ course, slug, preview, firstLessonId }) {
 
         {locked ? (
           <>
-            <div style={{ fontSize: 13, color: '#b3261e', margin: '0 0 14px', fontWeight: 700 }}>{t(`lock.${locked}`)}</div>
+            {/* The vet-only lock in the words the client chose for the video page (2026-09-28),
+                and a button that goes to verification and back here, not to the pricing
+                page, which was one more stop before the step that actually unlocks it. */}
+            <div style={{ fontSize: 13, color: '#b3261e', margin: '0 0 14px', fontWeight: 700 }}>
+              {locked === 'needs_baytarian' ? t('video.verifyTitle') : t(`lock.${locked}`)}
+            </div>
             <button
               type="button"
-              onClick={() => navigate(locked === 'needs_baytarian' ? '/pricing' : '/courses')}
+              onClick={() => navigate(locked === 'needs_baytarian' ? `/verify?next=${encodeURIComponent(`/courses/${slug}`)}` : '/courses')}
               style={{ width: '100%', background: locked === 'needs_baytarian' ? colors.accent : '#575E7D', border: 'none', borderRadius: 11, color: '#fff', fontSize: 15.5, fontWeight: 700, padding: 15, cursor: 'pointer', marginBottom: 18 }}
             >
-              {locked === 'needs_baytarian' ? t('membership.verify') : t('lock.instructors_only')}
+              {locked === 'needs_baytarian' ? t('video.verifyNow') : t('lock.instructors_only')}
             </button>
           </>
         ) : (
@@ -386,8 +391,8 @@ export default function CourseDetail() {
           <small>{course.access_days ? t('course.includes.days', { n: course.access_days }) : t('access.lifetime')}</small>
         </div>
         {course.lock_reason ? (
-          <button type="button" onClick={() => navigate(course.lock_reason === 'needs_baytarian' ? '/pricing' : '/courses')}>
-            {course.lock_reason === 'needs_baytarian' ? t('membership.verify') : t('lock.instructors_only')}
+          <button type="button" onClick={() => navigate(course.lock_reason === 'needs_baytarian' ? `/verify?next=${encodeURIComponent(`/courses/${slug}`)}` : '/courses')}>
+            {course.lock_reason === 'needs_baytarian' ? t('video.verifyNow') : t('lock.instructors_only')}
           </button>
         ) : (
           <button

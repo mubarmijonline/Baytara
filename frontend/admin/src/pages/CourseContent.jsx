@@ -28,6 +28,16 @@ const COPY = {
     addVideoFileRequired: 'اختر ملف الفيديو.',
     addVideoNoInstructor: 'لا يمكن الرفع: هذه الدورة بلا محاضر.',
     addVideoPhase: { creating: 'جارٍ التحضير…', uploading: 'جارٍ الرفع', importing: 'جارٍ التسجيل في المكتبة…', attaching: 'جارٍ الإضافة للدورة…' },
+    addVideoLink: 'VdoCipher: فيديو مرفوع بالفعل (ربط بالـ Video ID)',
+    addVideoLinkHint: 'ارفع الفيديو من لوحة تحكم VdoCipher، ثم انسخ الـ Video ID من صفحة الفيديو هناك والصقه هنا. يُسحب الغلاف والمدة من VdoCipher تلقائياً.',
+    addVideoId: 'معرّف الفيديو على VdoCipher (Video ID)',
+    addVideoIdCheck: 'تحقّق',
+    addVideoIdRequired: 'الصق معرّف الفيديو (Video ID).',
+    addVideoIdNotFound: 'لا يوجد فيديو بهذا المعرّف على حسابكم في VdoCipher.',
+    addVideoIdInvalid: 'هذا ليس معرّف فيديو من VdoCipher. انسخه كما هو من صفحة الفيديو هناك.',
+    addVideoIdFound: (video) => `موجود على VdoCipher: ${video.title || '—'}${video.duration_seconds ? ` · ${Math.max(1, Math.round(video.duration_seconds / 60))} د` : ''}${video.status ? ` · ${video.status}` : ''}`,
+    addVideoLinkSubmit: 'ربط وإضافة للدورة',
+    addVideoRecovered: 'الملف وصل إلى VdoCipher بنجاح لكن تعذّرت إضافته للدورة. معرّفه محفوظ بالأسفل: اضغط «ربط وإضافة للدورة» لإكمالها من غير رفع من جديد.',
 
     exam: {
       heading: 'اختبار نهاية الدورة',
@@ -97,6 +107,16 @@ const COPY = {
     addVideoFileRequired: 'Choose a video file.',
     addVideoNoInstructor: 'Cannot upload: this course has no instructor.',
     addVideoPhase: { creating: 'Preparing…', uploading: 'Uploading', importing: 'Recording it in the library…', attaching: 'Adding it to the course…' },
+    addVideoLink: 'VdoCipher: a video already uploaded there (link by Video ID)',
+    addVideoLinkHint: 'Upload the video in the VdoCipher dashboard, then copy the Video ID from its page there and paste it here. The poster and length are taken from VdoCipher.',
+    addVideoId: 'VdoCipher Video ID',
+    addVideoIdCheck: 'Check',
+    addVideoIdRequired: 'Paste the Video ID.',
+    addVideoIdNotFound: 'There is no video with this ID on your VdoCipher account.',
+    addVideoIdInvalid: 'That is not a VdoCipher Video ID. Copy it exactly as shown on the video page there.',
+    addVideoIdFound: (video) => `Found on VdoCipher: ${video.title || '—'}${video.duration_seconds ? ` · ${Math.max(1, Math.round(video.duration_seconds / 60))} min` : ''}${video.status ? ` · ${video.status}` : ''}`,
+    addVideoLinkSubmit: 'Link and add to the course',
+    addVideoRecovered: 'The file reached VdoCipher, but adding it to the course failed. Its ID is kept below: press "Link and add to the course" to finish without uploading again.',
     exam: {
       heading: 'End-of-course exam',
       intro: 'Multiple choice, sat once the learner has watched every video. No certificate without a pass.',
@@ -188,6 +208,10 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
   // were silently put behind the strict browser rules.
   const [protect, setProtect] = useState(null);
   const [file, setFile] = useState(null);
+  // Linking a video that is already on VdoCipher: its ID, and what VdoCipher said about it.
+  const [providerId, setProviderId] = useState('');
+  const [found, setFound] = useState(null);
+  const [checking, setChecking] = useState(false);
   const [phase, setPhase] = useState('');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
@@ -195,12 +219,14 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
 
   const reset = () => {
     setTitle(''); setFile(null); setProgress(0); setPhase('');
+    setProviderId(''); setFound(null);
     if (fileRef.current) fileRef.current.value = '';
   };
+  const linking = destination === 'vdocipher_id';
 
   // Everything the catalogue insists on, taken from the course rather than asked again.
-  const metadata = () => ({
-    title: title.trim(),
+  const metadata = (name = title.trim()) => ({
+    title: name,
     category_id: course?.category?.id || null,
     instructor_id: course?.instructor?.id || null,
     // Local storage has no DRM, and the server refuses to play a paid lesson from it
@@ -209,27 +235,64 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
     // "معاينة مجانية" badge on it in the curriculum.
     access_type: destination === 'local' ? 'free' : (course?.access_type || 'free'),
     status: 'published',
-    price: 0,
+    // A paid lesson takes the course's price. The server refuses a paid video priced at
+    // zero (positive_price_required), and a price of 0 is what this sent: every VdoCipher
+    // upload into a paid course failed after the file had already reached VdoCipher. The
+    // price is never charged on its own, since a lesson in a course cannot be bought
+    // separately (video_not_standalone), and the site does not show it.
+    price: destination !== 'local' && paid ? Number(course?.price || 0) : 0,
     currency: course?.currency || 'EGP',
     is_protected: destination === 'local' ? false
       : (protect ?? (course?.access_type === 'baytarian' || course?.access_type === 'general')),
   });
 
+  async function check() {
+    setError(''); setFound(null);
+    const id = providerId.trim();
+    if (!id) { setError(copy.addVideoIdRequired); return; }
+    setChecking(true);
+    try {
+      const result = await api.vdocipherVideo(id);
+      const video = result.video || result;
+      setFound(video);
+      if (!title.trim() && video.title) setTitle(video.title);
+    } catch (failure) {
+      setError(failure.status === 404 ? copy.addVideoIdNotFound
+        : failure.status === 422 ? copy.addVideoIdInvalid : catalogErrorText(failure, t));
+    } finally { setChecking(false); }
+  }
+
   async function submit() {
     setError('');
-    if (!title.trim()) { setError(copy.addVideoTitleRequired); return; }
-    if (!file) { setError(copy.addVideoFileRequired); return; }
+    // When linking, VdoCipher's own title stands in for an empty one.
+    const name = title.trim() || (linking ? (found?.title || '').trim() : '');
+    if (!name) { setError(copy.addVideoTitleRequired); return; }
+    if (linking ? !providerId.trim() : !file) {
+      setError(linking ? copy.addVideoIdRequired : copy.addVideoFileRequired); return;
+    }
     if (!course?.instructor?.id) { setError(copy.addVideoNoInstructor); return; }
 
+    // Set once the file is on VdoCipher, so a failure after that point can be finished by
+    // linking instead of by uploading the same file again.
+    let landed = '';
     try {
       let videoId;
       // `destination` alone. This used to carry `&& !paid`, left over from when the
       // selector was disabled on paid courses: unlocking the dropdown without removing it
       // meant choosing local storage on a paid course silently uploaded to VdoCipher
       // instead, which is the opposite of what the form said it would do.
-      if (destination === 'local') {
+      if (linking) {
+        setPhase('importing');
+        // The same import an upload ends with, given an ID that is already there. It checks
+        // the ID with VdoCipher and takes the poster and length from it.
+        const imported = await api.vdocipherImport(
+          { ...metadata(name), video_id: providerId.trim(), sync_provider_metadata: true },
+          { skipAdminDataChanged: true },
+        );
+        videoId = (imported.video || imported).id;
+      } else if (destination === 'local') {
         setPhase('creating');
-        const created = await api.videoCreate(metadata(), { silent: true });
+        const created = await api.videoCreate(metadata(name), { silent: true });
         videoId = (created.video || created).id;
         setPhase('uploading');
         await api.videoUpload(videoId, file, setProgress);
@@ -247,8 +310,13 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
         body.append('file', file);
         setPhase('uploading');
         await uploadForm(credentials.upload_link, body, setProgress);
+        landed = credentials.video_id;
         setPhase('importing');
-        const imported = await api.vdocipherImport({ ...metadata(), video_id: credentials.video_id });
+        // Silent: the data-changed event remounts this page mid-flow, and the course would
+        // reload before the video had been attached to it.
+        const imported = await api.vdocipherImport(
+          { ...metadata(name), video_id: credentials.video_id }, { skipAdminDataChanged: true },
+        );
         videoId = (imported.video || imported).id;
       }
       setPhase('attaching');
@@ -256,7 +324,14 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
       reset();
       onAdded();
     } catch (failure) {
-      setError(catalogErrorText(failure, t));
+      if (landed) {
+        // The upload is not lost: switch to linking, with its ID filled in.
+        setDestination('vdocipher_id');
+        setProviderId(landed);
+        setError(`${copy.addVideoRecovered} (${catalogErrorText(failure, t)})`);
+      } else {
+        setError(catalogErrorText(failure, t));
+      }
       setPhase('');
     }
   }
@@ -275,23 +350,38 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
         label={copy.addVideoWhere}
         hint={destination === 'local'
           ? (paid ? copy.addVideoLocalPreviewHint : copy.addVideoLocalHint)
-          : copy.addVideoVdoHint}
+          : linking ? copy.addVideoLinkHint : copy.addVideoVdoHint}
       >
-        <select value={destination} onChange={(event) => setDestination(event.target.value)} disabled={working}>
+        <select value={destination} onChange={(event) => { setDestination(event.target.value); setError(''); }} disabled={working}>
           <option value="vdocipher">{copy.addVideoVdo}</option>
+          <option value="vdocipher_id">{copy.addVideoLink}</option>
           <option value="local">{copy.addVideoLocal}</option>
         </select>
       </Field>
-      {destination === 'vdocipher' && (
+      {destination !== 'local' && (
         <label className="course-add-protect">
           <input type="checkbox" checked={protect ?? (course?.access_type === 'baytarian' || course?.access_type === 'general')} onChange={(event) => setProtect(event.target.checked)} disabled={working} />
           <span>{copy.addVideoProtect}</span>
         </label>
       )}
-      <Field label={copy.addVideoFile}>
-        <input ref={fileRef} type="file" accept="video/mp4,video/quicktime,video/x-matroska,video/webm"
-               disabled={working} onChange={(event) => setFile(event.target.files?.[0] || null)} />
-      </Field>
+      {linking ? (
+        <div className="course-add-link">
+          {/* The label goes on the input itself, so the button sits beside the field. */}
+          <Field label={copy.addVideoId}>
+            <input dir="ltr" value={providerId} placeholder="1234567890abcdef" disabled={working}
+                   onChange={(event) => { setProviderId(event.target.value); setFound(null); }} />
+          </Field>
+          <button className="btn btn-tonal" type="button" disabled={working || checking} onClick={check}>
+            {checking ? t('common.loading') : copy.addVideoIdCheck}
+          </button>
+          {found && <p className="course-add-found">{copy.addVideoIdFound(found)}</p>}
+        </div>
+      ) : (
+        <Field label={copy.addVideoFile}>
+          <input ref={fileRef} type="file" accept="video/mp4,video/quicktime,video/x-matroska,video/webm"
+                 disabled={working} onChange={(event) => setFile(event.target.files?.[0] || null)} />
+        </Field>
+      )}
       {working && (
         <div className="course-add-progress">
           <progress max="100" value={phase === 'uploading' ? progress : undefined} />
@@ -300,7 +390,7 @@ function AddVideoToCourse({ course, courseId, onAdded, copy, t }) {
       )}
       <ErrText>{error}</ErrText>
       <button className="btn btn-filled" type="button" disabled={working} onClick={submit}>
-        <Upload size={16} /> {copy.addVideoSubmit}
+        <Upload size={16} /> {linking ? copy.addVideoLinkSubmit : copy.addVideoSubmit}
       </button>
     </section>
   );

@@ -6,6 +6,19 @@ This file holds the plan for the work currently in flight.
 
 ---
 
+## Delivered, milestone 25: uploading into a paid course, and linking by VdoCipher ID
+
+See `docs/milestones/25-paid-course-uploads-and-link-by-id.md`. Uploads into a paid
+course no longer fail after reaching VdoCipher (the lesson takes the course's price); a
+failure after the upload now keeps the ID ready to link. A video uploaded in VdoCipher's
+own dashboard can be linked by its ID from the course dialog and the new video page. The
+course page uses the milestone 22 wording and goes straight to verification.
+
+Open, not code: whether the Starter plan covers app playback (VdoCipher's mobile SDK) and
+FairPlay on iPhone. Needs VdoCipher in writing, or one protected video played in the app.
+
+---
+
 ## Delivered, milestone 24: pinning past four, and the national ID optional
 
 See `docs/milestones/24-pinning-fix-and-optional-national-id.md`. Pinning a fifth video

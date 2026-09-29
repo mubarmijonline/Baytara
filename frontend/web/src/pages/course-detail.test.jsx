@@ -148,3 +148,17 @@ it('hides the rating tile and the reviews block on an unrated course', async () 
   expect(screen.queryAllByText('★ 4.9')).toHaveLength(0);
   expect(screen.queryByRole('heading', { name: 'Learner reviews' })).not.toBeInTheDocument();
 });
+
+it('tells a viewer who is not a verified vet what to do, and goes straight to verification', async () => {
+  // The client's wording from the video page (2026-09-28), now on the course page too,
+  // and a button to /verify that comes back here. It used to go to the pricing page.
+  mockApi({ courseBody: { ...course, lock_reason: 'needs_baytarian' } });
+  renderCourse();
+
+  const line = await screen.findAllByText('Verify your account as a veterinarian to watch');
+  expect(line[0]).toBeVisible();
+  const [button] = screen.getAllByText('Verify my account now').map((label) => label.closest('button'));
+  button.click();
+  expect(window.location.pathname).toBe('/verify');
+  expect(new URLSearchParams(window.location.search).get('next')).toBe('/courses/cattle');
+});
