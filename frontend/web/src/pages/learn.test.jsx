@@ -1,0 +1,202 @@
+/* @vitest-environment jsdom */
+
+import '@testing-library/jest-dom/vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
+import App from '../App.jsx';
+import { AuthProvider } from '../lib/auth.jsx';
+import { I18nProvider } from '../lib/i18n.jsx';
+import { resetBrowserSupport } from '../lib/browserSupport.js';
+import { clearPublicCache } from '../lib/api.js';
+
+const lessons = [
+  { id: 11, title: 'Welcome', duration_minutes: 4, access_type: 'free', has_video: true },
+  { id: 12, title: 'Core concepts', duration_minutes: 56, access_type: 'baytarian', has_video: true },
+];
+
+const course = {
+  id: 7, slug: 'cattle', title: 'Cattle disease basics', status: 'published',
+  access_type: 'baytarian', lessons_count: 2, video_minutes: 60,
+  category: { id: 1, name: 'Large animals', slug: 'large-animals' },
+  instructor: { id: 3, name: 'Dr Ahmed', headline: 'Cattle consultant', avatar_url: null },
+  videos: lessons,
+  modules: [{ id: 4, title: 'Unit one', lessons_count: 2, total_minutes: 60, videos: lessons }],
+};
+
+const progress = {
+  enrolled: true, expired: false, percent: 50, completed: 1, total: 2,
+  lessons: { 11: { completed: true, watched_seconds: 240 }, 12: { completed: false, watched_seconds: 30 } },
+};
+
+function json(data) {
+  return Promise.resolve(new Response(JSON.stringify(data), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  }));
+}
+
+function deny(error, status = 403) {
+  return Promise.resolve(new Response(JSON.stringify({ error }), {
+    status, headers: { 'Content-Type': 'application/json' },
+  }));
+}
+
+function mockApi({
+  caps = { protected: true, blocked: null, platform: 'mac', recommend: null },
+  playbackError = null,
+} = {}) {
+  vi.stubGlobal('fetch', vi.fn((input) => {
+    const url = String(input);
+    if (url.includes('/video/capabilities')) return json(caps);
+    if (url.includes('/video/playback')) {
+      if (playbackError) return deny(playbackError);
+      return json({ otp: 'viewer-otp', playbackInfo: 'info', session_id: 's1' });
+    }
+    if (url.includes('/progress')) return json(progress);
+    if (url.includes('/courses/cattle')) return json({ course });
+    if (url.includes('/settings')) return json({ settings: {} });
+    if (url.includes('/courses')) return json({ courses: [], total: 0, pages: 1 });
+    if (url.includes('/videos')) return json({ videos: [], total: 0, pages: 1 });
+    return json({});
+  }));
+}
+
+function renderLesson(lessonId = 12) {
+  window.history.replaceState({}, '', `/learn/cattle/${lessonId}`);
+  return render(
+    <BrowserRouter>
+      <I18nProvider>
+        <AuthProvider><App /></AuthProvider>
+      </I18nProvider>
+    </BrowserRouter>,
+  );
+}
+
+beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
+  resetBrowserSupport();
+  localStorage.clear();
+  localStorage.setItem('baytara_lang', 'en');
+  window.scrollTo = vi.fn();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+it('never requests playback for an anonymous viewer', async () => {
+  mockApi();
+  renderLesson();
+
+  expect(await screen.findByRole('heading', { name: 'Core concepts', level: 1 })).toBeVisible();
+  await waitFor(() => expect(fetch).toHaveBeenCalled());
+  expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
+});
+
+it('tells an unverified viewer to verify, and offers the way to do it', async () => {
+  // Reaching a locked lesson from the free "start watching" button used to leave the
+  // refusal as 12px grey text under a decorative play button, which reads as "still
+  // loading" rather than "here is what to do".
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi({ playbackError: 'needs_baytarian' });
+  renderLesson();
+
+  expect(await screen.findByText(/Verify your account to watch it/i)).toBeVisible();
+  // By text, not by role-with-a-name-regex: the role query recomputes an accessible name
+  // for every button on the page on each retry, which is what makes these flaky under
+  // load. The button is still asserted to be a button.
+  const label = await screen.findByText('Verify my account now');
+  const action = label.closest('button');
+  expect(action).not.toBeNull();
+  fireEvent.click(action);
+
+  await waitFor(() => expect(window.location.pathname).toBe('/verify'));
+  // and it carries the lesson, so finishing verification comes back here
+  expect(window.location.search).toContain(encodeURIComponent('/learn/cattle/12'));
+});
+
+it('tells a signed-out viewer why nothing is playing instead of spinning forever', async () => {
+  mockApi();
+  renderLesson();
+
+  const signIn = await screen.findByText(/Sign in to watch/i);
+  expect(signIn.closest('button')).not.toBeNull();
+  expect(screen.queryByText(/Loading the video/i)).not.toBeInTheDocument();
+});
+
+it('plays the lesson and shows real course progress when signed in', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi();
+  renderLesson();
+
+  const player = await screen.findByTitle('Core concepts');
+  expect(player).toHaveAttribute('src', expect.stringContaining('otp=viewer-otp'));
+  expect(screen.getByText('50%')).toBeVisible();
+  expect(screen.getByText('Lesson 2 of 2', { selector: 'span' })).toBeVisible();
+  // watched but not completed -> the in-progress chip, derived not invented
+  expect(screen.getByText('In progress')).toBeVisible();
+
+  // The player is pinned inside a 16:9 stage that clips. Without this, WebKit sized the
+  // iframe from the video's intrinsic height and the picture ran off an iPhone screen.
+  const stage = player.closest('.player-stage');
+  expect(stage).not.toBeNull();
+  expect(player.closest('.secure-video-shell')).not.toBeNull();
+});
+
+it('groups the sidebar by unit and marks completed lessons', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi();
+  renderLesson();
+
+  const unit = await screen.findByText(/Unit one/);
+  expect(unit.closest('button')).not.toBeNull();
+  const welcome = (await screen.findByText(/Welcome/)).closest('button');
+  expect(welcome).not.toBeNull();
+  fireEvent.click(welcome);
+  await waitFor(() => expect(window.location.pathname).toBe('/learn/cattle/11'));
+});
+
+it('offers the all-content browser as a second sidebar tab', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi();
+  renderLesson();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'All content' }));
+  expect(await screen.findByRole('searchbox', { name: /Search courses and videos/ })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Large animals' })).toBeVisible();
+});
+
+it('shows the guidance screen instead of minting on a browser the server would refuse', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi({ caps: { protected: false, blocked: 'browser_not_supported', platform: 'windows', recommend: 'edge' } });
+  renderLesson(12);   // paid lesson
+
+  expect(await screen.findByTestId('browser-block')).toBeVisible();
+  expect(screen.getByText('Open this page in Microsoft Edge.')).toBeVisible();
+  await waitFor(() => expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/capabilities'))).toBe(true));
+  expect(fetch.mock.calls.some(([url]) => String(url).includes('/video/playback'))).toBe(false);
+});
+
+it('still plays a free lesson on an unprotected browser, with a nudge', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi({ caps: { protected: false, blocked: null, platform: 'windows', recommend: 'edge' } });
+  renderLesson(11);   // free lesson
+
+  const player = await screen.findByTitle('Welcome');
+  expect(player).toHaveAttribute('src', expect.stringContaining('otp=viewer-otp'));
+  expect(screen.getByTestId('browser-nudge')).toHaveTextContent('Open this page in Microsoft Edge.');
+});
+
+it('says nothing on a free lesson when there is no better browser to suggest', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  // The server names a browser only when that browser would actually be allowed. With
+  // none to name, a nudge reading "protected content cannot play on this device" would
+  // contradict the video playing underneath it.
+  mockApi({ caps: { protected: false, blocked: null, platform: 'mac', recommend: null } });
+  renderLesson(11);
+
+  expect(await screen.findByTitle('Welcome')).toBeInTheDocument();
+  expect(screen.queryByTestId('browser-nudge')).not.toBeInTheDocument();
+});

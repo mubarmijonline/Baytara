@@ -77,6 +77,59 @@ def register_cli(app):
             f"restored {len(FIXED_CATEGORIES)} fixed categories."
         )
 
+    @app.cli.command("migrate-paid-videos")
+    @click.option("--apply", is_flag=True, help="Rebuild, upload to VdoCipher and switch each row.")
+    @click.option("--cleanup", is_flag=True, help="Delete local packages whose VdoCipher copy is ready.")
+    @click.option("--id", "ids", type=int, multiple=True, help="Limit to these video ids.")
+    @click.option("--workdir", default="/tmp", show_default=True, help="Where the rebuilt MP4 is staged.")
+    def migrate_paid_videos(apply, cleanup, ids, workdir):
+        """Move paid videos off our own server (no DRM there) and onto VdoCipher.
+
+        With no flag it only lists what would move. --apply keeps the local package
+        until --cleanup confirms VdoCipher reports the copy ready, so a failed upload
+        never costs the only copy.
+        """
+        from .services import video_migration
+        from .services.vdocipher_admin import VdoCipherAdminError
+
+        pending = video_migration.paid_local_lessons()
+        if ids:
+            pending = [l for l in pending if l.id in ids]
+        if not apply and not cleanup:
+            click.echo(f"{len(pending)} paid video(s) still on local storage:")
+            for l in pending:
+                click.echo(f"  #{l.id} [{l.access_type}] {l.title} (local_status={l.local_status})")
+            click.echo("Nothing changed. Re-run with --apply to migrate, --cleanup to delete "
+                       "local packages already confirmed on VdoCipher.")
+            return
+
+        if apply:
+            for l in pending:
+                if l.local_status != "ready":
+                    click.echo(f"  #{l.id} skipped: local package is {l.local_status}, not ready")
+                    continue
+                try:
+                    video_id = video_migration.migrate(app, l, workdir)
+                    click.echo(f"  #{l.id} uploaded as {video_id}; local package kept until --cleanup")
+                except (VdoCipherAdminError, RuntimeError, OSError, Exception) as e:  # noqa: BLE001
+                    db.session.rollback()
+                    click.echo(f"  #{l.id} FAILED: {e}")
+
+        if cleanup:
+            waiting = video_migration.awaiting_cleanup()
+            if ids:
+                waiting = [l for l in waiting if l.id in ids]
+            for l in waiting:
+                try:
+                    status = video_migration.cleanup(app, l)
+                except VdoCipherAdminError as e:
+                    click.echo(f"  #{l.id} cleanup FAILED: {e}")
+                    continue
+                if status == "ready":
+                    click.echo(f"  #{l.id} local package deleted; served from VdoCipher")
+                else:
+                    click.echo(f"  #{l.id} kept: VdoCipher status is '{status or 'unknown'}', not ready")
+
     @app.cli.command("retain-users")
     @click.option("--admin", "admin_email", required=True)
     @click.option("--instructor", "instructor_email", required=True)

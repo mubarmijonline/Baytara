@@ -1,343 +1,412 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Check, Play } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
-import { colors, gradients, layout } from '../theme/tokens.js';
-import { rawCourses, learnPoints, includes } from '../data/mock.js';
-import { webapi, mapCourse, useFetch } from '../lib/api.js';
+import Avatar from '../components/Avatar.jsx';
+import CurriculumAccordion from '../components/CurriculumAccordion.jsx';
+import ReviewList from '../components/ReviewList.jsx';
+import NotFound from './NotFound.jsx';
+import { colors, gradients } from '../theme/tokens.js';
+import { compact, useFetch, webapi } from '../lib/api.js';
 import { useI18n } from '../lib/i18n.jsx';
+
+const DARK = colors.utilityBar;
+
+const darkTile = {
+  background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.13)',
+  borderRadius: 12, padding: 14,
+};
+const darkChip = {
+  background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.13)',
+  borderRadius: 12, padding: '11px 14px', fontSize: 12.5, color: '#cfcfe0',
+};
+
+function Tile({ value, label, gold = false }) {
+  return (
+    <div style={darkTile}>
+      <div style={{ fontSize: 19, fontWeight: 700, color: gold ? colors.gold : '#fff' }}>{value}</div>
+      <div style={{ fontSize: 12, color: '#a7aec9', marginTop: 4 }}>{label}</div>
+    </div>
+  );
+}
+
+/** True on the widths where the action bar belongs. Rendering it only there keeps the
+ *  price and the button from existing twice in the page — for a screen reader as much
+ *  as for a test — since CSS alone would merely hide the duplicate. */
+function useCompactLayout() {
+  const [compactLayout, setCompactLayout] = useState(false);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const query = window.matchMedia('(max-width: 900px)');
+    const apply = () => setCompactLayout(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+  return compactLayout;
+}
+
+function dateLabel(iso, lang) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-GB' : 'ar-EG', { year: 'numeric', month: 'long' });
+}
+
+/* --------------------------- purchase card --------------------------- */
+
+function PurchaseCard({ course, slug, preview, firstLessonId }) {
+  const navigate = useNavigate();
+  const { t } = useI18n();
+  const isPaid = course.is_paid ?? course.price > 0;
+  const locked = course.lock_reason;
+
+  // Only what the database actually knows. No downloadable-resources or community rows:
+  // there is nothing behind them.
+  const includes = [
+    course.access_days
+      ? t('course.includes.days', { n: course.access_days })
+      : t('access.lifetime'),
+    t('course.includes.devices'),
+    course.lessons_count > 0
+      // Under an hour, say minutes: rounding eleven minutes to "0 hours" reads as empty.
+      ? (course.video_minutes >= 60
+        ? t('course.includes.lessons', { n: course.lessons_count, m: Math.round(course.video_minutes / 60) })
+        : t('course.includes.lessonsMinutes', { n: course.lessons_count, m: course.video_minutes || 0 }))
+      : null,
+    course.has_certificate ? t('course.includes.certificate') : null,
+  ].filter(Boolean);
+
+  return (
+    <div style={{ background: colors.surface, borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.3)' }}>
+      {(preview || course.image) && (
+      <div style={{ aspectRatio: '16 / 9', background: course.image ? `center/cover url(${course.image})` : gradients.darkPanel, position: 'relative', display: 'grid', placeItems: 'center' }}>
+        {preview ? (
+          <Link
+            to={`/videos/${preview.id}`}
+            aria-label={`${t('course.preview')}: ${preview.title}`}
+            style={{ width: 58, height: 58, borderRadius: '50%', background: DARK, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 17 }}
+          >
+            <Play size={20} fill="currentColor" aria-hidden="true" />
+          </Link>
+        ) : (
+          <span aria-hidden="true" style={{ width: 58, height: 58, borderRadius: '50%', background: 'rgba(20,30,66,.55)', display: 'grid', placeItems: 'center', color: '#fff' }}><Play size={20} fill="currentColor" /></span>
+        )}
+        {preview && (
+          <span style={{ position: 'absolute', bottom: 10, insetInlineStart: 10, background: 'rgba(20,30,66,.85)', color: '#fff', fontSize: 11.5, padding: '4px 9px', borderRadius: 6 }}>
+            {t('course.preview')}{preview.duration_minutes ? ` · ${preview.duration_minutes} ${t('common.minutesShort')}` : ''}
+          </span>
+        )}
+      </div>
+      )}
+
+      <div style={{ padding: 22 }}>
+        <div style={{ border: `1px solid ${colors.line}`, borderRadius: 12, padding: 14, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: colors.accent }}>{t(`access.${course.access_type}`)}</div>
+            <div style={{ fontSize: 12.5, color: colors.muted2, marginTop: 3 }}>
+              {course.access_days ? t('course.includes.days', { n: course.access_days }) : t('access.lifetime')}
+            </div>
+          </div>
+          <div style={{ textAlign: 'end', borderInlineStart: `1px solid ${colors.line2}`, paddingInlineStart: 14 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: DARK }}>
+              {isPaid ? `${course.price} ${course.currency || t('common.egp')}` : t('access.free')}
+            </div>
+          </div>
+        </div>
+
+        {locked ? (
+          <>
+            {/* The vet-only lock in the words the client chose for the video page (2026-09-28),
+                and a button that goes to verification and back here, not to the pricing
+                page, which was one more stop before the step that actually unlocks it. */}
+            <div style={{ fontSize: 13, color: '#b3261e', margin: '0 0 14px', fontWeight: 700 }}>
+              {locked === 'needs_baytarian' ? t('video.verifyTitle') : t(`lock.${locked}`)}
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(locked === 'needs_baytarian' ? `/verify?next=${encodeURIComponent(`/courses/${slug}`)}` : '/courses')}
+              style={{ width: '100%', background: locked === 'needs_baytarian' ? colors.accent : '#575E7D', border: 'none', borderRadius: 11, color: '#fff', fontSize: 15.5, fontWeight: 700, padding: 15, cursor: 'pointer', marginBottom: 18 }}
+            >
+              {locked === 'needs_baytarian' ? t('video.verifyNow') : t('lock.instructors_only')}
+            </button>
+          </>
+        ) : (
+          /* A course with no fee is not joined: there is nothing to buy and no seat to
+             record, so the button opens the first lesson instead of a checkout. */
+          <button
+            type="button"
+            onClick={() => (isPaid
+              ? navigate(`/buy/${slug}`)
+              : navigate(firstLessonId ? `/learn/${slug}/${firstLessonId}` : `/courses/${slug}`))}
+            disabled={!isPaid && !firstLessonId}
+            style={{ width: '100%', background: colors.accent, border: 'none', borderRadius: 11, color: '#fff', fontSize: 15.5, fontWeight: 700, padding: 15, cursor: 'pointer', marginBottom: 18, opacity: (!isPaid && !firstLessonId) ? 0.6 : 1 }}
+          >
+            {isPaid ? t('course.buyAndStart') : t('course.watchFree')}
+          </button>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {includes.map((row) => (
+            <div key={row} style={{ display: 'flex', gap: 10, alignItems: 'center', background: colors.surfaceMuted, borderRadius: 9, padding: '11px 13px', fontSize: 13.5, color: colors.ink2 }}>
+              <Check size={16} strokeWidth={3} aria-hidden="true" style={{ color: colors.accent, flex: 'none' }} />{row}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ page ------------------------------ */
 
 export default function CourseDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { t } = useI18n();
-  const { data } = useFetch(() => webapi.course(slug).catch(() => null), [slug]);
-  const mockCourse = rawCourses.find((c) => c.slug === slug) || rawCourses[0];
-  const isReal = !!data?.course;
-  const course = isReal ? mapCourse(data.course) : mockCourse;
-  // real videos of the course (title + duration come from the video rows themselves)
-  const videos = isReal ? course.videos : [];
-  const instructorLink = course.instructorId ?? course.mentorIdx;
-  const accessType = course.access_type || (course.price > 0 ? 'general' : 'free');
-  const isPaid = course.is_paid ?? course.price > 0;
-  const locked = course.lock_reason; // 'needs_baytarian' | 'instructors_only' | null
+  const { t, lang } = useI18n();
+
+  const compactLayout = useCompactLayout();
+  const { data, error, loading } = useFetch(() => webapi.course(slug), [slug]);
+  const course = data?.course;
+  const { data: reviewData } = useFetch(() => webapi.courseReviews(slug).catch(() => null), [slug]);
+  const { data: instructorData } = useFetch(
+    () => (course?.instructor?.id ? webapi.instructor(course.instructor.id) : Promise.resolve(null)),
+    [course?.instructor?.id],
+  );
+  const { data: relatedData } = useFetch(
+    () => (course?.category?.slug
+      ? webapi.courses({ category: course.category.slug, per_page: 4 })
+      : Promise.resolve(null)),
+    [course?.category?.slug],
+  );
+
+  if (loading) return <Container style={{ padding: '40px 24px', color: colors.muted }}>{t('common.loading')}</Container>;
+  if (error || !course) return <NotFound />;
+
+  const modules = course.modules || [];
+  const videos = course.videos || [];
+  const preview = videos.find((v) => v.access_type === 'free' && v.has_video) || null;
+  const firstLessonId = videos.find((v) => v.has_video)?.id || null;
+  // public_profile already merges the real course/student counts into the instructor object
+  const instructor = instructorData?.instructor;
+  const related = (relatedData?.courses || []).filter((c) => c.slug !== slug).slice(0, 3);
+  const hours = Math.round((course.video_minutes || 0) / 60);
+  const updated = dateLabel(course.content_updated_at, lang);
+  const stats = [
+    course.rating != null && { gold: true, value: `★ ${course.rating}`, label: t('course.ratingsCount', { n: course.reviews_count }) },
+    course.lessons_count > 0 && { value: course.lessons_count, label: t('course.lessonsUnit') },
+    course.video_minutes > 0 && (hours > 0
+      ? { value: hours, label: t('course.hoursUnit') }
+      : { value: course.video_minutes, label: t('common.minutesShort') }),
+    course.enrolled_count > 0 && { value: compact(course.enrolled_count, lang), label: t('home.learners') },
+  ].filter(Boolean);
 
   return (
-    <div>
-      {/* Dark header */}
-      <div style={{ background: gradients.darkPanel, color: '#fff', padding: '44px 0 130px' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ fontSize: 13, color: '#b6b6cc', marginBottom: 14 }}>
-            <span onClick={() => navigate('/courses')} style={{ cursor: 'pointer' }}>
-              الدورات
-            </span>{' '}
-            › {course.cat}
-          </div>
-          <span
-            style={{
-              background: 'rgba(233,190,67,.22)',
-              color: '#F5D877',
-              fontSize: 12,
-              fontWeight: 800,
-              padding: '6px 12px',
-              borderRadius: 100,
-            }}
-          >
-            {course.cat}
-          </span>
-          <h1 style={{ fontSize: 40, fontWeight: 900, margin: '16px 0 14px', lineHeight: 1.2 }}>{course.title}</h1>
-          {course.description && (
-            <p style={{ fontSize: 18, color: '#c9c9dc', lineHeight: 1.7, margin: '0 0 20px', whiteSpace: 'pre-line' }}>
-              {course.description}
-            </p>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, fontSize: 14, flexWrap: 'wrap' }}>
-            {course.rating && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: colors.star, fontSize: 16 }}>★</span> <b>{course.rating}</b>
+    <div style={{ background: colors.surface }}>
+      {/* ---------------- dark hero ---------------- */}
+      <div style={{ background: DARK, color: '#fff' }}>
+        <Container className="grid-collapse-2" style={{ padding: stats.length ? '32px 24px 44px' : '28px 24px 32px', display: 'grid', gridTemplateColumns: '1fr 372px', gap: 40, alignItems: 'start' }}>
+          <div>
+            <nav aria-label={t('course.breadcrumb')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, color: '#cfcfe0', marginBottom: 18, flexWrap: 'wrap' }}>
+              <Link to="/courses" style={{ color: 'inherit' }}>{t('nav.courses')}</Link>
+              {course.category && (
+                <>
+                  <span aria-hidden="true" style={{ opacity: 0.5 }}>›</span>
+                  <Link to={`/courses?category=${course.category.slug}`} style={{ color: 'inherit' }}>{course.category.name}</Link>
+                </>
+              )}
+              <span aria-hidden="true" style={{ opacity: 0.5 }}>›</span>
+              <span style={{ color: '#fff' }}>{course.title}</span>
+            </nav>
+
+            <h1 style={{ margin: '0 0 14px', fontSize: 36, fontWeight: 700, lineHeight: 1.3, letterSpacing: '-.8px', maxWidth: 640 }}>
+              {course.title}
+            </h1>
+            {course.description && (
+              <p style={{ margin: '0 0 24px', fontSize: 16.5, lineHeight: 1.85, color: '#b9bfd6', maxWidth: 600, whiteSpace: 'pre-line' }}>
+                {course.description}
+              </p>
+            )}
+
+            {/* Only figures the database actually has. A brand-new course showed a row of
+                zeros, which reads as an empty shop rather than a new one. */}
+            {stats.length > 0 && (
+              <div className="course-hero-stats" style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length},minmax(0,160px))`, gap: 10, maxWidth: 640, marginBottom: 22 }}>
+                {stats.map((tile) => <Tile key={tile.label} {...tile} />)}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              {course.instructor && (
+                <Link
+                  to={`/instructors/${course.instructor.id}`}
+                  style={{ ...darkChip, display: 'inline-flex', alignItems: 'center', gap: 11, padding: '9px 14px 9px 9px', color: '#fff' }}
+                >
+                  <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: gradients.avatar, flex: 'none' }}>
+                    {course.instructor.avatar_url && (
+                      <img src={course.instructor.avatar_url} alt={course.instructor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    )}
+                  </span>
+                  <span>
+                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>{course.instructor.name}</span>
+                    {course.instructor.headline && (
+                      <span style={{ display: 'block', fontSize: 11.5, color: '#a7aec9' }}>{course.instructor.headline}</span>
+                    )}
+                  </span>
+                </Link>
+              )}
+              <span style={{ background: colors.accent, color: '#fff', borderRadius: 12, padding: '11px 14px', fontSize: 12.5, fontWeight: 700 }}>
+                {t(`access.${course.access_type}`)}
               </span>
-            )}
-            <span>{course.lessons} فيديو</span>
-            {course.hours > 0 && <span>{course.hours} ساعة محتوى</span>}
-            <span>{course.learners} متعلّم</span>
-            <span>شهادة إتمام</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
-            {course.instructorAvatar ? (
-              <img src={course.instructorAvatar} alt={course.instructor}
-                   style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '50%',
-                  background: course.grad,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                }}
-              >
-                {course.ini}
-              </div>
-            )}
-            <div>
-              <div style={{ fontSize: 12, color: '#b6b6cc' }}>المحاضر</div>
-              <div
-                onClick={() => navigate(`/instructors/${instructorLink}`)}
-                style={{ fontSize: 15, fontWeight: 800, cursor: 'pointer' }}
-              >
-                {course.instructor}
-              </div>
+              <span style={darkChip}>{t(`level.${course.level}`)}</span>
+              {updated && <span style={darkChip}>{t('course.lastUpdated', { date: updated })}</span>}
             </div>
           </div>
-        </div>
+
+          <PurchaseCard course={course} slug={slug} preview={preview} firstLessonId={firstLessonId} />
+        </Container>
       </div>
 
-      <Container
-        className="grid-collapse-2"
-        style={{ padding: '0 24px 60px', display: 'grid', gridTemplateColumns: '1fr 360px', gap: 34, alignItems: 'start', marginTop: -90 }}
-      >
-        {/* Left content */}
-        <div
-          style={{
-            background: '#fff',
-            border: `1px solid ${colors.line}`,
-            borderRadius: 20,
-            padding: 34,
-            boxShadow: '0 20px 50px rgba(20,20,43,.06)',
-          }}
-        >
-          <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 18px' }}>ماذا ستتعلّم</h2>
-          <div
-            className="grid-collapse-sm"
-            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 36 }}
-          >
-            {learnPoints.map((p) => (
-              <div key={p} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 15, lineHeight: 1.5 }}>
-                <span style={{ color: colors.accent, fontWeight: 900, flex: 'none' }}>✓</span> {p}
+      {/* ---------------- body ---------------- */}
+      <Container className="grid-collapse-2" style={{ padding: '36px 24px 60px', display: 'grid', gridTemplateColumns: '1fr 372px', gap: 40, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22, minWidth: 0 }}>
+          {course.objectives?.length > 0 && (
+            <section style={{ border: `1px solid ${colors.line}`, borderRadius: 16, padding: 26 }}>
+              <h2 style={{ margin: '0 0 18px', fontSize: 20, fontWeight: 700, color: DARK }}>{t('course.objectives')}</h2>
+              <div className="grid-2">
+                {course.objectives.map((point) => (
+                  <div key={point} style={{ display: 'flex', gap: 10, background: colors.surfaceMuted, borderRadius: 10, padding: '13px 14px', fontSize: 14, color: colors.ink2, lineHeight: 1.6 }}>
+                    <Check size={16} strokeWidth={3} aria-hidden="true" style={{ color: colors.accent, flex: 'none', marginTop: 2 }} />{point}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </section>
+          )}
 
-          <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 18px' }}>محتوى الدورة</h2>
-          <div style={{ border: `1px solid ${colors.line}`, borderRadius: 14, overflow: 'hidden' }}>
-            <div
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '16px 18px', background: '#fafafc' }}
-            >
-              <div style={{ fontSize: 16, fontWeight: 800 }}>{course.lessons} فيديو</div>
-              {course.minutes > 0 && (
-                <div style={{ fontSize: 13, color: colors.muted2 }}>{course.minutes} دقيقة إجمالاً</div>
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 14, flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: DARK }}>{t('course.curriculum')}</h2>
+              {course.lessons_count > 0 && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
+                    {t('course.unitsCount', { n: modules.length })}
+                  </span>
+                  <span style={{ background: colors.surfaceAlt, borderRadius: 8, padding: '7px 12px', fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>
+                    {course.lessons_count} {t('course.lessonsUnit')}
+                  </span>
+                </div>
               )}
             </div>
-            {videos.length === 0 && (
-              <div style={{ padding: '16px 18px', fontSize: 14, color: colors.muted }}>لم تُضف فيديوهات بعد.</div>
+            {modules.length ? (
+              <CurriculumAccordion modules={modules} onSelect={(video) => navigate(`/learn/${slug}/${video.id}`)} />
+            ) : (
+              /* A course with nothing in it yet is a normal state, not a broken page. */
+              <div style={{ border: `1px dashed ${colors.line}`, borderRadius: 16, padding: '34px 26px', textAlign: 'center', background: colors.surfaceMuted }}>
+                <div style={{ fontSize: 15.5, fontWeight: 700, color: colors.ink, marginBottom: 6 }}>{t('course.noLessons')}</div>
+                <p style={{ margin: '0 0 16px', fontSize: 13.5, color: colors.muted, lineHeight: 1.8 }}>{t('course.noLessonsHint')}</p>
+                <Link to="/videos" style={{ display: 'inline-block', border: `1.5px solid ${colors.accent}`, color: colors.accent, fontSize: 14, fontWeight: 700, padding: '11px 20px', borderRadius: 10 }}>
+                  {t('video.allVideos')}
+                </Link>
+              </div>
             )}
-            {videos.map((v) => (
-              <div
-                key={v.id}
-                onClick={() => navigate(`/learn/${course.slug}/${v.id}`)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '12px 18px',
-                  fontSize: 14,
-                  color: colors.ink2,
-                  borderTop: '1px solid #f5f5f8',
-                  cursor: 'pointer',
-                }}
-              >
-                <span
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: '50%',
-                    background: '#f0f0f4',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flex: 'none',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 0,
-                      height: 0,
-                      borderTop: '5px solid transparent',
-                      borderBottom: '5px solid transparent',
-                      borderRight: '8px solid #9a9aac',
-                    }}
-                  />
+          </section>
+
+          {instructor && (
+            <section style={{ border: `1px solid ${colors.line}`, borderRadius: 16, padding: 26 }}>
+              <h2 style={{ margin: '0 0 16px', fontSize: 20, fontWeight: 700, color: DARK }}>{t('course.aboutInstructor')}</h2>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <span style={{ width: 72, height: 72, flex: 'none' }}>
+                  <Avatar src={instructor.avatar_url} name={instructor.name} round iconSize={34} />
                 </span>
-                <span style={{ flex: 1 }}>{v.title}</span>
-                <span style={{ color: colors.muted2 }}>{v.duration_minutes ? `${v.duration_minutes} د` : ''}</span>
-              </div>
-            ))}
-          </div>
-
-          <h2 style={{ fontSize: 22, fontWeight: 900, margin: '36px 0 18px' }}>المحاضر</h2>
-          <div
-            onClick={() => navigate(`/instructors/${instructorLink}`)}
-            style={{ display: 'flex', gap: 18, alignItems: 'center', cursor: 'pointer' }}
-          >
-            {course.instructorAvatar ? (
-              <img src={course.instructorAvatar} alt={course.instructor}
-                   style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', flex: 'none' }} />
-            ) : (
-              <div
-                style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: '50%',
-                  background: course.grad,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: 28,
-                  fontWeight: 900,
-                  flex: 'none',
-                }}
-              >
-                {course.ini}
-              </div>
-            )}
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>{course.instructor}</div>
-              {course.instructorHeadline && (
-                <div style={{ fontSize: 14, color: colors.muted }}>{course.instructorHeadline}</div>
-              )}
-            </div>
-          </div>
-
-          {!isReal && <>
-          <h2 style={{ fontSize: 22, fontWeight: 900, margin: '36px 0 18px' }}>تقييمات المتعلّمين</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {reviews.map((rv) => (
-              <div key={rv.name} style={{ border: `1px solid ${colors.line}`, borderRadius: 14, padding: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <div
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: '50%',
-                      background: rv.grad,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {rv.ini}
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  <Link to={`/instructors/${instructor.id}`} style={{ fontSize: 16.5, fontWeight: 700, color: colors.ink }}>{instructor.name}</Link>
+                  {instructor.headline && <div style={{ fontSize: 13.5, color: colors.muted, margin: '4px 0 14px' }}>{instructor.headline}</div>}
+                  <div className="grid-collapse-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, marginBottom: 14, maxWidth: 320 }}>
+                    <div style={{ border: `1px solid ${colors.line}`, borderRadius: 10, padding: '11px 13px' }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: DARK }}>{instructor.courses}</div>
+                      <div style={{ fontSize: 12, color: colors.muted2, marginTop: 2 }}>{t('paths.coursesUnit')}</div>
+                    </div>
+                    <div style={{ border: `1px solid ${colors.line}`, borderRadius: 10, padding: '11px 13px' }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: DARK }}>{compact(instructor.students, lang)}</div>
+                      <div style={{ fontSize: 12, color: colors.muted2, marginTop: 2 }}>{t('home.learners')}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 800 }}>{rv.name}</div>
-                    <div style={{ color: colors.star, fontSize: 12 }}>★★★★★</div>
+                  {instructor.bio && <p style={{ margin: '0 0 14px', fontSize: 13.5, lineHeight: 1.8, color: colors.muted }}>{instructor.bio}</p>}
+                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                    {(instructor.expertise || []).map((skill) => (
+                      <span key={skill} style={{ background: colors.surfaceAlt, color: colors.muted, fontSize: 12, fontWeight: 600, padding: '6px 11px', borderRadius: 8 }}>{skill}</span>
+                    ))}
                   </div>
                 </div>
-                <p style={{ fontSize: 14, color: colors.ink2, lineHeight: 1.6, margin: 0 }}>{rv.text}</p>
               </div>
-            ))}
-          </div>
-          </>}
+            </section>
+          )}
+
+          {(reviewData?.reviews?.length > 0 || course.rating != null) && (
+            <ReviewList
+              reviews={reviewData?.reviews || []}
+              rating={course.rating}
+              count={course.reviews_count}
+            />
+          )}
         </div>
 
-        {/* Sticky enroll card */}
-        <div
-          style={{
-            position: 'sticky',
-            top: 90,
-            background: '#fff',
-            border: `1px solid ${colors.line}`,
-            borderRadius: 20,
-            overflow: 'hidden',
-            boxShadow: '0 20px 50px rgba(20,20,43,.1)',
-          }}
-        >
-          <div style={{ height: 180, background: course.image ? `center/cover url(${course.image})` : course.grad, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,.9)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderTop: '10px solid transparent',
-                  borderBottom: '10px solid transparent',
-                  borderRight: '16px solid #1E2A5E',
-                  marginRight: -3,
-                }}
-              />
-            </div>
-          </div>
-          <div style={{ padding: 22 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 22, fontWeight: 900, color: colors.accent }}>
-                {isPaid ? `${course.price} ${course.currency || t('common.egp')}` : t('access.free')}
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: colors.muted2 }}>· {t('access.' + accessType)}</span>
-            </div>
-            {locked ? (
-              <>
-                <div style={{ fontSize: 13, color: '#b3261e', margin: '10px 0 14px', fontWeight: 700 }}>{t('lock.' + locked)}</div>
-                <button
-                  onClick={() => navigate(locked === 'needs_baytarian' ? '/pricing' : '/courses')}
-                  style={{ width: '100%', background: locked === 'needs_baytarian' ? colors.accent : '#575E7D',
-                    border: 'none', borderRadius: 12, color: '#fff', fontSize: 16, fontWeight: 800, padding: 15,
-                    cursor: 'pointer', marginBottom: 10 }}
-                >
-                  {locked === 'needs_baytarian' ? t('membership.verify') : t('lock.instructors_only')}
-                </button>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 13, color: colors.muted2, margin: '4px 0 18px' }}>
-                  {course.access_days ? `${t('access.expires')} — ${course.access_days} ${t('access.daysLeft')}` : t('access.lifetime')}
-                </div>
-                <button
-                  onClick={() => navigate(`/buy/${slug}`)}
-                  style={{ width: '100%', background: colors.accent, border: 'none', borderRadius: 12, color: '#fff',
-                    fontSize: 16, fontWeight: 800, padding: 15, cursor: 'pointer', marginBottom: 10 }}
-                >
-                  {isPaid ? t('common.enroll') : (t('lang.name') === 'English' ? 'Enroll free' : 'التسجيل المجاني')}
-                </button>
-              </>
-            )}
-            <button
-              style={{
-                width: '100%',
-                background: '#fff',
-                border: '1.5px solid #ddd',
-                borderRadius: 12,
-                color: colors.ink,
-                fontSize: 15,
-                fontWeight: 700,
-                padding: 13,
-                cursor: 'pointer',
-              }}
-            >
-              أضف إلى قائمتي
-            </button>
-            <div style={{ marginTop: 20, paddingTop: 18, borderTop: `1px solid ${colors.line2}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {includes.map((inc) => (
-                <div key={inc} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: colors.ink2 }}>
-                  <span style={{ color: colors.accent, fontWeight: 900 }}>✓</span> {inc}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* ---------------- aside ---------------- */}
+        <aside style={{ position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {related.length > 0 && (
+            <section style={{ border: `1px solid ${colors.line}`, borderRadius: 16, padding: 22 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.ink, margin: '0 0 14px' }}>{t('course.related')}</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {related.map((item) => (
+                  <Link key={item.id} to={`/courses/${item.slug}`} style={{ display: 'flex', gap: 12, border: `1px solid ${colors.line2}`, borderRadius: 11, padding: 10, color: 'inherit' }}>
+                    <span style={{ width: 84, height: 54, borderRadius: 8, flex: 'none', overflow: 'hidden', background: gradients.darkPanel }}>
+                      {item.image && <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+                    </span>
+                    <span>
+                      <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: colors.ink, lineHeight: 1.5 }}>{item.title}</span>
+                      <span style={{ display: 'block', fontSize: 12, color: colors.muted2, marginTop: 5 }}>
+                        {item.lessons_count} {t('course.lessonsUnit')}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section style={{ background: colors.surfaceMuted, border: `1px solid ${colors.line}`, borderRadius: 16, padding: 22 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.ink, margin: '0 0 8px' }}>{t('course.consultTitle')}</h2>
+            <p style={{ fontSize: 13.5, color: colors.muted, lineHeight: 1.8, margin: '0 0 14px' }}>{t('course.consultBody')}</p>
+            <Link to="/contact" style={{ display: 'block', border: `1.5px solid ${colors.accent}`, color: colors.accent, fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, textAlign: 'center' }}>
+              {t('course.consultCta')}
+            </Link>
+          </section>
+        </aside>
       </Container>
+
+      {/* On a phone the purchase card is a screen and a half up by the time anyone has
+          read the curriculum, so price and action follow along the bottom. */}
+      {compactLayout && (
+      <div className="course-action-bar">
+        <div>
+          <strong>{course.is_paid ?? course.price > 0 ? `${course.price} ${course.currency || t('common.egp')}` : t('access.free')}</strong>
+          <small>{course.access_days ? t('course.includes.days', { n: course.access_days }) : t('access.lifetime')}</small>
+        </div>
+        {course.lock_reason ? (
+          <button type="button" onClick={() => navigate(course.lock_reason === 'needs_baytarian' ? `/verify?next=${encodeURIComponent(`/courses/${slug}`)}` : '/courses')}>
+            {course.lock_reason === 'needs_baytarian' ? t('video.verifyNow') : t('lock.instructors_only')}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!(course.is_paid ?? course.price > 0) && !firstLessonId}
+            onClick={() => ((course.is_paid ?? course.price > 0)
+              ? navigate(`/buy/${slug}`)
+              : firstLessonId && navigate(`/learn/${slug}/${firstLessonId}`))}
+          >
+            {(course.is_paid ?? course.price > 0) ? t('course.buyAndStart') : t('course.watchFree')}
+          </button>
+        )}
+      </div>
+      )}
     </div>
   );
 }

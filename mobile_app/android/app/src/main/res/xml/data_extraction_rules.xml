@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (android:dataExtractionRules). Same reasoning as backup_rules.xml: the device
+  id must not travel to another handset, or the two-device limit stops meaning anything.
+
+  Both routes off this phone are covered.
+    cloud-backup    restore onto a new device from a Google backup
+    device-transfer direct phone to phone transfer during setup
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    </device-transfer>
+</data-extraction-rules>

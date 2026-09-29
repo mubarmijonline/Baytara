@@ -28,7 +28,7 @@ def playback_app(tmp_path, monkeypatch):
     app = create_app(config)
 
     class FakeProvider:
-        def issue_otp(self, video_id, annotate=None, ttl=300):
+        def issue_otp(self, video_id, annotate=None, ttl=300, **rules):
             return {"otp": f"otp-{video_id}", "playbackInfo": "playback-info"}
 
     import app.api.v1.video as video_api
@@ -116,7 +116,7 @@ def demo():
     captured = {}
 
     class FakeProvider:
-        def issue_otp(self, video_id, annotate=None, ttl=300):
+        def issue_otp(self, video_id, annotate=None, ttl=300, **rules):
             captured["video_id"] = video_id
             captured["annotate"] = annotate
             return {"otp": "otp_" + video_id, "playbackInfo": "pbinfo"}

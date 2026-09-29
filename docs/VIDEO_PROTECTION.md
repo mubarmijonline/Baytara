@@ -9,12 +9,20 @@ the website. No vendor — VdoCipher included — can block them everywhere:
 
 | Platform / browser        | Screenshot + screen recording | Why |
 |---------------------------|-------------------------------|-----|
-| macOS Safari              | Blocked (black frame)         | Apple FairPlay DRM |
-| iOS / iPadOS Safari       | Blocked                       | Apple FairPlay DRM |
+| macOS Safari              | **Does not play at all**      | no FairPlay certificate: VdoCipher's player redirects the viewer to Chrome |
+| macOS Safari + FairPlay   | Blocked (black frame)         | Apple FairPlay DRM, once the certificate is installed |
+| iOS / iPadOS              | **Not blocked by DRM**        | no FairPlay: proprietary encryption, not a DRM (VdoCipher, 2026-09-15) |
 | macOS Chrome / Firefox    | **Not blockable**             | Widevine L3 in software; the OS lets any recorder read the window |
-| Windows Edge              | Partly blocked                | PlayReady |
+| Windows Edge              | Partly blocked — **unverified** | assumed PlayReady; VdoCipher describe Widevine as their desktop default and do not mention PlayReady. Asked, unanswered |
 | Windows Chrome / Firefox  | **Not blockable**             | same as macOS |
 | Android app / Chrome      | Blocked on most devices       | Widevine L1 |
+
+**Corrected 2026-09-15.** The rows above were assumptions about what VdoCipher DRM does
+per browser; they had never been measured against a VdoCipher video. VdoCipher's own answer
+is that Widevine is the default for desktop and Android, iOS gets proprietary encryption
+rather than DRM, and macOS Safari will not play at all until an Apple FairPlay certificate
+is applied for by the content owner. `fairplay_enabled` in Settings reflects whether that
+certificate exists; every Apple rule in `backend/app/utils.py` reads it.
 
 Sources: VdoCipher's own documentation — screen capture "can only be prevented in Safari on
 Mac with the FairPlay DRM upgrade", not in Chrome or Firefox.

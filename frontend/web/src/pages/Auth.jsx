@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { colors } from '../theme/tokens.js';
 import { authPerks } from '../data/mock.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
+import { auth as authApi, getLang } from '../lib/api.js';
+import { googleSignInBlocked, loadGoogleIdentity } from '../lib/google.js';
+import { isEmail, normalizeMobile } from '../lib/validate.js';
+import PhoneField from '../components/PhoneField.jsx';
 
 export default function Auth() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const requestedNext = params.get('next') || '/dashboard';
   const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/dashboard';
-  const { login, register } = useAuth();
+  const { login, register, loginWithGoogle } = useAuth();
   const { t } = useI18n();
   const [mode, setMode] = useState('login');
   const isSignup = mode === 'signup';
@@ -18,26 +22,83 @@ export default function Auth() {
   const [f, setF] = useState({ name: '', email: '', phone: '', password: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState('');
+  const googleHost = useRef(null);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
+  // A signed-in student with no phone cannot watch anything (the number is burned
+  // into the video watermark), so send them straight to the profile step and come
+  // back here-ward afterwards.
+  const goAfterAuth = (user) => navigate(
+    user && !user.phone ? `/dashboard/profile?next=${encodeURIComponent(next)}` : next
+  );
+
+  function showError(e) {
+    const code = e.data && e.data.error;
+    setErr(
+      code === 'device_limit_reached' ? t('devices.limitReached')
+      : code === 'account_disabled' ? 'الحساب موقوف.'
+      : code === 'google_not_configured' ? 'الدخول بجوجل غير مُهيَّأ حالياً.'
+      : code === 'invalid_google_token' ? 'تعذّر التحقّق من حساب جوجل.'
+      : e.status === 401 ? 'بيانات الدخول غير صحيحة.'
+      : e.status === 409 ? 'البريد مسجّل مسبقاً.'
+      : e.status === 422 ? 'تحقّق من البيانات (كلمة المرور 8 أحرف على الأقل).'
+      : 'تعذّر إتمام العملية.'
+    );
+    setBusy(false);
+  }
+
   async function submit() {
+    // Checked here as well as on the server: a rejected signup that only says
+    // "check your details" leaves people guessing which field is wrong.
+    if (!isEmail(f.email)) { setErr(t('validation.email')); return; }
+    if (isSignup && !normalizeMobile(f.phone)) { setErr(t('validation.phone')); return; }
+
     setErr(''); setBusy(true);
     try {
-      if (isSignup) await register(f.name, f.email, f.password, f.phone);
-      else await login(f.email, f.password);
-      navigate(next);
+      const user = isSignup
+        ? await register(f.name, f.email, f.password, normalizeMobile(f.phone))
+        : await login(f.email, f.password);
+      goAfterAuth(user);
     } catch (e) {
-      const code = e.data && e.data.error;
-      setErr(
-        code === 'device_limit_reached' ? t('devices.limitReached')
-        : e.status === 401 ? 'بيانات الدخول غير صحيحة.'
-        : e.status === 409 ? 'البريد مسجّل مسبقاً.'
-        : e.status === 422 ? 'تحقّق من البيانات (كلمة المرور 8 أحرف على الأقل).'
-        : 'تعذّر إتمام العملية.'
-      );
-      setBusy(false);
+      showError(e);
     }
   }
+
+  // Google sign-in is available only once the API reports a client id.
+  useEffect(() => {
+    if (googleSignInBlocked()) return;
+    let live = true;
+    authApi.googleConfig()
+      .then((r) => { if (live) setGoogleClientId(r.client_id || ''); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!googleClientId) return;
+    let live = true;
+    loadGoogleIdentity().then(() => {
+      if (!live || !googleHost.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async ({ credential }) => {
+          setErr(''); setBusy(true);
+          try {
+            goAfterAuth(await loginWithGoogle(credential));
+          } catch (e) {
+            showError(e);
+          }
+        },
+      });
+      googleHost.current.innerHTML = '';  // renderButton appends; don't stack on re-render
+      window.google.accounts.id.renderButton(googleHost.current, {
+        theme: 'outline', size: 'large', shape: 'pill', width: 340, locale: getLang(),
+        text: isSignup ? 'signup_with' : 'signin_with',
+      });
+    }).catch(() => { if (live) setGoogleClientId(''); });
+    return () => { live = false; };
+  }, [googleClientId, isSignup]);
 
   const tab = (active, label, onClick) => (
     <button
@@ -145,14 +206,15 @@ export default function Auth() {
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 22px' }}>{title}</h2>
           {isSignup && field('الاسم الكامل', <input placeholder="أدخل اسمك" style={inputStyle} value={f.name} onChange={set('name')} />)}
-          {field('البريد الإلكتروني', <input placeholder="you@email.com" style={inputStyle} value={f.email} onChange={set('email')} />)}
+          {field('البريد الإلكتروني', <input type="email" inputMode="email" placeholder="you@email.com" style={inputStyle} value={f.email} onChange={set('email')} />)}
           {isSignup && field(t('auth.phone'),
             <>
-              <input required placeholder="+2010xxxxxxxx" style={inputStyle} value={f.phone} onChange={set('phone')} />
-              <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{t('auth.phoneHint')}</div>
+              <PhoneField id="signup-phone" defaultValue={f.phone}
+                onChange={(value) => setF((current) => ({ ...current, phone: value }))} />
+              <div style={{ fontSize: 12, color: colors.muted, marginTop: 6, lineHeight: 1.7 }}>{t('auth.phoneHint')}</div>
             </>)}
           {field('كلمة المرور', <input type="password" placeholder="••••••••" style={inputStyle} value={f.password} onChange={set('password')} onKeyDown={(e) => e.key === 'Enter' && submit()} />)}
-          {err && <div style={{ color: colors.accent, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{err}</div>}
+          {err && <div role="alert" style={{ color: colors.accent, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{err}</div>}
           <button
             onClick={submit}
             disabled={busy}
@@ -172,17 +234,14 @@ export default function Auth() {
           >
             {busy ? '…' : title}
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, color: colors.muted2, fontSize: 13 }}>
-            <span style={{ flex: 1, height: 1, background: '#eee' }} /> أو <span style={{ flex: 1, height: 1, background: '#eee' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button style={{ flex: 1, border: '1px solid #ddd', background: '#fff', borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-              Google
-            </button>
-            <button style={{ flex: 1, border: '1px solid #ddd', background: '#fff', borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-              Apple
-            </button>
-          </div>
+          {googleClientId && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, color: colors.muted2, fontSize: 13 }}>
+                <span style={{ flex: 1, height: 1, background: '#eee' }} /> أو <span style={{ flex: 1, height: 1, background: '#eee' }} />
+              </div>
+              <div ref={googleHost} data-testid="google-signin" style={{ display: 'flex', justifyContent: 'center' }} />
+            </>
+          )}
         </div>
       </div>
     </div>

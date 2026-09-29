@@ -2,25 +2,29 @@ import os
 import uuid
 
 from flask import Blueprint, jsonify, request, send_file, current_app
+from marshmallow import ValidationError, validate
 from werkzeug.utils import secure_filename
 
 from ...extensions import db
 from datetime import datetime, timezone
 
 from ...models import (
-    User, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
+    User, UserDevice, Category, Course, CourseModule, Lesson, Bundle, Enrollment, InstapayPayment, Payment,
     Setting, Article, ContactMessage, Notification, BaytarianRequest, CourseVideo, LessonProgress,
-    VideoEntitlement, bundle_videos, push_notification,
+    CourseReview, Certificate, LearningPath, PathCourse, LEVELS, VideoEntitlement, bundle_videos,
+    push_notification, refresh_course_rating, VideoPlaybackSession, CourseExam, ExamQuestion, DeviceSwapRequest, Book,
+    PromoCode,
 )
+from ...models.payment import PROMO_KINDS
 from ...models.catalog import ACCESS_TYPES
 from ...security import require_role, hash_password
 from ...services.catalog_access import (
-    CatalogValidationError, access_is_paid, validate_bundle_compatibility, validate_catalog_item,
+    FREE_ACCESS, CatalogValidationError, access_is_paid, validate_bundle_compatibility, validate_catalog_item,
     validate_course_bundle_compatibility, validate_video_bundle_compatibility,
 )
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
-from ...services import vdocipher_admin
+from ...services import device_swaps, exam_authoring, promo as promo_service, vdocipher_admin
 from ...services.vdocipher_admin import VdoCipherAdminError
 
 bp = Blueprint("admin", __name__)
@@ -33,30 +37,91 @@ def _uid():
 
 # ------------------------------ dashboard ------------------------------
 
+@bp.get("/storage")
+@require_role("admin")
+def storage():
+    """Disk taken by self-hosted video, and how much room is left.
+
+    Its own endpoint rather than another block on /admin/stats: this one touches the
+    filesystem, and the dashboard should not wait on a disk walk to draw its counters.
+    """
+    from ...services import local_video
+
+    report = local_video.usage(current_app)
+    titles = {}
+    ids = [row["lesson_id"] for row in report["largest"] if row["lesson_id"]]
+    if ids:
+        titles = {lesson.id: lesson.title
+                  for lesson in Lesson.query.filter(Lesson.id.in_(ids)).all()}
+    for row in report["largest"]:
+        # A directory with no lesson behind it is an orphan the admin can delete.
+        row["title"] = titles.get(row["lesson_id"])
+    return jsonify(storage=report)
+
+
+
 @bp.get("/stats")
 @require_role("admin")
 def stats():
-    def n(q):
-        return db.session.query(q).count()
+    """Every figure the dashboard shows. One grouped query per dimension rather than
+    a count per tile: the dashboard is the first screen an admin opens."""
+
+    def grouped(model, column, keys):
+        rows = dict(db.session.query(column, db.func.count(model.id)).group_by(column).all())
+        counts = {key: rows.get(key, 0) for key in keys}
+        counts["total"] = sum(rows.values())
+        return counts
+
+    now = datetime.now(timezone.utc)
+    enrollments = grouped(Enrollment, Enrollment.status, ("active", "cancelled"))
+    # Expired seats still read as active in the row; they are the ones whose window
+    # has closed, which is a different queue from a cancelled one.
+    enrollments["expired"] = (Enrollment.query
+                              .filter(Enrollment.status == "active",
+                                      Enrollment.expires_at.isnot(None), Enrollment.expires_at <= now)
+                              .count())
+
+    payments = grouped(Payment, Payment.status,
+                       ("pending", "paid", "failed", "expired", "refunded", "partially_refunded"))
+    # Net of refunds: a partially refunded seat still earned the difference, and a
+    # fully refunded one earned nothing.
+    payments["revenue"] = float(db.session.query(
+        db.func.coalesce(db.func.sum(Payment.amount - db.func.coalesce(Payment.refunded_amount, 0)), 0),
+    ).filter(Payment.status.in_(("paid", "partially_refunded"))).scalar() or 0)
+    payments["refunded_amount"] = float(
+        db.session.query(db.func.coalesce(db.func.sum(Payment.refunded_amount), 0)).scalar() or 0)
+
+    videos = grouped(Lesson, Lesson.status, ("draft", "published", "unpublished"))
+    # A video nobody put in a course is the one an admin has to chase.
+    videos["unassigned"] = (Lesson.query
+                            .filter(~Lesson.id.in_(db.select(CourseVideo.video_id)),
+                                    Lesson.course_id.is_(None))
+                            .count())
+    videos["no_provider"] = Lesson.query.filter(Lesson.vdocipher_video_id.is_(None)).count()
+
+    users = grouped(User, User.role, ("student", "instructor", "admin"))
+    users["inactive"] = User.query.filter_by(is_active=False).count()
 
     return jsonify(
-        users={
-            "total": User.query.count(),
-            "students": User.query.filter_by(role="student").count(),
-            "instructors": User.query.filter_by(role="instructor").count(),
-            "admins": User.query.filter_by(role="admin").count(),
+        users=users,
+        courses=grouped(Course, Course.status, ("draft", "published", "unpublished")),
+        videos=videos,
+        enrollments=enrollments,
+        payments=payments,
+        instapay=grouped(InstapayPayment, InstapayPayment.status, ("pending", "approved", "rejected")),
+        baytarian=grouped(BaytarianRequest, BaytarianRequest.status, ("pending", "approved", "rejected")),
+        catalog={
+            "bundles": Bundle.query.count(),
+            "paths": LearningPath.query.count(),
+            "categories": Category.query.count(),
+            "articles": Article.query.count(),
+            "reviews": CourseReview.query.count(),
+            "certificates": Certificate.query.count(),
         },
-        courses={
-            "total": Course.query.count(),
-            "published": Course.query.filter_by(status="published").count(),
+        messages={
+            "total": ContactMessage.query.count(),
+            "unread": ContactMessage.query.filter_by(is_read=False).count(),
         },
-        enrollments=Enrollment.query.filter_by(status="active").count(),
-        payments={
-            "paid": Payment.query.filter_by(status="paid").count(),
-            "revenue": float(db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0))
-                             .filter(Payment.status == "paid").scalar() or 0),
-        },
-        baytarian={"pending": BaytarianRequest.query.filter_by(status="pending").count()},
     )
 
 
@@ -65,6 +130,7 @@ def stats():
 def _user_json(u):
     return {"id": u.id, "name": u.name, "email": u.email, "role": u.role, "phone": u.phone,
             "is_active": u.is_active, "is_baytarian": u.is_baytarian,
+            "is_vet_student": u.is_vet_student,
             "created_at": u.created_at.isoformat() if u.created_at else None,
             "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or [],
             "category_id": u.category_id, "max_devices": u.max_devices,
@@ -74,7 +140,7 @@ def _user_json(u):
 
 
 PROFILE_FIELDS = ("phone", "headline", "bio", "avatar_url", "expertise", "category_id", "max_devices",
-                  "is_baytarian", "can_add_video", "can_edit_video", "can_delete_video")
+                  "is_baytarian", "is_vet_student", "can_add_video", "can_edit_video", "can_delete_video")
 
 
 def _apply_profile_fields(u, d):
@@ -99,9 +165,31 @@ def users_list():
     if search:
         like = f"%{search}%"
         q = q.filter(db.or_(User.name.ilike(like), User.email.ilike(like)))
+    # ?active=1 for the pickers that must only offer people who can still be assigned
+    # work; ?include=<id> keeps whoever a record already points at in the list, so
+    # editing a deactivated instructor's course does not show an empty select.
+    if request.args.get("active", type=int):
+        keep = request.args.get("include", type=int)
+        q = q.filter(db.or_(User.is_active.is_(True), User.id == keep) if keep else User.is_active.is_(True))
     page = max(request.args.get("page", 1, type=int), 1)
-    pg = db.paginate(q.order_by(User.created_at.desc()), page=page, per_page=20, error_out=False)
+    # per_page was pinned at 20 whatever the caller asked for, so every instructor
+    # dropdown silently stopped at the twentieth name.
+    per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
+    pg = db.paginate(q.order_by(User.created_at.desc()), page=page, per_page=per_page, error_out=False)
     return jsonify(users=[_user_json(u) for u in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
+
+
+# Public registration runs every address through marshmallow's Email field; the admin
+# path only checked the box was non-empty, so "email: someone@yahoo.com" was stored
+# verbatim, prefix and all. Same rule both ways now, and trimmed and lowercased so one
+# person cannot arrive twice as " A@x.com " and "a@x.com".
+_validate_email = validate.Email(error="invalid_email")
+
+
+def _clean_email(raw):
+    value = (raw or "").strip().lower()
+    _validate_email(value)
+    return value
 
 
 @bp.post("/users")
@@ -113,7 +201,10 @@ def users_create():
             return jsonify(error=f"{f}_required"), 422
     if d.get("role", "student") not in ROLES:
         return jsonify(error="bad_role"), 422
-    email = d["email"].lower()
+    try:
+        email = _clean_email(d["email"])
+    except ValidationError:
+        return jsonify(error="invalid_email"), 422
     if User.query.filter_by(email=email).first():
         return jsonify(error="email_taken"), 409
     u = User(name=d["name"], email=email, password_hash=hash_password(d["password"]),
@@ -139,6 +230,15 @@ def users_update(uid):
         u.role = d["role"]
     if "name" in d:
         u.name = d["name"]
+    if "email" in d:
+        try:
+            email = _clean_email(d["email"])
+        except ValidationError:
+            return jsonify(error="invalid_email"), 422
+        clash = User.query.filter(User.email == email, User.id != u.id).first()
+        if clash:
+            return jsonify(error="email_taken"), 409
+        u.email = email
     if "is_active" in d:
         if u.id == _uid() and not d["is_active"]:
             return jsonify(error="cannot_disable_self"), 409
@@ -158,10 +258,25 @@ def users_delete(uid):
         return jsonify(error="not_found"), 404
     if u.id == _uid():
         return jsonify(error="cannot_delete_self"), 409
-    # instructors owning courses must have them reassigned/deleted first (FK is NOT NULL)
-    if Course.query.filter_by(instructor_id=uid).count():
-        return jsonify(error="user_has_courses"), 409
-    # clear/cascade the user's dependent rows so the delete doesn't hit FK constraints
+    # Authored content is not the account's to take with it: a course cannot exist
+    # without an instructor (FK is NOT NULL), and a video losing its author silently
+    # is worse than a refusal. Say exactly what blocks it so the admin can reassign
+    # those items, or deactivate the account instead.
+    # A course cannot exist without an instructor (FK is NOT NULL), so it always blocks.
+    # A paid video does too — it was sold on that person's name. A free video is open
+    # content: it is released rather than defended, so it is handed to nobody instead.
+    owned_courses = Course.query.filter_by(instructor_id=uid).count()
+    paid_videos = (Lesson.query
+                   .filter(Lesson.instructor_id == uid, Lesson.access_type.notin_(FREE_ACCESS))
+                   .count())
+    if owned_courses or paid_videos:
+        return jsonify(error="user_has_courses", courses=owned_courses, videos=paid_videos), 409
+    Lesson.query.filter_by(instructor_id=uid).update({"instructor_id": None})
+
+    # Clear the rows that are the account's own footprint so the delete doesn't hit a
+    # foreign key. Devices, entitlements and verification requests were missing here,
+    # so deleting anyone who had ever signed in raised an IntegrityError — a 500 with
+    # no message rather than the refusal above.
     for e in Enrollment.query.filter_by(user_id=uid).all():
         db.session.delete(e)  # cascades lesson_progress
     InstapayPayment.query.filter_by(user_id=uid).delete()
@@ -169,9 +284,147 @@ def users_delete(uid):
     Payment.query.filter_by(user_id=uid).delete()
     Article.query.filter_by(author_id=uid).update({"author_id": None})
     Notification.query.filter_by(user_id=uid).delete()
+    UserDevice.query.filter_by(user_id=uid).delete()
+    VideoEntitlement.query.filter_by(user_id=uid).delete()
+    BaytarianRequest.query.filter_by(reviewed_by=uid).update({"reviewed_by": None})
+    BaytarianRequest.query.filter_by(user_id=uid).delete()
     db.session.delete(u)
     db.session.commit()
     return jsonify(deleted=uid)
+
+
+# ------------------------------ enrollments ------------------------------
+
+def _enrollment_json(e, payment=None):
+    learner = e.user if hasattr(e, "user") else db.session.get(User, e.user_id)
+    return {
+        "id": e.id,
+        "status": e.status,
+        "source": e.source,
+        "enrolled_at": e.enrolled_at.isoformat() if e.enrolled_at else None,
+        "expires_at": e.expires_at.isoformat() if e.expires_at else None,
+        "is_expired": e.is_expired(),
+        "cancelled_at": e.cancelled_at.isoformat() if e.cancelled_at else None,
+        "cancel_reason": e.cancel_reason,
+        "learner": {"id": learner.id, "name": learner.name, "email": learner.email} if learner else None,
+        "course": {"id": e.course.id, "title": e.course.title, "slug": e.course.slug,
+                   "price": float(e.course.price), "currency": e.course.currency} if e.course else None,
+        "payment": payment.to_dict(admin=True) if payment else None,
+    }
+
+
+def _enrollment_payment(e):
+    """The paid seat behind an enrollment, if there is one. Renewals are later rows for
+    the same course, so the first paid enrol is what a refund is measured against."""
+    return (Payment.query
+            .filter(Payment.user_id == e.user_id, Payment.course_id == e.course_id,
+                    Payment.kind.in_(("enroll", "renewal")),
+                    Payment.status.in_(("paid", "partially_refunded")))
+            .order_by(Payment.paid_at.asc().nullslast(), Payment.id.asc())
+            .first())
+
+
+@bp.get("/enrollments")
+@require_role("admin")
+def enrollments_list():
+    q = Enrollment.query.join(User, Enrollment.user_id == User.id).join(Course, Enrollment.course_id == Course.id)
+    course_id = request.args.get("course_id", type=int)
+    if course_id:
+        q = q.filter(Enrollment.course_id == course_id)
+    user_id = request.args.get("user_id", type=int)
+    if user_id:
+        q = q.filter(Enrollment.user_id == user_id)
+    status = request.args.get("status")
+    if status:
+        q = q.filter(Enrollment.status == status)
+    search = request.args.get("q")
+    if search:
+        like = f"%{search}%"
+        q = q.filter(db.or_(User.name.ilike(like), User.email.ilike(like), Course.title.ilike(like)))
+
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
+    pg = db.paginate(q.order_by(Enrollment.enrolled_at.desc(), Enrollment.id.desc()),
+                     page=page, per_page=per_page, error_out=False)
+    rows = [_enrollment_json(e, _enrollment_payment(e)) for e in pg.items]
+    return jsonify(enrollments=rows, total=pg.total, page=pg.page, pages=pg.pages, per_page=pg.per_page)
+
+
+@bp.post("/enrollments/<int:eid>/cancel")
+@require_role("admin")
+def enrollment_cancel(eid):
+    """Un-enroll a learner, with a reason they are told and an optional recorded refund.
+
+    No money moves here: there is no gateway refund call in this codebase, so the
+    refund fields are the book that says what was agreed and someone returns it by
+    hand. Saying so is the point — a silent 'refunded' flag would be a lie.
+    """
+    e = db.session.get(Enrollment, eid)
+    if not e:
+        return jsonify(error="not_found"), 404
+    if e.status == "cancelled":
+        return jsonify(error="already_cancelled"), 409
+
+    d = request.get_json(silent=True) or {}
+    reason = (d.get("reason") or "").strip()
+    if not reason:
+        return jsonify(error="reason_required"), 422
+    if len(reason) > 2000:
+        return jsonify(error="reason_too_long"), 422
+
+    payment = _enrollment_payment(e)
+    refund = d.get("refund")
+    refund_amount = None
+    if refund:
+        if not payment:
+            return jsonify(error="no_payment_to_refund"), 409
+        charged = float(payment.amount or 0)
+        already = float(payment.refunded_amount or 0)
+        remaining = round(charged - already, 2)
+        if "amount" in refund and refund.get("amount") is not None:
+            try:
+                refund_amount = round(float(refund["amount"]), 2)
+            except (TypeError, ValueError):
+                return jsonify(error="invalid_refund_amount"), 422
+        elif refund.get("percent") is not None:
+            try:
+                percent = float(refund["percent"])
+            except (TypeError, ValueError):
+                return jsonify(error="invalid_refund_percent"), 422
+            if percent <= 0 or percent > 100:
+                return jsonify(error="invalid_refund_percent"), 422
+            refund_amount = round(charged * percent / 100.0, 2)
+        else:
+            return jsonify(error="invalid_refund_amount"), 422
+        if refund_amount <= 0 or refund_amount > remaining:
+            return jsonify(error="refund_exceeds_payment", remaining=remaining), 422
+
+    e.status = "cancelled"
+    e.cancelled_at = datetime.now(timezone.utc)
+    e.cancel_reason = reason
+    e.cancelled_by = _uid()
+    # enrolled_count is what the course card advertises and what the "popular" sort
+    # reads, so a removed learner comes back off it. Floored: the counter predates
+    # this and some rows were bumped without a matching enrollment.
+    course = e.course
+    if course:
+        course.enrolled_count = max((course.enrolled_count or 0) - 1, 0)
+
+    if refund_amount:
+        payment.refunded_amount = round(float(payment.refunded_amount or 0) + refund_amount, 2)
+        payment.refunded_at = datetime.now(timezone.utc)
+        payment.refunded_by = _uid()
+        payment.refund_reason = reason
+        payment.status = ("refunded" if float(payment.refunded_amount) >= float(payment.amount or 0)
+                          else "partially_refunded")
+
+    push_notification(
+        e.user_id, "enrollment_cancelled",
+        f"تم إلغاء تسجيلك في «{course.title}»" if course else "تم إلغاء تسجيلك",
+        reason,
+    )
+    db.session.commit()
+    return jsonify(enrollment=_enrollment_json(e, payment))
 
 
 # ------------------------------ categories ------------------------------
@@ -247,7 +500,28 @@ def course_get(cid):
     c = db.session.get(Course, cid)
     if not c:
         return jsonify(error="not_found"), 404
-    return jsonify(course=c.to_dict(with_content=True))
+    payload = c.to_dict(with_content=True)
+    # The content screen lists this course's videos from here, not from /videos, so the
+    # play counts ride along on both the flat list and the per-unit groups.
+    ids = [video["id"] for video in payload.get("videos", [])]
+    counts = _play_counts(ids)
+    for video in payload.get("videos", []):
+        stats = counts.get(video["id"]) or {"plays": 0, "viewers": 0}
+        video.update(stats)
+    for unit in payload.get("modules", []):
+        for video in unit.get("videos", []):
+            stats = counts.get(video["id"]) or {"plays": 0, "viewers": 0}
+            video.update(stats)
+    return jsonify(course=payload)
+
+
+def _objectives(data, key):
+    """The «ماذا ستتعلّم» bullets: a list of non-empty strings, blanks dropped so an
+    editor's trailing empty row does not become an empty bullet on the page."""
+    value = data.get(key) or []
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
 
 
 @bp.post("/courses")
@@ -256,6 +530,8 @@ def course_create():
     d = request.get_json() or {}
     if not d.get("title"):
         return jsonify(error="title_required"), 422
+    if d.get("level", "beginner") not in LEVELS:
+        return jsonify(error="bad_level"), 422
     instr_id = d.get("instructor_id")
     if not instr_id or not User.query.filter_by(id=instr_id, role="instructor").first():
         return jsonify(error="valid_instructor_required"), 422
@@ -288,6 +564,10 @@ def course_create():
         access_days=catalog["access_days"],
         access_type=catalog["access_type"],
         status=catalog["status"],
+        objectives=_objectives(d, "objectives"),
+        objectives_en=_objectives(d, "objectives_en"),
+        level=d.get("level", "beginner"),
+        has_certificate=bool(d.get("has_certificate", False)),
     )
     db.session.add(c)
     db.session.commit()
@@ -303,6 +583,8 @@ def course_update(cid):
     d = request.get_json() or {}
     if "status" in d and d["status"] not in ("draft", "published", "unpublished"):
         return jsonify(error="bad_status"), 422
+    if "level" in d and d["level"] not in LEVELS:
+        return jsonify(error="bad_level"), 422
     if "instructor_id" in d and not User.query.filter_by(id=d["instructor_id"], role="instructor").first():
         return jsonify(error="valid_instructor_required"), 422
     try:
@@ -313,9 +595,15 @@ def course_update(cid):
     except CatalogValidationError as exc:
         return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     for f in ("title", "title_en", "description", "description_en", "image", "price", "currency",
-              "instructor_id", "category_id", "duration_minutes", "access_days", "access_type", "status"):
+              "instructor_id", "category_id", "duration_minutes", "access_days", "access_type", "status",
+              "level"):
         if f in d or f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
             setattr(c, f, catalog[f] if f in catalog else d[f])
+    for f in ("objectives", "objectives_en"):
+        if f in d:
+            setattr(c, f, _objectives(d, f))
+    if "has_certificate" in d:
+        c.has_certificate = bool(d["has_certificate"])
     db.session.commit()
     return jsonify(course=c.to_dict())
 
@@ -326,12 +614,258 @@ def course_delete(cid):
     c = db.session.get(Course, cid)
     if not c:
         return jsonify(error="not_found"), 404
-    db.session.delete(c)  # modules/lessons cascade
+
+    # Enrollments and payments point at courses without ON DELETE, so deleting a sold
+    # course used to fail with a raw integrity error. Refusing is also the right answer:
+    # a payment row has to keep naming what was bought, and a learner keeps their access.
+    # Unpublishing hides a course without destroying either.
+    # Only seats someone actually holds count: a cancelled one is already revoked, and
+    # a free course records none at all, so neither is a reason to keep a course alive.
+    enrollments = (Enrollment.query
+                   .filter(Enrollment.course_id == cid, Enrollment.status != "cancelled")
+                   .count())
+    payments = (Payment.query.filter_by(course_id=cid).count()
+                + InstapayPayment.query.filter_by(course_id=cid).count())
+    if enrollments or payments:
+        return jsonify(error="course_in_use", enrollments=enrollments, payments=payments), 409
+
+    # Cancelled seats no longer block the delete, but they still point at the course
+    # and enrollments.course_id is NO ACTION, so leaving them turns an allowed delete
+    # into a foreign-key error. They are revoked already; they go with it. Deleting
+    # through the ORM takes their lesson_progress rows with them.
+    for revoked in Enrollment.query.filter_by(course_id=cid, status="cancelled").all():
+        db.session.delete(revoked)
+
+    # Standalone videos outlive the course; only the legacy direct link goes.
+    Lesson.query.filter_by(course_id=cid).update({"course_id": None})
+    db.session.delete(c)  # modules and course_videos cascade
     db.session.commit()
     return jsonify(deleted=cid)
 
 
 # ------------------------------ modules ------------------------------
+
+# ------------------------------ course exam (authoring) ------------------------------
+# The same rules serve the instructor portal; both call services/exam_authoring.py so a
+# question written in one place cannot be validated differently in the other.
+
+def _exam_error(exc):
+    return jsonify(error=exc.code), 422
+
+
+@bp.get("/courses/<int:cid>/exam")
+@require_role("admin")
+def admin_exam_get(cid):
+    if not db.session.get(Course, cid):
+        return jsonify(error="course_not_found"), 404
+    exam = CourseExam.query.filter_by(course_id=cid).first()
+    return jsonify(exam=exam.to_dict(with_answers=True) if exam else None)
+
+
+@bp.put("/courses/<int:cid>/exam")
+@require_role("admin")
+def admin_exam_upsert(cid):
+    if not db.session.get(Course, cid):
+        return jsonify(error="course_not_found"), 404
+    exam = exam_authoring.get_or_create(cid)
+    try:
+        exam_authoring.update_exam(exam, request.get_json() or {})
+    except exam_authoring.ExamValidationError as exc:
+        db.session.rollback()
+        return _exam_error(exc)
+    db.session.commit()
+    return jsonify(exam=exam.to_dict(with_answers=True))
+
+
+@bp.post("/courses/<int:cid>/exam/questions")
+@require_role("admin")
+def admin_exam_question_create(cid):
+    if not db.session.get(Course, cid):
+        return jsonify(error="course_not_found"), 404
+    exam = exam_authoring.get_or_create(cid)
+    try:
+        question = exam_authoring.create_question(exam, request.get_json() or {})
+    except exam_authoring.ExamValidationError as exc:
+        db.session.rollback()
+        return _exam_error(exc)
+    db.session.commit()
+    return jsonify(question=question.to_dict(with_answers=True)), 201
+
+
+@bp.patch("/exam-questions/<int:qid>")
+@require_role("admin")
+def admin_exam_question_update(qid):
+    question = db.session.get(ExamQuestion, qid)
+    if not question:
+        return jsonify(error="not_found"), 404
+    try:
+        exam_authoring.update_question(question, request.get_json() or {})
+    except exam_authoring.ExamValidationError as exc:
+        db.session.rollback()
+        return _exam_error(exc)
+    db.session.commit()
+    return jsonify(question=question.to_dict(with_answers=True))
+
+
+@bp.delete("/exam-questions/<int:qid>")
+@require_role("admin")
+def admin_exam_question_delete(qid):
+    question = db.session.get(ExamQuestion, qid)
+    if not question:
+        return jsonify(error="not_found"), 404
+    exam = exam_authoring.delete_question(question)
+    db.session.commit()
+    return jsonify(deleted=qid, exam=exam.to_dict(with_answers=True) if exam else None)
+
+
+# ------------------------------ the library: book summaries ------------------------------
+
+BOOK_PDF_TYPES = {"application/pdf"}
+
+
+def _book_dict(b):
+    d = b.to_dict()
+    d["excerpt_en"] = b.excerpt_en
+    d["pdf_path"] = b.pdf_path
+    return d
+
+
+@bp.get("/books")
+@require_role("admin")
+def admin_books():
+    rows = Book.query.order_by(Book.position, Book.id.desc()).all()
+    return jsonify(books=[_book_dict(b) for b in rows])
+
+
+@bp.post("/books")
+@require_role("admin")
+def book_create():
+    d = request.get_json() or {}
+    title = (d.get("title") or "").strip()
+    if not title:
+        return jsonify(error="title_required"), 422
+    book = Book(
+        title=title, title_en=(d.get("title_en") or None),
+        slug=slugify(d.get("slug") or d.get("title_en") or title,
+                     lambda value: Book.query.filter_by(slug=value).first()),
+        book_author=(d.get("book_author") or None),
+        excerpt=(d.get("excerpt") or None), excerpt_en=(d.get("excerpt_en") or None),
+        cover=(d.get("cover") or None), status=d.get("status", "draft"),
+        position=int(d.get("position") or 0),
+    )
+    db.session.add(book)
+    db.session.commit()
+    return jsonify(book=_book_dict(book)), 201
+
+
+@bp.patch("/books/<int:bid>")
+@require_role("admin")
+def book_update(bid):
+    book = db.session.get(Book, bid)
+    if not book:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    # Publishing without the PDF would give a reader a page with nothing to read.
+    if d.get("status") == "published" and not (book.pdf_path or d.get("pdf_path")):
+        return jsonify(error="pdf_required"), 422
+    for field in ("title", "title_en", "book_author", "excerpt", "excerpt_en", "cover", "status"):
+        if field in d:
+            setattr(book, field, (d[field] or None) if field != "status" else d[field])
+    if "position" in d:
+        book.position = int(d["position"] or 0)
+    db.session.commit()
+    return jsonify(book=_book_dict(book))
+
+
+@bp.post("/books/<int:bid>/pdf")
+@require_role("admin")
+def book_pdf_upload(bid):
+    book = db.session.get(Book, bid)
+    if not book:
+        return jsonify(error="not_found"), 404
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="file_required"), 400
+    if f.mimetype not in BOOK_PDF_TYPES:
+        return jsonify(error="unsupported_media_type", allowed=["application/pdf"]), 415
+
+    folder = current_app.config["BOOK_DIR"]
+    os.makedirs(folder, exist_ok=True)
+    # Stored under a name we choose, so the original filename can never become a URL.
+    name = f"{book.id}-{uuid.uuid4().hex[:8]}.pdf"
+    previous = book.pdf_path
+    f.save(os.path.join(folder, name))
+    book.pdf_path = name
+    try:
+        from pypdf import PdfReader
+
+        book.pdf_pages = len(PdfReader(os.path.join(folder, name)).pages)
+    except Exception:  # noqa: BLE001 — a page count is a nicety, not a reason to fail
+        book.pdf_pages = None
+    db.session.commit()
+    if previous and previous != name:
+        try:
+            os.unlink(os.path.join(folder, previous))
+        except OSError:
+            pass
+    return jsonify(book=_book_dict(book))
+
+
+@bp.delete("/books/<int:bid>")
+@require_role("admin")
+def book_delete(bid):
+    book = db.session.get(Book, bid)
+    if not book:
+        return jsonify(error="not_found"), 404
+    if book.pdf_path:
+        try:
+            os.unlink(os.path.join(current_app.config["BOOK_DIR"], book.pdf_path))
+        except OSError:
+            pass
+    db.session.delete(book)
+    db.session.commit()
+    return jsonify(deleted=bid)
+
+
+# ------------------------------ device swap requests ------------------------------
+
+@bp.get("/device-swap-requests")
+@require_role("admin")
+def device_swap_requests():
+    status = request.args.get("status", "pending")
+    q = DeviceSwapRequest.query
+    if status in DeviceSwapRequest.STATUSES:
+        q = q.filter_by(status=status)
+    rows = q.order_by(DeviceSwapRequest.created_at.desc(), DeviceSwapRequest.id.desc()).limit(100).all()
+    return jsonify(requests=[r.to_dict() for r in rows])
+
+
+@bp.post("/device-swap-requests/<int:rid>/<decision>")
+@require_role("admin")
+def decide_device_swap(rid, decision):
+    if decision not in ("approve", "reject"):
+        return jsonify(error="invalid_decision"), 422
+    row = db.session.get(DeviceSwapRequest, rid)
+    if not row:
+        return jsonify(error="not_found"), 404
+    if row.status != "pending":
+        return jsonify(error="already_decided", request=row.to_dict()), 409
+
+    row.status = "approved" if decision == "approve" else "rejected"
+    row.decided_at = datetime.now(timezone.utc)
+    row.decided_by_id = int(get_jwt_identity())
+    if decision == "approve":
+        # One more swap inside the learner's current window -- not a reset of their
+        # devices, so an approval cannot quietly sign anyone out.
+        device_swaps.grant_extra(row.user)
+        push_notification(row.user_id, "devices", "تمت الموافقة على تغيير الجهاز",
+                          "تقدر دلوقتي تشيل جهاز من حسابك وتضيف جهاز جديد.")
+    else:
+        push_notification(row.user_id, "devices", "طلب تغيير الجهاز",
+                          "للأسف الطلب اترفض. تواصل معانا لو محتاج مساعدة.")
+    db.session.commit()
+    return jsonify(request=row.to_dict())
+
 
 @bp.post("/courses/<int:cid>/modules")
 @require_role("admin")
@@ -440,6 +974,136 @@ def upload_image():
     return jsonify(url=f"/api/v1/uploads/{name}"), 201
 
 
+# ------------------------------ self-hosted video upload ------------------------------
+
+VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-matroska", "video/webm", "video/x-msvideo"}
+
+
+def _package_local_video(app, lesson_id, source_path):
+    """Transcode + encrypt in a worker thread; the request must not wait an hour."""
+    from ...services import local_video
+
+    with app.app_context():
+        lesson = db.session.get(Lesson, lesson_id)
+        if not lesson:
+            return
+        try:
+            local_video.package(source_path, local_video.lesson_dir(app, lesson_id))
+            minutes = local_video.probe_duration_minutes(source_path)
+            lesson = db.session.get(Lesson, lesson_id)
+            if minutes and not lesson.duration_minutes:
+                lesson.duration_minutes = minutes
+            # A thumbnail from the video itself, so a self-hosted upload does not sit in
+            # the library behind the branded placeholder. It goes to the public image
+            # folder: the poster is not secret, unlike the segments beside it.
+            if not lesson.poster:
+                name = f"video_{lesson_id}_{uuid.uuid4().hex[:8]}.jpg"
+                if local_video.grab_poster(source_path, app.config["UPLOAD_IMAGE_DIR"], name):
+                    lesson.poster = f"/api/v1/uploads/{name}"
+            lesson.local_status = "ready"
+            lesson.local_error = None
+        except Exception as exc:  # noqa: BLE001 - the reason belongs in the admin UI
+            lesson = db.session.get(Lesson, lesson_id)
+            if lesson:
+                lesson.local_status = "failed"
+                lesson.local_error = str(exc)[:200]
+        finally:
+            os.path.exists(source_path) and os.unlink(source_path)
+            db.session.commit()
+
+
+def resume_interrupted_packaging(app):
+    """Pick up transcodes that a restart killed.
+
+    The packaging thread is a daemon inside the web process, so a deploy or a crash
+    takes it with it and leaves the row saying `packaging` for ever. The uploaded source
+    is still in `_incoming`, so the work can simply start again; a row whose source has
+    gone is marked failed, because nothing will ever finish it.
+    """
+    import threading
+
+    from ...services import local_video
+
+    with app.app_context():
+        stuck = Lesson.query.filter_by(local_status="packaging").all()
+        if not stuck:
+            return
+        incoming = os.path.join(app.config["LOCAL_VIDEO_DIR"], "_incoming")
+        sources = {}
+        if os.path.isdir(incoming):
+            for name in os.listdir(incoming):
+                lesson_id = name.split("_", 1)[0]
+                if lesson_id.isdigit():
+                    sources.setdefault(int(lesson_id), os.path.join(incoming, name))
+
+        for lesson in stuck:
+            source = sources.get(lesson.id)
+            if source and os.path.exists(source):
+                app.logger.warning("resuming interrupted packaging for video %s", lesson.id)
+                # Half-written renditions are worthless; package() clears the directory.
+                threading.Thread(target=_package_local_video, args=(app, lesson.id, source),
+                                 daemon=True).start()
+            else:
+                app.logger.warning("packaging for video %s cannot resume: source is gone", lesson.id)
+                lesson.local_status = "failed"
+                lesson.local_error = "packaging_interrupted_source_missing"
+                local_video.delete(app, lesson.id)
+        db.session.commit()
+
+
+@bp.post("/videos/<int:lid>/upload")
+@require_role("admin")
+def video_upload(lid):
+    """Upload a video file to this server; it is packaged as encrypted HLS in the background."""
+    import threading
+
+    lesson = db.session.get(Lesson, lid)
+    if not lesson:
+        return jsonify(error="not_found"), 404
+    # Our own server has no DRM: the picture is recordable on every device and only the
+    # watermark names the account. That is the agreed trade for free content and nothing
+    # else, so a paid video goes to VdoCipher or it does not go up at all.
+    if access_is_paid(lesson.access_type):
+        return jsonify(error="paid_requires_vdocipher"), 422
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="file_required"), 400
+    if f.mimetype not in VIDEO_TYPES:
+        return jsonify(error="unsupported_media_type", allowed=sorted(VIDEO_TYPES)), 415
+
+    incoming = os.path.join(current_app.config["LOCAL_VIDEO_DIR"], "_incoming")
+    os.makedirs(incoming, exist_ok=True)
+    source_path = os.path.join(incoming, f"{lid}_{uuid.uuid4().hex[:8]}_{secure_filename(f.filename)}")
+    f.save(source_path)
+
+    lesson.source = "local"
+    lesson.local_status = "packaging"
+    lesson.local_error = None
+    db.session.commit()
+
+    threading.Thread(target=_package_local_video,
+                     args=(current_app._get_current_object(), lid, source_path),
+                     daemon=True).start()
+    return jsonify(video=_video_dict(lesson)), 202
+
+
+@bp.delete("/videos/<int:lid>/upload")
+@require_role("admin")
+def video_upload_delete(lid):
+    """Remove the packaged files and hand the video back to VdoCipher delivery."""
+    from ...services import local_video
+
+    lesson = db.session.get(Lesson, lid)
+    if not lesson:
+        return jsonify(error="not_found"), 404
+    local_video.delete(current_app, lid)
+    lesson.source = "vdocipher"
+    lesson.local_status = None
+    lesson.local_error = None
+    db.session.commit()
+    return jsonify(video=_video_dict(lesson))
+
+
 # ------------------------------ baytarian verification ------------------------------
 
 @bp.get("/baytarian-requests")
@@ -472,18 +1136,95 @@ def baytarian_approve(rid):
         return jsonify(error="not_found"), 404
     if r.status != "pending":
         return jsonify(error="not_pending", status=r.status), 409
+    # Both kinds verify the account; the admin only says whether this is a student or a
+    # licensed doctor, defaulting to whatever the request already read.
+    grant = (request.get_json(silent=True) or {}).get("grant") or r.grant or "baytarian"
+    if grant not in ("baytarian", "vet_student"):
+        return jsonify(error="invalid_grant"), 400
     try:
         r.status = "approved"
+        r.grant = grant
         r.reviewed_by = _uid()
         r.reviewed_at = datetime.now(timezone.utc)
         user = db.session.get(User, r.user_id)
         user.is_baytarian = True
-        push_notification(r.user_id, "baytarian_approved", "تم توثيق حسابك كطبيب بيطري ✅",
-                          "أصبح بإمكانك الآن الوصول إلى محتوى «بيطريّ» المخصّص للأطباء.")
+        user.is_vet_student = grant == "vet_student"
+        push_notification(
+            r.user_id, "baytarian_approved",
+            "تم توثيقك كطالب طب بيطري ✅" if grant == "vet_student"
+            else "تم توثيق حسابك كطبيب بيطري ✅",
+            "أصبح بإمكانك الآن الوصول إلى محتوى «بيطريّ» المخصّص للأطباء.")
         db.session.commit()
     except Exception:  # noqa: BLE001
         db.session.rollback()
         raise
+    return jsonify(request=r.to_dict(admin=True))
+
+
+@bp.post("/users/<int:uid>/verify")
+@require_role("admin")
+def verify_user_directly(uid):
+    """Verify an account with no document at all — the admin vouches for it.
+
+    Recorded as an approved request on the `admin` route rather than a quiet flag on
+    the user, so the verification queue shows who was verified this way, by whom, and
+    revoke works on it exactly like any other approval.
+    """
+    user = db.session.get(User, uid)
+    if not user:
+        return jsonify(error="not_found"), 404
+    if user.is_baytarian:
+        return jsonify(error="already_verified"), 409
+    grant = (request.get_json(silent=True) or {}).get("grant") or "baytarian"
+    if grant not in ("baytarian", "vet_student"):
+        return jsonify(error="invalid_grant"), 400
+    note = ((request.get_json(silent=True) or {}).get("note") or "")[:500]
+    now = datetime.now(timezone.utc)
+    try:
+        r = BaytarianRequest(user_id=uid, status="approved", route="admin", grant=grant,
+                             note=note or None, reviewed_by=_uid(), reviewed_at=now)
+        db.session.add(r)
+        user.is_baytarian = True
+        user.is_vet_student = grant == "vet_student"
+        push_notification(
+            uid, "baytarian_approved",
+            "تم توثيقك كطالب طب بيطري ✅" if grant == "vet_student"
+            else "تم توثيق حسابك كطبيب بيطري ✅",
+            "وثّقت الإدارة حسابك. أصبح بإمكانك الوصول إلى المحتوى المخصّص للأطباء.")
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        raise
+    return jsonify(request=r.to_dict(admin=True)), 201
+
+
+@bp.post("/baytarian-requests/<int:rid>/revoke")
+@require_role("admin")
+def baytarian_revoke(rid):
+    """Undo an approval — the answer to a machine having made the decision.
+
+    Auto-approval is only defensible while a person can take it back, so this works on
+    any approved request, whoever approved it.
+    """
+    r = db.session.get(BaytarianRequest, rid)
+    if not r:
+        return jsonify(error="not_found"), 404
+    if r.status != "approved":
+        return jsonify(error="not_approved", status=r.status), 409
+    reason = (request.get_json(silent=True) or {}).get("reason")
+    r.status = "rejected"
+    r.reject_reason = (reason or "تم سحب التوثيق بعد المراجعة")[:300]
+    r.reviewed_by = _uid()
+    r.reviewed_at = datetime.now(timezone.utc)
+    user = db.session.get(User, r.user_id)
+    user.is_baytarian = False
+    user.is_vet_student = False
+    user.vet_registration_no = user.vet_license_no = None
+    user.vet_governorate = None
+    user.vet_card_expires_at = None
+    push_notification(r.user_id, "baytarian_revoked", "تم سحب التوثيق",
+                      r.reject_reason)
+    db.session.commit()
     return jsonify(request=r.to_dict(admin=True))
 
 
@@ -636,13 +1377,200 @@ def bundle_delete(bid):
     return jsonify(deleted=bid)
 
 
+# ------------------------------ course reviews ------------------------------
+
+REVIEW_STATUSES = ("published", "hidden")
+
+
+@bp.get("/reviews")
+@require_role("admin")
+def reviews_list():
+    q = CourseReview.query
+    status = request.args.get("status")
+    if status in REVIEW_STATUSES:
+        q = q.filter_by(status=status)
+    course_id = request.args.get("course_id", type=int)
+    if course_id:
+        q = q.filter_by(course_id=course_id)
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = min(max(request.args.get("per_page", 25, type=int), 1), 100)
+    pg = db.paginate(q.order_by(CourseReview.created_at.desc(), CourseReview.id.desc()),
+                     page=page, per_page=per_page, error_out=False)
+    return jsonify(reviews=[r.to_dict(admin=True) for r in pg.items],
+                   total=pg.total, page=pg.page, pages=pg.pages)
+
+
+@bp.patch("/reviews/<int:rid>")
+@require_role("admin")
+def review_update(rid):
+    """Publish or hide. Hiding recounts, so the average always matches what is readable."""
+    review = db.session.get(CourseReview, rid)
+    if not review:
+        return jsonify(error="not_found"), 404
+    status = (request.get_json() or {}).get("status")
+    if status not in REVIEW_STATUSES:
+        return jsonify(error="bad_status"), 422
+    review.status = status
+    db.session.flush()
+    refresh_course_rating(review.course)
+    db.session.commit()
+    return jsonify(review=review.to_dict(admin=True))
+
+
+@bp.delete("/reviews/<int:rid>")
+@require_role("admin")
+def review_delete(rid):
+    review = db.session.get(CourseReview, rid)
+    if not review:
+        return jsonify(error="not_found"), 404
+    course = review.course
+    db.session.delete(review)
+    db.session.flush()
+    refresh_course_rating(course)
+    db.session.commit()
+    return jsonify(deleted=rid)
+
+
+# ------------------------------ learning paths ------------------------------
+
+# ponytail: no validate_catalog_item call — a path carries no price and no access tier,
+# so there is nothing for the catalog validator to check. Its courses gate themselves.
+
+def _path_assignments(data, current=None):
+    """Ordered PathCourse rows for the given course_ids, or the current ones untouched."""
+    if "course_ids" not in data:
+        return None
+    courses = _bundle_ids(data, "course_ids", Course, "course_not_found")
+    return [PathCourse(course_id=c.id, position=i) for i, c in enumerate(courses)]
+
+
+def _path_fields(data):
+    """Validate the path-only fields. Returns nothing; raises on bad input."""
+    if "level" in data and data["level"] not in LEVELS:
+        raise CatalogValidationError(["bad_level"])
+    if "status" in data and data["status"] not in ("draft", "published", "unpublished"):
+        raise CatalogValidationError(["bad_status"])
+
+
+@bp.get("/paths")
+@require_role("admin")
+def paths_list():
+    rows = LearningPath.query.order_by(LearningPath.sort_order, LearningPath.id).all()
+    return jsonify(paths=[p.to_dict() for p in rows])
+
+
+@bp.get("/paths/<int:pid>")
+@require_role("admin")
+def path_get(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    return jsonify(path=p.to_dict())
+
+
+@bp.post("/paths")
+@require_role("admin")
+def path_create():
+    d = request.get_json() or {}
+    if not d.get("title"):
+        return jsonify(error="title_required"), 422
+    try:
+        _path_fields(d)
+        assignments = _path_assignments(d) or []
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    p = LearningPath(
+        title=d["title"], title_en=d.get("title_en"),
+        slug=slugify(d.get("slug") or d["title"],
+                     lambda s: LearningPath.query.filter_by(slug=s).first() is not None),
+        description=d.get("description", ""), description_en=d.get("description_en"),
+        level=d.get("level", "beginner"), status=d.get("status", "draft"),
+        sort_order=d.get("sort_order", 0), course_assignments=assignments,
+    )
+    db.session.add(p)
+    db.session.commit()
+    return jsonify(path=p.to_dict()), 201
+
+
+@bp.patch("/paths/<int:pid>")
+@require_role("admin")
+def path_update(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    try:
+        _path_fields(d)
+        assignments = _path_assignments(d, current=p)
+    except CatalogValidationError as exc:
+        return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
+    for f in ("title", "title_en", "description", "description_en", "level", "status", "sort_order"):
+        if f in d:
+            setattr(p, f, d[f])
+    if assignments is not None:
+        # Drop the old rows first: reordering reuses the same (path, course) pairs, and
+        # without this flush the inserts race the orphan deletes into uq_path_course.
+        p.course_assignments.clear()
+        db.session.flush()
+        p.course_assignments = assignments
+    db.session.commit()
+    return jsonify(path=p.to_dict())
+
+
+@bp.delete("/paths/<int:pid>")
+@require_role("admin")
+def path_delete(pid):
+    p = db.session.get(LearningPath, pid)
+    if not p:
+        return jsonify(error="not_found"), 404
+    db.session.delete(p)
+    db.session.commit()
+    return jsonify(deleted=pid)
+
+
 # ------------------------------ video catalog ------------------------------
 
-def _video_dict(l):
+def _play_counts(lesson_ids):
+    """Real plays per video: sessions that reached a first frame, and distinct accounts.
+
+    Counted from video_playback_sessions rather than a new column, so nothing has to be
+    kept in sync and it is right for every video that has ever played -- local ones
+    included, which is what the client asked to see. One grouped query per page, not
+    one per row.
+    """
+    if not lesson_ids:
+        return {}
+    rows = (
+        db.session.query(
+            VideoPlaybackSession.video_id,
+            db.func.count(VideoPlaybackSession.id),
+            db.func.count(db.func.distinct(VideoPlaybackSession.user_id)),
+        )
+        .filter(VideoPlaybackSession.video_id.in_(lesson_ids),
+                VideoPlaybackSession.first_played_at.isnot(None))
+        .group_by(VideoPlaybackSession.video_id)
+        .all()
+    )
+    return {video_id: {"plays": plays, "viewers": viewers} for video_id, plays, viewers in rows}
+
+
+def _video_dict(l, counts=None):
     d = l.to_dict()
+    if counts is not None:
+        stats = counts.get(l.id) or {"plays": 0, "viewers": 0}
+        d["plays"] = stats["plays"]
+        d["viewers"] = stats["viewers"]
     d["title_en"] = l.title_en
     d["description_en"] = l.description_en
     d["vdocipher_video_id"] = l.vdocipher_video_id
+    # Where the video is served from, so the library can say so rather than leaving an
+    # admin to infer it from a missing provider id.
+    d["source"] = l.source
+    d["local_status"] = l.local_status
+    d["local_error"] = l.local_error
+    # Which courses this video may join at all: the server refuses a course owned by a
+    # different instructor, so the picker should not offer one.
+    d["instructor_id"] = l.instructor_id
     d["courses"] = [
         {
             "id": row.course.id, "title": row.course.title, "title_en": row.course.title_en,
@@ -668,6 +1596,11 @@ def _delete_catalog_video(video_id):
     )
     if has_dependencies:
         return jsonify(error="video_in_use"), 409
+    # A self-hosted video owns files on disk. Dropping only the row would leave its
+    # packaged HLS behind, counted by the storage card and served to nobody.
+    from ...services import local_video
+
+    local_video.delete(current_app, video_id)
     db.session.delete(video)
     db.session.commit()
     return jsonify(deleted=video_id)
@@ -688,11 +1621,22 @@ def _catalog_video_fields(data, current=None):
             key: data[key]
             for key in ("status", "access_type", "price", "currency", "category_id", "access_days")
             if key in data
-        }, current=current)
+        }, current=current, require_category=False)
     except CatalogValidationError as exc:
         return None, (jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422)
+    # Neither a section nor a presenter is required: the library filters on one and the
+    # video page credits the other, and a clip that has neither is still a clip worth
+    # publishing. What is given, though, has to exist.
     if catalog["category_id"] is not None and not db.session.get(Category, catalog["category_id"]):
         return None, (jsonify(error="catalog_validation_failed", errors=["invalid_category"]), 422)
+
+    # A presenter is optional. The platform's own clips -- promos, how-tos, anything the
+    # client records himself -- have no instructor to credit, and demanding one blocked
+    # the upload outright. A presenter that is named still has to be a real instructor.
+    instructor_id = data.get("instructor_id", current.instructor_id if current else None) or None
+    if instructor_id and not User.query.filter_by(id=instructor_id, role="instructor").first():
+        return None, (jsonify(error="catalog_validation_failed", errors=["invalid_instructor"]), 422)
+    catalog["instructor_id"] = instructor_id
     return catalog, None
 
 
@@ -705,6 +1649,13 @@ def set_video_courses(video, course_ids):
     courses = Course.query.filter(Course.id.in_(wanted)).all() if wanted else []
     if len(courses) != len(wanted):
         raise CatalogValidationError(["course_not_found"])
+    # A video belongs to its instructor, so it cannot be dropped into someone else's
+    # course. Every path that attaches a video routes through here, so the rule is
+    # enforced once rather than in each caller. Videos with no instructor yet (older
+    # rows) have no ownership to contradict.
+    if video.instructor_id:
+        if any(course.instructor_id != video.instructor_id for course in courses):
+            raise CatalogValidationError(["course_instructor_mismatch"])
     validate_video_bundle_compatibility(
         video, standalone=not wanted and not video.course_id and not video.module_id,
     )
@@ -770,7 +1721,8 @@ def videos_list():
     page = max(request.args.get("page", 1, type=int), 1)
     per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
     pg = db.paginate(q.order_by(Lesson.created_at.desc(), Lesson.id.desc()), page=page, per_page=per_page, error_out=False)
-    return jsonify(items=[_video_dict(l) for l in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
+    counts = _play_counts([l.id for l in pg.items])
+    return jsonify(items=[_video_dict(l, counts) for l in pg.items], total=pg.total, page=pg.page, pages=pg.pages)
 
 
 VIDEO_PROVIDER_STATUSES = ("ready", "preparing", "queued", "failed")
@@ -863,9 +1815,10 @@ def video_library():
     except VdoCipherAdminError as exc:
         return _vdocipher_error(exc)
 
+    provider_lessons = Lesson.query.filter(Lesson.vdocipher_video_id.isnot(None)).order_by(Lesson.id).all()
+    counts = _play_counts([lesson.id for lesson in provider_lessons])
     catalog_by_provider = {
-        lesson.vdocipher_video_id: _video_dict(lesson)
-        for lesson in Lesson.query.filter(Lesson.vdocipher_video_id.isnot(None)).order_by(Lesson.id).all()
+        lesson.vdocipher_video_id: _video_dict(lesson, counts) for lesson in provider_lessons
     }
     local_filters = bool(category_id or access_type or publication or course_id or assignment == "assigned")
     normalized = []
@@ -886,8 +1839,13 @@ def video_library():
         normalized.append(item)
 
     if folder_id == "root" and not provider_status:
-        for lesson in Lesson.query.filter(Lesson.vdocipher_video_id.is_(None)).order_by(Lesson.id).all():
-            catalog = _video_dict(lesson)
+        standalone = Lesson.query.filter(Lesson.vdocipher_video_id.is_(None)).order_by(Lesson.id).all()
+        # Counted here too. Without this a self-hosted video -- which is every video not on
+        # VdoCipher, course or no course -- came back with no play count at all, so the
+        # library showed a figure for some rows and nothing for others.
+        standalone_counts = _play_counts([lesson.id for lesson in standalone])
+        for lesson in standalone:
+            catalog = _video_dict(lesson, standalone_counts)
             if not _library_catalog_matches(catalog, category_id, access_type, publication, course_id, assignment, query):
                 continue
             normalized.append({
@@ -909,7 +1867,7 @@ def video_get(vid):
     l = db.session.get(Lesson, vid)
     if not l:
         return jsonify(error="not_found"), 404
-    return jsonify(video=_video_dict(l))
+    return jsonify(video=_video_dict(l, _play_counts([l.id])))
 
 
 @bp.post("/videos")
@@ -931,7 +1889,8 @@ def video_create():
         course_id=None, module_id=None,
         title=d["title"], title_en=d.get("title_en"),
         description=d.get("description", ""), description_en=d.get("description_en"),
-        category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
+        category_id=catalog["category_id"], instructor_id=catalog["instructor_id"],
+        price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
         poster=d.get("poster") or None,
@@ -959,6 +1918,10 @@ def video_update(vid):
     catalog, error = _catalog_video_fields(d, current=l)
     if error:
         return error
+    # The same rule from the other direction: re-pricing a self-hosted video would put
+    # paid content behind no DRM. Re-upload it to VdoCipher first.
+    if l.source == "local" and access_is_paid(catalog["access_type"]):
+        return jsonify(error="paid_requires_vdocipher"), 422
     try:
         validate_video_bundle_compatibility(l, access_type=catalog["access_type"])
     except CatalogValidationError as exc:
@@ -971,7 +1934,7 @@ def video_update(vid):
     for f in ("title", "title_en", "description", "description_en", "duration_minutes", "poster", "vdocipher_video_id", "is_protected"):
         if f in d:
             setattr(l, f, (d[f] or None) if f == "vdocipher_video_id" else d[f])
-    for f in ("price", "currency", "category_id", "access_days", "access_type", "status"):
+    for f in ("price", "currency", "category_id", "instructor_id", "access_days", "access_type", "status"):
         setattr(l, f, catalog[f])
     course_ids = d.get("course_ids")
     if course_ids is None and "course_id" in d:
@@ -1053,6 +2016,28 @@ def course_videos_order(cid):
         return jsonify(error="catalog_validation_failed", errors=list(exc.errors)), 422
     db.session.commit()
     return jsonify(ok=True, count=len(video_ids))
+
+
+@bp.put("/courses/<int:cid>/videos/<int:vid>/module")
+@require_role("admin")
+def course_video_module(cid, vid):
+    """Place one of a course's videos in a unit (or remove it from units with null)."""
+    course = db.session.get(Course, cid)
+    if not course:
+        return jsonify(error="course_not_found"), 404
+    row = CourseVideo.query.filter_by(course_id=cid, video_id=vid).first()
+    if not row:
+        return jsonify(error="not_assigned"), 404
+
+    module_id = (request.get_json() or {}).get("module_id")
+    if module_id is not None:
+        module = db.session.get(CourseModule, module_id)
+        # A unit from another course would silently vanish from this one's accordion.
+        if not module or module.course_id != cid:
+            return jsonify(error="module_not_found"), 422
+    row.module_id = module_id
+    db.session.commit()
+    return jsonify(ok=True, video_id=vid, module_id=module_id)
 
 
 @bp.post("/courses/<int:cid>/videos/reorder")
@@ -1309,12 +2294,17 @@ def vdocipher_import():
         title=d.get("title") or d["video_id"],
         title_en=d.get("title_en"),
         description=d.get("description", ""), description_en=d.get("description_en"),
-        category_id=catalog["category_id"], price=catalog["price"], currency=catalog["currency"],
+        category_id=catalog["category_id"], instructor_id=catalog["instructor_id"],
+        price=catalog["price"], currency=catalog["currency"],
         access_days=catalog["access_days"], access_type=catalog["access_type"], status=catalog["status"],
         duration_minutes=d.get("duration_minutes"),
         poster=d.get("poster") or None,
         vdocipher_video_id=d["video_id"],
-        is_protected=True,
+        # Capture protection follows the access type, as it does everywhere else that
+        # creates a video. It was hardcoded True here, so every VdoCipher import came out
+        # protected -- including a free one, which then refused to play outside Edge and
+        # told the viewer to go and find another browser for content that costs nothing.
+        is_protected=d.get("is_protected", access_is_paid(catalog["access_type"])),
     )
     db.session.add(l)
     db.session.flush()
@@ -1494,3 +2484,182 @@ def broadcast():
         n += 1
     db.session.commit()
     return jsonify(sent=n)
+
+
+# ------------------------------ promo codes ------------------------------
+# Issued by hand to partners and influencers. The discount itself is computed in
+# services/promo.py and never comes from a client; these endpoints only manage the codes.
+
+def _promo_dt(value):
+    """An ISO date/datetime from the admin form, or None. Refuses garbage rather than
+    silently storing a null that would read as "no expiry"."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError("invalid_date")
+
+
+@bp.get("/promo-codes")
+@require_role("admin")
+def promo_list():
+    rows = PromoCode.query.order_by(PromoCode.created_at.desc(), PromoCode.id.desc()).all()
+    # Usage is a count over payments, so it is fetched per row. The list is short by
+    # nature -- these are handed out to named partners, not generated in bulk.
+    return jsonify(codes=[r.to_dict(uses=promo_service.uses(r)) for r in rows])
+
+
+@bp.post("/promo-codes")
+@require_role("admin")
+def promo_create():
+    d = request.get_json() or {}
+    code = promo_service.normalize(d.get("code"))
+    if not code:
+        return jsonify(error="code_required"), 422
+    if PromoCode.query.filter_by(code=code).first():
+        return jsonify(error="code_taken"), 409
+    kind = d.get("kind") or "percent"
+    if kind not in PROMO_KINDS:
+        return jsonify(error="invalid_kind"), 422
+    try:
+        value = float(d.get("value") or 0)
+    except (TypeError, ValueError):
+        return jsonify(error="invalid_value"), 422
+    # A percentage over 100 would price the course below zero; discount_for() floors the
+    # result anyway, but storing it would mean the admin list shows a number that lies.
+    if value <= 0 or (kind == "percent" and value > 100):
+        return jsonify(error="invalid_value"), 422
+
+    try:
+        row = PromoCode(
+            code=code, kind=kind, value=value,
+            partner=(d.get("partner") or "").strip()[:160] or None,
+            note=(d.get("note") or "").strip()[:300] or None,
+            is_active=bool(d.get("is_active", True)),
+            starts_at=_promo_dt(d.get("starts_at")),
+            expires_at=_promo_dt(d.get("expires_at")),
+            max_uses=int(d["max_uses"]) if str(d.get("max_uses") or "").strip() else None,
+            per_user_limit=int(d.get("per_user_limit") or 1),
+        )
+    except ValueError:
+        return jsonify(error="invalid_date"), 422
+    db.session.add(row)
+    db.session.commit()
+    return jsonify(code=row.to_dict(uses=0)), 201
+
+
+@bp.patch("/promo-codes/<int:pid>")
+@require_role("admin")
+def promo_update(pid):
+    row = db.session.get(PromoCode, pid)
+    if not row:
+        return jsonify(error="not_found"), 404
+    d = request.get_json() or {}
+    # The code string itself is not editable. Partners have already handed it out, and
+    # renaming it would silently break every link and poster carrying the old one.
+    if "is_active" in d:
+        row.is_active = bool(d["is_active"])
+    if "value" in d:
+        try:
+            value = float(d["value"])
+        except (TypeError, ValueError):
+            return jsonify(error="invalid_value"), 422
+        if value <= 0 or (row.kind == "percent" and value > 100):
+            return jsonify(error="invalid_value"), 422
+        row.value = value
+    for field in ("partner", "note"):
+        if field in d:
+            setattr(row, field, (d.get(field) or "").strip() or None)
+    try:
+        if "starts_at" in d:
+            row.starts_at = _promo_dt(d.get("starts_at"))
+        if "expires_at" in d:
+            row.expires_at = _promo_dt(d.get("expires_at"))
+    except ValueError:
+        return jsonify(error="invalid_date"), 422
+    if "max_uses" in d:
+        row.max_uses = int(d["max_uses"]) if str(d.get("max_uses") or "").strip() else None
+    if "per_user_limit" in d:
+        row.per_user_limit = int(d.get("per_user_limit") or 1)
+    db.session.commit()
+    return jsonify(code=row.to_dict(uses=promo_service.uses(row)))
+
+
+@bp.delete("/promo-codes/<int:pid>")
+@require_role("admin")
+def promo_delete(pid):
+    row = db.session.get(PromoCode, pid)
+    if not row:
+        return jsonify(error="not_found"), 404
+    # A code that has been used is part of the payment record. Deactivating keeps the
+    # history intact and stops it working just as well as deleting would.
+    if promo_service.uses(row):
+        row.is_active = False
+        db.session.commit()
+        return jsonify(code=row.to_dict(uses=promo_service.uses(row)), deactivated=True)
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify(deleted=pid)
+
+
+# ------------------------------ pinned library videos ------------------------------
+# Which videos lead the public library and the home page strip. One call sets the whole
+# order: a list of ids, first is first. Anything not in the list is unpinned and falls back
+# to newest first. Setting the list whole rather than moving videos one at a time means
+# there is never a half-applied order with two videos claiming the same place.
+
+MAX_PINNED = 12
+
+
+def _pinned_dict(lesson):
+    return {
+        "id": lesson.id,
+        "title": lesson.title,
+        "title_en": lesson.title_en,
+        "library_rank": lesson.library_rank,
+        "status": lesson.status,
+        "category_id": lesson.category_id,
+        "access_type": lesson.access_type,
+    }
+
+
+@bp.get("/videos/pinned")
+@require_role("admin")
+def pinned_videos_get():
+    rows = (Lesson.query.filter(Lesson.library_rank.isnot(None))
+            .order_by(Lesson.library_rank.asc(), Lesson.id.asc()).all())
+    return jsonify(videos=[_pinned_dict(l) for l in rows], max=MAX_PINNED)
+
+
+@bp.put("/videos/pinned")
+@require_role("admin")
+def pinned_videos_set():
+    ids = (request.get_json() or {}).get("video_ids")
+    if not isinstance(ids, list) or not all(isinstance(i, int) and not isinstance(i, bool) for i in ids):
+        return jsonify(error="invalid_video_ids"), 422
+    if len(ids) != len(set(ids)):
+        return jsonify(error="duplicate_video_ids"), 422
+    # A shelf where a dozen videos are all "pinned" has no pinned videos: the point is that
+    # a few stand out.
+    if len(ids) > MAX_PINNED:
+        return jsonify(error="too_many_pinned", max=MAX_PINNED), 422
+
+    found = {l.id: l for l in Lesson.query.filter(Lesson.id.in_(ids)).all()} if ids else {}
+    missing = [i for i in ids if i not in found]
+    if missing:
+        return jsonify(error="unknown_video_ids", ids=missing), 422
+
+    # Cleared through the loaded rows, not a bulk UPDATE. A bulk UPDATE left the rows already
+    # in the session holding their old ranks, so a video that kept its place was "set" to
+    # the rank it seemed to have, which reads as no change and is never written: adding a
+    # fifth to four saved videos wiped the four. Here the session sees every change and
+    # writes only the net difference.
+    for lesson in Lesson.query.filter(Lesson.library_rank.isnot(None)).all():
+        lesson.library_rank = None
+    for rank, vid in enumerate(ids, start=1):
+        found[vid].library_rank = rank
+    db.session.commit()
+    rows = (Lesson.query.filter(Lesson.library_rank.isnot(None))
+            .order_by(Lesson.library_rank.asc()).all())
+    return jsonify(videos=[_pinned_dict(l) for l in rows], max=MAX_PINNED)

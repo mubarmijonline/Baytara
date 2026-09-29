@@ -20,9 +20,21 @@ class BaseConfig:
     BAYTARIAN_DOC_DIR = os.environ.get("BAYTARIAN_DOC_DIR", "./baytarian_docs")
     # Public images uploaded from the Admin Portal (instructor photos, course covers)
     UPLOAD_IMAGE_DIR = os.environ.get("UPLOAD_IMAGE_DIR", "./uploads")
-    MAX_CONTENT_LENGTH = 12 * 1024 * 1024  # 12 MB cap on uploads (docs may include PDFs)
+    # Self-hosted video: encrypted HLS packaged onto this machine (docs/SELF_HOSTED_VIDEO.md)
+    LOCAL_VIDEO_DIR = os.environ.get("LOCAL_VIDEO_DIR", "./videos")
+    # Book summaries (PDF). Outside the web root on purpose: the file is only ever handed
+    # out by an endpoint that checks for an account.
+    BOOK_DIR = os.environ.get("BOOK_DIR", "./books")
+    # Video uploads need room; nginx caps the public request separately.
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", "4096")) * 1024 * 1024
     # Public site origin — used to build Fawaterak redirect + webhook URLs
     SITE_URL = os.environ.get("SITE_URL", "https://baytara.app")
+    # Google Sign-In: OAuth client ids accepted as the ID-token audience
+    # (web first, then Android/iOS). Empty list = Google sign-in is disabled and
+    # the frontend hides the button.
+    GOOGLE_OAUTH_CLIENT_IDS = [
+        c.strip() for c in os.environ.get("GOOGLE_OAUTH_CLIENT_IDS", "").split(",") if c.strip()
+    ]
 
 
 class DevelopmentConfig(BaseConfig):

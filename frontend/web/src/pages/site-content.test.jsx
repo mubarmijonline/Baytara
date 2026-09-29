@@ -1,12 +1,14 @@
 /* @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { SUPPORT_EMAIL } from '../lib/support.js';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { I18nProvider } from '../lib/i18n.jsx';
+import { clearPublicCache } from '../lib/api.js';
 
 const settings = {
   header: { welcome: 'Configured welcome', app_label: 'Configured app', help_label: 'Configured help' },
@@ -45,6 +47,7 @@ function renderRoute(path) {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   localStorage.clear();
   window.scrollTo = vi.fn();
   vi.stubGlobal('fetch', vi.fn((input) => {
@@ -95,6 +98,40 @@ it('renders every editable Business hero and feature field', async () => {
   expect(screen.getByText('Configured feature')).toBeVisible();
   expect(screen.getByText('Configured feature body')).toBeVisible();
   expect(screen.getByRole('img', { name: 'Configured customer' })).toHaveAttribute('src', '/configured-logo.png');
+});
+
+it('reaches the privacy policy from the footer, with the configured support email', async () => {
+  // Google's OAuth branding form rejects a privacy URL that does not resolve on
+  // the authorized domain, so this route has to keep working.
+  renderRoute('/');
+
+  fireEvent.click(await screen.findByText('سياسة الخصوصية'));
+
+  expect(window.location.pathname).toBe('/privacy');
+  expect(await screen.findByRole('heading', { name: 'سياسة الخصوصية' })).toBeVisible();
+  // Plural since the footer started publishing the contact details too: the address now
+  // appears both in the policy and at the bottom of every page, and both must be a live
+  // mailto rather than plain text.
+  const emailLinks = screen.getAllByRole('link', { name: 'configured@baytara.app' });
+  expect(emailLinks.length).toBeGreaterThan(0);
+  emailLinks.forEach((link) => expect(link).toHaveAttribute('href', 'mailto:configured@baytara.app'));
+});
+
+it('reaches the refund policy from the footer, and publishes no placeholder WhatsApp', async () => {
+  // The payment gateway's reviewers check the footer for this link first.
+  renderRoute('/');
+
+  fireEvent.click(await screen.findByText('سياسة الاسترجاع'));
+
+  expect(window.location.pathname).toBe('/refund');
+  expect(await screen.findByRole('heading', { name: 'سياسة الاسترجاع والإلغاء' })).toBeVisible();
+  // Asserted against the shared constant rather than a literal: the address changes when
+  // the mailbox does, and a test that pins the old one turns a deliberate change into a
+  // failure.
+  expect(screen.getByRole('link', { name: SUPPORT_EMAIL }))
+    .toHaveAttribute('href', `mailto:${SUPPORT_EMAIL}`);
+  // No WhatsApp number is configured in these settings, so the clause must not render.
+  expect(screen.queryByText(/واتساب/)).toBeNull();
 });
 
 it('renders configured About values and Footer social links', async () => {

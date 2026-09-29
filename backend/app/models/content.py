@@ -92,6 +92,55 @@ def push_notification(user_id, type, title, body=None):
     db.session.add(Notification(user_id=user_id, type=type, title=title, body=body))
 
 
+class Book(db.Model):
+    """A book summary: our own write-up of a well-known reference, as a PDF.
+
+    Not the book itself. The client is explicit about why (2026-09-19): summarising a
+    published work is fair use, uploading the original would not be, so only the summary
+    is ever stored.
+
+    The PDF lives outside the web root and is served by an endpoint that requires an
+    account, because the point of the section is that people read it here. The metadata
+    below is deliberately public: a page nobody can crawl cannot rank, and search results
+    are the other half of why this section exists.
+    """
+
+    __tablename__ = "books"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(250), nullable=False)
+    title_en = db.Column(db.String(250))
+    slug = db.Column(db.String(280), unique=True, nullable=False, index=True)
+    # Whose book is being summarised -- not the author of the summary.
+    book_author = db.Column(db.String(200))
+    excerpt = db.Column(db.String(1000))
+    excerpt_en = db.Column(db.String(1000))
+    cover = db.Column(db.String(500))
+    pdf_path = db.Column(db.String(500))          # stored name inside BOOK_DIR, never a URL
+    pdf_pages = db.Column(db.Integer)
+    status = db.Column(db.String(20), nullable=False, default="draft", index=True)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+    updated_at = db.Column(db.DateTime(timezone=True), default=_now, onupdate=_now)
+
+    def to_dict(self, lang="ar"):
+        from .catalog import loc
+
+        return {
+            "id": self.id,
+            "slug": self.slug,
+            "title": loc(self.title, self.title_en, lang),
+            "title_en": self.title_en,
+            "book_author": self.book_author,
+            "excerpt": loc(self.excerpt, self.excerpt_en, lang),
+            "cover": self.cover,
+            "pages": self.pdf_pages,
+            "has_pdf": bool(self.pdf_path),
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class ContactMessage(db.Model):
     __tablename__ = "contact_messages"
 

@@ -26,20 +26,67 @@ SITE_SETTING_DEFAULTS = {
         ),
         "primary_cta": _text("ابدأ التعلّم مجاناً", "Start learning free"),
         "secondary_cta": _text("شاهد كيف تعمل", "See how it works"),
+        # Hero artwork. A plain URL, not a localized pair — one photo serves both languages.
+        # Empty falls back to the bundled /images/hero.jpg.
+        "image": "",
         "featured_label": _text("دورة مميّزة", "Featured course"),
         "featured_title": _text("جراحة الحيوانات الصغيرة", "Small animal surgery"),
+        # The chips under the hero buttons. Claims, so they stay editable rather than
+        # being computed from anything.
+        "trust": [
+            {"label": _text("★ 4.8 من 5", "★ 4.8 out of 5")},
+            {"label": _text("+2 مليون متعلّم عربي", "2M+ Arabic learners")},
+            {"label": _text("شهادات معتمدة", "Accredited certificates")},
+        ],
     },
     "home": {
         "featured_title": _text("الدورات المميّزة", "Featured courses"),
         "new_title": _text("أحدث الدورات", "Newest courses"),
-        "categories_title": _text("تعلّم حسب التخصص", "Learn by specialty"),
+        "categories_title": _text("تصفّح حسب التخصّص", "Browse by specialty"),
+        "categories_subtitle": _text("", ""),
+        "paths_title": _text("مسارات مبنية على الممارسة", "Practice-built paths"),
+        "paths_subtitle": _text(
+            "كل مسار يبدأ بالأساسيات وينتهي بحالة سريرية كاملة.",
+            "Every path starts with the fundamentals and ends on a full clinical case.",
+        ),
+        "instructors_title": _text("تعلّم على يد نخبة من الأطباء", "Learn from leading veterinarians"),
+        "instructors_subtitle": _text("", ""),
         "testimonials_title": _text("ماذا يقول مجتمع بيطرة", "What the Baytara community says"),
+        "cta_title": _text("ابدأ رحلة تعلّمك اليوم", "Start learning today"),
+        "cta_subtitle": _text(
+            "وصول غير محدود لكل الدورات والمسارات عبر جميع أجهزتك · إلغاء في أي وقت.",
+            "Unlimited access to every course and path on all your devices. Cancel anytime.",
+        ),
     },
+    # Course catalogue page. The counts under the title come from the database; only
+    # the wording is editable here.
+    "courses": {
+        "title": _text("ماذا تريد أن تتعلّم اليوم؟", "What do you want to learn today?"),
+        "subtitle": _text("ابحث بالحالة أو المرض أو التخصّص", "Search by case, disease, or specialty"),
+        "bar_title": _text("الدفع لكل دورة — لا اشتراك شهري", "Pay per course, no monthly subscription"),
+        "bar_subtitle": _text(
+            "اشترِ ما تحتاجه فقط · وصول مدى الحياة · وفّر أكثر مع الحزم",
+            "Buy only what you need. Lifetime access. Save more with bundles.",
+        ),
+        "bar_cta": _text("الحزم التعليمية", "Learning bundles"),
+    },
+    # Descriptions, not counters. The numbers that used to sit here -- 120 courses, 45
+    # experts, 8,000 learners, a 4.8/5 average -- were none of them measured: the database
+    # holds 36 accounts and zero reviews. An unverifiable figure on a landing page is a
+    # claim the platform cannot stand behind, and a `num` left empty renders the label in
+    # the weight the number had (see StatsBand in frontend/web/src/pages/Home.jsx).
+    #
+    # If a figure is wanted back, it should come from a query rather than from here.
     "stats": [
-        {"num": "+120", "label": _text("دورة متخصصة", "Specialist courses")},
-        {"num": "+45", "label": _text("خبير ومدرب", "Experts and instructors")},
-        {"num": "+8,000", "label": _text("متعلم", "Learners")},
-        {"num": "4.8/5", "label": _text("متوسط التقييم", "Average rating")},
+        {"num": "", "label": _text(
+            "دورات متميزة في كافة التخصصات البيطرية",
+            "Specialist courses across every veterinary field")},
+        {"num": "", "label": _text(
+            "أفضل الخبراء والمدربين في العالم العربي",
+            "The best experts and instructors in the Arab world")},
+        {"num": "", "label": _text(
+            "مجتمع متنامٍ من الأطباء والطلاب",
+            "A growing community of vets and students")},
     ],
     "testimonials": [
         {
@@ -66,7 +113,12 @@ SITE_SETTING_DEFAULTS = {
         "body": _text("منصة تدريب متكاملة للعيادات والمزارع مع محتوى احترافي وتقارير أداء.", "A complete training platform for clinics and farms, with professional content and performance reporting."),
         "primary_cta": _text("اطلب عرضاً تجريبياً", "Request a demo"),
         "secondary_cta": _text("تحدث مع مختص", "Talk to a specialist"),
-        "stats": [],
+        "stats": [
+            {"num": "+900", "label": _text("عيادة ومزرعة شريكة", "Partner clinics and farms")},
+            {"num": "94%", "label": _text("نسبة الإكمال", "Completion rate")},
+            {"num": "+2000", "label": _text("دورة متاحة", "Courses available")},
+            {"num": "24/7", "label": _text("دعم مخصّص", "Dedicated support")},
+        ],
         "features": [],
         "logos": [],
         "trust": _text("موثوق به من مؤسسات الرعاية الحيوانية", "Trusted by animal-care organizations"),
@@ -91,6 +143,9 @@ SITE_SETTING_DEFAULTS = {
             "The Arab world's veterinary learning platform, with original content from trusted experts.",
         ),
         "copyright": _text("© 2026 بيطرة. جميع الحقوق محفوظة.", "© 2026 Baytara. All rights reserved."),
+        # Legal pages live outside this app; the links stay hidden until a URL is set.
+        "privacy_url": "",
+        "terms_url": "",
     },
 }
 

@@ -1,0 +1,538 @@
+{
+  "@@locale": "ar",
+  "appName": "بيطرة",
+  "tabHome": "الرئيسية",
+  "tabCourses": "الدورات",
+  "tabContent": "المحتوى",
+  "tabDashboard": "حسابي",
+  "tabSignIn": "تسجيل الدخول",
+  "commonRetry": "إعادة المحاولة",
+  "commonLoading": "جارٍ التحميل...",
+  "commonCancel": "إلغاء",
+  "settingsLanguage": "اللغة",
+  "settingsArabic": "العربية",
+  "settingsEnglish": "English",
+  "errAuthRequired": "سجّل الدخول للمتابعة.",
+  "errInvalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+  "errAccountDisabled": "هذا الحساب موقوف. تواصل معنا للمساعدة.",
+  "errEmailTaken": "هذا البريد الإلكتروني مسجّل بالفعل.",
+  "errPhoneRequired": "أضف رقم هاتفك قبل مشاهدة الدروس.",
+  "errDeviceLimit": "وصلت للحد الأقصى من الأجهزة. احذف جهازاً للمتابعة.",
+  "errDeviceMismatch": "سجّل الدخول من جديد على هذا الجهاز.",
+  "errNotEntitled": "هذا المحتوى غير متاح ضمن اشتراكك.",
+  "errAccessExpired": "انتهت صلاحية وصولك لهذه الدورة. يمكنك التجديد.",
+  "errNeedsBaytarian": "هذا المحتوى للأطباء البيطريين الموثّقين. وثّق حسابك كطبيب بيطري للمشاهدة.",
+  "errNonVetsOnly": "هذه الباقة مخصّصة لغير الأطباء البيطريين.",
+  "errNoVideo": "الدرس غير متاح بعد.",
+  "errLessonNotFound": "لم نعثر على هذا الدرس.",
+  "errAlreadyPlaying": "الدرس يعمل على جهازك الآخر. أوقفه ثم أعد المحاولة.",
+  "errTooManyRequests": "حاولت كثيراً خلال وقت قصير. انتظر قليلاً ثم أعد المحاولة.",
+  "errSuspicious": "أوقفنا التشغيل مؤقتاً لرصد نشاط غير معتاد. أعد المحاولة بعد ١٥ دقيقة.",
+  "errNetwork": "تعذّر الاتصال. تحقّق من الإنترنت.",
+  "errServer": "حدث خطأ لدينا. أعد المحاولة بعد قليل.",
+  "errUnknown": "حدث خطأ غير متوقع.",
+  "errGoogleFailed": "تعذّر تسجيل الدخول عبر Google. جرّب مرة أخرى.",
+  "errGoogleUnavailable": "تسجيل الدخول عبر Google غير متاح حالياً.",
+  "authSignIn": "تسجيل الدخول",
+  "authSignUp": "حساب جديد",
+  "authEmail": "البريد الإلكتروني",
+  "authPassword": "كلمة المرور",
+  "authName": "الاسم",
+  "authPhone": "رقم الهاتف",
+  "authContinueWithGoogle": "المتابعة عبر Google",
+  "authOr": "أو",
+  "authCreateAccount": "إنشاء الحساب",
+  "authPasswordTooShort": "كلمة المرور ٨ أحرف على الأقل.",
+  "authEmailInvalid": "أدخل بريداً إلكترونياً صحيحاً.",
+  "authNameRequired": "أدخل اسمك.",
+  "phoneTitle": "أضف رقم هاتفك",
+  "phoneBody": "الرقم مطلوب قبل مشاهدة الدروس؛ يظهر داخل علامة الحماية على الفيديو.",
+  "phoneInvalid": "أدخل رقم هاتف محمول صحيحاً.",
+  "phoneSave": "حفظ ومتابعة",
+  "devicesTitle": "أجهزتك",
+  "devicesLimitTitle": "وصلت للحد الأقصى من الأجهزة",
+  "devicesLimitBody": "يسمح حسابك بـ {max} جهازين. سجّل الدخول من أحد الأجهزة التالية، واحذف جهازاً من «أجهزتك» في الحساب، ثم ارجع هنا.",
+  "devicesRemove": "حذف",
+  "devicesThisDevice": "هذا الجهاز",
+  "devicesLastSeen": "آخر ظهور: {when}",
+  "devicesRetry": "إعادة المحاولة",
+  "devicesEmpty": "لا توجد أجهزة مسجّلة.",
+  "sessionEndedDeviceRemoved": "تم حذف هذا الجهاز من حسابك. سجّل الدخول من جديد.",
+  "signOut": "تسجيل الخروج",
+  "@devicesLimitBody": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@devicesLastSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "navVideos": "الفيديوهات",
+  "navBundles": "الباقات",
+  "navInstructors": "المدرّبون",
+  "coursesTitle": "الدورات",
+  "videosTitle": "مكتبة الفيديو",
+  "searchHint": "ابحث...",
+  "filters": "تصفية",
+  "filtersClear": "مسح الكل",
+  "filtersApply": "عرض النتائج",
+  "filterCategory": "التصنيف",
+  "filterLevel": "المستوى",
+  "filterAccess": "نوع الوصول",
+  "filterDuration": "المدة",
+  "filterRating": "التقييم",
+  "filterSort": "الترتيب",
+  "levelBeginner": "مبتدئ",
+  "levelIntermediate": "متوسط",
+  "levelAdvanced": "متقدّم",
+  "durationShort": "قصيرة",
+  "durationMedium": "متوسطة",
+  "durationLong": "طويلة",
+  "sortNewest": "الأحدث",
+  "sortOldest": "الأقدم",
+  "sortPopular": "الأكثر رواجاً",
+  "sortRating": "الأعلى تقييماً",
+  "sortPriceAsc": "الأقل سعراً",
+  "sortPriceDesc": "الأعلى سعراً",
+  "sortLongest": "الأطول",
+  "sortShortest": "الأقصر",
+  "tierFree": "مجاني",
+  "tierVetFree": "مجاني للأطباء",
+  "tierBaytarian": "بيطري",
+  "tierGeneral": "عام",
+  "lockNeedsAccount": "سجّل الدخول للمشاهدة",
+  "lockNeedsPhone": "أضف رقم هاتفك",
+  "lockNeedsBaytarian": "يتطلب توثيق الطبيب البيطري",
+  "lockNonVets": "مخصّص لغير الأطباء البيطريين",
+  "lockNeedsPurchase": "شراء",
+  "unlocked": "متاح لك",
+  "resultsCount": "{n} نتيجة",
+  "noResults": "لا توجد نتائج مطابقة.",
+  "minutesShort": "{n} د",
+  "hoursShort": "{n} س",
+  "lessonsCount": "{n} درس",
+  "enrolledCount": "{n} ملتحق",
+  "reviewsCount": "({n})",
+  "notRated": "جديد",
+  "certificateIncluded": "بشهادة",
+  "lifetimeAccess": "وصول دائم",
+  "accessDays": "{n} يوم وصول",
+  "priceFree": "مجاناً",
+  "loadMore": "عرض المزيد",
+  "courseObjectives": "ماذا ستتعلّم",
+  "courseContent": "محتوى الدورة",
+  "courseInstructor": "المدرّب",
+  "courseAbout": "عن الدورة",
+  "enroll": "التحاق",
+  "continueLearning": "متابعة",
+  "@resultsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@lessonsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@enrolledCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@reviewsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@accessDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "captureBlocked": "أوقف تسجيل الشاشة لمتابعة المشاهدة",
+  "myLearning": "تعلّمي",
+  "myCourses": "دوراتي",
+  "certificatesTitle": "الشهادات",
+  "statCourses": "دورة",
+  "statHours": "ساعة مشاهدة",
+  "statStreak": "يوم متتابع",
+  "noEnrolmentsHint": "لم تلتحق بأي دورة مدفوعة بعد. الدورات المجانية تُشاهَد مباشرة ولا تظهر هنا.",
+  "noCertificates": "لا توجد شهادات بعد.",
+  "lessonOfTotal": "الدرس {n} من {total}",
+  "lessonsDone": "{n} من {total} دروس",
+  "renewAccess": "تجديد الوصول",
+  "certificateSerial": "الرقم التسلسلي",
+  "certificateIssued": "تاريخ الإصدار",
+  "certificateHolder": "صاحب الشهادة",
+  "certificateVerified": "شهادة موثّقة",
+  "certificateShare": "مشاركة",
+  "@lessonOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@lessonsDone": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "checkoutTitle": "إتمام الشراء",
+  "checkoutPay": "الدفع الآن",
+  "checkoutConfirming": "نتأكد من عملية الدفع...\nلا تغلق التطبيق.",
+  "checkoutPaidTitle": "تم الدفع",
+  "checkoutPaidBody": "أصبح المحتوى متاحاً لك الآن.",
+  "checkoutPendingTitle": "الدفع قيد المعالجة",
+  "checkoutPendingBody": "لم تصلنا نتيجة نهائية بعد. بعض وسائل الدفع تستغرق دقائق. ستجد الحالة في سجل المدفوعات، ولا حاجة للدفع مرة أخرى.",
+  "checkoutFailedTitle": "لم تتم العملية",
+  "checkoutUnavailableOnThisPlatform": "لتفعيل الاشتراك أو شراء الدورة، يرجى زيارة موقعنا الإلكتروني baytara.app",
+  "renewalExplainer": "رسوم التجديد {n}% من سعر الدورة.",
+  "paymentsTitle": "المدفوعات",
+  "paymentsEmpty": "لا توجد مدفوعات.",
+  "paymentPaid": "مدفوع",
+  "paymentPending": "قيد المعالجة",
+  "paymentFailed": "فشل",
+  "paymentRefunded": "مسترد",
+  "@renewalExplainer": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "verifyTitle": "توثيق الطبيب البيطري",
+  "verifyIntro": "وثّق حسابك للوصول إلى المحتوى المخصّص للأطباء البيطريين.",
+  "verifyRouteCard": "كارنيه النقابة",
+  "verifyRouteCardHint": "أدق وأسرع طريقة. صوّر وجهي الكارنيه.",
+  "verifyRouteNationalId": "بطاقة الرقم القومي",
+  "verifyRouteNationalIdHint": "إذا كانت المهنة المدوّنة «طبيب بيطري».",
+  "verifyRouteOther": "مستند آخر",
+  "verifyRouteOtherHint": "كارنيه الكلية أو إفادة قيد، أو كارنيه النقابة أو الهوية من دولة أخرى. قد يحتاج مراجعة بشرية.",
+  "verifyCaptureFront": "الوجه الأمامي",
+  "verifyCaptureBack": "الوجه الخلفي",
+  "verifyCaptureDocument": "صورة المستند",
+  "verifyTakePhoto": "التقاط صورة",
+  "verifyFromGallery": "من المعرض",
+  "verifyRetake": "إعادة الالتقاط",
+  "verifySubmit": "إرسال للتوثيق",
+  "verifyPreview": "فحص مبدئي",
+  "verifyProcessingTitle": "جارٍ قراءة المستند",
+  "verifyProcessingBody": "قد تستغرق القراءة من ١٠ إلى ٤٠ ثانية. لا تغلق الشاشة.",
+  "verifyElapsed": "مضى {n} ثانية",
+  "verifyUploading": "جارٍ الرفع {n}%",
+  "verifiedVetTitle": "تم التوثيق",
+  "verifiedVetBody": "حسابك موثّق كطبيب بيطري. أصبح المحتوى البيطري متاحاً لك.",
+  "verifiedStudentTitle": "تم التوثيق كطالب",
+  "verifiedStudentBody": "حسابك موثّق كطالب بيطري، وتصل إلى نفس المحتوى.",
+  "verifyPendingTitle": "أُرسل للمراجعة",
+  "verifyPendingBody": "لم نتمكّن من التأكد تلقائياً، وسيراجع أحد الزملاء طلبك. ستصلك النتيجة في الإشعارات.\n\nلا ترسل الطلب مرة أخرى؛ الطلب المكرّر يُرفض.",
+  "verifyFailedTitle": "تعذّر التوثيق من هذا المستند",
+  "verifyFailedBody": "تأكّد من وضوح الصورة وأن البيانات كاملة، ثم جرّب مرة أخرى أو استخدم مستنداً آخر.",
+  "verifyAlreadyVerified": "حسابك موثّق بالفعل.",
+  "verifyRequestPending": "لديك طلب قيد المراجعة بالفعل. انتظر النتيجة في الإشعارات.",
+  "verifyNationalIdRequired": "أضف رقمك القومي في الملف الشخصي أولاً.",
+  "verifyServiceUnavailable": "خدمة قراءة المستندات غير متاحة الآن. جرّب لاحقاً.",
+  "@verifyElapsed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@verifyUploading": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsTitle": "الإشعارات",
+  "notificationsEmpty": "لا توجد إشعارات.",
+  "notificationsMarkAll": "تعليم الكل كمقروء",
+  "notificationsUnread": "{n} إشعار غير مقروء",
+  "settingsTitle": "الإعدادات",
+  "settingsAbout": "عن بيطرة",
+  "settingsPrivacy": "سياسة الخصوصية",
+  "settingsContact": "تواصل معنا",
+  "settingsDevices": "الأجهزة",
+  "settingsPayments": "المدفوعات",
+  "settingsVersion": "الإصدار",
+  "profileTitle": "الملف الشخصي",
+  "profileEdit": "تعديل",
+  "profileSave": "حفظ",
+  "profileName": "الاسم",
+  "profileHeadline": "المسمّى",
+  "profileLocation": "المدينة",
+  "profileBio": "نبذة",
+  "profileSaved": "تم الحفظ.",
+  "signOutConfirm": "تسجيل الخروج من هذا الجهاز؟",
+  "@notificationsUnread": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "blogTitle": "المدوّنة",
+  "instructorsTitle": "المدرّبون",
+  "bundlesTitle": "الباقات",
+  "levelBreeders": "مربّون",
+  "homeHeroTitle": "تعلّم الطب البيطري بالعربية",
+  "homeHeroSubtitle": "دورات وفيديوهات من أطباء ممارسين، بمحتوى عملي تستخدمه في العيادة.",
+  "homeWelcomeBack": "أهلاً {name}",
+  "homeCatalogueEmpty": "لا يوجد محتوى منشور بعد. اسحب للأسفل للتحديث.",
+  "seeAll": "الكل",
+  "@homeWelcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "greetingHello": "أهلاً، {name}",
+  "greetingGetVerified": "وثّق حسابك كطبيب بيطري",
+  "greetingSignedOut": "سجّل الدخول",
+  "greetingSignedOutHint": "لمتابعة تقدّمك وحفظ دوراتك.",
+  "@greetingHello": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "contentEmpty": "لا يوجد محتوى مجاني منشور بعد.",
+  "blogEmpty": "لا توجد مقالات منشورة بعد.",
+  "bundlesEmpty": "لا توجد باقات متاحة حالياً.",
+  "instructorsEmpty": "لا يوجد مدرّبون بعد.",
+  "coursesEmptyCatalogue": "لا توجد دورات منشورة بعد.",
+  "watchNow": "مشاهدة",
+  "pricingTitle": "الوصول والاشتراكات",
+  "pricingIntro": "أربعة أنواع من الوصول. المحتوى المجاني متاح لأي شخص لديه حساب، والباقي يعتمد على التوثيق أو الشراء.",
+  "pricingFreeBody": "متاح لأي شخص لديه حساب. لا يتطلب توثيقاً ولا دفعاً.",
+  "pricingVetFreeBody": "مجاني، لكن للأطباء البيطريين الموثّقين فقط.",
+  "pricingBaytarianBody": "محتوى مدفوع، للأطباء البيطريين الموثّقين فقط.",
+  "pricingGeneralBody": "محتوى مدفوع لغير الأطباء البيطريين. الأطباء الموثّقون لا يشترونه، فمحتواهم في باقة «بيطري».",
+  "pathsTitle": "المسارات التعليمية",
+  "pathsEmpty": "لا توجد مسارات منشورة بعد.",
+  "statStudents": "دارس",
+  "homeTestimonialsFallback": "آراء المتعلّمين",
+  "businessTitle": "بيطرة للأعمال",
+  "businessEmpty": "لا يوجد محتوى منشور لهذا القسم بعد.",
+  "passwordShow": "إظهار كلمة المرور",
+  "passwordHide": "إخفاء كلمة المرور",
+  "contactMessage": "رسالتك",
+  "contactSend": "إرسال",
+  "contactSent": "وصلتنا رسالتك، وسنعود إليك قريباً.",
+  "contactFillAll": "أكمل كل الحقول من فضلك.",
+  "howItWorksTitle": "كيف تعمل المنصة",
+  "howItWorksIntro": "بيطرة منصة تعليمية للأطباء البيطريين. بعض المحتوى متاح للجميع، وبعضه مخصّص للأطباء الموثّقين. هذه الخطوات توضّح ما تحتاجه للوصول لكل نوع.",
+  "howStep1Title": "أنشئ حساباً",
+  "howStep1Body": "المحتوى المجاني متاح لأي شخص لديه حساب، دون أي دفع.",
+  "howStep2Title": "أضف رقم هاتفك",
+  "howStep2Body": "مطلوب قبل تشغيل أي فيديو، لأن الرقم يظهر داخل علامة الحماية على الفيديو.",
+  "howStep3Title": "وثّق أنك طبيب بيطري",
+  "howStep3Body": "صوّر كارنيه النقابة أو مستنداً يثبت المهنة. التوثيق يفتح المحتوى البيطري المتخصص.",
+  "howStep4Title": "ابدأ التعلّم",
+  "howStep4Body": "تابع تقدّمك في كل درس، واحصل على شهادة عند إكمال الدورات التي تمنح شهادة.",
+  "howProtectionTitle": "عن حماية الفيديو",
+  "howProtectionBody": "الفيديوهات محميّة، ويظهر داخلها اسمك وبريدك ورقم هاتفك كعلامة مائية. تسجيل الشاشة يخرج بصورة سوداء، ونحن نسجّل محاولات التسجيل.",
+  "privacyUpdated": "آخر تحديث: {date}",
+  "@privacyUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentMethodTitle": "طريقة الدفع",
+  "methodGatewayTitle": "بطاقة أو محفظة عبر بوابة الدفع",
+  "methodGatewaySubtitle": "تُفتح صفحة الدفع الآمنة الرسمية. هذه هي الطريقة الحقيقية.",
+  "methodCardTitle": "إدخال بيانات البطاقة",
+  "methodCardSubtitle": "واجهة تجريبية فقط — لا تُرسل البيانات ولا تُحفظ.",
+  "methodTestTitle": "دفع تجريبي مجاني",
+  "methodTestSubtitle": "لاختبار التدفق فقط. لا يتم خصم أي مبلغ ولا يُفتح المحتوى.",
+  "methodTestConfirm": "متابعة تجريبية",
+  "cardDemoNotice": "هذه الشاشة للعرض فقط. أرقام البطاقات لا تُرسل لأي جهة ولا تُحفظ. الدفع الحقيقي يتم على صفحة البوابة.",
+  "cardNumber": "رقم البطاقة",
+  "cardExpiry": "تاريخ الانتهاء",
+  "cardCvc": "CVC",
+  "cardHolder": "اسم حامل البطاقة",
+  "cardNumberInvalid": "رقم البطاقة غير صحيح.",
+  "cardExpiryInvalid": "تاريخ الانتهاء غير صحيح.",
+  "cardCvcInvalid": "رمز CVC غير صحيح.",
+  "cardHolderRequired": "أدخل اسم حامل البطاقة.",
+  "checkoutTestTitle": "انتهى التدفق التجريبي",
+  "checkoutTestBody": "وصلت لنهاية التدفق دون أي عملية دفع. لم يتم فتح المحتوى، لأن ذلك يحتاج عملية دفع حقيقية أو تفعيلاً من لوحة الإدارة.",
+  "checkoutCardPending": "بطاقة تنتهي بـ {last4}",
+  "@checkoutCardPending": {
+    "placeholders": {
+      "last4": {
+        "type": "String"
+      }
+    }
+  },
+  "demoTitle": "اطلب عرضاً تجريبياً",
+  "demoTitleSpecialist": "تحدّث مع مختص",
+  "demoSubtitle": "اترك بياناتك وسنتواصل معك لترتيب عرض تجريبي يناسب فريقك.",
+  "demoOrganisation": "جهة العمل",
+  "demoTeamSize": "حجم الفريق",
+  "demoNotes": "تفاصيل إضافية (اختياري)",
+  "demoSubmit": "إرسال الطلب",
+  "demoSubject": "طلب عرض تجريبي — بيطرة للأعمال",
+  "demoSubjectSpecialist": "طلب تحدث مع مختص — بيطرة للأعمال",
+  "demoBodyIntro": "طلب عرض تجريبي من تطبيق بيطرة.",
+  "demoBodyIntroSpecialist": "طلب تحدث مع مختص من تطبيق بيطرة.",
+  "demoSentTitle": "وصلنا طلبك",
+  "demoSentBody": "سنتواصل معك على البريد أو الهاتف الذي تركته في أقرب وقت.",
+  "onboardSkip": "تخطّي",
+  "onboardNext": "التالي",
+  "onboardStart": "ابدأ",
+  "onboard1Title": "تعلّم بيطري بالعربية",
+  "onboard1Body": "دورات وفيديوهات من أطباء ممارسين، بمحتوى عملي تستخدمه في العيادة، لا ترجمة حرفية.",
+  "onboard2Title": "التوثيق يفتح المحتوى المتخصص",
+  "onboard2Body": "المحتوى المجاني متاح لأي حساب. أما المحتوى البيطري المتخصص فيحتاج توثيق أنك طبيب بيطري، وليس دفعاً فقط.",
+  "onboard3Title": "محتوى محمي، وبياناتك عليه",
+  "onboard3Body": "يظهر اسمك ورقم هاتفك كعلامة مائية داخل كل فيديو، ولهذا نطلب رقم الهاتف قبل التشغيل. تسجيل الشاشة يخرج بصورة سوداء.",
+  "navLibrary": "المكتبة",
+  "libraryTitle": "مكتبة بيطرة",
+  "librarySubtitle": "مقالات وملخصات كتب، متاحة للجميع.",
+  "libraryArticles": "المقالات",
+  "libraryBooks": "الكتب",
+  "libraryPages": "{n} صفحة",
+  "@libraryPages": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryEmpty": "لا يوجد محتوى حتى الآن.",
+  "librarySignInToRead": "سجّل حساب مجاني عشان تقرأ الملخص كامل.",
+  "librarySignIn": "تسجيل الدخول",
+  "libraryNoFile": "الملخص مش متاح دلوقتي.",
+  "readerPageOf": "{page} من {total}",
+  "@readerPageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "readerCaptureBlocked": "أوقفنا العرض لأن تسجيل الشاشة شغّال. أوقف التسجيل وارجع للصفحة.",
+  "readerFailed": "تعذّر فتح الملخص.",
+  "devicesSwapsLeft": "تغييرات الأجهزة: استخدمت {used} من {allowed} في الفترة الحالية.",
+  "@devicesSwapsLeft": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "allowed": {
+        "type": "int"
+      }
+    }
+  },
+  "devicesSwapResets": "تتجدّد في {when}.",
+  "@devicesSwapResets": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesSwapSpentTitle": "استهلكت التغيير المتاح",
+  "devicesSwapSpentBody": "غيّرت جهازاً بالفعل في هذه الفترة. لحذف جهاز آخر نحتاج موافقة الإدارة — اكتب السبب وسنراجع الطلب.",
+  "devicesResetReason": "سبب الطلب (اختياري)",
+  "devicesResetSubmit": "إرسال الطلب للإدارة",
+  "devicesResetPending": "طلبك قيد المراجعة. لا ترسل طلباً آخر — سنرد عليك في الإشعارات.",
+  "devicesResetSentAt": "أُرسل في {when}.",
+  "@devicesResetSentAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "errDeviceSwapLimit": "استهلكت تغيير الجهاز المتاح في هذه الفترة.",
+  "errSwapStillAvailable": "لسه عندك تغيير متاح — احذف الجهاز مباشرة.",
+  "shareTooltip": "مشاركة",
+  "promoPlaceholder": "كود الخصم",
+  "promoApply": "تطبيق",
+  "promoRemove": "إزالة",
+  "errPromoNotFound": "كود الخصم غير صحيح.",
+  "errPromoInactive": "كود الخصم غير مُفعّل.",
+  "errPromoExpired": "انتهت صلاحية كود الخصم.",
+  "errPromoNotStarted": "كود الخصم لم يبدأ بعد.",
+  "errPromoExhausted": "انتهى عدد مرات استخدام هذا الكود.",
+  "errPromoAlreadyUsed": "استخدمت هذا الكود من قبل.",
+  "errPromoNoEffect": "هذا الكود لا يُغيّر السعر.",
+  "examTitle": "اختبار نهاية الدورة",
+  "examPassMark": "درجة النجاح {percent}%. الأسئلة اختيار من متعدد، وإجابة واحدة صحيحة لكل سؤال.",
+  "@examPassMark": {"placeholders": {"percent": {"type": "int"}}},
+  "examNotEligible": "أكمل كل دروس الدورة أولاً. أنجزت {percent}% حتى الآن.",
+  "@examNotEligible": {"placeholders": {"percent": {"type": "int"}}},
+  "examEmpty": "لا توجد أسئلة في هذا الاختبار بعد.",
+  "examSubmit": "تسليم الإجابات",
+  "examPartialWarning": "لديك {count} سؤالاً بدون إجابة. اضغط تسليم مرة أخرى للمتابعة، فالسؤال غير المُجاب يُحتسب خطأً.",
+  "@examPartialWarning": {"placeholders": {"count": {"type": "int"}}},
+  "examScoreLine": "{correct} إجابة صحيحة من {total}.",
+  "@examScoreLine": {"placeholders": {"correct": {"type": "int"}, "total": {"type": "int"}}},
+  "examPassed": "نجحت. مبروك، شهادتك جاهزة.",
+  "examFailed": "لم تبلغ درجة النجاح ({percent}%). المحاولات غير محدودة، جرّب مرة أخرى.",
+  "@examFailed": {"placeholders": {"percent": {"type": "int"}}},
+  "examRetry": "إعادة المحاولة",
+  "examViewCertificate": "عرض الشهادة",
+  "examReview": "مراجعة الإجابات",
+  "examCorrectAnswer": "الإجابة الصحيحة: {answer}",
+  "@examCorrectAnswer": {"placeholders": {"answer": {"type": "String"}}},
+  "examAction": "دخول الاختبار",
+  "settingsTerms": "الشروط والأحكام",
+  "settingsRefund": "سياسة الاسترجاع",
+  "settingsDelivery": "تقديم وتفعيل الخدمات",
+  "verifyToWatch": "وثّق حسابك كطبيب بيطري للمشاهدة",
+  "verifyNow": "توثيق الحساب الآن",
+  "homePlatformVideos": "تعرّف على المنصة",
+  "homePlatformVideosSubtitle": "فيديوهات قصيرة عن منصة بيطرة."
+}

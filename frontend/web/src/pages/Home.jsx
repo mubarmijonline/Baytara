@@ -1,492 +1,403 @@
-import { useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronUp } from 'lucide-react';
 import { Container, SectionHeading } from '../components/Primitives.jsx';
+import Avatar from '../components/Avatar.jsx';
+import ResumeCard from '../components/ResumeCard.jsx';
 import CourseCard from '../components/CourseCard.jsx';
 import VideoCard from '../components/VideoCard.jsx';
-import { colors, gradients, layout } from '../theme/tokens.js';
-import {
-  stats,
-  categories,
-  rawCourses,
-  bizStats,
-  rawInstructors,
-  testimonials,
-} from '../data/mock.js';
-import { webapi, mapCourse, useFetch } from '../lib/api.js';
-import { useSiteSettings } from '../lib/site-settings.jsx';
-import { useI18n } from '../lib/i18n.jsx';
+import { colors, font, gradients } from '../theme/tokens.js';
+import { auth, compact, isAuthed, useFetch, webapi } from '../lib/api.js';
 import { categoryImage } from '../lib/category-images.js';
+import { useI18n } from '../lib/i18n.jsx';
+import { useSiteSettings } from '../lib/site-settings.jsx';
+import { useCountUp, useReveal, useScrolledPastFold } from '../lib/motion.js';
 
-function Hero() {
+const DARK = colors.utilityBar;
+
+const filledBtn = {
+  background: colors.accent, color: '#fff', fontSize: 16, fontWeight: 700,
+  padding: '15px 30px', borderRadius: 11, border: 'none', cursor: 'pointer',
+};
+const ghostBtn = {
+  background: 'transparent', border: '1.5px solid rgba(255,255,255,.28)', color: '#fff',
+  fontSize: 16, fontWeight: 600, padding: '15px 26px', borderRadius: 11, cursor: 'pointer',
+};
+
+function SectionLink({ to, children }) {
+  return <Link to={to} style={{ fontSize: 14, fontWeight: 700, color: colors.accent }}>{children} ←</Link>;
+}
+
+/* A grid whose cards arrive one after another as it scrolls in. The delays are in CSS
+   keyed off child position, so nothing here has to thread an index through the cards. */
+function Stagger({ className = '', children, ...rest }) {
+  const ref = useReveal();
+  return <div ref={ref} className={`${className} reveal-stagger`.trim()} {...rest}>{children}</div>;
+}
+
+/* One statistic, counted up the first time it is looked at. */
+function Stat({ num, label, style, labelStyle }) {
+  const [ref, text, width] = useCountUp(num);
+  return (
+    <>
+      <div ref={ref} style={style}>
+        <span className="stat-count" style={width ? { minWidth: `${width}ch` } : undefined}>{text}</span>
+      </div>
+      <div style={labelStyle}>{label}</div>
+    </>
+  );
+}
+
+function BackToTop() {
+  const { t } = useI18n();
+  const shown = useScrolledPastFold();
+  return (
+    <button
+      type="button"
+      className={`to-top${shown ? ' is-in' : ''}`}
+      aria-label={t('common.backToTop')}
+      aria-hidden={!shown}
+      tabIndex={shown ? 0 : -1}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+    >
+      <ChevronUp size={19} aria-hidden="true" />
+    </button>
+  );
+}
+
+/* ------------------------------- hero ------------------------------- */
+
+function Hero({ summary }) {
   const navigate = useNavigate();
   const settings = useSiteSettings();
   const hero = settings.hero || {};
+  const trust = Array.isArray(hero.trust) ? hero.trust : [];
+
   return (
-    <section className="home-hero" style={{ position: 'relative', background: gradients.hero, color: '#fff', overflow: 'hidden' }}>
-      <div
-        style={{
-          position: 'absolute',
-          top: -120,
-          left: -80,
-          width: 380,
-          height: 380,
-          background: 'radial-gradient(circle, rgba(233,190,67,.40), transparent 70%)',
-          filter: 'blur(20px)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: -140,
-          right: -60,
-          width: 340,
-          height: 340,
-          background: 'radial-gradient(circle, rgba(67,86,166,.35), transparent 70%)',
-          filter: 'blur(20px)',
-        }}
-      />
+    <div style={{ background: DARK, color: '#fff' }}>
       <Container
-        className="grid-collapse-2 home-hero-inner"
+        className="home-hero-inner grid-collapse-2"
         style={{
-          padding: '72px 24px 80px',
-          position: 'relative',
-          display: 'grid',
-          gridTemplateColumns: '1.1fr .9fr',
-          gap: 48,
-          alignItems: 'center',
+          padding: '64px 24px 58px', display: 'grid',
+          gridTemplateColumns: '1.1fr .9fr', gap: 56, alignItems: 'center',
         }}
       >
         <div>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'rgba(255,255,255,.1)',
-              border: '1px solid rgba(255,255,255,.16)',
-              padding: '7px 14px',
-              borderRadius: 100,
-              fontSize: 13,
-              fontWeight: 700,
-              marginBottom: 22,
-            }}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.accent }} />
+          <div className="hero-rise" style={{ '--i': 0, fontFamily: font, fontSize: 12, letterSpacing: 2, color: colors.gold, marginBottom: 18 }}>
             {hero.eyebrow}
           </div>
-          <h1 className="home-hero-title" style={{ fontSize: 52, lineHeight: 1.15, fontWeight: 900, margin: '0 0 20px', letterSpacing: '-1px' }}>
+          <h1 className="home-hero-title hero-rise" style={{ '--i': 1, margin: '0 0 20px', fontSize: 50, lineHeight: 1.22, fontWeight: 700, letterSpacing: '-1.2px' }}>
             {hero.title}
           </h1>
-          <p className="home-hero-copy" style={{ fontSize: 19, lineHeight: 1.7, color: '#c9c9dc', margin: '0 0 32px', maxWidth: 520 }}>
+          <p className="home-hero-copy hero-rise" style={{ '--i': 2, margin: '0 0 32px', fontSize: 18, lineHeight: 1.85, color: '#b9bfd6', maxWidth: 490 }}>
             {hero.subtitle}
           </p>
-          <div className="home-hero-actions" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 34, flexWrap: 'wrap' }}>
-            <button
-              className="hover-bright"
-              onClick={() => navigate('/courses')}
-              style={{
-                background: colors.accent,
-                border: 'none',
-                borderRadius: 12,
-                fontSize: 17,
-                fontWeight: 800,
-                color: '#fff',
-                cursor: 'pointer',
-                padding: '16px 34px',
-              }}
-            >
-              {hero.primary_cta}
-            </button>
-            <button
-              style={{
-                background: 'rgba(255,255,255,.08)',
-                border: '1px solid rgba(255,255,255,.2)',
-                borderRadius: 12,
-                fontSize: 17,
-                fontWeight: 700,
-                color: '#fff',
-                cursor: 'pointer',
-                padding: '16px 28px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <span
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderTop: '6px solid transparent',
-                  borderBottom: '6px solid transparent',
-                  borderRight: '10px solid #fff',
-                }}
-              />
-              {hero.secondary_cta}
-            </button>
+          <div className="home-hero-actions hero-rise" style={{ '--i': 3, display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 30 }}>
+            <button type="button" className="cta-breathe" style={filledBtn} onClick={() => navigate('/courses')}>{hero.primary_cta}</button>
+            <button type="button" style={ghostBtn} onClick={() => navigate('/videos?access_type=free')}>{hero.secondary_cta}</button>
           </div>
-          <div className="home-hero-trust" style={{ display: 'flex', alignItems: 'center', gap: 26, fontSize: 14, color: '#a9a9c2', flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: colors.star, fontSize: 16 }}>★</span> تقييم 4.8 من 5
-            </span>
-            <span>مشاهدة على جميع الأجهزة</span>
-            <span>شهادات معتمدة</span>
-          </div>
+          {trust.length > 0 && (
+            <div className="home-hero-trust hero-rise" style={{ '--i': 4, display: 'flex', alignItems: 'center', gap: 26, fontSize: 13.5, color: '#a7aec9', flexWrap: 'wrap' }}>
+              {trust.map((item, i) => <span key={i}>{item.label}</span>)}
+            </div>
+          )}
         </div>
-        <div className="home-hero-media" style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 420,
-              aspectRatio: '4 / 3',
-              borderRadius: 20,
-              background: 'linear-gradient(160deg, #3048A0, #24357A)',
-              border: '1px solid rgba(255,255,255,.12)',
-              boxShadow: '0 30px 70px rgba(0,0,0,.4)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div
-                style={{
-                  width: 74,
-                  height: 74,
-                  borderRadius: '50%',
-                  background: colors.accent,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 12px 34px rgba(48,72,160,.5)',
-                }}
-              >
-                <span
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderTop: '12px solid transparent',
-                    borderBottom: '12px solid transparent',
-                    borderRight: '20px solid #fff',
-                    marginRight: -4,
-                  }}
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                right: 0,
-                left: 0,
-                padding: '18px 20px',
-                background: 'linear-gradient(transparent, rgba(0,0,0,.55))',
-              }}
-            >
-              <div style={{ fontSize: 13, color: '#F5D877', fontWeight: 700 }}>{hero.featured_label}</div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>{hero.featured_title}</div>
-            </div>
-          </div>
-          <div
-            className="hide-sm"
-            style={{
-              position: 'absolute',
-              top: 12,
-              right: -18,
-              background: '#fff',
-              color: colors.ink,
-              borderRadius: 14,
-              padding: '12px 16px',
-              boxShadow: '0 14px 34px rgba(0,0,0,.25)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: gradients.accentCta }} />
-            <div>
-              <div style={{ fontSize: 12, color: colors.muted }}>أكملت اليوم</div>
-              <div style={{ fontSize: 14, fontWeight: 800 }}>‏3 دروس</div>
-            </div>
-          </div>
-        </div>
+        <ResumeCard summary={summary} />
       </Container>
-    </section>
+    </div>
   );
 }
+
+/* ------------------------------ stats band ------------------------------ */
 
 function StatsBand() {
   const settings = useSiteSettings();
-  const list = Array.isArray(settings.stats) && settings.stats.length ? settings.stats : [];
+  const stats = settings.stats || [];
+  if (!stats.length) return null;
   return (
-    <section style={{ background: '#fff', borderBottom: `1px solid ${colors.line}` }}>
+    <div style={{ background: colors.surface, borderBottom: `1px solid ${colors.line}` }}>
       <Container
-        className="grid-collapse-sm home-stats-grid"
-        style={{ padding: '34px 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}
+        className="home-stats-grid grid-collapse-sm"
+        style={{ padding: '26px 24px', display: 'grid', gridTemplateColumns: `repeat(${stats.length},1fr)`, gap: 20 }}
       >
-        {list.map((s) => (
-          <div key={s.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 34, fontWeight: 900, color: colors.ink }}>{s.num}</div>
-            <div style={{ fontSize: 15, color: colors.muted, fontWeight: 500, marginTop: 4 }}>{s.label}</div>
+        {stats.map((stat, i) => (
+          <div key={i} className="home-stat-cell"
+            style={{ textAlign: 'center', borderInlineStart: i ? `1px solid ${colors.line}` : 'none' }}>
+            {String(stat.num || '').trim() ? (
+              <Stat
+                num={stat.num}
+                label={stat.label}
+                style={{ fontSize: 26, fontWeight: 700, color: DARK }}
+                labelStyle={{ fontSize: 13.5, color: colors.muted }}
+              />
+            ) : (
+              /* No number: the description carries the tile on its own, in the weight the
+                 number used to have. Leaving an empty slot above it made the band look
+                 like it had failed to load. */
+              <div className="home-stat-text"
+                style={{ fontSize: 16, fontWeight: 700, color: DARK, lineHeight: 1.75 }}>
+                {stat.label}
+              </div>
+            )}
           </div>
         ))}
       </Container>
-    </section>
+    </div>
   );
 }
 
-function Carousel({ title, badge, courses, markNew }) {
-  const rowRef = useRef(null);
-  const scroll = (dir) => rowRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
-  const arrowStyle = {
-    width: 42,
-    height: 42,
-    borderRadius: '50%',
-    border: '1px solid #ddd',
-    background: '#fff',
-    cursor: 'pointer',
-    fontSize: 18,
-    color: colors.ink,
-  };
-  return (
-    <Container className="home-section home-carousel" style={{ padding: '46px 24px 20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <h2 style={{ fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: '-.5px' }}>{title}</h2>
-          {badge && (
-            <span
-              style={{
-                background: colors.accentSoft,
-                color: colors.accent,
-                fontSize: 12,
-                fontWeight: 800,
-                padding: '5px 11px',
-                borderRadius: 100,
-              }}
-            >
-              {badge}
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button style={arrowStyle} onClick={() => scroll(1)}>
-            ›
-          </button>
-          <button style={arrowStyle} onClick={() => scroll(-1)}>
-            ‹
-          </button>
-        </div>
-      </div>
-      <div
-        ref={rowRef}
-        style={{ display: 'flex', gap: 20, overflowX: 'auto', scrollBehavior: 'smooth', paddingBottom: 8 }}
-      >
-        {courses.map((c) => (
-          <CourseCard key={c.id} course={c} isNew={markNew} />
-        ))}
-      </div>
-    </Container>
-  );
-}
+// The paths section is hidden for now; PathCard and /paths still exist for when it returns.
 
-function BusinessBanner() {
+/* ------------------------------ categories ------------------------------ */
+
+function CategoriesSection() {
   const navigate = useNavigate();
+  const settings = useSiteSettings();
+  const { t } = useI18n();
+  const { data } = useFetch(() => webapi.categories(), []);
+  const categories = data?.categories || [];
+  if (!categories.length) return null;
+
   return (
-    <Container className="home-section home-business-banner" style={{ margin: '44px auto', padding: '0 24px' }}>
-      <div
-        className="grid-collapse-2"
-        style={{
-          background: gradients.darkPanel,
-          borderRadius: 24,
-          padding: '48px 52px',
-          color: '#fff',
-          display: 'grid',
-          gridTemplateColumns: '1.2fr .8fr',
-          gap: 40,
-          alignItems: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: -60,
-            left: -40,
-            width: 240,
-            height: 240,
-            background: 'radial-gradient(circle, rgba(233,190,67,.35), transparent 70%)',
-            filter: 'blur(10px)',
-          }}
-        />
-        <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: colors.accent, letterSpacing: 1, marginBottom: 12 }}>
-            BAYTARA FOR BUSINESS
-          </div>
-          <h2 style={{ fontSize: 34, fontWeight: 900, margin: '0 0 14px', lineHeight: 1.25 }}>
-            طوّر مهارات فريقك الطبي بالكامل
-          </h2>
-          <p style={{ fontSize: 17, color: '#c9c9dc', margin: '0 0 26px', lineHeight: 1.7, maxWidth: 460 }}>
-            حلول تدريب متكاملة للعيادات والمزارع مع لوحة تحكم لمتابعة تقدّم الفريق وتقارير أداء تفصيلية.
-          </p>
+    <Container className="home-section" style={{ padding: '38px 24px 10px' }}>
+      <SectionHeading
+        title={settings.home?.categories_title}
+        subtitle={settings.home?.categories_subtitle}
+        action={<SectionLink to="/courses">{t('common.viewAllCategories')}</SectionLink>}
+      />
+      <Stagger className="grid-3 home-category-grid" style={{ gap: 14 }}>
+        {categories.map((category) => (
           <button
-            onClick={() => navigate('/business')}
-            style={{
-              background: '#fff',
-              color: colors.ink,
-              border: 'none',
-              borderRadius: 12,
-              fontSize: 16,
-              fontWeight: 800,
-              padding: '15px 30px',
-              cursor: 'pointer',
-            }}
+            key={category.id}
+            type="button"
+            onClick={() => navigate(`/videos?category=${category.slug}`)}
+            className="hover-card"
+            style={{ border: `1px solid ${colors.line}`, borderRadius: 12, overflow: 'hidden', background: colors.surface, display: 'block', padding: 0, textAlign: 'inherit', cursor: 'pointer', width: '100%' }}
           >
-            اطلب عرضاً تجريبياً
-          </button>
-        </div>
-        <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          {bizStats.map((b) => (
-            <div
-              key={b.label}
-              style={{
-                background: 'rgba(255,255,255,.07)',
-                border: '1px solid rgba(255,255,255,.12)',
-                borderRadius: 14,
-                padding: 18,
-              }}
-            >
-              <div style={{ fontSize: 26, fontWeight: 900 }}>{b.num}</div>
-              <div style={{ fontSize: 13, color: '#b6b6cc' }}>{b.label}</div>
+            <div style={{ position: 'relative', aspectRatio: '16 / 9', background: DARK }}>
+              {categoryImage(category.slug) && (
+                <img src={categoryImage(category.slug)} alt={category.name}
+                  style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />
+              )}
+              <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(20,30,66,0) 35%, rgba(20,30,66,.52) 100%)' }} />
             </div>
-          ))}
-        </div>
-      </div>
+            <div style={{ padding: 14 }}>
+              <div style={{ fontSize: 15.5, fontWeight: 700, color: colors.ink }}>{category.name}</div>
+            </div>
+          </button>
+        ))}
+      </Stagger>
     </Container>
   );
 }
+
+/* ----------------------------- newest courses ----------------------------- */
+
+// The platform's own promo and how-to clips: published, free, filed under no specialty.
+// They sit under the hero and before the courses, which is where the client asked for
+// them. Hidden entirely when there are none, so the home page never carries an empty row.
+function PlatformVideosSection() {
+  const { t } = useI18n();
+  const { data } = useFetch(() => webapi.videos({ uncategorized: 1, per_page: 4 }), []);
+  const videos = data?.videos || [];
+  if (!videos.length) return null;
+
+  return (
+    <Container className="home-section" style={{ padding: '38px 24px 4px' }}>
+      <SectionHeading title={t('home.platformVideos')} subtitle={t('home.platformVideosSubtitle')} />
+      <Stagger className="grid-3">
+        {videos.map((video) => <VideoCard key={video.id} video={video} />)}
+      </Stagger>
+    </Container>
+  );
+}
+
+function NewestCoursesSection() {
+  const settings = useSiteSettings();
+  const { t } = useI18n();
+  const { data } = useFetch(() => webapi.courses({ sort: 'newest', per_page: 3 }), []);
+  const courses = data?.courses || [];
+  // Nothing published yet is a state the home page should pass over in silence, not
+  // announce with an empty row.
+  if (!courses.length) return null;
+
+  return (
+    <Container className="home-section" style={{ padding: '44px 24px 10px' }}>
+      <SectionHeading
+        title={settings.home?.new_title || t('home.newestCourses')}
+        subtitle={settings.home?.new_subtitle}
+        action={<SectionLink to="/courses">{t('common.viewAll')}</SectionLink>}
+      />
+      {/* width={null} so the cards fill the grid rather than keeping their carousel size. */}
+      <Stagger className="grid-3">
+        {courses.map((course, index) => <CourseCard key={course.id} course={course} width={null} isNew={index === 0} />)}
+      </Stagger>
+    </Container>
+  );
+}
+
+/* ----------------------------- free videos ----------------------------- */
+
+function FreeVideosSection() {
+  const { t } = useI18n();
+  const { data } = useFetch(() => webapi.videos({ access_type: 'free', per_page: 3 }), []);
+  const videos = data?.videos || [];
+  if (!videos.length) return null;
+
+  return (
+    <div style={{ background: colors.surfaceMuted, borderTop: `1px solid ${colors.line}`, marginTop: 44 }}>
+      <Container className="home-section" style={{ padding: '48px 24px' }}>
+        <SectionHeading
+          title={t('video.homeTitle')}
+          subtitle={t('home.freeVideosSubtitle')}
+          action={<SectionLink to="/videos">{t('video.allVideos')}</SectionLink>}
+        />
+        <Stagger className="grid-3">
+          {videos.map((video) => <VideoCard key={video.id} video={video} />)}
+        </Stagger>
+      </Container>
+    </div>
+  );
+}
+
+/* ----------------------------- instructors ----------------------------- */
 
 function InstructorsSection() {
-  const navigate = useNavigate();
+  const settings = useSiteSettings();
+  const { t, lang } = useI18n();
   const { data } = useFetch(() => webapi.instructors(), []);
-  const list = data?.instructors?.length
-    ? data.instructors.map((m, i) => ({
-        id: m.id, name: m.name, title: m.headline || (m.category ? `قسم ${m.category.name}` : ''),
-        ini: (m.name || '؟').trim().charAt(0), grad: rawInstructors[i % rawInstructors.length].grad,
-        avatar: m.avatar_url, courses: m.courses, students: m.students,
-      }))
-    : [];
-  if (!list.length) return null;
+  const instructors = (data?.instructors || []).slice(0, 4);
+  if (!instructors.length) return null;
+
   return (
-    <section style={{ background: colors.surfaceMuted, marginTop: 44 }}>
-      <Container className="home-section" style={{ padding: '56px 24px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 38 }}>
-          <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 8px', letterSpacing: '-.5px' }}>
-            تعلّم على يد نخبة من الأطباء
-          </h2>
-          <p style={{ margin: 0, color: colors.muted, fontSize: 16 }}>
-            {list.length} {list.length === 1 ? 'محاضر' : 'محاضرين'} من رواد التخصّصات البيطرية
-          </p>
-        </div>
-        <div
-          className="grid-collapse-sm"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20 }}
-        >
-          {list.map((m) => (
-            <div
-              key={m.id}
-              className="hover-lift"
-              onClick={() => navigate(`/instructors/${m.id}`)}
-              style={{
-                background: '#fff',
-                border: `1px solid ${colors.line}`,
-                borderRadius: 18,
-                padding: '26px 18px',
-                textAlign: 'center',
-                cursor: 'pointer',
-              }}
-            >
-              {m.avatar ? (
-                <img src={m.avatar} alt={m.name}
-                     style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 16px', display: 'block' }} />
-              ) : (
-                <div
-                  style={{
-                    width: 84,
-                    height: 84,
-                    borderRadius: '50%',
-                    margin: '0 auto 16px',
-                    background: m.grad,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontSize: 30,
-                    fontWeight: 900,
-                  }}
-                >
-                  {m.ini}
-                </div>
-              )}
-              <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 3 }}>{m.name}</div>
-              <div style={{ fontSize: 13, color: colors.muted, marginBottom: 12, lineHeight: 1.4 }}>{m.title}</div>
-              <div style={{ fontSize: 12, color: colors.muted2, paddingTop: 12, borderTop: `1px solid ${colors.line2}` }}>
-                {m.courses} دورة{m.students > 0 ? ` · ${m.students} متعلّم` : ''}
+    <Container className="home-section" style={{ padding: '52px 24px 8px' }}>
+      <div style={{ textAlign: 'center', marginBottom: 30 }}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 25, fontWeight: 700, color: DARK, letterSpacing: '-.4px' }}>
+          {settings.home?.instructors_title}
+        </h2>
+        {settings.home?.instructors_subtitle && (
+          <p style={{ margin: 0, fontSize: 14.5, color: colors.muted }}>{settings.home.instructors_subtitle}</p>
+        )}
+      </div>
+      <div className="grid-4">
+        {instructors.map((instructor) => (
+          <Link
+            key={instructor.id}
+            to={`/instructors/${instructor.id}`}
+            className="hover-card"
+            style={{ border: `1px solid ${colors.line}`, borderRadius: 16, overflow: 'hidden', background: colors.surface, display: 'block' }}
+          >
+            {/* A small square portrait, not a full-bleed one. Full-bleed made the card
+                mostly photo, and any shallow crop of these tall studio shots (0.65 to
+                0.9 wide-to-tall) cut the chin off, since `cover` crops from the top. */}
+            <div style={{ padding: '22px 16px 0', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: 120, borderRadius: 14, overflow: 'hidden' }}>
+                <Avatar src={instructor.avatar_url} name={instructor.name} ratio="1 / 1" iconSize={44} />
               </div>
             </div>
-          ))}
-        </div>
-      </Container>
-    </section>
+            <div style={{ padding: '14px 16px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: colors.ink, lineHeight: 1.45 }}>{instructor.name}</div>
+              {instructor.headline && (
+                <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 6, lineHeight: 1.6 }}>{instructor.headline}</div>
+              )}
+              <div style={{ fontSize: 12, color: colors.muted2, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${colors.line2}` }}>
+                {instructor.courses} {t('paths.coursesUnit')} · {compact(instructor.students, lang)} {t('home.learners')}
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Container>
   );
 }
+
+/* ----------------------------- testimonials ----------------------------- */
 
 function Testimonials() {
   const settings = useSiteSettings();
-  const home = settings.home || {};
-  const list = Array.isArray(settings.testimonials) && settings.testimonials.length
-    ? settings.testimonials.map((t, i) => ({
-        quote: t.quote || t.text || '', name: t.name, role: t.role,
-        ini: (t.name || '؟').trim().charAt(0), grad: testimonials[i % testimonials.length].grad,
-      }))
-    : [];
+  const items = settings.testimonials || [];
+  if (!items.length) return null;
+
   return (
-    <Container className="home-section" style={{ padding: '60px 24px' }}>
-      <h2 style={{ fontSize: 30, fontWeight: 900, margin: '0 0 34px', textAlign: 'center', letterSpacing: '-.5px' }}>
-        {home.testimonials_title}
-      </h2>
-      <div
-        className="grid-collapse-sm"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22 }}
-      >
-        {list.map((t) => (
-          <div
-            key={t.name}
-            style={{ background: '#fff', border: `1px solid ${colors.line}`, borderRadius: 18, padding: 28 }}
-          >
-            <div style={{ color: colors.star, fontSize: 15, marginBottom: 14 }}>★★★★★</div>
-            <p style={{ fontSize: 16, lineHeight: 1.75, color: colors.ink2, margin: '0 0 20px' }}>{t.quote}</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div
-                style={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: '50%',
-                  background: t.grad,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: 800,
-                }}
-              >
-                {t.ini}
-              </div>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 800 }}>{t.name}</div>
-                <div style={{ fontSize: 13, color: colors.muted2 }}>{t.role}</div>
-              </div>
-            </div>
-          </div>
+    <div style={{ background: colors.surfaceMuted, borderTop: `1px solid ${colors.line}`, marginTop: 48 }}>
+      {/* The design mock has no heading here, but home.testimonials_title is an editable
+          CMS field, so it renders when set rather than becoming dead weight. */}
+      {settings.home?.testimonials_title && (
+        <Container className="home-section" style={{ padding: '46px 24px 0', textAlign: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: 25, fontWeight: 700, color: DARK, letterSpacing: '-.4px' }}>
+            {settings.home.testimonials_title}
+          </h2>
+        </Container>
+      )}
+      {/* The brief asks for carousel transitions here; this section has never been a
+          carousel, it is a three-up grid. It gets the same arrival as the other rows
+          rather than a slider nobody asked to scroll. */}
+      <Container className="home-section" style={{ padding: '46px 24px' }}>
+      <Stagger className="grid-3" style={{ gap: 20 }}>
+        {items.map((item, i) => (
+          <figure key={i} style={{ background: colors.surface, border: `1px solid ${colors.line}`, borderRadius: 16, padding: 26, margin: 0 }}>
+            <div aria-hidden="true" style={{ color: colors.star, fontSize: 14, marginBottom: 12 }}>★★★★★</div>
+            <blockquote style={{ margin: '0 0 18px', fontSize: 14.5, lineHeight: 1.85, color: colors.ink2 }}>
+              {item.quote}
+            </blockquote>
+            <figcaption style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+              <span style={{ width: 40, height: 40, flex: 'none' }}>
+                <Avatar name={item.name} round iconSize={20} />
+              </span>
+              <span>
+                <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: colors.ink }}>{item.name}</span>
+                <span style={{ display: 'block', fontSize: 12.5, color: colors.muted2 }}>{item.role}</span>
+              </span>
+            </figcaption>
+          </figure>
         ))}
+      </Stagger>
+      </Container>
+    </div>
+  );
+}
+
+/* --------------------------- business + CTA --------------------------- */
+
+function BusinessBanner() {
+  const navigate = useNavigate();
+  const settings = useSiteSettings();
+  const business = settings.business || {};
+  const stats = business.stats || [];
+
+  return (
+    <Container className="home-business-banner" style={{ padding: '48px 24px 20px' }}>
+      <div
+        className="grid-collapse-2"
+        style={{
+          background: gradients.darkPanel, borderRadius: 22, padding: '44px 46px', color: '#fff',
+          display: 'grid', gridTemplateColumns: '1.2fr .8fr', gap: 38, alignItems: 'center',
+        }}
+      >
+        <div>
+          <div style={{ fontFamily: font, fontSize: 12, fontWeight: 700, color: colors.gold, letterSpacing: 1.5, marginBottom: 12 }}>
+            {business.eyebrow}
+          </div>
+          <h2 style={{ margin: '0 0 12px', fontSize: 30, fontWeight: 700, lineHeight: 1.3 }}>{business.title}</h2>
+          <p style={{ margin: '0 0 24px', fontSize: 16, color: '#c9c9dc', lineHeight: 1.75, maxWidth: 440 }}>{business.body}</p>
+          <button
+            type="button"
+            onClick={() => navigate('/business')}
+            style={{ background: '#fff', color: colors.ink, fontSize: 15.5, fontWeight: 700, padding: '14px 28px', borderRadius: 11, border: 'none', cursor: 'pointer' }}
+          >
+            {business.primary_cta}
+          </button>
+        </div>
+        {stats.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {stats.map((stat, i) => (
+              <div key={i} style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 13, padding: 16 }}>
+                <div style={{ fontSize: 23, fontWeight: 700 }}>{stat.num}</div>
+                <div style={{ fontSize: 12.5, color: '#b6b6cc' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Container>
   );
@@ -494,161 +405,67 @@ function Testimonials() {
 
 function FinalCta() {
   const navigate = useNavigate();
+  const settings = useSiteSettings();
+  const { t } = useI18n();
+
   return (
-    <Container className="home-section home-final-cta" style={{ margin: '0 auto 60px', padding: '0 24px' }}>
+    <Container className="home-final-cta" style={{ padding: '26px 24px 56px' }}>
       <div
         style={{
-          background: gradients.accentCta,
-          borderRadius: 24,
-          padding: 52,
-          color: '#fff',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden',
+          border: `1px solid ${colors.line}`, borderRadius: 18, background: colors.surfaceMuted, padding: 34,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 26, flexWrap: 'wrap',
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,.18), transparent 40%)',
-          }}
-        />
-        <div style={{ position: 'relative' }}>
-          <h2 style={{ fontSize: 36, fontWeight: 900, margin: '0 0 14px' }}>ابدأ رحلة تعلّمك اليوم</h2>
-          <p style={{ fontSize: 18, margin: '0 auto 30px', maxWidth: 560, opacity: 0.95, lineHeight: 1.7 }}>
-            اشترك الآن واحصل على وصول غير محدود لكل الدورات والمسارات التعليمية عبر جميع أجهزتك.
-          </p>
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => navigate('/pricing')}
-              style={{
-                background: '#fff',
-                color: colors.ink,
-                border: 'none',
-                borderRadius: 12,
-                fontSize: 17,
-                fontWeight: 800,
-                padding: '16px 34px',
-                cursor: 'pointer',
-              }}
-            >
-              اشترك الآن
-            </button>
-            <button
-              style={{
-                background: 'rgba(255,255,255,.16)',
-                color: '#fff',
-                border: '1.5px solid rgba(255,255,255,.5)',
-                borderRadius: 12,
-                fontSize: 17,
-                fontWeight: 700,
-                padding: '16px 30px',
-                cursor: 'pointer',
-              }}
-            >
-              حمّل التطبيق
-            </button>
-          </div>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: DARK, marginBottom: 6 }}>{settings.home?.cta_title}</div>
+          <div style={{ fontSize: 14.5, color: colors.muted }}>{settings.home?.cta_subtitle}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button type="button" onClick={() => navigate('/pricing')} style={{ ...filledBtn, fontSize: 15.5, padding: '14px 28px' }}>
+            {t('common.enroll')}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/contact')}
+            style={{ border: `1.5px solid #d6d9e4`, background: 'transparent', color: colors.ink, fontSize: 15.5, fontWeight: 600, padding: '14px 24px', borderRadius: 11, cursor: 'pointer' }}
+          >
+            {t('common.getApp')}
+          </button>
         </div>
       </div>
     </Container>
   );
 }
 
-function CategoriesSection() {
-  const navigate = useNavigate();
-  const { data } = useFetch(() => webapi.categories(), []);
-  const list = data?.categories?.length
-    ? data.categories.map((c, i) => ({
-        name: c.name, slug: c.slug, count: categories[i % categories.length].count,
-        bg: categories[i % categories.length].bg, letter: (c.name || '؟').trim().charAt(0),
-        image: categoryImage(c.slug),
-      }))
-    : [];
-  return (
-    <Container className="home-section" style={{ padding: '56px 24px 20px' }}>
-      <SectionHeading
-        title="تصفّح حسب التخصّص"
-        subtitle="اختر التخصّص الذي يناسب أهدافك وابدأ رحلتك"
-        action={
-          <span
-            onClick={() => navigate('/courses')}
-            style={{ color: colors.accent, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}
-          >
-            عرض كل التخصّصات ←
-          </span>
-        }
-      />
-      <div
-        className="grid-collapse-sm home-category-grid"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}
-      >
-        {list.map((c) => (
-          <button
-            key={c.name}
-            className="hover-card"
-            type="button"
-            onClick={() => navigate(`/videos?category=${encodeURIComponent(c.slug)}`)}
-            style={{ border: `1px solid ${colors.line}`, borderRadius: 8, padding: 0, cursor: 'pointer', background: '#fff', textAlign: 'inherit', overflow: 'hidden' }}
-          >
-            <div style={{ position: 'relative', aspectRatio: '16 / 9', background: c.bg, overflow: 'hidden' }}>
-              {c.image ? (
-                <img src={c.image} alt={c.name} loading="lazy" style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 24, fontWeight: 900 }}>{c.letter}</div>
-              )}
-              <span aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(20,30,66,0) 35%, rgba(20,30,66,.52) 100%)' }} />
-            </div>
-            <div style={{ padding: 18 }}>
-              <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 4 }}>{c.name}</div>
-              <div style={{ fontSize: 13, color: colors.muted2 }}>{c.count} دورة</div>
-            </div>
-          </button>
-        ))}
-      </div>
-    </Container>
-  );
-}
-
-function FreeVideosSection() {
-  const navigate = useNavigate();
-  const { t } = useI18n();
-  const { data } = useFetch(() => webapi.videos({ access_type: 'free', per_page: 6 }), []);
-  const videos = data?.videos || [];
-  if (!videos.length) return null;
-  return (
-    <section style={{ background: colors.surfaceMuted, marginTop: 36 }}>
-      <Container className="home-section" style={{ padding: '54px 24px 60px' }}>
-        <SectionHeading
-          title={t('video.homeTitle')}
-          subtitle={t('video.homeSubtitle')}
-          action={<button type="button" onClick={() => navigate('/videos')} style={{ border: 0, background: 'transparent', color: colors.accent, fontWeight: 800, cursor: 'pointer' }}>{t('common.viewAll')}</button>}
-        />
-        <div className="video-grid">{videos.map((video) => <VideoCard key={video.id} video={video} />)}</div>
-      </Container>
-    </section>
-  );
-}
+/* --------------------------------- page --------------------------------- */
 
 export default function Home() {
-  const { data } = useFetch(() => webapi.courses({ per_page: 12 }), []);
-  const apiCourses = data?.courses?.length ? data.courses.map(mapCourse) : null;
-  const trending = apiCourses ? apiCourses.slice(0, 5) : [];
-  const recent = apiCourses ? apiCourses.slice(5, 10) : [];
+  const [summary, setSummary] = useState(null);
+
+  // Signed-out visitors never call the authed endpoint; a failure just leaves the
+  // hero card on its featured-course variant.
+  useEffect(() => {
+    if (!isAuthed()) return undefined;
+    let alive = true;
+    auth.learningSummary()
+      .then((data) => alive && setSummary(data))
+      .catch(() => alive && setSummary(null));
+    return () => { alive = false; };
+  }, []);
+
   return (
-    <>
-      <Hero />
+    <div style={{ background: colors.surface }}>
+      <Hero summary={summary} />
       <StatsBand />
       <CategoriesSection />
+      <PlatformVideosSection />
+      <NewestCoursesSection />
       <FreeVideosSection />
-      {trending.length > 0 && <Carousel title="الأكثر رواجاً هذا الأسبوع" badge="🔥 رائج" courses={trending} />}
-      {recent.length > 0 && <Carousel title="أضيفت حديثاً" courses={recent} markNew />}
       <InstructorsSection />
       <Testimonials />
-      {/* Business pitch sits at the end — the middle of the page belongs to the courses. */}
       <BusinessBanner />
       <FinalCta />
-    </>
+      <BackToTop />
+    </div>
   );
 }

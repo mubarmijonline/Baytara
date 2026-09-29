@@ -1,15 +1,17 @@
-import { ArrowLeft, Eye, FolderInput, Save, Upload } from 'lucide-react';
+import { ArrowLeft, Eye, FolderInput, Save, Trash2, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { ACCESS_TYPES, CATEGORY_KEYS, localizedCatalogValue, providerReady } from '../catalog.js';
+import { confirmDialog } from '../dialog.jsx';
+import { toast } from '../toast.jsx';
+import { ACCESS_TYPES, localizedCatalogValue, providerReady, orderedCategories } from '../catalog.js';
 import VideoFolderTree from '../components/VideoFolderTree.jsx';
-import { Field, ErrText } from '../ui.jsx';
+import { Field, ErrText, catalogErrorText } from '../ui.jsx';
 import { uploadForm } from '../vdocipher-upload.js';
 import { useAdminLanguage } from '../i18n.jsx';
 
 const emptyForm = {
-  title: '', title_en: '', description: '', description_en: '', duration_minutes: '', category_id: '',
+  title: '', title_en: '', description: '', description_en: '', duration_minutes: '', category_id: '', instructor_id: '',
   price: '0', currency: 'EGP', access_days: '', access_type: 'general', status: 'draft', course_ids: [],
   is_protected: false,
 };
@@ -20,6 +22,7 @@ function payload(form, includeCourses = false) {
     ...metadata,
     ...(includeCourses ? { course_ids } : {}),
     category_id: form.category_id ? Number(form.category_id) : null,
+    instructor_id: form.instructor_id ? Number(form.instructor_id) : null,
     price: Number(form.price || 0),
     access_days: form.access_days === '' ? null : Number(form.access_days),
     duration_minutes: form.duration_minutes === '' ? null : Number(form.duration_minutes),
@@ -42,28 +45,127 @@ function previewUrl(preview) {
   return `https://player.vdocipher.com/v2/?otp=${encodeURIComponent(preview.otp)}&playbackInfo=${encodeURIComponent(preview.playbackInfo)}`;
 }
 
-function CatalogFields({ form, setForm, categories, courses, language, t }) {
-  const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
+function FormSection({ title, children }) {
+  return <fieldset className="video-form-section"><legend>{title}</legend>{children}</fieldset>;
+}
+
+function CoursePicker({ form, setForm, courses, dropped, language, t }) {
+  const [query, setQuery] = useState('');
   const toggle = (id) => setForm({ ...form, course_ids: form.course_ids.includes(id) ? form.course_ids.filter((value) => value !== id) : [...form.course_ids, id] });
+  const needle = query.trim().toLowerCase();
+  // Only the video's own instructor's courses. The server refuses any other pairing
+  // (course_instructor_mismatch), and a picker that offers a choice the save will
+  // reject is worse than one that offers nothing.
+  const owned = courses.filter((course) => Number(course.instructor?.id ?? course.instructor_id) === Number(form.instructor_id));
+  const shown = needle
+    ? owned.filter((course) => localizedCatalogValue(course, 'title', language).toLowerCase().includes(needle))
+    : owned;
+
+  // Nothing is selectable until an instructor is chosen: a video can only join a
+  // course its own instructor owns, so without one there is no list to draw.
+  if (!form.instructor_id) return <p className="video-picker-note">{t('video.pickInstructorFirst')}</p>;
+  if (!owned.length) return <p className="video-picker-warning">{t('video.coursePickerNoneForInstructor')}</p>;
+
+  return <>
+    {dropped > 0 && <p className="video-picker-warning">{t('video.coursesDropped', { n: dropped })}</p>}
+    <p className="video-picker-note">{t('video.coursePickerSameInstructor')}</p>
+    <div className="video-picker-head">
+      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('video.searchCourses')} />
+      <span className="chip">{t('video.coursesSelected', { n: form.course_ids.length })}</span>
+    </div>
+    <div className="course-picker">
+      {shown.map((course) => (
+        <label key={course.id}>
+          <input type="checkbox" checked={form.course_ids.includes(course.id)} onChange={() => toggle(course.id)} />
+          {localizedCatalogValue(course, 'title', language)}
+        </label>
+      ))}
+      {!courses.length && <span>{t('video.noInstructorCourses')}</span>}
+      {!!courses.length && !shown.length && <span>{t('video.noCourses')}</span>}
+    </div>
+  </>;
+}
+
+// A video uploaded in VdoCipher's own dashboard, linked by pasting its ID instead of
+// uploading a file here. It opens the screen the library already uses for a VdoCipher
+// video that has no Baytara record yet, where it is imported with its title and poster.
+function LinkExisting({ t, onOpen }) {
+  const [id, setId] = useState('');
+  const open = (event) => {
+    event.preventDefault();
+    if (id.trim()) onOpen(id.trim());
+  };
+  return <form className="video-link-existing" onSubmit={open}>
+    <strong>{t('video.linkExisting')}</strong>
+    <p>{t('video.linkExistingHint')}</p>
+    <div className="course-add-link">
+      <Field label={t('video.linkExistingId')}><input dir="ltr" value={id} placeholder="1234567890abcdef" onChange={(event) => setId(event.target.value)} /></Field>
+      <button className="btn btn-tonal" type="submit" disabled={!id.trim()}>{t('video.linkExistingOpen')}</button>
+    </div>
+  </form>;
+}
+
+function CatalogFields({ form, setForm, categories, instructors, courses, dropped, language, t, uploadLocal, removeLocal, uploading }) {
+  const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
   // paid videos always enforce the macOS Safari rule; free ones are opt-in
   const paidTier = form.access_type === 'baytarian' || form.access_type === 'general';
   return <>
-    <div className="video-form-columns"><Field label={t('video.titleArabic')}><input value={form.title} onChange={set('title')} /></Field><Field label={t('video.titleEnglish')}><input dir="ltr" value={form.title_en} onChange={set('title_en')} /></Field></div>
-    <div className="video-form-columns"><Field label={t('video.descriptionArabic')}><textarea value={form.description} onChange={set('description')} /></Field><Field label={t('video.descriptionEnglish')}><textarea dir="ltr" value={form.description_en} onChange={set('description_en')} /></Field></div>
-    <div className="video-form-columns"><Field label={t('catalog.category')}><select value={form.category_id} onChange={set('category_id')}><option value="">{t('video.chooseCategory')}</option>{categories.filter((category) => CATEGORY_KEYS.includes(category.slug)).map((category) => <option value={category.id} key={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field><Field label={t('catalog.accessType')}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option value={access} key={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field><Field label={t('catalog.status')}><select value={form.status} onChange={set('status')}>{['draft', 'published', 'unpublished'].map((status) => <option value={status} key={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field></div>
-    <div className="video-form-columns"><Field label={t('catalog.price')}><input type="number" min="0" value={form.price} onChange={set('price')} /></Field><Field label={t('catalog.currency')}><input dir="ltr" maxLength="3" value={form.currency} onChange={set('currency')} /></Field><Field label={t('catalog.accessDays')}><input type="number" min="1" value={form.access_days} onChange={set('access_days')} /></Field><Field label={t('video.duration')}><input type="number" min="0" value={form.duration_minutes} onChange={set('duration_minutes')} /></Field></div>
-    <Field label={t('video.captureProtection')}>
-      <label className="video-protection-toggle" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input
-          type="checkbox"
-          checked={paidTier || !!form.is_protected}
-          disabled={paidTier}
-          onChange={(event) => setForm({ ...form, is_protected: event.target.checked })}
-        />
-        <span>{paidTier ? t('video.captureProtectionPaid') : t('video.captureProtectionHint')}</span>
-      </label>
-    </Field>
-    <Field label={t('video.assignCourses')}><div className="course-picker">{courses.map((course) => <label key={course.id}><input type="checkbox" checked={form.course_ids.includes(course.id)} onChange={() => toggle(course.id)} /> {localizedCatalogValue(course, 'title', language)}</label>)}{!courses.length && <span>{t('video.noCourses')}</span>}</div></Field>
+    <FormSection title={t('video.sectionIdentity')}>
+      <div className="video-form-columns"><Field label={t('video.titleArabic')}><input value={form.title} onChange={set('title')} /></Field><Field label={t('video.titleEnglish')}><input dir="ltr" value={form.title_en} onChange={set('title_en')} /></Field></div>
+      <div className="video-form-columns"><Field label={t('video.descriptionArabic')}><textarea value={form.description} onChange={set('description')} /></Field><Field label={t('video.descriptionEnglish')}><textarea dir="ltr" value={form.description_en} onChange={set('description_en')} /></Field></div>
+      <div className="video-form-columns"><Field label={t('catalog.category')}><select value={form.category_id} onChange={set('category_id')}><option value="">{t('video.chooseCategory')}</option>{orderedCategories(categories).map((category) => <option value={category.id} key={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field><Field label={t('video.duration')}><input type="number" min="0" value={form.duration_minutes} onChange={set('duration_minutes')} /></Field></div>
+    </FormSection>
+
+    <FormSection title={t('video.sectionOwnership')}>
+      <Field label={t('video.instructor')}>
+        <select value={form.instructor_id} onChange={set('instructor_id')}>
+          <option value="">{t('video.chooseInstructor')}</option>
+          {instructors.map((person) => (
+            <option value={person.id} key={person.id}>
+              {person.name}{person.is_active === false ? ` (${t('video.inactiveInstructor')})` : ''}
+            </option>
+          ))}
+        </select>
+        <span className="video-field-hint">{t('video.instructorHint')}</span>
+      </Field>
+      <Field label={t('video.assignCourses')}>
+        <CoursePicker form={form} setForm={setForm} courses={courses} dropped={dropped} language={language} t={t} />
+      </Field>
+    </FormSection>
+
+    <FormSection title={t('video.sectionAccess')}>
+      <div className="video-form-columns"><Field label={t('catalog.accessType')}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option value={access} key={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field><Field label={t('catalog.status')}><select value={form.status} onChange={set('status')}>{['draft', 'published', 'unpublished'].map((status) => <option value={status} key={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field></div>
+      <div className="video-form-columns"><Field label={t('catalog.price')}><input type="number" min="0" value={form.price} onChange={set('price')} /></Field><Field label={t('catalog.currency')}><input dir="ltr" maxLength="3" value={form.currency} onChange={set('currency')} /></Field><Field label={t('catalog.accessDays')}><input type="number" min="1" value={form.access_days} onChange={set('access_days')} /></Field></div>
+      <Field label={t('video.selfHosted')}>
+        <div className="video-selfhost">
+          <div style={{ fontSize: 12, color: 'var(--muted, #6b6b80)', marginBottom: 6 }}>{t('video.selfHostedHint')}</div>
+          <input type="file" accept="video/mp4,video/quicktime,video/x-matroska,video/webm"
+                 disabled={!form.id || uploading}
+                 onChange={(event) => event.target.files?.[0] && uploadLocal(event.target.files[0])} />
+          {!form.id && <div style={{ fontSize: 12, color: 'var(--muted, #6b6b80)' }}>{t('video.selfHostedSaveFirst')}</div>}
+          {uploading > 0 && <div style={{ fontSize: 12 }}>{t('video.uploading')} {uploading}%</div>}
+          {form.source === 'local' && (
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              {t('video.selfHostedStatus')}: <b>{form.local_status || '—'}</b>
+              {form.local_status === 'ready' && ' ✅'}
+              {form.local_error && <span style={{ color: '#b3261e' }}> — {form.local_error}</span>}
+              <button type="button" className="btn btn-text btn-sm" onClick={removeLocal}>{t('video.selfHostedRemove')}</button>
+            </div>
+          )}
+        </div>
+      </Field>
+      <Field label={t('video.captureProtection')}>
+        <label className="video-protection-toggle" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={paidTier || !!form.is_protected}
+            disabled={paidTier}
+            onChange={(event) => setForm({ ...form, is_protected: event.target.checked })}
+          />
+          <span>{paidTier ? t('video.captureProtectionPaid') : t('video.captureProtectionHint')}</span>
+        </label>
+      </Field>
+    </FormSection>
   </>;
 }
 
@@ -80,7 +182,9 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     };
   });
   const [categories, setCategories] = useState([]);
+  const [instructors, setInstructors] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [dropped, setDropped] = useState(0);
   const [provider, setProvider] = useState(null);
   const [providerOnly, setProviderOnly] = useState(false);
   const [providerTitle, setProviderTitle] = useState('');
@@ -91,6 +195,38 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const [recovery, setRecovery] = useState(null);
   const [localError, setLocalError] = useState('');
   const [providerError, setProviderError] = useState('');
+  const [uploading, setUploading] = useState(0);
+
+  // Upload a file to our own server; the backend packages it as encrypted HLS in the
+  // background, so poll until local_status settles.
+  const uploadLocal = async (file) => {
+    if (!videoId) return;
+    setUploading(1);
+    setLocalError('');
+    try {
+      const res = await api.videoUpload(videoId, file, setUploading);
+      setForm((current) => ({ ...current, source: 'local', local_status: res?.video?.local_status || 'packaging' }));
+      const poll = setInterval(async () => {
+        try {
+          const fresh = await api.video(videoId);
+          const video = fresh.video || fresh;
+          setForm((current) => ({ ...current, source: video.source, local_status: video.local_status, local_error: video.local_error }));
+          if (video.local_status === 'ready' || video.local_status === 'failed') clearInterval(poll);
+        } catch { clearInterval(poll); }
+      }, 4000);
+    } catch (error) {
+      setLocalError(error.message);
+    } finally {
+      setUploading(0);
+    }
+  };
+
+  const removeLocal = async () => {
+    try {
+      const res = await api.videoUploadDelete(videoId);
+      setForm((current) => ({ ...current, source: res?.video?.source || 'vdocipher', local_status: null, local_error: null }));
+    } catch (error) { setLocalError(error.message); }
+  };
 
   const [providerDetail, setProviderDetail] = useState('');
   const [preview, setPreview] = useState(null);
@@ -109,8 +245,39 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
 
   useEffect(() => {
     api.categories().then((result) => setCategories(result.categories || [])).catch(() => setCategories([]));
-    api.courses({ per_page: 100 }).then((result) => setCourses(result.courses || [])).catch(() => setCourses([]));
   }, []);
+
+  // Only instructors who can still be given work, plus whoever this video already
+  // points at, so editing a deactivated instructor's video does not blank the select.
+  useEffect(() => {
+    const include = Number(form.instructor_id) || 0;
+    api.users({ role: 'instructor', per_page: 100, active: 1, ...(include ? { include } : {}) })
+      .then((result) => setInstructors(result.users || []))
+      .catch(() => setInstructors([]));
+  }, [form.instructor_id]);
+
+  // A video may only join its own instructor's courses, so the picker follows the
+  // instructor. Anything already ticked that the new instructor does not own is
+  // dropped here rather than being refused by the server on save.
+  useEffect(() => {
+    const instructorId = Number(form.instructor_id) || 0;
+    if (!instructorId) { setCourses([]); setDropped(0); return undefined; }
+    let alive = true;
+    const before = form.course_ids;
+    api.courses({ per_page: 100, instructor_id: instructorId })
+      .then((result) => {
+        if (!alive) return;
+        const list = result.courses || [];
+        const allowed = new Set(list.map((course) => course.id));
+        setCourses(list);
+        setDropped(before.filter((id) => !allowed.has(id)).length);
+        setForm((current) => ({ ...current, course_ids: current.course_ids.filter((id) => allowed.has(id)) }));
+      })
+      // A failed load must not look like "this instructor owns nothing", which would
+      // silently unassign every course the video already had.
+      .catch(() => alive && setLocalError(t('common.loadError')));
+    return () => { alive = false; };
+  }, [form.instructor_id]);
   useEffect(() => {
     if (!videoId) return;
     let active = true;
@@ -123,14 +290,26 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
         const metadata = {};
         if (!catalogVideo.poster && video.poster) metadata.poster = video.poster;
         if (!catalogVideo.duration_minutes && video.duration_seconds) metadata.duration_minutes = Math.max(1, Math.round(video.duration_seconds / 60));
-        if (Object.keys(metadata).length) await api.videoUpdate(videoId, metadata);
+        if (Object.keys(metadata).length) {
+          // Silent: this is a repair nobody asked for, and the data-changed event remounts
+          // the page. That threw away whatever the admin had started typing, and whenever
+          // the next load still lacked the poster it went round again, for good.
+          await api.videoUpdate(videoId, metadata, { silent: true });
+          // Keep the form in step, so a later Save does not send the old empty values back.
+          set(() => setForm((current) => ({
+            ...current,
+            ...(metadata.poster ? { poster: metadata.poster } : {}),
+            ...(metadata.duration_minutes && (current.duration_minutes === '' || current.duration_minutes == null)
+              ? { duration_minutes: metadata.duration_minutes } : {}),
+          })));
+        }
       } catch (error) { set(() => setProviderError(error.message)); }
     };
     (async () => {
       try {
         const result = await api.video(videoId);
         const video = result.video;
-        set(() => setForm({ ...emptyForm, ...video, category_id: video.category?.id || '', price: String(video.price ?? 0), access_days: video.access_days ?? '', duration_minutes: video.duration_minutes ?? '', course_ids: (video.courses || []).map((course) => course.id) }));
+        set(() => setForm({ ...emptyForm, ...video, category_id: video.category?.id || '', instructor_id: video.instructor?.id || video.instructor_id || '', price: String(video.price ?? 0), access_days: video.access_days ?? '', duration_minutes: video.duration_minutes ?? '', course_ids: (video.courses || []).map((course) => course.id) }));
         if (video.vdocipher_video_id) await loadProvider(video.vdocipher_video_id, video);
       } catch (error) {
         if (error.status !== 404) { set(() => setLocalError(error.message)); return; }
@@ -147,7 +326,9 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
   const validate = (requiresUpload) => {
     if (!form.title.trim()) return t('video.validation.title');
     if (requiresUpload && !form.description.trim()) return t('video.validation.description');
-    if (requiresUpload && !form.category_id) return t('video.validation.category');
+    // Section and presenter are both optional, here as on the upload page: a promo or a
+    // how-to clip belongs to no specialty and credits nobody, and refusing to save one
+    // over that was blocking edits to videos that were already live.
     if (creating && !file) return t('video.validation.file');
     if (file && !file.type.startsWith('video/')) return t('video.validation.videoFile');
     return '';
@@ -186,6 +367,29 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     setRecovery(savedRecovery);
     await updateProviderThenImport(savedRecovery);
   };
+  // The server refuses a video joining a course its instructor does not own. Show that
+  // rule rather than the generic failure the catch would otherwise report.
+  const saveFailure = (error) => ((error.data?.errors || []).includes('course_instructor_mismatch')
+    ? 'course_instructor_mismatch'
+    // Everything else the validator refuses names its own field, so say which one
+    // rather than reporting the envelope.
+    : catalogErrorText(error, t));
+
+  // Removing the catalogue row also removes any packaged file on our server. The API
+  // refuses while a course, purchase or watch history still points at it.
+  const deleteVideo = async () => {
+    if (!await confirmDialog(t('video.deleteConfirm').replace('{title}', form.title || `#${videoId}`))) return;
+    setPhase('delete'); setLocalError('');
+    try {
+      await api.videoDelete(videoId);
+      toast.success(t('video.deleted'));
+      navigate('/videos');
+    } catch (error) {
+      setLocalError(error.data?.error === 'video_in_use' ? t('video.deleteInUse') : catalogErrorText(error, t));
+      setPhase('idle');
+    }
+  };
+
   const saveCatalog = async () => {
     const invalid = validate(providerOnly);
     if (invalid) { setLocalError(invalid); return; }
@@ -195,7 +399,7 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
         const result = await api.vdocipherImport({ ...payloadWithProvider(form, provider, true), video_id: providerId });
         navigate(`/videos/${result.video.id}`);
       } else { await api.videoUpdate(videoId, payloadWithProvider(form, provider)); await api.videoCoursesSet(videoId, form.course_ids); }
-    } catch (error) { setLocalError(error.message); } finally { setPhase('idle'); }
+    } catch (error) { setLocalError(saveFailure(error)); } finally { setPhase('idle'); }
   };
   const saveProvider = async () => {
     if (!providerId || !providerTitle.trim()) return;
@@ -216,13 +420,24 @@ export default function VideoEditor({ routeParams, searchParams, setSearchParams
     if (error === 'no_api_key') return <>{t('video.noApiKey')} <Link to="/settings">{t('nav.settings')}</Link></>;
     // 403 = valid key, request refused (trial video cap, missing permission). Show VdoCipher's own words.
     if (error === 'vdocipher_forbidden') return <>{t('video.providerRefused')}{providerDetail ? ` — ${providerDetail}` : ''}</>;
+    if (error === 'course_instructor_mismatch') return t('video.courseInstructorMismatch');
     if (error === 'upload') return t('video.uploadFailed');
     if (error === 'import_failed') return t('video.importFailed');
     return error ? t('errors.load') : '';
   };
 
-  return <section className="video-editor"><Link className="back-link" to="/videos"><ArrowLeft size={16} /> {t('common.back')}</Link><h2>{creating ? t('pages.videoNew') : t('pages.videoDetails')}</h2><ErrText>{message(localError)}</ErrText>
-    <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} courses={courses} language={language} t={t} />
+  return <section className="video-editor"><Link className="back-link" to="/videos"><ArrowLeft size={16} /> {t('common.back')}</Link>
+    <div className="video-editor-title">
+      <h2>{creating ? t('pages.videoNew') : t('pages.videoDetails')}</h2>
+      {!creating && videoId && (
+        <button className="btn btn-error btn-sm" type="button" disabled={phase === 'delete'} onClick={deleteVideo}>
+          <Trash2 size={15} /> {phase === 'delete' ? t('video.deleting') : t('common.delete')}
+        </button>
+      )}
+    </div>
+    <ErrText>{message(localError)}</ErrText>
+    {creating && <LinkExisting t={t} onOpen={(id) => navigate(`/videos/${encodeURIComponent(id)}`)} />}
+    <div className="video-editor-layout"><section className="video-editor-panel"><h3>{t('video.catalogMetadata')}</h3><CatalogFields form={form} setForm={setForm} categories={categories} instructors={instructors} courses={courses} dropped={dropped} language={language} t={t} uploadLocal={uploadLocal} removeLocal={removeLocal} uploading={uploading} />
       {(creating || providerOnly) && <><h3>{t('video.folder')}</h3><VideoFolderTree selectedId={folderId} onSelect={selectFolder} picker />{creating && <Field label={t('video.file')}><input type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} /></Field>}</>}
       {creating && busy && <progress max="100" value={progress} />}
       <button className="btn btn-filled" type="button" disabled={busy} onClick={creating ? upload : saveCatalog}>{creating ? <><Upload size={16} /> {t('video.uploadVideo')}</> : providerOnly ? t('common.import') : <><Save size={16} /> {t('common.save')}</>}</button>

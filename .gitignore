@@ -17,7 +17,7 @@ graceful-castle-*.json
 *-vision-key.json
 
 # Node
-node_modules/
+node_modules
 dist/
 *.log
 
@@ -48,3 +48,23 @@ mobile/ios/App/output/
 # .NET build output (desktop shells)
 desktop/windows/bin/
 desktop/windows/obj/
+
+# Local brainstorm scratch
+.superpowers/
+
+# Flutter app: build output, tool caches, generated localisations
+mobile_app/build/
+mobile_app/.dart_tool/
+mobile_app/.flutter-plugins-dependencies
+mobile_app/android/local.properties
+mobile_app/android/.gradle/
+mobile_app/ios/Pods/
+mobile_app/ios/.symlinks/
+mobile_app/ios/Flutter/Flutter.framework
+mobile_app/ios/Flutter/Flutter.podspec
+mobile_app/lib/core/i18n/app_localizations*.dart
+
+# Pre-deploy database dumps. These are pg_dump output including public.users with
+# password_hash: production credentials, not source. Backups belong in
+# /var/lib/baytara/backups (baytara-backup.timer), never in the repository.
+backups/

@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import tempfile
 import uuid
 
+from tests import without_sqlite_foreign_keys
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
@@ -381,8 +382,14 @@ def test_video_serializer_includes_commerce_and_assignment_metadata(catalog_app)
             "lock_reason": None,
             "status": "published",
             "category": {"id": category.id, "name": "Equine", "name_en": "Equine", "slug": "equine-serialized"},
+            "instructor": None,
+            "instructor_id": None,
             "assignment_count": 1,
-            "is_protected": True,
+            # The stored flag defaults off since 2026-09-13; a paid video is protected by its
+            # tier through capture_protected(), not by this column.
+            "is_protected": False,
+            "source": "vdocipher",
+            "local_status": None,
             "has_video": False,
             "course_id": None,
         }
@@ -501,7 +508,10 @@ def test_canonical_video_schema_has_no_untyped_criteria_column():
 
 
 def test_duplicate_legacy_vdocipher_ids_abort_before_schema_mutation():
-    with tempfile.TemporaryDirectory(prefix="baytara-catalog-migration-") as temp_dir:
+    # Alembic's batch mode drops and rebuilds tables, which SQLite refuses to do while
+    # it is enforcing foreign keys. Postgres migrates without needing this.
+    with without_sqlite_foreign_keys(), \
+            tempfile.TemporaryDirectory(prefix="baytara-catalog-migration-") as temp_dir:
         database_url = f"sqlite:///{Path(temp_dir) / 'catalog.sqlite'}"
         config = type("MigrationTestConfig", (BaseConfig,), {
             "SQLALCHEMY_DATABASE_URI": database_url,

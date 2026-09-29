@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
@@ -61,6 +61,11 @@ beforeEach(() => {
   }));
 });
 
+// The Home tab has two "title" fields, the hero's and the courses page's. These tests are
+// about the hero, so they look inside its region.
+const hero = () => within(screen.getByRole('region', { name: 'Homepage hero' }));
+const heroField = async (name) => within(await screen.findByRole('region', { name: 'Homepage hero' })).getByLabelText(name);
+
 afterEach(() => {
   cleanup();
   setToken('');
@@ -75,8 +80,8 @@ it('shows six fixed-design tabs and bilingual fields', async () => {
   ['Home', 'About', 'Business', 'Contact', 'Footer', 'Integrations'].forEach((name) => {
     expect(screen.getByRole('button', { name })).toBeVisible();
   });
-  expect(screen.getByLabelText('Arabic title')).toHaveValue('العنوان');
-  expect(screen.getByLabelText('English title')).toHaveValue('Title');
+  expect(hero().getByLabelText('Arabic title')).toHaveValue('العنوان');
+  expect(hero().getByLabelText('English title')).toHaveValue('Title');
 });
 
 it('updates the actual-site preview before saving without exposing secrets', async () => {
@@ -86,7 +91,7 @@ it('updates the actual-site preview before saving without exposing secrets', asy
   const postMessage = vi.fn();
   Object.defineProperty(frame, 'contentWindow', { configurable: true, value: { postMessage } });
 
-  await user.type(screen.getByLabelText('English title'), ' Updated');
+  await user.type(hero().getByLabelText('English title'), ' Updated');
   fireEvent.load(frame);
 
   await waitFor(() => expect(postMessage).toHaveBeenCalled());
@@ -112,11 +117,11 @@ it('switches preview language and path', async () => {
 it('reorders repeated content and sends the bilingual PUT payload', async () => {
   const user = userEvent.setup();
   renderSettings();
-  await screen.findByLabelText('English title');
+  await heroField('English title');
 
   await user.click(screen.getByRole('button', { name: 'Move First down' }));
-  await user.clear(screen.getByLabelText('English title'));
-  await user.type(screen.getByLabelText('English title'), 'Saved title');
+  await user.clear(hero().getByLabelText('English title'));
+  await user.type(hero().getByLabelText('English title'), 'Saved title');
   await user.click(screen.getByRole('button', { name: 'Save settings' }));
 
   const call = fetch.mock.calls.find(([input, options]) => String(input).endsWith('/admin/settings') && options.method === 'PUT');
@@ -133,14 +138,14 @@ it('keeps unsaved draft content after a save failure', async () => {
   });
   const user = userEvent.setup();
   renderSettings();
-  const field = await screen.findByLabelText('English title');
+  const field = await heroField('English title');
 
   await user.clear(field);
   await user.type(field, 'Unsaved title');
   await user.click(screen.getByRole('button', { name: 'Save settings' }));
 
   expect(await screen.findByText('Unable to save settings.')).toBeVisible();
-  expect(screen.getByLabelText('English title')).toHaveValue('Unsaved title');
+  expect(hero().getByLabelText('English title')).toHaveValue('Unsaved title');
 });
 
 it('shows an Arabic loading state before settings arrive', () => {

@@ -75,6 +75,14 @@ body {
 .btn-error { background: var(--error); color: #fff; }
 .btn-text { background: transparent; color: var(--primary); }
 .btn:disabled { opacity: 0.5; cursor: default; }
+/* A control that does not answer a press reads as broken. These three lines are the
+   whole of the feedback, and every page's buttons inherit them. */
+.btn { transition: filter .12s, transform .06s, box-shadow .12s; }
+.btn:not(:disabled):hover { filter: brightness(.94); }
+.btn-text:not(:disabled):hover, .btn-tonal:not(:disabled):hover { filter: none; background: var(--surface-container-high); }
+.btn:not(:disabled):active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.btn-filled:focus-visible, .btn-error:focus-visible { outline-color: var(--text); }
 
 .card {
   background: var(--surface);
@@ -84,6 +92,7 @@ body {
   margin-bottom: 16px;
 }
 .card h3 { margin: 0 0 4px; font-size: 16px; }
+.card { box-shadow: 0 8px 22px rgba(20,30,66,.04); }
 
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin: 12px 0; }
 .grid .k { color: var(--muted); font-size: 13px; }
@@ -109,43 +118,235 @@ body {
 }
 .field input:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
 
-.login-card { max-width: 380px; margin: 10vh auto; }
-.error-text { color: var(--error); font-size: 14px; font-weight: 700; }
-.empty { text-align: center; color: var(--muted); padding: 60px 0; }
-.tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-.tab { padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 700; font-size: 14px; background: var(--surface); border: 1px solid var(--border); color: var(--text); }
-.tab.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
-
-/* ---- app shell (sidebar + content) ---- */
-.shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
-.sidebar { background: var(--primary); color: var(--on-primary); padding: 18px 12px; display: flex; flex-direction: column; gap: 4px; }
-.sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 8px 12px 18px; font-weight: 800; }
-.sidebar .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); }
-.sidebar-nav { display: contents; }
-.navitem { width: 100%; border: 0; padding: 11px 14px; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700; font-size: 14px; color: #dbe3f2; background: transparent; text-decoration: none; display: flex; gap: 10px; justify-content: space-between; align-items: center; text-align: start; }
-.navitem-label { min-width: 0; display: flex; align-items: center; gap: 10px; }
-.navitem-label svg { flex: 0 0 18px; }
-.navitem:hover { background: rgba(255,255,255,0.08); }
-.navitem.active { background: rgba(255,255,255,0.16); color: #fff; }
-.navitem:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
-.navitem .count { background: var(--gold); color: #1a1300; border-radius: 10px; padding: 0 8px; font-size: 12px; }
-.nav-action { flex: 0 0 auto; }
-.sidebar .spacer { flex: 1; }
-.content { padding: 24px; overflow-x: auto; }
-.content h2 { margin: 0 0 18px; font-size: 22px; }
-@media (max-width: 760px) {
-  .shell { grid-template-columns: 1fr; }
-  .sidebar { flex-direction: row; flex-wrap: wrap; padding: 10px; }
-  .sidebar .brand { width: 100%; padding: 6px 10px; }
-  .navitem { width: auto; }
-  .sidebar .spacer { display: none; }
+/* Sign-in is the first thing anyone sees of the portal, and it was a bare card on a
+   grey field. Styled here rather than in Login.jsx so the markup — and the heading the
+   tests look for — is untouched. */
+.login-card {
+  max-width: 400px; margin: 12vh auto; padding: 30px 28px;
+  border: 1px solid var(--border); border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(20,30,66,.12);
 }
+.login-card h3 { font-size: 20px; }
+/* A gold rule under the brand navy, which is the mark on every other Baytara surface. */
+.login-card::before {
+  content: ''; display: block; width: 46px; height: 5px; margin-bottom: 18px;
+  border-radius: 3px; background: linear-gradient(90deg, var(--primary), var(--gold));
+}
+.login-card .field input { padding: 13px 14px; }
+.login-card .field input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-container); }
+.login-card .btn { margin-top: 4px; padding-block: 13px; }
+body:has(.login-card) { background: radial-gradient(1200px 520px at 50% -10%, #e7ecf9, var(--surface-container)); }
+.error-text { color: var(--error); font-size: 14px; font-weight: 700; }
+.empty { text-align: center; color: var(--muted); padding: 48px 20px; font-size: 14px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab { padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 700; font-size: 14px; background: var(--surface); border: 1px solid var(--border); color: var(--text); transition: background .12s, border-color .12s, color .12s; }
+.tab:hover { border-color: var(--primary); color: var(--on-primary-container); background: var(--primary-container); }
+.tab.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.tab.active:hover { background: var(--primary); color: var(--on-primary); }
+
+/* ---- app shell (sidebar + content) ----
+   The sidebar is a fixed rail beside a scrolling page, not a column that scrolls with
+   it: an admin working down the payment queue should never have to scroll back up to
+   reach another section. Below 900px it becomes a drawer, because seventeen
+   destinations wrapped into a row of chips is not a menu. */
+.shell {
+  --nav-width: 256px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.shell-rail { --nav-width: 76px; }
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 16px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.28) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 8px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 8px; }
+.sidebar .brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 12px 14px; font-weight: 800; font-size: 15px; white-space: nowrap;
+}
+.sidebar .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); flex: none; }
+
+/* Quick search. Seventeen destinations is past the number anyone scans reliably. */
+.nav-search {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin-bottom: 12px; padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.18); border-radius: 10px;
+  background: rgba(255,255,255,.07); color: #dbe3f2;
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.nav-search:hover { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.34); }
+.nav-search:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.nav-search-label { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.nav-search kbd {
+  flex: none; padding: 1px 6px; border-radius: 5px; font-family: inherit; font-size: 11px;
+  background: rgba(255,255,255,.14); color: #c7d2ea; white-space: nowrap;
+}
+
+.sidebar-nav { display: flex; flex-direction: column; gap: 14px; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-group-title {
+  padding: 0 14px 5px; font-size: 11px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: rgba(219,227,242,.55);
+}
+.navitem {
+  width: 100%; border: 0; padding: 9px 14px; border-radius: 9px; cursor: pointer;
+  font: inherit; font-weight: 600; font-size: 13.5px; color: #dbe3f2; background: transparent;
+  text-decoration: none; display: flex; gap: 10px; justify-content: space-between;
+  align-items: center; text-align: start; white-space: nowrap;
+  transition: background .12s, color .12s;
+}
+.navitem-label { min-width: 0; display: flex; align-items: center; gap: 11px; overflow: hidden; }
+.navitem-label > span { overflow: hidden; text-overflow: ellipsis; }
+.navitem-label svg { flex: 0 0 18px; opacity: .82; }
+.navitem:hover { background: rgba(255,255,255,0.09); color: #fff; }
+.navitem:hover svg { opacity: 1; }
+/* The active page reads as a filled pill with a gold marker, so "where am I" is
+   answered from the corner of the eye rather than by re-reading the list. */
+.navitem.active { background: rgba(255,255,255,0.17); color: #fff; font-weight: 800; position: relative; }
+.navitem.active svg { opacity: 1; color: var(--gold); }
+.navitem.active::before {
+  content: ''; position: absolute; inset-inline-start: 0; top: 50%;
+  width: 3px; height: 18px; margin-top: -9px; border-radius: 0 3px 3px 0;
+  background: var(--gold);
+}
+[dir="ltr"] .navitem.active::before { border-radius: 0 3px 3px 0; }
+[dir="rtl"] .navitem.active::before { border-radius: 3px 0 0 3px; }
+.navitem:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.navitem .count {
+  flex: none; background: var(--gold); color: #1a1300; border-radius: 10px;
+  padding: 1px 8px; font-size: 11.5px; font-weight: 800;
+}
+.nav-action { flex: 0 0 auto; }
+.sidebar .spacer { flex: 1; min-height: 16px; }
+.sidebar-footer {
+  display: flex; flex-direction: column; gap: 2px;
+  padding-top: 10px; border-top: 1px solid rgba(255,255,255,.14);
+}
+
+/* Collapsed rail: icons only, labels kept in the DOM for screen readers. */
+.shell-rail .sidebar { padding-inline: 8px; align-items: stretch; }
+.shell-rail .brand span:not(.dot),
+.shell-rail .nav-group-title,
+.shell-rail .nav-search kbd,
+.shell-rail .nav-search-label > span,
+.shell-rail .navitem-label > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.shell-rail .navitem, .shell-rail .nav-search { justify-content: center; padding-inline: 0; }
+.shell-rail .navitem-label, .shell-rail .nav-search-label { justify-content: center; gap: 0; }
+.shell-rail .nav-group { padding-top: 8px; border-top: 1px solid rgba(255,255,255,.1); }
+.shell-rail .nav-group:first-child { border-top: 0; padding-top: 0; }
+.shell-rail .navitem .count {
+  position: absolute; inset-inline-end: 10px; top: 4px; padding: 0 5px; font-size: 10px;
+}
+.shell-rail .navitem { position: relative; }
+
+/* Phone chrome. Hidden outright on a desktop, where the sidebar is always present. */
+.shell-topbar { display: none; }
+.shell-scrim { display: none; }
+
+.content { padding: 26px 28px 56px; overflow-x: auto; min-width: 0; }
+.content h2 { margin: 0 0 18px; font-size: 22px; letter-spacing: -.01em; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .shell-topbar {
+    position: sticky; top: 0; z-index: 60;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; background: var(--primary); color: var(--on-primary);
+    box-shadow: 0 2px 10px rgba(20,30,66,.16);
+  }
+  .shell-topbar .icon-button {
+    background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); color: #fff;
+  }
+  .shell-topbar-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
+  .shell-topbar-brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); }
+
+  .sidebar {
+    position: fixed; z-index: 70; top: 0; bottom: 0; inset-inline-start: 0;
+    width: min(288px, 84vw); height: 100%;
+    transform: translateX(var(--drawer-hidden, -102%));
+    transition: transform .2s ease;
+    box-shadow: 0 0 40px rgba(10,16,40,.45);
+  }
+  [dir="rtl"] .sidebar { --drawer-hidden: 102%; }
+  .shell-drawer-open .sidebar { transform: translateX(0); }
+  .shell-drawer-open .shell-scrim {
+    display: block; position: fixed; inset: 0; z-index: 65;
+    border: 0; padding: 0; background: rgba(16,24,56,.5);
+  }
+  /* The rail is a desktop affordance; on a phone the drawer is already the compact form. */
+  .shell-rail { --nav-width: 256px; }
+  .shell-rail .brand span:not(.dot),
+  .shell-rail .nav-group-title,
+  .shell-rail .nav-search kbd,
+  .shell-rail .nav-search-label > span,
+  .shell-rail .navitem-label > span { position: static; width: auto; height: auto; clip-path: none; }
+  .shell-rail .navitem, .shell-rail .nav-search { justify-content: space-between; padding-inline: 14px; }
+  .shell-rail .navitem-label, .shell-rail .nav-search-label { justify-content: flex-start; gap: 11px; }
+  .shell-rail .navitem .count { position: static; padding: 1px 8px; font-size: 11.5px; }
+  .nav-rail-toggle { display: none; }
+
+  .content { padding: 16px 14px 48px; }
+}
+
+/* ---- quick search palette ---- */
+.palette-bg {
+  position: fixed; inset: 0; z-index: 9000; padding: 12vh 16px 16px;
+  display: flex; justify-content: center; align-items: flex-start;
+  background: rgba(16,24,56,.5);
+}
+.palette {
+  width: min(520px, 100%); max-height: 68vh; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 30px 80px rgba(20,30,66,.3); overflow: hidden;
+}
+.palette-input { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.palette-input input {
+  flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text);
+  font: inherit; font-size: 15px; font-weight: 600;
+}
+.palette-input input:focus { outline: none; }
+.palette-input input::-webkit-search-cancel-button { display: none; }
+.palette-results { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
+.palette-result {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 0; border-radius: 9px; background: transparent;
+  color: var(--text); font: inherit; font-weight: 600; font-size: 14px;
+  text-align: start; cursor: pointer;
+}
+.palette-result.is-active { background: var(--primary-container); color: var(--on-primary-container); }
+.palette-result svg { color: var(--primary); flex: none; }
+.palette-empty { margin: 0; padding: 24px; text-align: center; color: var(--muted); font-size: 14px; }
 
 /* ---- table ---- */
 .table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 .table th, .table td { text-align: start; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
-.table th { background: var(--surface-container-high); color: var(--on-primary-container); font-weight: 800; }
+.table th {
+  background: var(--surface-container-high); color: var(--on-primary-container);
+  font-weight: 800; font-size: 12.5px; letter-spacing: .02em;
+}
 .table tr:last-child td { border-bottom: none; }
+/* Wide rows — the video and report tables run past a screen — are hard to follow back
+   to their row heading without this. */
+.table tbody tr { transition: background .12s; }
+.table tbody tr:hover { background: var(--primary-container); }
 .table .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .chip { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; }
@@ -157,8 +358,15 @@ body {
 .chip-unpublished { background: var(--error-container); color: var(--on-error-container); }
 
 .btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 14px; }
-.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.toolbar {
+  display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;
+  padding: 12px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); box-shadow: 0 8px 22px rgba(20,30,66,.04);
+}
 .toolbar input, .toolbar select { border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; font: inherit; background: var(--surface); color: var(--text); }
+.toolbar input { min-width: 200px; flex: 1 1 220px; max-width: 420px; }
+.toolbar input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-container); }
+.toolbar .btn { flex: none; }
 .icon-button { width: 34px; height: 34px; display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); cursor: pointer; }
 .icon-button:hover, .icon-button.active { background: var(--primary-container); border-color: var(--primary); color: var(--on-primary-container); }
 .video-library { display: grid; gap: 16px; }
@@ -237,15 +445,20 @@ body {
 .field select { width: 100%; }
 .course-picker { display: grid; gap: 7px; max-height: 180px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
 .course-picker label { cursor: pointer; }
+/* The video form was one flat run of fields; these group it into what the field is
+   about, so instructor and courses read as one decision rather than two of twelve. */
+.video-form-section { border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px 14px; margin: 0 0 14px; min-width: 0; }
+.video-form-section legend { padding: 0 6px; font-size: 13px; font-weight: 700; color: var(--muted, #5A6180); }
+.video-field-hint { display: block; margin-top: 6px; font-size: 12px; color: var(--muted, #5A6180); line-height: 1.6; }
+.video-picker-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.video-picker-head input { flex: 1; min-width: 0; }
+.video-picker-note { margin: 0; padding: 12px; border: 1px dashed var(--border); border-radius: 6px; font-size: 13px; color: var(--muted, #5A6180); }
+.video-picker-warning { margin: 0 0 8px; padding: 9px 12px; border-radius: 6px; font-size: 12.5px; line-height: 1.6; background: #fdf5e0; color: #8a6d1f; }
 .video-editor-panel progress { width: 100%; height: 12px; margin-bottom: 14px; }
 .video-encoding { color: var(--muted); }
 .video-preview { width: 100%; aspect-ratio: 16 / 9; border: 0; margin-top: 14px; border-radius: 6px; }
 @media (max-width: 900px) { .video-library-layout, .video-editor-layout { grid-template-columns: 1fr; } .video-folder-tree { min-height: auto; } }
 @media (max-width: 600px) { .video-library-header { flex-direction: column; } .video-form-columns, .video-form-columns:has(.field:nth-child(3)) { grid-template-columns: 1fr; } .video-list-row { grid-template-columns: 96px minmax(0, 1fr); } .video-list-row .chip { grid-column: 2; } .video-detail-overlay { padding: 8px; } .video-detail-drawer { max-height: calc(100vh - 16px); border-radius: 12px; } .video-detail-facts { grid-template-columns: 1fr; } }
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
-.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
-.stat .num { font-size: 28px; font-weight: 800; color: var(--primary); }
-.stat .lbl { color: var(--muted); font-size: 13px; margin-top: 4px; }
 
 /* ---- modal ---- */
 .modal-bg { position: fixed; inset: 0; background: rgba(20,30,66,0.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 100; }
@@ -339,8 +552,24 @@ body {
 .report-status-good { color: var(--success); background: var(--success-container); }
 .report-status-bad { color: var(--on-error-container); background: var(--error-container); }
 .report-status-neutral { color: var(--on-primary-container); background: var(--surface-container-high); }
-.report-pagination { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 14px; color: var(--muted); font-size: 13px; }
-.report-pagination .btn { border-radius: 5px; }
+/* Pagination.
+   Centred, not pushed to the end of the row. On a right-to-left page `flex-end` puts this
+   at the far LEFT, which is the last place an Arabic reader looks -- and it sits below the
+   fold under a long table, in the palest styling on a page where every other control is
+   loud. The labels were there and it still read as empty space. Centre is findable from
+   either direction. */
+.report-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 18px; color: var(--muted); font-size: 13px; }
+.report-pagination .btn {
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  font-weight: 700;
+  min-width: 96px;
+}
+.report-pagination .btn:not(:disabled):hover { background: var(--primary-container); filter: none; }
+/* A dead end should look like one rather than like something worth pressing. */
+.report-pagination .btn:disabled { opacity: 1; border-color: var(--border); color: var(--muted); background: var(--surface); }
 .report-detail-sections { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding-block: 0; border-block: 0; }
 .report-detail-sections section, .report-timeline { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 28px rgba(20,30,66,.04); }
 .report-detail h3 { margin: 0 0 12px; font-size: 15px; }
@@ -400,3 +629,229 @@ select option { font-weight: 600; }
 .settings-success { color: var(--success); font-weight: 700; padding-block: 8px; }
 @media (max-width: 1050px) { .site-settings-layout { grid-template-columns: 1fr; } .site-preview-panel { position: static; } .site-preview-panel iframe { min-height: 620px; } }
 @media (max-width: 620px) { .site-settings-header { flex-direction: column; } .localized-field-grid, .site-preview-toolbar { grid-template-columns: 1fr; } }
+
+/* ---- dashboard ----
+   The old dashboard was thirty tiles of identical weight: a queue with eight payments
+   waiting looked exactly like a count of categories. The order here is the order of an
+   admin's morning — what is waiting on me, what am I starting, what did we earn, and
+   then everything else as reference. */
+.dash-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 22px;
+}
+.dash-header h2 { margin: 0 0 4px; }
+.dash-header p { margin: 0; }
+.dash-header .btn { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+
+.stat-group { margin-bottom: 26px; }
+.stat-group > h3 {
+  display: flex; align-items: center; gap: 9px;
+  margin: 0 0 12px; font-size: 12.5px; font-weight: 800;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--muted, #5A6180);
+}
+.queue-tally {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 7px;
+  border-radius: 11px; background: var(--gold); color: #1a1300;
+  font-size: 12px; font-weight: 800; letter-spacing: 0;
+}
+
+/* Nothing waiting is a sentence, not five tiles reading zero. */
+.queue-clear {
+  display: flex; align-items: center; gap: 13px;
+  padding: 16px 18px; border: 1px solid #cdeadb; border-radius: 14px;
+  background: linear-gradient(135deg, #f4fbf7, #eaf7f0); color: var(--success);
+}
+.queue-clear > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.queue-clear strong { font-size: 15px; }
+.queue-clear span { color: var(--muted); font-size: 13px; }
+
+.queue-list { display: grid; gap: 8px; }
+.queue-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  padding: 14px 16px; border: 1px solid var(--border); border-inline-start: 4px solid var(--gold);
+  border-radius: 12px; background: var(--surface); color: inherit; text-decoration: none;
+  box-shadow: 0 8px 22px rgba(20,30,66,.05);
+  transition: transform .12s, box-shadow .12s, border-color .12s;
+}
+.queue-row:hover { transform: translateY(-1px); border-color: var(--primary); border-inline-start-color: var(--gold); box-shadow: 0 14px 30px rgba(20,30,66,.11); }
+.queue-row:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.queue-icon {
+  display: grid; place-items: center; width: 40px; height: 40px; flex: none;
+  border-radius: 11px; background: #fdf6e2; color: #8a6d1f;
+}
+.queue-copy { min-width: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.queue-copy strong { font-size: 26px; font-weight: 800; line-height: 1.1; color: #8a6d1f; }
+.queue-copy > span { font-size: 14px; font-weight: 700; }
+.queue-go {
+  flex: none; display: inline-flex; align-items: center; gap: 5px;
+  color: var(--primary); font-size: 13px; font-weight: 800; white-space: nowrap;
+}
+
+/* The queues with nothing in them keep their link — a cleared queue is still somewhere
+   an admin goes to look — but they stop taking a tile each to say so. */
+.queue-cleared {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 10px; padding: 9px 4px; font-size: 12.5px; color: var(--muted);
+}
+.queue-cleared-icon { color: var(--success); flex: none; }
+.queue-cleared-label { font-weight: 800; }
+.queue-cleared-link {
+  color: var(--muted); text-decoration: none; padding: 2px 9px; border-radius: 9px;
+  background: var(--surface-container-high); transition: color .12s, background .12s;
+}
+.queue-cleared-link:hover { color: var(--on-primary-container); background: var(--primary-container); }
+.queue-cleared-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* The five things an admin starts rather than reviews. */
+.quick-actions { display: flex; gap: 9px; flex-wrap: wrap; }
+.quick-action {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 15px; border: 1px solid var(--border); border-radius: 11px;
+  background: var(--surface); color: var(--text); text-decoration: none;
+  font-size: 13.5px; font-weight: 700;
+  transition: border-color .12s, background .12s, transform .12s;
+}
+.quick-action svg { color: var(--primary); }
+.quick-action:hover { border-color: var(--primary); background: var(--primary-container); transform: translateY(-1px); }
+.quick-action:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Money: the number that is asked about daily, then the statuses behind it. */
+.money-card {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: 14px;
+  background: linear-gradient(135deg, #fff, var(--primary-container));
+  box-shadow: 0 10px 28px rgba(20,30,66,.05);
+}
+.money-headline {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+  color: inherit; text-decoration: none; border-radius: 10px; padding: 4px;
+}
+.money-headline span { color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.money-headline strong { font-size: 30px; font-weight: 800; line-height: 1.15; color: var(--primary); overflow-wrap: anywhere; }
+.money-headline:hover strong { text-decoration: underline; text-underline-offset: 4px; }
+.money-headline:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.money-secondary strong { font-size: 22px; color: var(--muted); }
+.money-breakdown {
+  grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+
+/* Reference figures: a label and a number on one line, still a link to its rows.
+   Dense on purpose — a figure you read once a week does not need a card. */
+.dash-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; margin-bottom: 26px; align-items: start; }
+.panel { min-width: 0; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: 0 10px 26px rgba(20,30,66,.04); }
+.panel > h3 { margin: 0 0 8px; font-size: 12.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted, #5A6180); }
+.figure-list { display: grid; }
+.figure {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 8px; margin-inline: -8px; border-radius: 8px;
+  color: inherit; text-decoration: none; border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.figure-list > .figure:last-child { border-bottom: 0; }
+.figure:hover { background: var(--primary-container); }
+.figure:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.figure-label { min-width: 0; font-size: 13.5px; color: var(--text); }
+.figure-value { flex: none; font-size: 16px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
+.money-breakdown .figure { padding: 7px 10px; margin: 0; background: var(--surface); border: 1px solid var(--border); }
+
+@media (max-width: 620px) {
+  .dash-header { flex-direction: column; align-items: stretch; }
+  .queue-row { grid-template-columns: auto minmax(0, 1fr); row-gap: 8px; }
+  .queue-go { grid-column: 2; justify-content: flex-start; }
+  .queue-copy strong { font-size: 22px; }
+  .money-card { grid-template-columns: 1fr; }
+  .money-headline strong { font-size: 26px; }
+  .quick-action { flex: 1 1 calc(50% - 9px); justify-content: center; }
+}
+
+/* Storage card: how much disk the self-hosted videos take. The bar answers the only
+   question an admin actually has — is there room for another lecture. */
+.storage-card { border: 1px solid var(--line, #ececf2); border-radius: 14px; padding: 16px; background: #fff; }
+.storage-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.storage-figures div { display: flex; flex-direction: column; gap: 2px; }
+.storage-figures b { font-size: 20px; font-weight: 800; }
+.storage-figures span { font-size: 12.5px; color: var(--muted, #5A6180); }
+.storage-bar { display: flex; height: 12px; border-radius: 7px; overflow: hidden; background: #eef0f6; }
+.storage-bar-seg { transition: width .2s; }
+.storage-bar-rest { background: #c7cbdd; }
+/* One colour per top video, so a segment and its legend entry match. */
+.seg-0 { background: #3048A0; }
+.seg-1 { background: #4a63c4; }
+.seg-2 { background: #6a80d6; }
+.seg-3 { background: #8e9fe4; }
+.seg-4 { background: #b3bff0; }
+.seg-rest { background: #c7cbdd; }
+.storage-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; color: var(--muted, #5A6180); }
+.storage-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 5px; }
+.storage-legend i { border: 0; }
+.storage-largest { margin-top: 14px; }
+.storage-largest td:last-child, .storage-largest th:last-child { text-align: end; white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .storage-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .storage-figures b { font-size: 17px; }
+}
+
+/* Upload queue: one row per file, with its own bar while it transfers. */
+.upload-queue td { vertical-align: top; }
+.upload-name { font-weight: 700; }
+.upload-progress { width: 100%; max-width: 360px; height: 10px; margin-top: 8px; display: block; border-radius: 6px; }
+/* An indeterminate bar means the server is converting and has no percentage to give. */
+.upload-progress:not([value]) { opacity: .75; }
+/* A required select that is still empty, marked before the server has to say no. */
+.field-required { border-color: #e0a800 !important; background: #fffdf5; }
+
+/* Title row on the video editor: the destructive action sits away from Save. */
+.video-editor-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.video-editor-title h2 { margin: 0; }
+
+/* Upload page: wider than the editor panels, and rows that size to their content
+   instead of falling into the editor's four-column rule, which put three selects
+   shoulder to shoulder. */
+.upload-panel { max-width: 1040px; padding: 24px; }
+.upload-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 20px; margin-bottom: 6px; }
+.upload-panel .field { margin-bottom: 14px; }
+.upload-panel .field-hint { display: block; margin-top: 4px; line-height: 1.6; }
+.upload-panel input[type="file"] { padding: 10px; border: 1px dashed var(--border); border-radius: 8px; width: 100%; }
+
+@media (max-width: 700px) {
+  .upload-form-row { grid-template-columns: 1fr; gap: 12px; }
+  .upload-panel { padding: 16px; }
+}
+
+/* The row's own file picker, dressed as a button. */
+.upload-reattach { cursor: pointer; display: inline-flex; align-items: center; }
+.upload-reattach input { display: none; }
+
+/* Two chips per row in the library: where it is served from, then its provider state. */
+.video-row-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
+
+/* Course cover preview, so an admin sees what they just uploaded. */
+.course-cover-preview { display: flex; align-items: center; gap: 12px; margin: -6px 0 14px; }
+.course-cover-preview img { width: 160px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; border: 1px solid var(--line, #ececf2); display: block; }
+
+/* Uploading straight into a course. */
+.course-add-video { display: flex; flex-direction: column; gap: 4px; }
+.course-add-protect { display: flex; gap: 8px; align-items: flex-start; margin: -4px 0 12px; font-size: 13px; line-height: 1.6; }
+.course-add-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12.5px; color: var(--muted, #5A6180); }
+.course-add-progress progress { flex: 1; height: 10px; border-radius: 6px; }
+
+/* Pinned videos: the few a visitor meets first. */
+.pinned-videos h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.pinned-videos-subtitle { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; }
+.pinned-videos-list { margin-bottom: 12px; }
+.pinned-videos-search { margin-bottom: 12px; }
+.pinned-videos-actions { display: flex; align-items: center; gap: 10px; }
+.pinned-videos-actions small { color: var(--muted); }
+.pinned-videos .catalog-selector { padding: 0; list-style: none; }
+.pinned-videos .catalog-selector li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
+.pinned-videos .catalog-selector li > span { flex: 1 1 auto; }
+.pinned-videos .catalog-selector li.empty { color: var(--muted); border-style: dashed; }
+.course-add-link { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.course-add-link > .field { flex: 1 1 240px; min-width: 0; margin-bottom: 12px; }
+.course-add-link input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.course-add-link > .btn { margin-bottom: 12px; }
+.course-add-found { flex-basis: 100%; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.video-link-existing { margin-bottom: 16px; padding: 14px 16px; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface); }
+.video-link-existing p { margin: 4px 0 10px; color: var(--muted); font-size: 13px; }

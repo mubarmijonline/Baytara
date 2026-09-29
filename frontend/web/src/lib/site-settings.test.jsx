@@ -5,6 +5,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { getLang, webapi } from './api.js';
 import { SiteSettingsProvider, useSiteSettings } from './site-settings.jsx';
+import { clearPublicCache } from '../lib/api.js';
 
 function Probe({ name }) {
   const settings = useSiteSettings();
@@ -12,6 +13,7 @@ function Probe({ name }) {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   window.history.replaceState({}, '', '/?preview=1');
 });
 

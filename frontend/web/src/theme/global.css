@@ -13,7 +13,22 @@
   --ink: #1E2A5E;
   --muted: #5A6180;
   --line: #ececf2;
+
+  /* The header bar and the wordmark inside it.
+     Variables rather than numbers because four other things are pinned to the header's
+     height -- the sticky profile tab strip, the notification sheet on a phone and its
+     max-height -- and they were written as literal 74px and 54px. Growing the logo by
+     hand meant finding all of them; now it is one value. */
+  --site-header-h: 86px;
+  --site-logo-h: 56px;
 }
+
+/* A little air after the wordmark, on top of the row's own 20px gap. Deliberately small:
+   the separation people actually notice comes from the nav being centred in the space
+   between the mark and the account cluster, not from padding the logo. A big margin here
+   plus the auto-margin on the right pooled all the slack into one void in the middle of
+   the bar, which read as an unfinished header rather than a spacious one. */
+.site-logo { margin-inline-end: 12px; }
 
 * {
   box-sizing: border-box;
@@ -106,9 +121,53 @@ textarea {
   display: none;
 }
 
+/* The design's card grids. minmax(0,1fr) so a long Arabic title cannot widen a column. */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 1100px) {
+  /* A narrow laptop still shows all six nav items, so the wordmark takes the middle size
+     rather than the large one. The client asked for a noticeable bump, not a header that
+     pushes the menu off its own bar. */
+  :root { --site-header-h: 78px; --site-logo-h: 48px; }
+  .site-logo { margin-inline-end: 8px; }
+
+  .videos-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 @media (max-width: 900px) {
   .grid-collapse-2 {
-    grid-template-columns: 1fr !important;
+    /* minmax(0,…), not 1fr: a bare 1fr is minmax(auto,1fr), so a wide child's
+       min-content pushes the track past the viewport and the layout's
+       overflow-x:hidden then clips the form off the side of the screen. */
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .hide-md {
     display: none !important;
@@ -121,9 +180,52 @@ textarea {
   .grid-collapse-sm {
     grid-template-columns: 1fr !important;
   }
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .grid-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
   .hide-sm {
     display: none !important;
   }
+}
+
+/* The certificate page prints as the deliverable; the chrome around it does not. */
+@media print {
+  .site-utility-bar, .site-header-inner, header, footer, .site-tabbar,
+  .certificate-actions { display: none !important; }
+  .certificate-sheet { box-shadow: none !important; border-radius: 0 !important; }
+  body { background: #fff !important; }
+}
+
+/* The tab strip pins under the site header so switching tabs never means scrolling
+   back past the cover photo. scroll-margin-top keeps the panel clear of both bars. */
+.profile-tabs-bar { position: sticky; top: var(--site-header-h); z-index: 20; }
+.profile-body { scroll-margin-top: 132px; }
+
+@media (max-width: 760px) {
+  /* A 280px cover eats most of a phone screen before a single word of the profile.
+     150px is what the design gives the mobile frame. */
+  .profile-cover { height: 150px !important; }
+  /* Avatar above the name, as in the design — side by side pushes the name up over
+     the cover and squeezes it to one word per line. */
+  .profile-identity { flex-direction: column !important; align-items: flex-start !important;
+    margin-top: -46px !important; padding: 0 16px !important; gap: 12px !important; }
+  .profile-identity > div:first-child { width: 104px !important; height: 104px !important; }
+  .profile-identity > div:last-child { padding-bottom: 0 !important; }
+  .profile-identity h1 { font-size: 22px !important; letter-spacing: 0 !important; }
+  .profile-body { padding: 16px !important; scroll-margin-top: 104px; }
+  /* The six tabs scroll sideways rather than wrapping into a second row. */
+  .profile-tabs { padding: 0 16px !important; gap: 18px !important; }
+  .profile-tabs-bar { top: var(--site-header-h); }
+  .profile-photo-grid { grid-template-columns: 1fr !important; }
 }
 
 /* toast notifications */
@@ -136,6 +238,60 @@ textarea {
 .toast-error .toast-icon { background: #b3261e; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 
+/* Notification panel. On a phone it stops being a dropdown hanging off the bell —
+   the bell sits 10px from the screen edge, so an anchored panel either overflows or
+   squeezes — and becomes a sheet pinned under the 54px header instead. */
+.notif-panel {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 44px;
+  width: min(420px, calc(100vw - 28px));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 60;
+}
+
+@media (max-width: 760px) {
+  .notif-panel {
+    position: fixed;
+    inset-inline: 10px;
+    top: calc(var(--site-header-h) + 6px);
+    width: auto;
+    /* Clears the 54px header above and the fixed bottom tab bar below; dvh so the
+       phone browser's own chrome does not push the last row out of reach. */
+    max-height: calc(100vh - var(--site-header-h) - 94px);
+    max-height: calc(100dvh - var(--site-header-h) - 94px);
+    border-radius: 16px;
+    z-index: 70;
+  }
+  /* Denser rows waste the width a sheet just gained. */
+  .notif-panel .notif-row { padding: 15px 16px !important; }
+}
+
+/* Work that takes tens of seconds (reading an uploaded document) needs to look alive. */
+@keyframes amSpin { to { transform: rotate(360deg); } }
+@keyframes amPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+.am-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(30, 42, 94, 0.15);
+  border-top-color: currentColor;
+  animation: amSpin 0.8s linear infinite;
+  flex: none;
+}
+
+.am-pulse {
+  animation: amPulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .am-spinner { animation-duration: 2.4s; }
+  .am-pulse { animation: none; }
+}
+
 /* enhanced selects */
 select { appearance: none; -webkit-appearance: none; background-color: #fff;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233048A0' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
@@ -145,6 +301,28 @@ select { appearance: none; -webkit-appearance: none; background-color: #fff;
 select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2fb; }
 
 .video-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+/* The library shows four across; the home strip keeps three. */
+.videos-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+/* Chips scroll sideways rather than wrapping the filter bar onto three rows. */
+.videos-chip-row { scrollbar-width: none; }
+.videos-chip-row::-webkit-scrollbar { display: none; }
+/* Course catalogue rows: thumbnail, details, price/CTA column.
+   A long unbroken title (an English course name on an Arabic page) has to be allowed to
+   break, or it pushes past the card edge instead of wrapping. */
+.catalog-row-body h3, .catalog-row-body > div { overflow-wrap: anywhere; }
+/* Below 640px the row becomes a stacked card: image across the top, details full width,
+   price and button underneath. The thumbnail's size is set inline, so it needs !important
+   here -- without it the 196px image kept its width on a phone and squeezed the details
+   into a column one or two words wide. */
+@media (max-width: 640px) {
+  .catalog-row { flex-wrap: wrap; }
+  .catalog-row > button:first-child { width: 100% !important; height: auto !important; aspect-ratio: 16 / 9; }
+  .catalog-row-body { flex-basis: 100% !important; }
+  .catalog-row-side { flex-direction: row !important; align-items: center !important;
+    width: 100%; justify-content: space-between; }
+  .catalog-search { flex-direction: column; }
+  .catalog-search button { width: 100%; }
+}
 .video-detail-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr); gap: 34px; align-items: start; }
 .video-status-icon { position: relative; display: inline-block; width: 22px; height: 22px; color: #3048A0; }
 .video-status-icon::before { content: ""; position: absolute; inset-inline-start: 4px; bottom: 2px; width: 15px; height: 12px; border: 2px solid currentColor; border-radius: 3px; background: transparent; }
@@ -173,8 +351,68 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 /* Locked: the box grows with the card instead of cropping it to 16:9. */
 .video-detail-player-locked { aspect-ratio: auto; }
 .video-detail-player-locked .video-access-veil { position: relative; inset: auto; }
-.secure-video-shell { width: 100%; height: 100%; position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; background: #10152c; }
-.secure-video-shell iframe { display: block; width: 100%; height: 100%; border: 0; }
+/* The player fills its stage by being pinned to it, not by asking for 100% of a height
+   its parent never committed to. WebKit treats a percentage height inside a centred grid
+   area as indefinite and falls back to the media's intrinsic size, which on an iPhone
+   meant a 1080-pixel-tall video inside a 200-pixel box: the picture blew past the screen
+   and took the controls with it. Blink resolved the same percentage and looked fine,
+   which is why this only ever reproduced on iOS. */
+.secure-video-shell { position: absolute; inset: 0;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  background: #10152c; overflow: hidden; }
+/* contain, never cover: a lesson shot at 4:3 or vertical is letterboxed rather than
+   cropped, so nothing the instructor put on screen is cut off. */
+.secure-video-shell iframe, .secure-video-shell video {
+  display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+  object-fit: contain; border: 0; }
+
+/* Full screen. The shell is what goes fullscreen, not the <video>, so the identity
+   watermark stays on the picture — see LocalHlsPlayer.jsx. Its normal `position:absolute;
+   inset:0` is meaningless once it is the fullscreen root, so the size is stated here. */
+.secure-video-shell:fullscreen,
+.secure-video-shell:-webkit-full-screen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+/* The iPhone fallback. Safari on iPhone has no Element.requestFullscreen at all — only the
+   video's own native player, which no overlay can follow, so the watermark would be lost
+   exactly where it is needed. Pinning the shell over the viewport is what every web player
+   does there: not the OS full screen, but it fills the screen and keeps the mark.
+   dvh rather than vh so the browser's own chrome does not push the control bar off. */
+.secure-video-shell-pinned {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 9999;
+  background: #000;
+  border-radius: 0;
+}
+
+/* The bar sits above the watermark and below nothing. */
+.local-player-bar { touch-action: manipulation; }
+.local-player-bar input[type="range"] { height: 22px; }
+
+/* A narrow player -- a vertical reel on a phone, or the video page's stage -- has room for
+   the controls or for the clock, not both. The controls win: losing the time display is a
+   inconvenience, losing the full screen button off the end of the row is a missing
+   feature. Container queries would be neater; this player is inside a 16:9 stage whose
+   width tracks the viewport, so a media query gets the same answer. */
+@media (max-width: 560px) {
+  .local-player-bar .local-player-time { display: none; }
+}
+
+/* 16:9 stage that holds a player. overflow:hidden is the second half of the iOS fix:
+   even if something inside does overrun, it is clipped to the box instead of pushing the
+   page out. aspect-ratio itself needs Safari 15, which every iPhone that can install the
+   current app already has. */
+.player-stage { position: relative; aspect-ratio: 16 / 9; overflow: hidden;
+  display: grid; place-items: center; min-width: 0; }
 
 .student-dashboard { min-height: 680px; background: radial-gradient(circle at top left, rgba(48,72,160,.08), transparent 300px), #F6F7FB; }
 .student-dashboard-shell { padding: 34px 24px 56px; display: grid; grid-template-columns: 238px minmax(0, 1fr); gap: 22px; align-items: start; }
@@ -322,11 +560,59 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
   .student-section-heading button, .student-action, .student-profile-form button { width: 100%; }
 }
 
+/* Phone-only bottom navigation; shown in the 760px block below. */
+.site-tabbar {
+  display: none;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 8px 18px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+  border-top: 1px solid #ececf2;
+  text-align: center;
+  font-size: 11px;
+}
+.site-tabbar a { padding: 6px 0; }
+
 @media (max-width: 760px) {
+  /* A phone bar cannot be as tall as a laptop one, but the wordmark still grows: 32px was
+     small enough that the icons beside it read as equally important. */
+  :root { --site-header-h: 64px; --site-logo-h: 40px; }
+
   body { font-size: 15px; }
   .site-utility-bar { display: none !important; }
-  .site-header-inner { height: 54px !important; padding: 0 16px !important; gap: 10px !important; }
-  .site-logo { height: 32px !important; }
+  .site-tabbar { display: grid; }
+  /* Keep the last section clear of the fixed bar. */
+  .site-main { padding-bottom: 4px; }
+  footer { padding-bottom: 64px; }
+
+  /* The footer used to collapse to a single column, which left every link hugging one
+     edge with the other half of the screen empty and made the whole thing 1160px tall on
+     a 390px phone. Two columns for the link groups halves that and uses the width. The
+     brand block keeps the full row because the tagline and the contact lines need it. */
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 26px 20px !important;
+  }
+  .footer-brand { grid-column: 1 / -1; }
+
+  /* Stacked and centred rather than pushed to opposite ends: at this width
+     space-between puts the copyright alone on one line and the four policy links on
+     another, ragged against the edge. */
+  .footer-bottom {
+    flex-direction: column;
+    align-items: center !important;
+    text-align: center;
+    gap: 14px !important;
+  }
+  .footer-legal { justify-content: center; gap: 10px 16px !important; }
+  /* Height and logo size come from the variables at the top of the file; only the
+     spacing is a phone-specific choice. */
+  .site-header-inner { padding: 0 14px !important; gap: 10px !important; }
+  footer > div { padding-left: 18px !important; padding-right: 18px !important; }
   .show-md[aria-label] { padding: 10px !important; border-radius: 8px !important; }
 
   .home-hero-inner { padding: 30px 16px 32px !important; gap: 18px !important; }
@@ -337,9 +623,21 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
   .home-hero-trust { gap: 8px 14px !important; font-size: 12px !important; }
   .home-hero-media > div:first-child { max-width: 250px !important; border-radius: 12px !important; }
 
-  .home-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; padding: 20px 16px !important; gap: 14px !important; }
+  /* One per row. Two columns suited the four numeric stats that used to sit here (2x2);
+     the three descriptive lines that replaced them came out as 2 + 1 with the odd one
+     stranded under the gap. */
+  .home-stats-grid { grid-template-columns: minmax(0, 1fr) !important; padding: 18px 16px !important; gap: 0 !important; }
   .home-stats-grid > div > div:first-child { font-size: 24px !important; }
   .home-stats-grid > div > div:last-child { font-size: 13px !important; }
+
+  /* A descriptive line is a sentence, not a figure, so it keeps a readable size rather
+     than inheriting the small label size above. Declared after those rules on purpose. */
+  .home-stats-grid .home-stat-text { font-size: 15px !important; line-height: 1.8 !important; }
+
+  /* Stacked, the divider belongs between rows. An inline-start border on a full-width row
+     is a stray vertical line down the side of the page. */
+  .home-stat-cell { border-inline-start: none !important; padding: 12px 4px; }
+  .home-stat-cell + .home-stat-cell { border-top: 1px solid var(--line); }
 
   .home-section { padding-left: 16px !important; padding-right: 16px !important; padding-top: 34px !important; padding-bottom: 28px !important; }
   .home-carousel { padding-bottom: 12px !important; }
@@ -375,7 +673,10 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
   .videos-page-header { margin-bottom: 18px !important; }
   .videos-page-title { font-size: 26px !important; letter-spacing: 0 !important; }
   .videos-page-copy { font-size: 14px !important; line-height: 1.55 !important; }
-  .videos-search-form { max-width: none !important; margin-bottom: 14px !important; }
+  /* Full width on a phone. This used to set max-width: none, which cancelled the inline
+     maxWidth: 100% and left the form at its 420px desktop width -- wider than the screen,
+     so the search button sat off the edge. */
+  .videos-search-form { width: 100% !important; max-width: 100% !important; margin-bottom: 14px !important; }
   .videos-search-form input { height: 40px !important; font-size: 14px !important; }
   .videos-search-form button { height: 40px !important; padding: 0 14px !important; font-size: 14px !important; }
 
@@ -393,4 +694,152 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 
 @media (max-width: 360px) {
   .video-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* Course page: the hero figures wrap rather than squeezing to unreadable columns. */
+@media (max-width: 760px) {
+  .course-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* Price and action, kept within reach on a phone. Sits above the tab bar. */
+.course-action-bar {
+  display: none;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 64px;
+  z-index: 55;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+  border-top: 1px solid #ececf2;
+  box-shadow: 0 -8px 24px rgba(20, 30, 66, 0.08);
+}
+.course-action-bar strong { display: block; font-size: 16px; font-weight: 800; color: #1E2A5E; }
+.course-action-bar small { display: block; font-size: 12px; color: #5A6180; margin-top: 2px; }
+.course-action-bar button {
+  border: none;
+  border-radius: 11px;
+  background: #3048A0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px 22px;
+  cursor: pointer;
+}
+.course-action-bar button:disabled { opacity: .6; cursor: default; }
+
+@media (max-width: 900px) {
+  .course-action-bar { display: flex; }
+}
+
+/* ===================== homepage motion =====================
+   Compositor-only: every rule below animates transform or opacity and nothing else.
+   No width, height, margin or top/left is ever transitioned, so nothing here can
+   trigger layout during a scroll. The whole block is switched off for anyone who has
+   asked their system for reduced motion -- see the end of the section. */
+
+/* Scroll reveal. The element starts shifted and transparent and is put back by the
+   `is-in` class that lib/motion.js adds when it comes into view. `will-change` is
+   deliberately absent: promoting dozens of cards costs more memory than the one
+   transition saves. */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition: opacity .52s ease, transform .52s cubic-bezier(.22, .61, .36, 1);
+}
+.reveal.is-in { opacity: 1; transform: none; }
+
+
+/* Hero entrance. Runs on mount rather than on scroll, because it is already on screen. */
+@keyframes heroRise {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.hero-rise {
+  opacity: 0;
+  animation: heroRise .62s cubic-bezier(.22, .61, .36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* Course thumbnails: the frame clips, the picture grows. Only the image moves, so the
+   card's own box never changes size and nothing around it shifts. */
+.zoom-frame { overflow: hidden; }
+.zoom-frame img { transition: transform .45s cubic-bezier(.22, .61, .36, 1); }
+.hover-lift:hover .zoom-frame img,
+.hover-card:hover .zoom-frame img,
+.zoom-frame:hover img { transform: scale(1.04); }
+/* Same idea where the picture is a background rather than an <img>. */
+.zoom-bg { transition: transform .45s cubic-bezier(.22, .61, .36, 1); }
+.hover-lift:hover .zoom-bg, .hover-card:hover .zoom-bg { transform: scale(1.04); }
+
+/* A grid whose children arrive one after another. The delays live here rather than on
+   each card, so no markup has to carry an index. */
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition: opacity .52s ease, transform .52s cubic-bezier(.22, .61, .36, 1);
+}
+.reveal-stagger.is-in > * { opacity: 1; transform: none; }
+.reveal-stagger.is-in > *:nth-child(2) { transition-delay: 70ms; }
+.reveal-stagger.is-in > *:nth-child(3) { transition-delay: 140ms; }
+.reveal-stagger.is-in > *:nth-child(4) { transition-delay: 210ms; }
+.reveal-stagger.is-in > *:nth-child(5) { transition-delay: 280ms; }
+.reveal-stagger.is-in > *:nth-child(n+6) { transition-delay: 350ms; }
+
+/* The existing hover helpers transitioned `all`, which quietly included layout
+   properties. Naming them keeps the work on the compositor and the paint list short. */
+.hover-lift { transition: transform .2s ease, box-shadow .2s ease; }
+.hover-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+
+/* Primary call to action: a slow breath, not a throb. Scale only, and it stops on hover
+   so it never competes with the cursor. */
+@keyframes ctaBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.018); }
+}
+.cta-breathe { animation: ctaBreathe 3.6s ease-in-out infinite; }
+.cta-breathe:hover, .cta-breathe:focus-visible { animation-play-state: paused; }
+
+/* Counting statistics. Tabular figures plus a reserved width mean the digits change
+   without the text around them moving -- the count contributes nothing to CLS. */
+.stat-count { display: inline-block; font-variant-numeric: tabular-nums; text-align: center; }
+
+/* Back to top. Fades and lifts into place; `pointer-events` keeps it unclickable while
+   hidden rather than an invisible target in the corner. */
+.to-top {
+  position: fixed; inset-inline-end: 18px; bottom: 18px; z-index: 40;
+  width: 42px; height: 42px; border: 1px solid var(--line, #e6e8f0); border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  background: #fff; color: #1E2A5E; box-shadow: 0 10px 28px rgba(20, 30, 66, .14);
+  opacity: 0; transform: translate3d(0, 10px, 0); pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.to-top.is-in { opacity: 1; transform: none; pointer-events: auto; }
+.to-top:hover { transform: translate3d(0, -2px, 0); }
+@media (max-width: 760px) {
+  /* clear of the phone tab bar */
+  .to-top { bottom: 76px; }
+}
+
+/* Footer and social links: colour and a hair of lift, nothing more. */
+.micro-lift { transition: transform .18s ease, color .18s ease, opacity .18s ease; }
+.micro-lift:hover { transform: translate3d(0, -2px, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Not "slower" -- off. Everything is shown in its finished state straight away. */
+  .reveal, .reveal.is-in { opacity: 1; transform: none; transition: none; }
+  .reveal-stagger > *, .reveal-stagger.is-in > * {
+    opacity: 1; transform: none; transition: none; transition-delay: 0s;
+  }
+  .zoom-bg, .hover-lift:hover .zoom-bg, .hover-card:hover .zoom-bg { transform: none; transition: none; }
+  .hero-rise { opacity: 1; animation: none; }
+  .cta-breathe { animation: none; }
+  .zoom-frame img { transition: none; }
+  .hover-lift, .hover-card, .micro-lift, .to-top { transition: none; }
+  .hover-lift:hover, .hover-card:hover, .micro-lift:hover, .to-top:hover,
+  .zoom-frame:hover img, .hover-lift:hover .zoom-frame img, .hover-card:hover .zoom-frame img {
+    transform: none;
+  }
 }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Universal Links. This is the iOS half of "a baytara.app link opens the app": the
+	  device fetches https://baytara.app/.well-known/apple-app-site-association and hands
+	  matching URLs to the app instead of Safari.
+
+	  Two things outside this file have to be true as well, and neither can be done from
+	  here:
+	    - Associated Domains must be enabled for the App ID in the Apple Developer portal,
+	      or the build is rejected at signing;
+	    - the association file must be published, which deploy/gen_applinks.sh writes once
+	      APPLE_TEAM_ID is known.
+
+	  `applinks:` only. No `webcredentials:` - the app does not use shared web credentials,
+	  and claiming a capability that is not used is a question at review for no benefit.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:baytara.app</string>
+	</array>
+</dict>
+</plist>

@@ -79,6 +79,11 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] Course lifecycle (draft/publish/unpublish/delete) + modules/lessons editor
 - [~] Video: lesson `vdocipher_video_id` field editable; no upload UI yet (VdoCipher = Phase 5)
 - [ ] Reports, instructor permissions, audit logs, settings (need new backend tables)
+- [~] Navigation + dashboard refresh (milestone 15) — seventeen flat destinations grouped
+  into four sections with a `Ctrl+K` quick search, a real drawer below 900px, and `paths`
+  finally in the sidebar instead of reachable only from one tile. The dashboard leads with
+  the queues that are actually waiting instead of thirty tiles of equal weight. Nothing
+  removed: every destination, link target and figure kept, in Arabic and English.
 
 ## Phase 8 — Notifications, content/blog, i18n scaffolding, hardening
 - [x] Notifications (SQL) — emitted on payment approve/reject + admin broadcast (all/role); student API
@@ -87,6 +92,65 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [~] Site settings (hero/about/contact/socials/plans/faqs) + contact-message inbox — backend done
 - [ ] i18n structure (Arabic default, multilingual-ready)
 - [ ] Security hardening pass
+
+## Phase 11 — Home page redesign (see `docs/milestones/`)
+- [x] Learning paths backend — `learning_paths` + `path_courses`, public `/paths`, admin CRUD
+- [x] Paths admin UI — ordered course picker in the admin portal
+- [x] `GET /learning-summary` — real resume point, watched hours and streak, no new tables
+- [x] Home copy moved into the settings CMS; `t()` gained `{placeholder}` interpolation
+- [x] `/paths` and `/paths/:slug` pages + shared `PathCard`
+- [x] `Home.jsx` rebuilt to the approved design on real data; home-page mock data deleted
+- [x] Dark header, real footer links, phone tab bar
+- [x] Course metadata — objectives, level, certificate flag, last-updated; per-course units
+- [x] Course reviews — `course_reviews`, enrollment-gated posting, admin publish/hide
+- [x] Course admin — units UI, meta fields, reviews moderation page
+- [x] Course page rebuilt on real data; the mock-course fallback and its crash are gone
+- [x] Lesson player rebuilt — real progress, unit-grouped curriculum, all-content browser
+- [x] Profile page — cover/avatar upload, editable fields, real stats, derived activity
+- [x] Certificates — issued on course completion, public verification at `/certificates/<serial>`
+- [x] Certificate QR — `/certificates/<serial>/qr.png`, on the printed sheet and in the app
+- [ ] Student assessment (تقويم الطالب) — not started; scope not yet agreed with the client
+- [ ] Courses/videos listing redesigned to match
+- [ ] Blog & consultations (the profile's consultations tile waits on this)
+- [x] Video protection hardening — OTPs pinned to viewer IP and site hostname, user id in
+  the watermark, paid content refused on the DRM-less server, per-video play counts in
+  the admin. Browser warn-vs-block awaits the client. `docs/milestones/14-*.md`
+
+## Phase 13 — Selling on the web (client decision, 2026-09-22)
+- [x] Reader model on iOS — the app shows prices and plays what the account owns, and
+  offers no purchase and no link to one, because a link out is what Guideline 3.1.1
+  actually forbids. All five purchase entry points now ask the flag; three did not, and
+  the flag's own comment claimed otherwise. A source-scanning test keeps that honest.
+- [x] Direct payment link — `/buy/<slug>?go=1` goes straight to the gateway after the
+  server quote, and survives the sign-in round trip. Meant for WhatsApp and email, which
+  is where Apple has no say and where this audience already is.
+- [x] A refused lesson says why and offers the way out, in the middle of the player rather
+  than as grey text under a dead play button; a signed-out viewer is told at all, instead
+  of watching "loading the video" forever. Verification returns to the lesson that asked
+  for it. `docs/milestones/17-*.md`
+- [x] Admin can copy a course's payment link (paid and published only), so sending one is
+  copy and paste rather than assembling a URL by hand.
+- [x] Discount codes — percentage or fixed, optional start/expiry, a total cap and a
+  per-buyer cap that defaults to one. The browser sends a code and never an amount: the
+  charge is recomputed from the code at checkout, so no client can name its own price, and
+  a code refused at that moment fails the checkout rather than quietly charging full price.
+  Usage counts paid payments only, so an abandoned checkout does not burn a one-use code.
+  Website checkout, admin page and the Android app. `docs/milestones/20-promo-codes.md`
+- [x] Exam everywhere — the instructor portal gained the builder it never had (the
+  endpoints existed, the screen did not), the app gained the exam entirely, and the
+  examiner gained a time limit, a random draw from a question bank, an optional marking
+  view and per-question explanations. A signed paper token carries which questions were
+  drawn and when, so a sitting is marked against the questions it asked and a late
+  submission is refused by the server rather than by a countdown. Parity pass closed three
+  policy pages and the second certificate kind in the app.
+  `docs/milestones/21-exam-everywhere.md`
+- [ ] Check Google Play's billing policy against in-app checkout before the Play submission.
+- [ ] Schema drift found while migrating: autogenerate wants to drop unique constraints on
+  `certificates.serial`, `learning_paths.slug`, `video_playback_events.client_event_id` and
+  `video_playback_sessions.public_id`. Kept out of the promo migration; needs its own pass.
+- [x] Header wordmark enlarged and given clear air, laptop and phone, with the header's
+  height finally a CSS variable instead of a literal repeated across five rules.
+  `docs/milestones/18-header-logo.md`
 
 ## Phase 9 — Deployment
 - [x] NginX + HTTPS + security headers (HSTS, CSP, X-Content-Type-Options, X-Frame-Options,
@@ -100,3 +164,80 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 ## Phase 10 — Mobile-readiness verification
 - [ ] API/JWT audit for future iOS/Android
 - [ ] OpenAPI spec published
+
+## Phase 12 — Flutter app (Android + iOS)
+
+A native app replacing the Capacitor shell in `mobile/`. Same API, no backend changes.
+Plan and parity map: `docs/milestones/mobile-*.md`; API contract: `docs/FLUTTER_APP_PROMPT.md`.
+Android first — iOS code is written but cannot be compiled on this Linux server.
+
+- [x] mobile-00 Toolchain + skeleton — Flutter 3.47.0 + Android SDK installed, brand theme,
+  Dio interceptor stack, route guards, ar/en RTL. 22 tests, analyze clean.
+- [x] mobile-01 Auth + device binding + phone gate — email/Google/register, device-limit
+  screen, mandatory phone gate, Android backup excluded so the device id cannot travel to a
+  second handset. 43 tests. **Hardware checks still open: needs two physical phones.**
+- [x] mobile-02 Catalogue — home, courses list with the full filter set and server facet
+  counts, course detail, video library. Access rules derived in one place; `general` never
+  offers a vet a purchase. 77 tests. Bundles/paths/instructors/articles deferred to after
+  the player.
+- [~] mobile-03 Player + capture guards — DRM playback, 15s heartbeat, watched-vs-covered
+  telemetry, FLAG_SECURE + ALLOW_CAPTURE_BY_NONE, throttled suspicious reporting. Audio
+  watermark round-trips against the backend decoder (`tool/verify_watermark.sh`). 118 tests.
+  **Code complete but NOTHING verified on hardware; iOS never compiled. Watermark playback
+  scheduling deferred to iOS bring-up.**
+  _The telemetry written here was never connected to a player; see mobile-09._
+- [x] mobile-04 Learning + certificates — resume point, enrolments with progress,
+  certificates and public verification. Free courses correctly produce no enrolment, and the
+  empty state says so. 131 tests.
+- [x] mobile-05 Payments (Android) — all four kinds, hosted gateway in a Custom Tab, App
+  Links return, server-confirmed outcome. The redirect is never treated as proof of payment.
+  iOS purchase decision deferred behind one flag. 147 tests.
+  **Needs assetlinks.json published with the release fingerprint.**
+- [x] mobile-06 Verification — three routes, three outcomes. 202 (human review) is its own
+  screen that says do not resubmit, because a duplicate is refused. Byte progress then an
+  honest elapsed counter for the 10-40s read. 159 tests.
+- [x] mobile-07 Account + notifications + polish — notifications (60s poll, stopped when
+  backgrounded), profile, settings, plus the bundles/instructors/articles screens deferred
+  from mobile-02. No placeholder screens remain. 165 tests.
+- [x] mobile-09 Self-hosted playback + the telemetry wiring — the app now plays a lesson
+  the server hosts itself (encrypted HLS, token in every URI) as well as a VdoCipher one,
+  and draws the viewer watermark on that path because no provider bakes it in. Fixed three
+  silent defects: a `kind:"local"` response threw a TypeError past the screen's error
+  handling so every self-hosted video was unplayable; no session ever sent an event, so no
+  heartbeat ran, no progress was recorded and no course could complete from the app; and a
+  resumed lesson opened at zero. 217 tests. **Still nothing on hardware.**
+- [x] mobile-10 Library + the device rule in full — مكتبة بيطرة in the app (articles and
+  book summaries, two shelves, `/blog` redirecting exactly as the website's does) with a
+  read-only reader: pages drawn as images, no download/share/print/selection, the player's
+  capture guard on the route. Not DRM, and the code says so. The device screen now reads
+  the swap allowance, says when the window resets, and offers the admin request once the
+  one self-service change is spent. Fixed three silent defects: `GET /articles` was
+  filtered by `kind`, which the server does not read, so both shelves got every article of
+  both kinds; every article cover was null (`image` vs `cover`); and the blocking
+  device screen offered a Remove button that called a `@jwt_required` endpoint with no
+  token, so it could only ever 401. A book or article can now be shared as an ordinary
+  `baytara.app` link that opens the app for whoever has it and the website for whoever does
+  not; the app claims those paths and translates between the two URL spaces, since an
+  article is `/blog/<slug>` on the site and `/articles/<slug>` in the app. 247 tests.
+  **Still nothing on hardware, and the hand-off stays a disambiguation dialog until
+  `assetlinks.json` is published — which needs a release keystore that does not exist yet.**
+  `docs/milestones/mobile-10-*.md`
+- [ ] mobile-08 iOS bring-up — **BLOCKED: needs macOS. No Swift in this repo has ever been
+  compiled.** iOS project prepared (bundle id, deployment target, Info.plist permissions,
+  CaptureGuard added to the Xcode project). Handover in `docs/milestones/mobile-08-*.md`.
+  Two open decisions: whether FairPlay blanks recordings on our VdoCipher tier (still
+  unanswered, flagged since mobile-03), and Apple IAP vs the reader model.
+
+**Backend gaps this surfaced** (none are client-side fixable):
+- No password-reset endpoint.
+- No account-deletion endpoint — App Store review will ask for one.
+- No push infrastructure; notifications are a 60s poll.
+- A device-limit refusal carries no token, so neither `DELETE /auth/devices/<id>` nor the
+  swap request can be reached from the screen that refusal lands on. A learner whose two
+  registered machines are both gone cannot free a slot from a new phone at all.
+- No endpoint for book reading progress; the app keeps the page per install.
+- No release keystore: release builds still sign with the debug key, which blocks both the
+  Play upload and the App Links fingerprint (`deploy/gen_applinks.sh` writes the file once
+  it exists).
+- `mobile_requires_app` must be switched on only *after* the apps publish — it removes
+  protected playback from mobile web entirely.

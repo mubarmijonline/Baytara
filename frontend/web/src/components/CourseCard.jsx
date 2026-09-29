@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { colors } from '../theme/tokens.js';
+import { colors, gradients } from '../theme/tokens.js';
 import { useI18n } from '../lib/i18n.jsx';
 
 // Course card used in carousels and grids. Matches the Baytara design card.
@@ -7,6 +7,18 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
   const navigate = useNavigate();
   const { t } = useI18n();
   const flexBasis = width ? `0 0 ${width}px` : undefined;
+  // The card predates the API: it was written for mock rows where `instructor` was a
+  // name and `ini` its initial. The API sends an object, and rendering that as a child
+  // takes the whole page down with React error #31. Accept both shapes.
+  const instructorName = typeof course.instructor === 'string'
+    ? course.instructor
+    : course.instructor?.name || '';
+  const initial = course.ini || instructorName.trim().charAt(0);
+  // Same story for the rest of the row: mock names first, then what the API sends.
+  const categoryName = course.cat || course.category?.name || '';
+  const lessons = course.lessons ?? course.lessons_count ?? 0;
+  const hours = course.hours ?? Math.round((course.duration_minutes || 0) / 60);
+  const learners = course.learners ?? course.enrolled_count ?? 0;
   const at = course.access_type;
   const isPaid = course.is_paid ?? course.price > 0;
   const accessBadge = at === 'baytarian' ? { label: '🔒 ' + t('access.baytarian'), bg: colors.accent }
@@ -25,8 +37,16 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
         cursor: 'pointer',
       }}
     >
-      <div style={{ height: 158, background: course.grad, position: 'relative' }}>
-        <span
+      {/* A cover when there is one, the brand gradient when there is not — an unset
+          `grad` left a white block with white text on it. */}
+      <div style={{ height: 158, position: 'relative', overflow: 'hidden' }}>
+        {/* The picture is its own layer so hovering can grow it without dragging the
+            badges and the instructor's name along with it. */}
+        <span aria-hidden="true" className="zoom-bg" style={{ position: 'absolute', inset: 0,
+          background: course.image ? `center/cover url(${course.image})` : (course.grad || gradients.darkPanel) }} />
+        {/* The instructor name sits on this image, so it needs something to sit on. */}
+        <span aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(20,30,66,0) 40%, rgba(20,30,66,.62) 100%)' }} />
+        {categoryName && <span
           style={{
             position: 'absolute',
             top: 12,
@@ -39,8 +59,8 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
             borderRadius: 100,
           }}
         >
-          {course.cat}
-        </span>
+          {categoryName}
+        </span>}
         {accessBadge ? (
           <span
             style={{
@@ -86,10 +106,10 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
               fontSize: 14,
             }}
           >
-            {course.ini}
+            {initial}
           </div>
           <span style={{ fontSize: 13, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,.4)' }}>
-            {course.instructor}
+            {instructorName}
           </span>
         </div>
       </div>
@@ -98,9 +118,9 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
           {course.title}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-          {course.rating && <><span style={{ color: colors.star, fontWeight: 800 }}>★ {course.rating}</span><span>·</span></>}
-          <span>{course.lessons} فيديو</span>
-          {course.hours > 0 && <><span>·</span><span>{course.hours} ساعة</span></>}
+          {course.rating && <span style={{ color: colors.star, fontWeight: 800 }}>★ {course.rating}</span>}
+          {lessons > 0 && <>{course.rating && <span>·</span>}<span>{lessons} {t('course.lessonsUnit')}</span></>}
+          {hours > 0 && <><span>·</span><span>{hours} {t('course.hoursUnit')}</span></>}
         </div>
         <div
           style={{
@@ -111,7 +131,9 @@ export default function CourseCard({ course, isNew = false, width = 288 }) {
             borderTop: `1px solid ${colors.line2}`,
           }}
         >
-          <span style={{ fontSize: 13, color: colors.muted2 }}>{course.learners} متعلّم</span>
+          <span style={{ fontSize: 13, color: colors.muted2 }}>
+            {learners > 0 ? `${learners} ${t('home.learners')}` : ''}
+          </span>
           <span style={{ fontSize: 14, fontWeight: 800, color: colors.accent }}>
             {isPaid ? `${course.price} ${course.currency || t('common.egp')}` : t('access.free')}
           </span>

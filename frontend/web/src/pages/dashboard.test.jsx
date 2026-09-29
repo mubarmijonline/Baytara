@@ -8,6 +8,7 @@ import App from '../App.jsx';
 import { AuthProvider } from '../lib/auth.jsx';
 import { setToken } from '../lib/api.js';
 import { I18nProvider } from '../lib/i18n.jsx';
+import { clearPublicCache } from '../lib/api.js';
 
 function json(data, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), {
@@ -28,6 +29,7 @@ function renderRoute(path) {
 }
 
 beforeEach(() => {
+  clearPublicCache();   // module-level, and vitest isolates per file not per test
   localStorage.clear();
   localStorage.setItem('baytara_lang', 'en');
   setToken('student-token');
@@ -101,7 +103,7 @@ afterEach(() => {
 });
 
 it('shows the student learning, request, and verification overview from live account data', async () => {
-  renderRoute('/dashboard');
+  renderRoute('/dashboard/learning');
 
   expect(await screen.findByRole('heading', { name: /student dashboard/i })).toBeVisible();
   expect(screen.getAllByText('Verified as Pet Doctor').length).toBeGreaterThan(0);
@@ -140,7 +142,7 @@ it('shows an onboarding-first dashboard for a new student', async () => {
     return json({});
   });
 
-  renderRoute('/dashboard');
+  renderRoute('/dashboard/learning');
 
   expect(await screen.findByRole('heading', { name: 'Start your Baytara account' })).toBeVisible();
   expect(screen.getByText('Complete your setup')).toBeVisible();

@@ -1,5 +1,6 @@
-import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import Shell from './Shell.jsx';
+import PageErrorBoundary from './components/PageErrorBoundary.jsx';
 import { useAdminLanguage } from './i18n.jsx';
 import Articles from './pages/Articles.jsx';
 import Baytarian from './pages/Baytarian.jsx';
@@ -8,19 +9,25 @@ import Categories from './pages/Categories.jsx';
 import Courses from './pages/Courses.jsx';
 import CourseContent from './pages/CourseContent.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Enrollments from './pages/Enrollments.jsx';
 import Hierarchy from './pages/Hierarchy.jsx';
 import Messages from './pages/Messages.jsx';
+import Paths from './pages/Paths.jsx';
 import Payments from './pages/Payments.jsx';
+import Promos from './pages/Promos.jsx';
+import Reviews from './pages/Reviews.jsx';
 import Settings from './pages/Settings.jsx';
 import Instructors from './pages/Instructors.jsx';
 import Users from './pages/Users.jsx';
 import Videos from './pages/Videos.jsx';
 import VideoEditor from './pages/VideoEditor.jsx';
+import VideoUpload from './pages/VideoUpload.jsx';
 import VideoReports from './pages/VideoReports.jsx';
 
 const sectionRoutes = [
   ['dashboard', Dashboard],
   ['payments', Payments],
+  ['promos', Promos],
   ['payments/:paymentId', Payments],
   ['baytarian', Baytarian],
   ['baytarian/:requestId', Baytarian],
@@ -30,12 +37,18 @@ const sectionRoutes = [
   ['courses/:courseId/content', CourseContent],
   ['videos', Videos],
   ['videos/new', VideoEditor],
+  ['videos/upload', VideoUpload],
   ['videos/:videoId', VideoEditor],
   ['video-reports', VideoReports],
   ['video-reports/:sessionId', VideoReports],
   ['bundles', Bundles],
   ['bundles/new', Bundles],
   ['bundles/:bundleId/edit', Bundles],
+  ['paths', Paths],
+  ['paths/new', Paths],
+  ['paths/:pathId/edit', Paths],
+  ['enrollments', Enrollments],
+  ['reviews', Reviews],
   ['hierarchy', Hierarchy],
   ['categories', Categories],
   ['articles', Articles],
@@ -52,14 +65,18 @@ const sectionRoutes = [
 
 function RoutedPage({ Page, onLogout }) {
   const routeParams = useParams();
+  const { pathname } = useLocation();
+  const { language } = useAdminLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   return (
-    <Page
-      onLogout={onLogout}
-      routeParams={routeParams}
-      searchParams={searchParams}
-      setSearchParams={setSearchParams}
-    />
+    <PageErrorBoundary routeKey={pathname} language={language}>
+      <Page
+        onLogout={onLogout}
+        routeParams={routeParams}
+        searchParams={searchParams}
+        setSearchParams={setSearchParams}
+      />
+    </PageErrorBoundary>
   );
 }
 

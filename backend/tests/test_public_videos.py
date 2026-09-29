@@ -22,9 +22,11 @@ def public_video_app(tmp_path, monkeypatch):
     captured = {}
 
     class FakeProvider:
-        def issue_otp(self, video_id, annotate=None, ttl=300):
+        def issue_otp(self, video_id, annotate=None, ttl=300, ip_address=None, whitelist_href=None):
             captured["video_id"] = video_id
             captured["annotate"] = annotate
+            captured["ip_address"] = ip_address
+            captured["whitelist_href"] = whitelist_href
             return {
                 "otp": f"otp-{video_id}",
                 "playbackInfo": "public-playback-info",
@@ -32,6 +34,7 @@ def public_video_app(tmp_path, monkeypatch):
 
     import app.api.v1.video as video_api
     monkeypatch.setattr(video_api, "provider", FakeProvider())
+    app.extensions["otp_captured"] = captured
 
     with app.app_context():
         db.create_all()
@@ -51,7 +54,7 @@ def public_video_app(tmp_path, monkeypatch):
             Lesson(
                 title="مقدمة", title_en="Introduction", description="وصف المقدمة",
                 category_id=large.id, access_type="free", status="published",
-                poster="https://cdn.example.test/introduction.jpg",
+                poster="https://cdn.example.test/introduction.jpg", duration_minutes=5,
                 vdocipher_video_id="public-introduction",
             ),
             Lesson(
@@ -64,7 +67,7 @@ def public_video_app(tmp_path, monkeypatch):
             ),
             Lesson(
                 title="مدفوع", category_id=large.id, access_type="general", status="published",
-                price=100, vdocipher_video_id="paid-video",
+                price=100, duration_minutes=45, vdocipher_video_id="paid-video",
             ),
         ]
         db.session.add_all(rows)
@@ -102,7 +105,7 @@ def test_anonymous_video_catalog_is_published_category_aware_and_localized(publi
     assert "vdocipher_video_id" not in body["videos"][0]
 
 
-def test_anonymous_video_detail_hides_restricted_and_draft_rows(public_video_app):
+def test_anonymous_video_detail_shows_restricted_but_hides_draft_rows(public_video_app):
     app, ids = public_video_app
     client = app.test_client()
 
@@ -114,7 +117,10 @@ def test_anonymous_video_detail_hides_restricted_and_draft_rows(public_video_app
     paid = client.get(f"/api/v1/videos/{ids['مدفوع']}")
     assert paid.status_code == 200
     assert paid.get_json()["video"]["can_play"] is False
-    assert client.get(f"/api/v1/videos/{ids['خاص بالأطباء']}").status_code == 404
+    # Vet-only is listed to everyone since 2026-09-17 (locked, not hidden); drafts stay unpublished.
+    vet_only = client.get(f"/api/v1/videos/{ids['خاص بالأطباء']}")
+    assert vet_only.status_code == 200
+    assert vet_only.get_json()["video"]["can_play"] is False
     assert client.get(f"/api/v1/videos/{ids['مسودة']}").status_code == 404
 
 
@@ -335,3 +341,150 @@ def test_signed_in_student_cannot_play_an_unpublished_free_video(public_video_ap
     )
     assert response.status_code == 403
     assert response.get_json() == {"error": "not_entitled"}
+
+
+def test_video_catalog_filters_by_access_length_and_sort(public_video_app):
+    """The library's filter bar: every control maps to a real query param."""
+    app, _ = public_video_app
+    client = app.test_client()
+
+    def titles(query=""):
+        return [v["title"] for v in client.get(f"/api/v1/videos{query}").get_json()["videos"]]
+
+    # anonymous sees every published row, vet-only included (locked, not hidden)
+    assert set(titles()) == {"مقدمة", "مدفوع", "خاص بالأطباء"}
+
+    # access
+    assert titles("?access_type=free") == ["مقدمة"]
+    assert titles("?access_type=general") == ["مدفوع"]
+
+    # length bands
+    assert titles("?duration=short") == ["مقدمة"]        # 5 minutes
+    assert titles("?duration=long") == ["مدفوع"]         # 45 minutes
+    assert titles("?duration=medium") == []
+
+    # sort: longest first puts the 45-minute row ahead of the 5-minute one
+    assert titles("?sort=longest")[0] == "مدفوع"
+    assert titles("?sort=shortest")[0] == "مقدمة"
+
+    # an unknown sort falls back to newest rather than erroring
+    assert client.get("/api/v1/videos?sort=nonsense").status_code == 200
+
+
+def test_categories_carry_published_video_counts(public_video_app):
+    """The filter chips show a number, so it has to come from the same rows the
+    listing would return — published, with a provider id."""
+    app, _ = public_video_app
+    client = app.test_client()
+
+    counts = {c["slug"]: c["video_count"] for c in client.get("/api/v1/categories").get_json()["categories"]}
+    # large-animals holds the free row, the paid row and a draft; the draft must not count
+    assert counts["large-animals"] == 2, counts
+    assert counts["equine"] == 1, counts
+
+
+def test_otp_is_pinned_to_the_viewer_ip_and_to_our_site(public_video_app):
+    """VdoCipher recommends pinning the OTP to the requesting IP; the page hostname rule
+    stops a copied OTP being embedded elsewhere. Both are the server's call per mint."""
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "pin-browser")
+
+    response = client.post(
+        "/api/v1/video/playback", headers=headers,
+        json={"lesson_id": ids["Introduction"]},
+        environ_base={"REMOTE_ADDR": "203.0.113.9"},
+    )
+    assert response.status_code == 200, response.get_json()
+    captured = app.extensions["otp_captured"]
+    assert captured["ip_address"] == "203.0.113.9"
+    # SITE_URL defaults to https://baytara.app; the rule is the bare hostname.
+    assert captured["whitelist_href"] == "baytara.app"
+
+
+def test_app_mint_carries_no_hostname_rule(public_video_app):
+    """The native app sends no referrer, so a hostname rule would refuse every play."""
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "pin-app")
+    response = client.post(
+        "/api/v1/video/playback", headers={**headers, "User-Agent": "BaytaraApp/1 Android"},
+        json={"lesson_id": ids["Introduction"]},
+        environ_base={"REMOTE_ADDR": "203.0.113.9"},
+    )
+    assert response.status_code == 200, response.get_json()
+    captured = app.extensions["otp_captured"]
+    assert captured["whitelist_href"] is None
+    assert captured["ip_address"] == "203.0.113.9"
+
+
+def test_watermark_names_the_account_id(public_video_app):
+    """A name, email or phone can all change; the id is the one field that cannot."""
+    app, ids = public_video_app
+    client = app.test_client()
+    headers = _viewer_headers(client, "wm-browser")
+    response = client.post("/api/v1/video/playback", headers=headers,
+                           json={"lesson_id": ids["Introduction"]})
+    assert response.status_code == 200, response.get_json()
+    with app.app_context():
+        student = User.query.filter_by(email="public-video-student@example.test").one()
+        student_id = student.id
+    lines = [row["text"] for row in app.extensions["otp_captured"]["annotate"]]
+    assert any(f"ID {student_id}" in line for line in lines), lines
+
+
+def test_playback_says_whether_the_lesson_enforces_the_capture_rule(public_video_app):
+    """The player runs its activity guard only when the answer is yes.
+
+    On a free lesson it used to run anyway, reporting ordinary tab-switching as
+    suspicious -- and three of those in fifteen minutes block the account from playback
+    and notify every admin.
+    """
+    app, ids = public_video_app
+    client = app.test_client()
+
+    with app.app_context():
+        lesson = db.session.get(Lesson, ids["Introduction"])
+        # what production's free lessons look like
+        assert lesson.is_protected is False, "a free lesson defaults to open"
+    # One device throughout: two devices inside the two-minute grace is `already_playing`,
+    # which is the concurrency rule doing its job rather than anything to do with capture.
+    headers = _viewer_headers(client, "cap-browser")
+    free = client.post("/api/v1/video/playback", headers=headers,
+                       json={"lesson_id": ids["Introduction"]})
+    assert free.status_code == 200, free.get_json()
+    assert free.get_json()["capture_protected"] is False
+
+    with app.app_context():
+        student = User.query.filter_by(email="public-video-student@example.test").one()
+        db.session.add(VideoEntitlement(user_id=student.id, video_id=ids["مدفوع"], source="purchase"))
+        db.session.commit()
+    paid = client.post("/api/v1/video/playback", headers=headers,
+                       json={"lesson_id": ids["مدفوع"]})
+    assert paid.status_code == 200, paid.get_json()
+    assert paid.get_json()["capture_protected"] is True
+
+
+def test_vet_only_content_is_listed_to_everyone_but_still_locked(public_video_app):
+    """Client, 2026-09-17: show the whole catalogue to every visitor, signed in or not,
+    so a doctor sees what verifying unlocks. Watching is still refused."""
+    app, ids = public_video_app
+    anon = app.test_client()
+
+    listed = anon.get("/api/v1/videos").get_json()["videos"]
+    vet_only = next((v for v in listed if v["id"] == ids["خاص بالأطباء"]), None)
+    assert vet_only is not None, "vet-only video must be listed to an anonymous visitor"
+    assert vet_only["can_play"] is False
+
+    detail = anon.get(f"/api/v1/videos/{ids['خاص بالأطباء']}")
+    assert detail.status_code == 200
+    assert detail.get_json()["video"]["can_play"] is False
+
+    # an unverified account sees it too, with the reason, and playback is refused
+    headers = _viewer_headers(anon, "vet-only-browser")
+    seen = anon.get(f"/api/v1/videos/{ids['خاص بالأطباء']}", headers=headers).get_json()["video"]
+    assert seen["lock_reason"] == "needs_baytarian"
+    refused = anon.post("/api/v1/video/playback", headers=headers,
+                        json={"lesson_id": ids["خاص بالأطباء"]})
+    assert refused.status_code == 403
+    assert refused.get_json()["error"] == "needs_baytarian"

@@ -6,6 +6,7 @@ from flask_jwt_extended import get_jwt_identity
 from ...extensions import db
 from ...models import User, Course, CourseModule, CourseVideo, Lesson, Enrollment, InstapayPayment
 from ...security import require_role
+from ...services import exam_authoring
 from ...services.catalog_access import (
     CatalogValidationError, validate_catalog_item, validate_course_bundle_compatibility,
 )
@@ -337,6 +338,86 @@ def lesson_delete(lid):
 
 
 # ------------------------------ students / revenue ------------------------------
+
+# ------------------------------ course exam ------------------------------
+# Same service as the admin portal, so a question written here is validated identically.
+# Ownership is the only difference: an instructor may only touch their own course's exam.
+
+def _own_exam_question(qid):
+    from ...models import ExamQuestion
+
+    question = db.session.get(ExamQuestion, qid)
+    if not question or not question.exam:
+        return None
+    return question if _own_course(question.exam.course_id) else None
+
+
+@bp.get("/courses/<int:cid>/exam")
+@require_role("instructor")
+def exam_get(cid):
+    from ...models import CourseExam
+
+    if not _own_course(cid):
+        return jsonify(error="not_found"), 404
+    exam = CourseExam.query.filter_by(course_id=cid).first()
+    return jsonify(exam=exam.to_dict(with_answers=True) if exam else None)
+
+
+@bp.put("/courses/<int:cid>/exam")
+@require_role("instructor")
+def exam_upsert(cid):
+    if not _own_course(cid):
+        return jsonify(error="not_found"), 404
+    exam = exam_authoring.get_or_create(cid)
+    try:
+        exam_authoring.update_exam(exam, request.get_json() or {})
+    except exam_authoring.ExamValidationError as exc:
+        db.session.rollback()
+        return jsonify(error=exc.code), 422
+    db.session.commit()
+    return jsonify(exam=exam.to_dict(with_answers=True))
+
+
+@bp.post("/courses/<int:cid>/exam/questions")
+@require_role("instructor")
+def exam_question_create(cid):
+    if not _own_course(cid):
+        return jsonify(error="not_found"), 404
+    exam = exam_authoring.get_or_create(cid)
+    try:
+        question = exam_authoring.create_question(exam, request.get_json() or {})
+    except exam_authoring.ExamValidationError as exc:
+        db.session.rollback()
+        return jsonify(error=exc.code), 422
+    db.session.commit()
+    return jsonify(question=question.to_dict(with_answers=True)), 201
+
+
+@bp.patch("/exam-questions/<int:qid>")
+@require_role("instructor")
+def exam_question_update(qid):
+    question = _own_exam_question(qid)
+    if not question:
+        return jsonify(error="not_found"), 404
+    try:
+        exam_authoring.update_question(question, request.get_json() or {})
+    except exam_authoring.ExamValidationError as exc:
+        db.session.rollback()
+        return jsonify(error=exc.code), 422
+    db.session.commit()
+    return jsonify(question=question.to_dict(with_answers=True))
+
+
+@bp.delete("/exam-questions/<int:qid>")
+@require_role("instructor")
+def exam_question_delete(qid):
+    question = _own_exam_question(qid)
+    if not question:
+        return jsonify(error="not_found"), 404
+    exam = exam_authoring.delete_question(question)
+    db.session.commit()
+    return jsonify(deleted=qid, exam=exam.to_dict(with_answers=True) if exam else None)
+
 
 @bp.get("/students")
 @require_role("instructor")

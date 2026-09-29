@@ -3,6 +3,7 @@ import { notifyAdminDataChanged, shouldNotifyAdminDataChanged } from './admin-da
 
 const BASE = '/api/v1';
 let token = localStorage.getItem('baytara_admin_token') || '';
+let refreshToken = localStorage.getItem('baytara_admin_refresh') || '';
 
 export const getToken = () => token;
 export function setToken(t) {
@@ -10,8 +11,35 @@ export function setToken(t) {
   if (t) localStorage.setItem('baytara_admin_token', t);
   else localStorage.removeItem('baytara_admin_token');
 }
+export function setRefreshToken(t) {
+  refreshToken = t || '';
+  if (t) localStorage.setItem('baytara_admin_refresh', t);
+  else localStorage.removeItem('baytara_admin_refresh');
+}
+export function clearSession() { setToken(''); setRefreshToken(''); }
 
-async function req(path, opts = {}) {
+// The access token lasts fifteen minutes, and nothing renewed it: an admin working
+// through the queue was signed out between one request and the next. The API has
+// always issued a thirty-day refresh token, so the session is renewed rather than
+// dropped. One refresh at a time, or simultaneous expiries race each other.
+let refreshing = null;
+async function renewAccessToken() {
+  if (!refreshToken) return '';
+  if (!refreshing) {
+    refreshing = fetch(BASE + '/auth/refresh', {
+      method: 'POST', headers: { Authorization: `Bearer ${refreshToken}` },
+    }).then(async (r) => {
+      if (!r.ok) { clearSession(); return ''; }
+      const body = await r.json();
+      if (body.access_token) setToken(body.access_token);
+      if (body.refresh_token) setRefreshToken(body.refresh_token);
+      return body.access_token || '';
+    }).catch(() => '').finally(() => { refreshing = null; });
+  }
+  return refreshing;
+}
+
+async function req(path, opts = {}, retried = false) {
   const { clearTokenOn401 = true, skipAdminDataChanged = false, ...fetchOptions } = opts;
   const r = await fetch(BASE + path, {
     ...fetchOptions,
@@ -21,10 +49,15 @@ async function req(path, opts = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
+  // An expired access token renews itself and the call is replayed once. Only a
+  // refresh that fails means signing in again.
+  if (r.status === 401 && !retried && refreshToken) {
+    if (await renewAccessToken()) return req(path, opts, true);
+  }
   const isJson = (r.headers.get('content-type') || '').includes('json');
   const data = isJson ? await r.json() : null;
   if (r.status === 401) {
-    if (clearTokenOn401) setToken('');
+    if (clearTokenOn401) clearSession();
     throw Object.assign(new Error('unauthorized'), { status: 401 });
   }
   if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
@@ -39,12 +72,15 @@ const qs = (params) => {
   return s ? `?${s}` : '';
 };
 
-async function blobReq(path) {
+async function blobReq(path, retried = false) {
   const response = await fetch(BASE + path, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+  if (response.status === 401 && !retried && refreshToken) {
+    if (await renewAccessToken()) return blobReq(path, true);
+  }
   if (response.status === 401) {
-    setToken('');
+    clearSession();
     throw Object.assign(new Error('unauthorized'), { status: 401 });
   }
   if (!response.ok) throw Object.assign(new Error('download_failed'), { status: response.status });
@@ -56,14 +92,40 @@ export const api = {
   me: () => req('/auth/me'),
 
   stats: ({ deferUnauthorized = false } = {}) => req('/admin/stats', { clearTokenOn401: !deferUnauthorized }),
+  // Disk taken by self-hosted video. Its own call: it walks the filesystem, and the
+  // dashboard counters should not wait on that.
+  storage: () => req('/admin/storage'),
 
   // users
   users: (params) => req('/admin/users' + qs(params)),
+  deviceSwapRequests: (status = 'pending') => req(`/admin/device-swap-requests?status=${status}`),
+  deviceSwapDecide: (id, decision) => req(`/admin/device-swap-requests/${id}/${decision}`, { method: 'POST' }),
+  promos: () => req('/admin/promo-codes'),
+  promoCreate: (body) => req('/admin/promo-codes', { method: 'POST', body: JSON.stringify(body) }),
+  promoUpdate: (id, body) => req(`/admin/promo-codes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  promoDelete: (id) => req(`/admin/promo-codes/${id}`, { method: 'DELETE' }),
   userCreate: (body) => req('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
   userUpdate: (id, body) => req(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   userDelete: (id) => req(`/admin/users/${id}`, { method: 'DELETE' }),
 
   // image upload (instructor photo, course cover) -> { url }
+  books: () => req('/admin/books'),
+  bookCreate: (body) => req('/admin/books', { method: 'POST', body: JSON.stringify(body) }),
+  bookUpdate: (id, body) => req(`/admin/books/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  bookDelete: (id) => req(`/admin/books/${id}`, { method: 'DELETE' }),
+  bookPdf: (id, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return fetch(BASE + `/admin/books/${id}/pdf`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    }).then(async (r) => {
+      const data = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+      if (!r.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: r.status, data });
+      return data;
+    });
+  },
   uploadImage: (file) => {
     const fd = new FormData();
     fd.append('file', file);
@@ -78,6 +140,25 @@ export const api = {
     });
   },
 
+  // self-hosted video: upload a file to our own server (packaged as encrypted HLS)
+  videoUpload: (id, file, onProgress) => new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', BASE + `/admin/videos/${id}/upload`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => {
+      let data = null;
+      try { data = JSON.parse(xhr.responseText); } catch { /* non-JSON error page */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(Object.assign(new Error((data && data.error) || 'error'), { status: xhr.status, data }));
+    };
+    xhr.onerror = () => reject(new Error('network'));
+    xhr.send(fd);
+  }),
+  videoUploadDelete: (id) => req(`/admin/videos/${id}/upload`, { method: 'DELETE' }),
+
   // categories
   categories: () => req('/categories'),
   categoryCreate: (body) => req('/admin/categories', { method: 'POST', body: JSON.stringify(body) }),
@@ -86,6 +167,8 @@ export const api = {
 
   // courses
   courses: (params) => req('/admin/courses' + qs(params)),
+  enrollments: (params) => req('/admin/enrollments' + qs(params)),
+  enrollmentCancel: (id, body) => req(`/admin/enrollments/${id}/cancel`, { method: 'POST', body: JSON.stringify(body) }),
   course: (id) => req(`/admin/courses/${id}`),
   courseCreate: (body) => req('/admin/courses', { method: 'POST', body: JSON.stringify(body) }),
   courseUpdate: (id, body) => req(`/admin/courses/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
@@ -101,12 +184,28 @@ export const api = {
 
   // videos (directly under a course, ordered; or standalone)
   videos: (params) => req('/admin/videos' + qs(params)),
+  courseExam: (cid) => req(`/admin/courses/${cid}/exam`),
+  courseExamSave: (cid, body) => req(`/admin/courses/${cid}/exam`, { method: 'PUT', body: JSON.stringify(body) }),
+  examQuestionCreate: (cid, body) => req(`/admin/courses/${cid}/exam/questions`, { method: 'POST', body: JSON.stringify(body) }),
+  examQuestionUpdate: (qid, body) => req(`/admin/exam-questions/${qid}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  examQuestionDelete: (qid) => req(`/admin/exam-questions/${qid}`, { method: 'DELETE' }),
   catalogVideos: (params) => req('/admin/videos' + qs(params)),
   videoLibrary: (params, { signal } = {}) => req('/admin/video-library' + qs(params), { signal }),
   video: (id) => req(`/admin/videos/${id}`),
-  videoCreate: (body) => req('/admin/videos', { method: 'POST', body: JSON.stringify(body) }),
-  videoUpdate: (id, body) => req(`/admin/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  // `silent` keeps the global data-changed event from firing. The upload page needs it:
+  // that event remounts the active page, which would throw away a transfer in progress.
+  videoCreate: (body, { silent = false } = {}) => req('/admin/videos', {
+    method: 'POST', body: JSON.stringify(body), skipAdminDataChanged: silent,
+  }),
+  // `silent` for a background repair the admin did not ask for (the editor filling in a
+  // missing poster): the event would remount the page they are typing into.
+  videoUpdate: (id, body, { silent = false } = {}) => req(`/admin/videos/${id}`, {
+    method: 'PATCH', body: JSON.stringify(body), skipAdminDataChanged: silent,
+  }),
   videoDelete: (id) => req(`/admin/videos/${id}`, { method: 'DELETE' }),
+  // The few videos shown first on the home page strip and in the public library, in order.
+  pinnedVideos: () => req('/admin/videos/pinned'),
+  pinnedVideosSet: (video_ids) => req('/admin/videos/pinned', { method: 'PUT', body: JSON.stringify({ video_ids }) }),
   videoCoursesSet: (id, course_ids) => req(`/admin/videos/${id}/courses`, { method: 'POST', body: JSON.stringify({ course_ids }) }),
   videoCoursesAdd: (id, course_ids) => req(`/admin/videos/${id}/courses/add`, { method: 'POST', body: JSON.stringify({ course_ids }) }),
   videoCourseRemove: (id, courseId) => req(`/admin/videos/${id}/courses/${courseId}`, { method: 'DELETE' }),
@@ -134,11 +233,22 @@ export const api = {
 
   // baytarian verification requests
   baytarianRequests: (status) => req('/admin/baytarian-requests' + (status ? `?status=${status}` : '')),
+  // No kind to pass: there is one verified status, and the server keeps whatever the
+  // request already read as the record of which document it was.
   baytarianApprove: (id) => withAdminStatsInvalidation(
     () => req(`/admin/baytarian-requests/${id}/approve`, { method: 'POST' }),
   ),
   baytarianReject: (id, reason) => withAdminStatsInvalidation(
     () => req(`/admin/baytarian-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  ),
+  // Undo an approval — the answer to a machine having made the decision.
+  baytarianRevoke: (id, reason) => withAdminStatsInvalidation(
+    () => req(`/admin/baytarian-requests/${id}/revoke`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  ),
+  // Verify an account with no document, on the admin's own authority. Lands in the
+  // same queue on the `admin` route, so it is visible and revocable like the rest.
+  verifyUserDirectly: (userId, grant, note) => withAdminStatsInvalidation(
+    () => req(`/admin/users/${userId}/verify`, { method: 'POST', body: JSON.stringify({ grant, note }) }),
   ),
 
   // bundles (course bundling)
@@ -147,6 +257,24 @@ export const api = {
   bundleCreate: (body) => req('/admin/bundles', { method: 'POST', body: JSON.stringify(body) }),
   bundleUpdate: (id, body) => req(`/admin/bundles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   bundleDelete: (id) => req(`/admin/bundles/${id}`, { method: 'DELETE' }),
+
+  // course units: which unit a video sits in is per-course, so it keys off the course
+  courseVideoModule: (courseId, videoId, module_id) => req(
+    `/admin/courses/${courseId}/videos/${videoId}/module`,
+    { method: 'PUT', body: JSON.stringify({ module_id }) },
+  ),
+
+  // course reviews (moderation is publish-then-hide)
+  reviews: (params) => req('/admin/reviews' + qs(params)),
+  reviewUpdate: (id, body) => req(`/admin/reviews/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  reviewDelete: (id) => req(`/admin/reviews/${id}`, { method: 'DELETE' }),
+
+  // learning paths (ordered course shelves shown as «مسارات» on the home page)
+  paths: () => req('/admin/paths'),
+  pathGet: (id) => req(`/admin/paths/${id}`),
+  pathCreate: (body) => req('/admin/paths', { method: 'POST', body: JSON.stringify(body) }),
+  pathUpdate: (id, body) => req(`/admin/paths/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  pathDelete: (id) => req(`/admin/paths/${id}`, { method: 'DELETE' }),
 
   // payments
   payments: (status) => req('/admin/payments' + (status ? `?status=${status}` : '')),
@@ -189,10 +317,13 @@ export async function fetchReceipt(id) {
 }
 
 // Baytarian verification document (PDF/image) — auth-gated, returned as an object URL.
-export async function fetchBaytarianDoc(rid, idx) {
+export async function fetchBaytarianDoc(rid, idx, retried = false) {
   const r = await fetch(`${BASE}/admin/baytarian-requests/${rid}/doc/${idx}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+  if (r.status === 401 && !retried && refreshToken) {
+    if (await renewAccessToken()) return fetchBaytarianDoc(rid, idx, true);
+  }
   if (!r.ok) throw new Error('doc_failed');
   return URL.createObjectURL(await r.blob());
 }

@@ -30,7 +30,7 @@ const NAV_DESTINATIONS = [
   { path: '/admin/bundles', link: /الحزم|bundles/i, heading: /الحزم|bundles/i },
   { path: '/admin/hierarchy', link: /الهيكلة|hierarchy/i, heading: /الهيكلة|hierarchy/i },
   { path: '/admin/categories', link: /الفئات|categories/i, heading: /الفئات|categories/i },
-  { path: '/admin/articles', link: /المحتوى والمدونة|content and articles/i, heading: /المحتوى|content/i },
+  { path: '/admin/articles', link: /مكتبة بيطرة|baytara library/i, heading: /مكتبة بيطرة|baytara library/i },
   { path: '/admin/users', link: /المستخدمون|users/i, heading: /المستخدمون|users/i },
   { path: '/admin/messages', link: /الرسائل|messages/i, heading: /الرسائل|messages/i },
   { path: '/admin/settings', link: /إعدادات الموقع|site settings/i, heading: /إعدادات الموقع|site settings/i },

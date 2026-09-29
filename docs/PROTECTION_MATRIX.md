@@ -1,6 +1,6 @@
 # What we control, and what we do not
 
-Tested 2026-08-14 against production (video 4, since removed), account
+Tested 2026-08-14 against production, video 4 (self-hosted, `is_protected` on), account
 `selftest@baytara.local`. Every row below is a measured result, not an expectation.
 
 ## 1. Who may play — we control this completely
@@ -25,7 +25,7 @@ The playback endpoint decides, per request. Measured responses:
 
 Also enforced on every request, all platforms: enrollment/tier, 2-device limit, device bound
 to the token, one concurrent stream per account, 40 playback tokens per hour, and the
-`suspicious_activity` cut-off after 5 guard events in 15 minutes. Every allow and every
+`suspicious_activity` cut-off after 3 guard events in 15 minutes. Every allow and every
 refusal is written to `video_playback_sessions`.
 
 ## 2. What the viewer does on the page — we control most of it
@@ -35,26 +35,31 @@ picture and records the reason:
 
 | Behaviour | Desktop | Mobile |
 |---|---|---|
-| Switching app / tab, losing focus | ✅ pause + cover + logged | ✅ pause + cover + logged |
+| Switching app / tab, losing focus | ✅ pause only — **not** logged, not an offence | ✅ pause only |
 | Opening the macOS Screenshot app | ✅ (it takes focus) | — |
 | PrintScreen key | ✅ Windows/Linux | n/a |
 | Ctrl/Cmd + S / U / P | ✅ blocked + logged | n/a |
-| Right-click, drag, copy | ✅ blocked + logged | ✅ |
-| DevTools opened | ✅ pause + logged | n/a |
+| Right-click, drag, copy | ✅ blocked, **not** logged | ✅ |
+| DevTools opened | ⚠️ logged only, no pause (cannot be told from a zoom change) | n/a |
 | **⌘⇧3 / ⌘⇧4 / ⌘⇧5 on macOS** | ❌ the OS swallows the keys | n/a |
 | A recorder already running in the background | ❌ no signal exists anywhere | ❌ |
 
 ## 3. Whether the picture can be captured — we control none of it
 
-This is decided by the platform's DRM, not by our code:
+This is decided by the platform's DRM, not by our code.
+
+**The right-hand column below was never measured.** It was what we expected VdoCipher DRM
+to do; the 2026-08-14 run tested self-hosted video only. VdoCipher answered on 2026-09-15
+and two rows were wrong: without an Apple FairPlay certificate, macOS Safari does not play
+at all, and iOS is not DRM-protected. Edge/PlayReady is still unconfirmed.
 
 | Client | Self-hosted video (today) | With VdoCipher DRM on a paid plan |
 |---|---|---|
-| macOS Safari | capturable | blocked (needs the FairPlay upgrade) |
+| macOS Safari | capturable | **will not play** without the certificate; blocked once it is installed |
 | macOS Chrome/Firefox | capturable | capturable → so we refuse them |
-| Windows Edge | capturable | blocked (PlayReady SL3000) |
+| Windows Edge | capturable | blocked (PlayReady SL3000) — **unverified, see VIDEO_PROTECTION.md** |
 | Windows Chrome/Firefox | capturable | capturable (Widevine L3) |
-| iPhone Safari | capturable | blocked (FairPlay) |
+| iPhone Safari | capturable | **capturable** without the certificate — proprietary encryption, not DRM |
 | Android Chrome | capturable | blocked on L1 devices |
 | Baytara Windows app | **blocked** — `WDA_EXCLUDEFROMCAPTURE`, no DRM needed | blocked |
 | Baytara Android app | **blocked, and silent** — `FLAG_SECURE` + `ALLOW_CAPTURE_BY_NONE` | blocked |

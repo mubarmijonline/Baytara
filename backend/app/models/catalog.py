@@ -4,6 +4,8 @@ from ..extensions import db
 from ..services.catalog_access import ACCESS_TYPES, PAID_ACCESS, access_is_paid, audience_error
 
 COURSE_STATUSES = ("draft", "published", "unpublished")
+# Shared by Course and LearningPath; the visible labels live in the frontend DICT.
+LEVELS = ("beginner", "intermediate", "advanced", "breeders")
 FIXED_CATEGORIES = (
     ("large-animals", "الحيوانات الكبيرة - الأبقار والأغنام", "Large animals - Cattle & Sheep"),
     ("equine", "الخيول", "Equine"),
@@ -64,7 +66,18 @@ class Course(db.Model):
                             server_default="general", index=True)
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     enrolled_count = db.Column(db.Integer, nullable=False, default=0)
+    # «ماذا ستتعلّم» bullets. JSON lists rather than paired scalars; loc() treats an empty
+    # list as falsy, so an unfilled English list falls back to Arabic like every other field.
+    objectives = db.Column(db.JSON, nullable=False, default=list)
+    objectives_en = db.Column(db.JSON, nullable=False, default=list)
+    level = db.Column(db.String(20), nullable=False, default="beginner", server_default="beginner", index=True)
+    has_certificate = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
+    # Running totals so a listing of 50 cards costs no aggregate queries. Maintained by
+    # the review endpoints; see CourseReview.
+    rating_sum = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    rating_count = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
+    updated_at = db.Column(db.DateTime(timezone=True), default=_now, onupdate=_now)
 
     category = db.relationship("Category", back_populates="courses")
     instructor = db.relationship("User")
@@ -94,9 +107,14 @@ class Course(db.Model):
         return access_is_paid(self.access_type)
 
     def visible_to(self, user):
-        """Whether the public catalog may list this course to the caller."""
-        if self.access_type == "vet_free":
-            return audience_error(user, self.access_type) is None
+        """Whether the public catalog may list this course to the caller: always.
+
+        Vet-only courses used to be hidden from anyone unverified. The client asked on
+        2026-09-17 for the whole catalogue to be visible to everyone, signed in or not,
+        because a doctor who cannot see the content before verifying finds an empty site
+        and has no reason to verify. Access is unchanged: lock_reason still says why a
+        course cannot be joined, and playback is still refused server-side.
+        """
         return True
 
     def lock_reason(self, user):
@@ -109,6 +127,60 @@ class Course(db.Model):
     def video_minutes(self):
         """Real content length: the sum of the course's video durations."""
         return sum((v.duration_minutes or 0) for v in self.content_videos())
+
+    def rating(self):
+        """Average score, or None when nobody has reviewed it. Never 0 — a zero would
+        read as a bad course rather than an unrated one."""
+        if not self.rating_count:
+            return None
+        return round(self.rating_sum / self.rating_count, 1)
+
+    def content_updated_at(self):
+        """«آخر تحديث»: the latest change to the course row or to any of its videos.
+        Adding a lesson is an update to the course as far as a learner is concerned."""
+        stamps = [self.updated_at] + [v.updated_at for v in self.content_videos()]
+        stamps = [s for s in stamps if s is not None]
+        return max(stamps).isoformat() if stamps else None
+
+    def grouped_videos(self, lang="ar", user=None):
+        """Videos grouped into units for the curriculum accordion.
+
+        Same dedupe order as content_videos(), so the grouped view and the flat `videos`
+        list always hold the same rows. Anything not placed in a unit lands in one leading
+        group with a null id, which the frontend renders as a single implicit unit.
+        """
+        seen, groups, order = set(), {}, []
+
+        def add(module, video):
+            if not video or video.id in seen:
+                return
+            seen.add(video.id)
+            key = module.id if module else None
+            if key not in groups:
+                groups[key] = {
+                    "id": key,
+                    "title": loc(module.title, module.title_en, lang) if module else None,
+                    "position": module.position if module else -1,
+                    "videos": [],
+                }
+                order.append(key)
+            groups[key]["videos"].append(video)
+
+        for assignment in self.video_assignments:
+            add(assignment.module, assignment.video)
+        for video in self.legacy_videos:
+            add(video.module, video)
+        for module in self.modules:
+            for video in module.lessons:
+                add(module, video)
+
+        units = sorted((groups[k] for k in order), key=lambda g: g["position"])
+        for unit in units:
+            videos = unit.pop("videos")
+            unit["lessons_count"] = len(videos)
+            unit["total_minutes"] = sum((v.duration_minutes or 0) for v in videos)
+            unit["videos"] = [v.to_dict(lang, user=user) for v in videos]
+        return units
 
     def to_dict(self, with_content=False, lang="ar", user=None):
         vids = self.content_videos()
@@ -133,13 +205,34 @@ class Course(db.Model):
             "lock_reason": self.lock_reason(user),
             "status": self.status,
             "enrolled_count": self.enrolled_count,
+            "objectives": loc(self.objectives or [], self.objectives_en or [], lang),
+            "objectives_en": self.objectives_en or [],
+            "level": self.level,
+            "has_certificate": self.has_certificate,
+            "rating": self.rating(),
+            "reviews_count": self.rating_count,
             "category": self.category.to_dict(lang) if self.category else None,
             "instructor": {"id": self.instructor.id, "name": self.instructor.name,
                            "headline": self.instructor.headline,
                            "avatar_url": self.instructor.avatar_url} if self.instructor else None,
         }
         if with_content:
+            # The flat list stays: the player and the existing clients read it.
             d["videos"] = [l.to_dict(lang, user=user) for l in vids]
+            # Only on the detail view: a listing would run this per row, and no listing
+            # needs it. Says an exam exists and is sittable, not whether this viewer may
+            # sit it -- that is the exam endpoint's answer.
+            from .exam import CourseExam
+
+            exam = CourseExam.query.filter_by(course_id=self.id).first()
+            d["has_exam"] = bool(exam and exam.is_live())
+            d["modules"] = self.grouped_videos(lang=lang, user=user)
+            # Every unit the course owns, including ones with nothing in them yet. The
+            # grouped list above drops those, which would hide a unit the admin just made.
+            d["all_modules"] = [{"id": m.id, "title": loc(m.title, m.title_en, lang),
+                                 "title_en": m.title_en, "position": m.position}
+                                for m in self.modules]
+            d["content_updated_at"] = self.content_updated_at()
         return d
 
     def content_videos(self):
@@ -195,6 +288,9 @@ class Lesson(db.Model):
     # nullable for legacy rows only.
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True, index=True)
     module_id = db.Column(db.Integer, db.ForeignKey("course_modules.id"), nullable=True, index=True)
+    # Who presents this video. Nullable in the schema because rows predate the column;
+    # the admin API requires it on every create and update from here on.
+    instructor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     title = db.Column(db.String(200), nullable=False)
     title_en = db.Column(db.String(200))
     description = db.Column(db.Text, nullable=False, default="")
@@ -206,15 +302,32 @@ class Lesson(db.Model):
     access_type = db.Column(db.String(20), nullable=False, default="general", server_default="general", index=True)
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     position = db.Column(db.Integer, nullable=False, default=0)
+    # Where this video is pinned in the public library and the home page strip: 1 is first,
+    # null means not pinned, and unpinned videos follow newest first. A separate column
+    # rather than `position`, because `position` already means the order inside a course
+    # unit, and one number cannot mean both for a video that is in a unit and on the shelf.
+    library_rank = db.Column(db.Integer, index=True)
     duration_minutes = db.Column(db.Integer)
     poster = db.Column(db.String(1000))
     vdocipher_video_id = db.Column(db.String(120))
-    is_protected = db.Column(db.Boolean, nullable=False, default=True)
+    # Whether the screen-capture rule is enforced. Paid tiers are forced on by
+    # capture_protected() whatever this says, so the default only decides free content --
+    # and the rule there is that it plays in any browser unless an admin ticks the box.
+    # Defaulting to True meant a free lesson created outside the admin API silently ran
+    # the capture guard, which is what made the "suspicious activity" notice appear on
+    # open content.
+    is_protected = db.Column(db.Boolean, nullable=False, default=False)
+    # Where the video lives: "vdocipher" (DRM provider) or "local" (this server, encrypted
+    # HLS served behind a signed token). Same catalog, same gates, different delivery.
+    source = db.Column(db.String(20), nullable=False, default="vdocipher", index=True)
+    local_status = db.Column(db.String(20))       # uploading | packaging | ready | failed
+    local_error = db.Column(db.String(200))
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
     updated_at = db.Column(db.DateTime(timezone=True), default=_now, onupdate=_now)
 
     module = db.relationship("CourseModule", back_populates="lessons")
     category = db.relationship("Category", back_populates="videos")
+    instructor = db.relationship("User", foreign_keys=[instructor_id])
     course_assignments = db.relationship(
         "CourseVideo", back_populates="video", cascade="all, delete-orphan", order_by="CourseVideo.course_id",
     )
@@ -248,9 +361,16 @@ class Lesson(db.Model):
             "lock_reason": audience_error(user, self.access_type),
             "status": self.status,
             "category": self.category.to_dict(lang) if self.category else None,
+            "instructor": {"id": self.instructor.id, "name": self.instructor.name,
+                           "headline": self.instructor.headline,
+                           "avatar_url": self.instructor.avatar_url} if self.instructor else None,
+            "instructor_id": self.instructor_id,
             "assignment_count": len(self.course_assignments),
             "is_protected": self.is_protected,
-            "has_video": bool(self.vdocipher_video_id),
+            "source": self.source,
+            "local_status": self.local_status,
+            "has_video": bool(self.vdocipher_video_id
+                                or (self.source == "local" and self.local_status == "ready")),
             "course_id": self.course_id,
         }
 
@@ -276,11 +396,135 @@ class CourseVideo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
     video_id = db.Column(db.Integer, db.ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Which unit this video sits in *for this course*. A video reused by three courses can
+    # be unit 1 in one and unit 3 in another, so the grouping belongs here and not on Lesson.
+    module_id = db.Column(db.Integer, db.ForeignKey("course_modules.id", ondelete="SET NULL"),
+                          nullable=True, index=True)
     position = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
 
     course = db.relationship("Course", back_populates="video_assignments")
     video = db.relationship("Lesson", back_populates="course_assignments")
+    module = db.relationship("CourseModule")
+
+
+class CourseReview(db.Model):
+    """One review per learner per course. Moderation is publish-then-hide: a review is
+    visible immediately and an admin can pull it, which also adjusts the course average
+    so the score always matches what a visitor can actually read."""
+
+    __tablename__ = "course_reviews"
+    __table_args__ = (db.UniqueConstraint("course_id", "user_id", name="uq_course_review_user"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    rating = db.Column(db.SmallInteger, nullable=False)
+    body = db.Column(db.Text, nullable=False, default="")
+    status = db.Column(db.String(20), nullable=False, default="published", server_default="published", index=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+    updated_at = db.Column(db.DateTime(timezone=True), default=_now, onupdate=_now)
+
+    course = db.relationship("Course")
+    user = db.relationship("User")
+
+    def to_dict(self, admin=False):
+        d = {
+            "id": self.id,
+            "rating": self.rating,
+            "body": self.body,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "author": {"name": self.user.name, "avatar_url": self.user.avatar_url} if self.user else None,
+        }
+        if admin:
+            d.update({
+                "status": self.status,
+                "user_id": self.user_id,
+                "course": {"id": self.course.id, "title": self.course.title, "slug": self.course.slug}
+                if self.course else None,
+            })
+        return d
+
+
+def refresh_course_rating(course):
+    """Recompute a course's running totals from its published reviews.
+
+    ponytail: recount rather than apply a delta. Writes are rare and reads are on every
+    card, so the cheap thing to keep correct is the read — and a recount cannot drift.
+    """
+    count, total = (db.session.query(
+        db.func.count(CourseReview.id), db.func.coalesce(db.func.sum(CourseReview.rating), 0))
+        .filter(CourseReview.course_id == course.id, CourseReview.status == "published")
+        .one())
+    course.rating_count = int(count or 0)
+    course.rating_sum = int(total or 0)
+
+
+class LearningPath(db.Model):
+    """An ordered shelf of courses — «مسار». A path carries no price and no access tier;
+    each course inside it keeps its own gating."""
+
+    __tablename__ = "learning_paths"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    title_en = db.Column(db.String(200))
+    slug = db.Column(db.String(220), unique=True, nullable=False, index=True)
+    description = db.Column(db.Text, nullable=False, default="")
+    description_en = db.Column(db.Text)
+    level = db.Column(db.String(20), nullable=False, default="beginner", server_default="beginner", index=True)
+    status = db.Column(db.String(20), nullable=False, default="draft", index=True)
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+
+    course_assignments = db.relationship(
+        "PathCourse",
+        back_populates="path",
+        cascade="all, delete-orphan",
+        order_by="PathCourse.position, PathCourse.id",
+        lazy="selectin",
+    )
+
+    def steps(self):
+        """The published courses on this path, in author order. Draft courses are skipped
+        so a work-in-progress cannot inflate the card."""
+        return [a.course for a in self.course_assignments if a.course and a.course.status == "published"]
+
+    def to_dict(self, lang="ar", with_courses=False, user=None):
+        steps = self.steps()
+        d = {
+            "id": self.id,
+            "title": loc(self.title, self.title_en, lang),
+            "title_en": self.title_en,
+            "slug": self.slug,
+            "description": loc(self.description, self.description_en, lang),
+            "description_en": self.description_en,
+            "level": self.level,
+            "status": self.status,
+            "sort_order": self.sort_order,
+            "courses_count": len(steps),
+            "total_minutes": sum(c.video_minutes() for c in steps),
+            "steps": [{"id": c.id, "slug": c.slug, "title": loc(c.title, c.title_en, lang), "position": i}
+                      for i, c in enumerate(steps)],
+            "start_slug": steps[0].slug if steps else None,
+        }
+        if with_courses:
+            d["courses"] = [c.to_dict(lang=lang, user=user) for c in steps]
+        return d
+
+
+class PathCourse(db.Model):
+    __tablename__ = "path_courses"
+    __table_args__ = (db.UniqueConstraint("path_id", "course_id", name="uq_path_course"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    path_id = db.Column(db.Integer, db.ForeignKey("learning_paths.id", ondelete="CASCADE"), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime(timezone=True), default=_now)
+
+    path = db.relationship("LearningPath", back_populates="course_assignments")
+    course = db.relationship("Course", lazy="joined")
 
 
 class Bundle(db.Model):

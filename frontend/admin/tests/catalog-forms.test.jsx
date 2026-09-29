@@ -20,6 +20,8 @@ const fixedCategories = [
   { id: 6, slug: 'camel', name: 'الجمال', name_en: 'Camel' },
 ];
 
+const isInstructorList = (url) => url.includes('/admin/users?') && new URL(url, 'http://x').searchParams.get('role') === 'instructor';
+
 function response(data, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), {
     status,
@@ -57,7 +59,9 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn((input, options = {}) => {
     const url = String(input);
     if (url.endsWith('/admin/stats')) return response({ payments: {}, baytarian: {}, courses: {}, users: {} });
-    if (url.endsWith('/admin/users?role=instructor')) return response({ users: [{ id: 8, name: 'Dr Sara' }] });
+    // Any instructor listing, whatever else it asks for: the course form asks for active
+    // instructors only (dd1a49b), and matching the exact URL is what broke these tests.
+    if (isInstructorList(url)) return response({ users: [{ id: 8, name: 'Dr Sara' }] });
     if (url.endsWith('/categories')) return response({ categories: fixedCategories });
     if (url.includes('/admin/courses')) return response({ courses: [] });
     if (url.includes('/admin/videos')) return response({ items: [], total: 0, page: 1 });
@@ -95,6 +99,9 @@ it('creates a localized course with category and all catalog criteria on its ded
   await user.selectOptions(screen.getByLabelText('Status'), 'published');
   await user.click(screen.getByRole('button', { name: 'Save course' }));
 
+  // A deactivated instructor is not offered for a new course.
+  const listing = fetch.mock.calls.map(([input]) => String(input)).find(isInstructorList);
+  expect(new URL(listing, 'http://x').searchParams.get('active')).toBe('1');
   const call = fetch.mock.calls.find(([input, options]) => String(input).endsWith('/admin/courses') && options.method === 'POST');
   expect(requestBody(call)).toMatchObject({
     title: 'جراحة الخيول', title_en: 'Equine surgery', instructor_id: 8,
@@ -192,7 +199,7 @@ it('preserves a new course typed while instructor and category options load', as
   const defaultFetch = fetch.getMockImplementation();
   fetch.mockImplementation((input, options = {}) => {
     const url = String(input);
-    if (url.endsWith('/admin/users?role=instructor')) return users.promise;
+    if (isInstructorList(url)) return users.promise;
     if (url.endsWith('/categories')) return categories.promise;
     return defaultFetch(input, options);
   });

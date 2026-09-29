@@ -1,0 +1,538 @@
+{
+  "@@locale": "en",
+  "appName": "Baytara",
+  "tabHome": "Home",
+  "tabCourses": "Courses",
+  "tabContent": "Content",
+  "tabDashboard": "Account",
+  "tabSignIn": "Sign in",
+  "commonRetry": "Try again",
+  "commonLoading": "Loading...",
+  "commonCancel": "Cancel",
+  "settingsLanguage": "Language",
+  "settingsArabic": "العربية",
+  "settingsEnglish": "English",
+  "errAuthRequired": "Sign in to continue.",
+  "errInvalidCredentials": "That email or password is not right.",
+  "errAccountDisabled": "This account is suspended. Contact us for help.",
+  "errEmailTaken": "That email is already registered.",
+  "errPhoneRequired": "Add your phone number before watching lessons.",
+  "errDeviceLimit": "You have reached the device limit. Remove one to continue.",
+  "errDeviceMismatch": "Sign in again on this device.",
+  "errNotEntitled": "This content is not part of your access.",
+  "errAccessExpired": "Your access to this course has ended. You can renew it.",
+  "errNeedsBaytarian": "This content is for verified veterinarians. Verify your account as a veterinarian to watch.",
+  "errNonVetsOnly": "This tier is for non-veterinarians.",
+  "errNoVideo": "This lesson is not available yet.",
+  "errLessonNotFound": "We could not find that lesson.",
+  "errAlreadyPlaying": "This lesson is playing on your other device. Stop it there and try again.",
+  "errTooManyRequests": "That was a lot of tries in a short time. Wait a moment and try again.",
+  "errSuspicious": "Playback is paused because we saw unusual activity. Try again in 15 minutes.",
+  "errNetwork": "Could not connect. Check your internet.",
+  "errServer": "Something went wrong on our side. Try again shortly.",
+  "errUnknown": "Something unexpected went wrong.",
+  "errGoogleFailed": "Google sign-in did not work. Try again.",
+  "errGoogleUnavailable": "Google sign-in is unavailable right now.",
+  "authSignIn": "Sign in",
+  "authSignUp": "Create account",
+  "authEmail": "Email",
+  "authPassword": "Password",
+  "authName": "Name",
+  "authPhone": "Phone number",
+  "authContinueWithGoogle": "Continue with Google",
+  "authOr": "or",
+  "authCreateAccount": "Create account",
+  "authPasswordTooShort": "Password must be at least 8 characters.",
+  "authEmailInvalid": "Enter a valid email address.",
+  "authNameRequired": "Enter your name.",
+  "phoneTitle": "Add your phone number",
+  "phoneBody": "It is required before watching lessons; it appears inside the protection watermark on the video.",
+  "phoneInvalid": "Enter a valid mobile number.",
+  "phoneSave": "Save and continue",
+  "devicesTitle": "Your devices",
+  "devicesLimitTitle": "You have reached the device limit",
+  "devicesLimitBody": "Your account allows {max} devices. Sign in on one of the devices below, remove a device under Your devices, then come back here.",
+  "devicesRemove": "Remove",
+  "devicesThisDevice": "This device",
+  "devicesLastSeen": "Last seen: {when}",
+  "devicesRetry": "Try again",
+  "devicesEmpty": "No devices registered.",
+  "sessionEndedDeviceRemoved": "This device was removed from your account. Sign in again.",
+  "signOut": "Sign out",
+  "@devicesLimitBody": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@devicesLastSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "navVideos": "Videos",
+  "navBundles": "Bundles",
+  "navInstructors": "Instructors",
+  "coursesTitle": "Courses",
+  "videosTitle": "Video library",
+  "searchHint": "Search...",
+  "filters": "Filters",
+  "filtersClear": "Clear all",
+  "filtersApply": "Show results",
+  "filterCategory": "Category",
+  "filterLevel": "Level",
+  "filterAccess": "Access",
+  "filterDuration": "Length",
+  "filterRating": "Rating",
+  "filterSort": "Sort",
+  "levelBeginner": "Beginner",
+  "levelIntermediate": "Intermediate",
+  "levelAdvanced": "Advanced",
+  "durationShort": "Short",
+  "durationMedium": "Medium",
+  "durationLong": "Long",
+  "sortNewest": "Newest",
+  "sortOldest": "Oldest",
+  "sortPopular": "Most popular",
+  "sortRating": "Highest rated",
+  "sortPriceAsc": "Price, low to high",
+  "sortPriceDesc": "Price, high to low",
+  "sortLongest": "Longest",
+  "sortShortest": "Shortest",
+  "tierFree": "Free",
+  "tierVetFree": "Free for vets",
+  "tierBaytarian": "Baytarian",
+  "tierGeneral": "General",
+  "lockNeedsAccount": "Sign in to watch",
+  "lockNeedsPhone": "Add your phone number",
+  "lockNeedsBaytarian": "Requires vet verification",
+  "lockNonVets": "For non-veterinarians",
+  "lockNeedsPurchase": "Buy",
+  "unlocked": "Available to you",
+  "resultsCount": "{n} results",
+  "noResults": "Nothing matches those filters.",
+  "minutesShort": "{n}m",
+  "hoursShort": "{n}h",
+  "lessonsCount": "{n} lessons",
+  "enrolledCount": "{n} enrolled",
+  "reviewsCount": "({n})",
+  "notRated": "New",
+  "certificateIncluded": "Certificate",
+  "lifetimeAccess": "Lifetime access",
+  "accessDays": "{n} days access",
+  "priceFree": "Free",
+  "loadMore": "Show more",
+  "courseObjectives": "What you will learn",
+  "courseContent": "Course content",
+  "courseInstructor": "Instructor",
+  "courseAbout": "About this course",
+  "enroll": "Enrol",
+  "continueLearning": "Continue",
+  "@resultsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@lessonsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@enrolledCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@reviewsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@accessDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "captureBlocked": "Stop the screen recording to keep watching",
+  "myLearning": "My learning",
+  "myCourses": "My courses",
+  "certificatesTitle": "Certificates",
+  "statCourses": "courses",
+  "statHours": "hours watched",
+  "statStreak": "day streak",
+  "noEnrolmentsHint": "No paid courses yet. Free courses are watched directly and do not appear here.",
+  "noCertificates": "No certificates yet.",
+  "lessonOfTotal": "Lesson {n} of {total}",
+  "lessonsDone": "{n} of {total} lessons",
+  "renewAccess": "Renew access",
+  "certificateSerial": "Serial",
+  "certificateIssued": "Issued",
+  "certificateHolder": "Awarded to",
+  "certificateVerified": "Verified certificate",
+  "certificateShare": "Share",
+  "@lessonOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@lessonsDone": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "checkoutTitle": "Checkout",
+  "checkoutPay": "Pay now",
+  "checkoutConfirming": "Confirming your payment...\nPlease keep the app open.",
+  "checkoutPaidTitle": "Payment received",
+  "checkoutPaidBody": "The content is now available to you.",
+  "checkoutPendingTitle": "Payment is processing",
+  "checkoutPendingBody": "We do not have a final answer yet. Some payment methods take a few minutes. You will find the status in your payments history, and you do not need to pay again.",
+  "checkoutFailedTitle": "Payment did not go through",
+  "checkoutUnavailableOnThisPlatform": "To activate a subscription or buy a course, please visit our website baytara.app",
+  "renewalExplainer": "Renewal costs {n}% of the course price.",
+  "paymentsTitle": "Payments",
+  "paymentsEmpty": "No payments yet.",
+  "paymentPaid": "Paid",
+  "paymentPending": "Processing",
+  "paymentFailed": "Failed",
+  "paymentRefunded": "Refunded",
+  "@renewalExplainer": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "verifyTitle": "Veterinary verification",
+  "verifyIntro": "Verify your account to reach content for veterinarians.",
+  "verifyRouteCard": "Syndicate card",
+  "verifyRouteCardHint": "The most reliable route. Photograph both sides.",
+  "verifyRouteNationalId": "National ID",
+  "verifyRouteNationalIdHint": "If the printed occupation reads veterinarian.",
+  "verifyRouteOther": "Another document",
+  "verifyRouteOtherHint": "College card, enrolment letter, or a syndicate card or ID from another country. May need human review.",
+  "verifyCaptureFront": "Front",
+  "verifyCaptureBack": "Back",
+  "verifyCaptureDocument": "Document photo",
+  "verifyTakePhoto": "Take photo",
+  "verifyFromGallery": "From gallery",
+  "verifyRetake": "Retake",
+  "verifySubmit": "Submit for verification",
+  "verifyPreview": "Check first",
+  "verifyProcessingTitle": "Reading your document",
+  "verifyProcessingBody": "This takes 10 to 40 seconds. Please keep this screen open.",
+  "verifyElapsed": "{n} seconds elapsed",
+  "verifyUploading": "Uploading {n}%",
+  "verifiedVetTitle": "Verified",
+  "verifiedVetBody": "Your account is verified as a veterinarian. Veterinary content is now available.",
+  "verifiedStudentTitle": "Verified as a student",
+  "verifiedStudentBody": "Your account is verified as a veterinary student, and reaches the same content.",
+  "verifyPendingTitle": "Sent for review",
+  "verifyPendingBody": "We could not confirm this automatically, so a colleague will review it. The answer will arrive in your notifications.\n\nPlease do not submit again; a duplicate request is refused.",
+  "verifyFailedTitle": "Could not verify from this document",
+  "verifyFailedBody": "Check the photo is sharp and the details are fully visible, then try again or use a different document.",
+  "verifyAlreadyVerified": "Your account is already verified.",
+  "verifyRequestPending": "You already have a request under review. Watch your notifications for the answer.",
+  "verifyNationalIdRequired": "Add your national ID number to your profile first.",
+  "verifyServiceUnavailable": "The document reading service is unavailable right now. Try again later.",
+  "@verifyElapsed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@verifyUploading": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsTitle": "Notifications",
+  "notificationsEmpty": "No notifications.",
+  "notificationsMarkAll": "Mark all read",
+  "notificationsUnread": "{n} unread notifications",
+  "settingsTitle": "Settings",
+  "settingsAbout": "About Baytara",
+  "settingsPrivacy": "Privacy policy",
+  "settingsContact": "Contact us",
+  "settingsDevices": "Devices",
+  "settingsPayments": "Payments",
+  "settingsVersion": "Version",
+  "profileTitle": "Profile",
+  "profileEdit": "Edit",
+  "profileSave": "Save",
+  "profileName": "Name",
+  "profileHeadline": "Headline",
+  "profileLocation": "City",
+  "profileBio": "About you",
+  "profileSaved": "Saved.",
+  "signOutConfirm": "Sign out on this device?",
+  "@notificationsUnread": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "blogTitle": "Blog",
+  "instructorsTitle": "Instructors",
+  "bundlesTitle": "Bundles",
+  "levelBreeders": "Breeders",
+  "homeHeroTitle": "Veterinary learning in Arabic",
+  "homeHeroSubtitle": "Courses and videos from practising vets, with material you can use in clinic.",
+  "homeWelcomeBack": "Welcome back, {name}",
+  "homeCatalogueEmpty": "No published content yet. Pull down to refresh.",
+  "seeAll": "See all",
+  "@homeWelcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "greetingHello": "Hello, {name}",
+  "greetingGetVerified": "Verify as a veterinarian",
+  "greetingSignedOut": "Sign in",
+  "greetingSignedOutHint": "To track your progress and keep your courses.",
+  "@greetingHello": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "contentEmpty": "No free content published yet.",
+  "blogEmpty": "No articles published yet.",
+  "bundlesEmpty": "No bundles available right now.",
+  "instructorsEmpty": "No instructors yet.",
+  "coursesEmptyCatalogue": "No courses published yet.",
+  "watchNow": "Watch now",
+  "pricingTitle": "Access and pricing",
+  "pricingIntro": "Four kinds of access. Free content is open to anyone with an account; the rest depends on verification or purchase.",
+  "pricingFreeBody": "Open to anyone with an account. No verification, no payment.",
+  "pricingVetFreeBody": "Costs nothing, but is for verified veterinarians only.",
+  "pricingBaytarianBody": "Paid content, for verified veterinarians only.",
+  "pricingGeneralBody": "Paid content for non-veterinarians. Verified vets do not buy this one; their material is in the Baytarian tier.",
+  "pathsTitle": "Learning paths",
+  "pathsEmpty": "No learning paths published yet.",
+  "statStudents": "students",
+  "homeTestimonialsFallback": "What learners say",
+  "businessTitle": "Baytara for Business",
+  "businessEmpty": "Nothing published for this section yet.",
+  "passwordShow": "Show password",
+  "passwordHide": "Hide password",
+  "contactMessage": "Your message",
+  "contactSend": "Send",
+  "contactSent": "Your message reached us. We will get back to you shortly.",
+  "contactFillAll": "Please fill in every field.",
+  "howItWorksTitle": "How it works",
+  "howItWorksIntro": "Baytara is a learning platform for veterinarians. Some content is open to everyone; some is for verified vets only. These steps show what you need for each.",
+  "howStep1Title": "Create an account",
+  "howStep1Body": "Free content is open to anyone with an account, with no payment.",
+  "howStep2Title": "Add your phone number",
+  "howStep2Body": "Required before any video plays, because the number appears inside the protection watermark on the video.",
+  "howStep3Title": "Verify that you are a veterinarian",
+  "howStep3Body": "Photograph your syndicate card or a document proving the profession. Verification opens the specialist veterinary content.",
+  "howStep4Title": "Start learning",
+  "howStep4Body": "Your progress is tracked per lesson, and courses that offer one award a certificate on completion.",
+  "howProtectionTitle": "About video protection",
+  "howProtectionBody": "Videos are protected, and your name, email and phone number are watermarked into them. A screen recording comes out black, and recording attempts are logged.",
+  "privacyUpdated": "Last updated: {date}",
+  "@privacyUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentMethodTitle": "Payment method",
+  "methodGatewayTitle": "Card or wallet via the payment gateway",
+  "methodGatewaySubtitle": "Opens the official secure payment page. This is the real one.",
+  "methodCardTitle": "Enter card details",
+  "methodCardSubtitle": "Demonstration UI only — nothing is sent or stored.",
+  "methodTestTitle": "Free test payment",
+  "methodTestSubtitle": "For exercising the flow. Charges nothing and unlocks nothing.",
+  "methodTestConfirm": "Run test flow",
+  "cardDemoNotice": "This screen is for demonstration. Card numbers are not sent anywhere and are not stored. Real payments happen on the gateway page.",
+  "cardNumber": "Card number",
+  "cardExpiry": "Expiry",
+  "cardCvc": "CVC",
+  "cardHolder": "Cardholder name",
+  "cardNumberInvalid": "That card number is not valid.",
+  "cardExpiryInvalid": "That expiry date is not valid.",
+  "cardCvcInvalid": "That CVC is not valid.",
+  "cardHolderRequired": "Enter the cardholder name.",
+  "checkoutTestTitle": "Test flow finished",
+  "checkoutTestBody": "You reached the end of the flow with no payment taken. Nothing was unlocked, because that needs a real payment or an activation from the admin panel.",
+  "checkoutCardPending": "Card ending {last4}",
+  "@checkoutCardPending": {
+    "placeholders": {
+      "last4": {
+        "type": "String"
+      }
+    }
+  },
+  "demoTitle": "Request a demo",
+  "demoTitleSpecialist": "Talk to a specialist",
+  "demoSubtitle": "Leave your details and we will arrange a demo that suits your team.",
+  "demoOrganisation": "Organisation",
+  "demoTeamSize": "Team size",
+  "demoNotes": "Anything else (optional)",
+  "demoSubmit": "Send request",
+  "demoSubject": "Demo request — Baytara for Business",
+  "demoSubjectSpecialist": "Specialist request — Baytara for Business",
+  "demoBodyIntro": "Demo request from the Baytara app.",
+  "demoBodyIntroSpecialist": "Specialist request from the Baytara app.",
+  "demoSentTitle": "Request received",
+  "demoSentBody": "We will get back to you on the email or phone you left, as soon as we can.",
+  "onboardSkip": "Skip",
+  "onboardNext": "Next",
+  "onboardStart": "Get started",
+  "onboard1Title": "Veterinary learning in Arabic",
+  "onboard1Body": "Courses and videos from practising vets, with material you can use in clinic. Written in Arabic, not translated into it.",
+  "onboard2Title": "Verification opens the specialist content",
+  "onboard2Body": "Free content is open to any account. The specialist veterinary material needs you verified as a vet, not just paid up.",
+  "onboard3Title": "Protected content, carrying your details",
+  "onboard3Body": "Your name and phone number are watermarked into every video, which is why we ask for a number before playback. Screen recordings come out black.",
+  "navLibrary": "Library",
+  "libraryTitle": "Baytara Library",
+  "librarySubtitle": "Articles and book summaries, open to everyone.",
+  "libraryArticles": "Articles",
+  "libraryBooks": "Books",
+  "libraryPages": "{n} pages",
+  "@libraryPages": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryEmpty": "Nothing here yet.",
+  "librarySignInToRead": "Create a free account to read the full summary.",
+  "librarySignIn": "Sign in",
+  "libraryNoFile": "This summary is not available yet.",
+  "readerPageOf": "{page} of {total}",
+  "@readerPageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "readerCaptureBlocked": "Hidden while a screen recording is running. Stop the recording to carry on reading.",
+  "readerFailed": "Unable to open the summary.",
+  "devicesSwapsLeft": "Device changes: {used} of {allowed} used in the current period.",
+  "@devicesSwapsLeft": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "allowed": {
+        "type": "int"
+      }
+    }
+  },
+  "devicesSwapResets": "Resets on {when}.",
+  "@devicesSwapResets": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesSwapSpentTitle": "Your device change is used up",
+  "devicesSwapSpentBody": "You have already changed a device in this period. Removing another one needs an admin to agree — tell us why and we will review it.",
+  "devicesResetReason": "Why you need this (optional)",
+  "devicesResetSubmit": "Send the request to an admin",
+  "devicesResetPending": "Your request is being reviewed. Do not send another one — the answer arrives in your notifications.",
+  "devicesResetSentAt": "Sent on {when}.",
+  "@devicesResetSentAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "errDeviceSwapLimit": "You have used your device change for this period.",
+  "errSwapStillAvailable": "You still have a change available — remove the device directly.",
+  "shareTooltip": "Share",
+  "promoPlaceholder": "Discount code",
+  "promoApply": "Apply",
+  "promoRemove": "Remove",
+  "errPromoNotFound": "That discount code is not valid.",
+  "errPromoInactive": "That discount code is not active.",
+  "errPromoExpired": "That discount code has expired.",
+  "errPromoNotStarted": "That discount code is not available yet.",
+  "errPromoExhausted": "This code has reached its usage limit.",
+  "errPromoAlreadyUsed": "You have already used this code.",
+  "errPromoNoEffect": "This code does not change the price.",
+  "examTitle": "End-of-course exam",
+  "examPassMark": "Pass mark {percent}%. Multiple choice, one correct answer per question.",
+  "@examPassMark": {"placeholders": {"percent": {"type": "int"}}},
+  "examNotEligible": "Finish every lesson first. You are at {percent}% so far.",
+  "@examNotEligible": {"placeholders": {"percent": {"type": "int"}}},
+  "examEmpty": "This exam has no questions yet.",
+  "examSubmit": "Submit answers",
+  "examPartialWarning": "{count} questions are unanswered. Press submit again to continue; an unanswered question is marked wrong.",
+  "@examPartialWarning": {"placeholders": {"count": {"type": "int"}}},
+  "examScoreLine": "{correct} correct out of {total}.",
+  "@examScoreLine": {"placeholders": {"correct": {"type": "int"}, "total": {"type": "int"}}},
+  "examPassed": "You passed. Your certificate is ready.",
+  "examFailed": "You did not reach the pass mark ({percent}%). Attempts are unlimited, try again.",
+  "@examFailed": {"placeholders": {"percent": {"type": "int"}}},
+  "examRetry": "Try again",
+  "examViewCertificate": "View certificate",
+  "examReview": "Review your answers",
+  "examCorrectAnswer": "Correct answer: {answer}",
+  "@examCorrectAnswer": {"placeholders": {"answer": {"type": "String"}}},
+  "examAction": "Take the exam",
+  "settingsTerms": "Terms and conditions",
+  "settingsRefund": "Refund policy",
+  "settingsDelivery": "Delivery and access",
+  "verifyToWatch": "Verify your account as a veterinarian to watch",
+  "verifyNow": "Verify my account now",
+  "homePlatformVideos": "Getting started",
+  "homePlatformVideosSubtitle": "Short videos on how to use Baytara."
+}

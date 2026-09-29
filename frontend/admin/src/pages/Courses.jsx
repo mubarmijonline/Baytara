@@ -1,9 +1,9 @@
-import { ArrowLeft, Eye, EyeOff, ListVideo, Pencil, Plus, Save, Search, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Eye, EyeOff, Link2, ListVideo, Pencil, Plus, Save, Search, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import {
-  ACCESS_TYPES, CATALOG_STATUSES, catalogErrorCodes, localizedCatalogValue, orderedCategories,
+  ACCESS_TYPES, CATALOG_STATUSES, LEVELS, catalogErrorCodes, localizedCatalogValue, orderedCategories,
 } from '../catalog.js';
 import { confirmDialog } from '../dialog.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
@@ -15,31 +15,45 @@ const COPY = {
     courses: 'الدورات', newCourse: 'دورة جديدة', editCourse: 'تعديل الدورة', search: 'بحث في الدورات',
     allStatuses: 'كل الحالات', title: 'العنوان', instructor: 'المدرّب', category: 'الفئة', access: 'الوصول',
     price: 'السعر', enrolled: 'المسجّلون', actions: 'الإجراءات', noCourses: 'لا توجد دورات.', loading: 'جارٍ التحميل…',
+    payLink: 'لينك الدفع', payLinkCopied: 'اتنسخ لينك الدفع — ابعته للطالب على واتساب.',
+    payLinkFailed: 'تعذّر النسخ. اللينك:',
     content: 'المحتوى', edit: 'تعديل', publish: 'نشر', unpublish: 'إخفاء', delete: 'حذف',
+    cover: 'صورة الدورة', coverHint: 'تظهر في قوائم الدورات وأعلى صفحة الدورة. مقاس 16:9 يعطي أفضل نتيجة.',
+    coverRemove: 'إزالة الصورة', coverError: 'تعذّر رفع الصورة.',
     arabicTitle: 'العنوان العربي', englishTitle: 'العنوان الإنجليزي', arabicDescription: 'الوصف العربي',
     englishDescription: 'الوصف الإنجليزي', chooseInstructor: 'اختر المدرّب', chooseCategory: 'اختر الفئة',
     status: 'الحالة', accessType: 'نوع الوصول', currency: 'العملة', accessDays: 'مدة الوصول بالأيام',
     lifetime: 'مدى الحياة', save: 'حفظ الدورة', cancel: 'إلغاء', titleRequired: 'العنوان العربي مطلوب.',
-    instructorRequired: 'اختر مدرّباً.', categoryPublished: 'الفئة مطلوبة قبل نشر الدورة.',
+    inactive: 'غير نشط', instructorRequired: 'اختر مدرّباً.', categoryPublished: 'الفئة مطلوبة قبل نشر الدورة.',
     deleteConfirm: 'حذف هذه الدورة؟', loadError: 'تعذّر تحميل بيانات الدورة.',
+    level: 'المستوى', certificate: 'شهادة إتمام معتمدة', objectives: 'ماذا ستتعلّم',
+    objectivesEn: 'ماذا ستتعلّم (إنجليزي)', objectiveHint: 'سطر لكل نقطة؛ الأسطر الفارغة تُهمل.',
   },
   en: {
     courses: 'Courses', newCourse: 'New course', editCourse: 'Edit course', search: 'Search courses',
     allStatuses: 'All statuses', title: 'Title', instructor: 'Instructor', category: 'Category', access: 'Access',
     price: 'Price', enrolled: 'Enrolled', actions: 'Actions', noCourses: 'No courses found.', loading: 'Loading…',
+    payLink: 'Payment link', payLinkCopied: 'Payment link copied. Send it to the student on WhatsApp.',
+    payLinkFailed: 'Could not copy. The link is:',
     content: 'Content', edit: 'Edit', publish: 'Publish', unpublish: 'Unpublish', delete: 'Delete',
+    cover: 'Course image', coverHint: 'Shown in course listings and at the top of the course page. 16:9 works best.',
+    coverRemove: 'Remove image', coverError: 'Could not upload the image.',
     arabicTitle: 'Arabic title', englishTitle: 'English title', arabicDescription: 'Arabic description',
     englishDescription: 'English description', chooseInstructor: 'Choose instructor', chooseCategory: 'Choose category',
     status: 'Status', accessType: 'Access type', currency: 'Currency', accessDays: 'Access duration in days',
     lifetime: 'Lifetime', save: 'Save course', cancel: 'Cancel', titleRequired: 'Arabic title is required.',
-    instructorRequired: 'Choose an instructor.', categoryPublished: 'Choose a category before publishing.',
+    inactive: 'inactive', instructorRequired: 'Choose an instructor.', categoryPublished: 'Choose a category before publishing.',
     deleteConfirm: 'Delete this course?', loadError: 'Unable to load course details.',
+    level: 'Level', certificate: 'Accredited certificate', objectives: 'What you will learn',
+    objectivesEn: 'What you will learn (English)', objectiveHint: 'One bullet per line; blank lines are ignored.',
   },
 };
 
 const emptyCourse = {
   title: '', title_en: '', description: '', description_en: '', instructor_id: '', category_id: '',
   access_type: 'general', price: '0', currency: 'EGP', access_days: '', status: 'draft',
+  level: 'beginner', has_certificate: false, objectives: '', objectives_en: '',
+  image: '',
 };
 
 function courseForm(course) {
@@ -49,8 +63,13 @@ function courseForm(course) {
     title: course.title || '', title_en: course.title_en || '',
     description: course.description || '', description_en: course.description_en || '',
     instructor_id: course.instructor?.id || '', category_id: course.category?.id || '',
+    image: course.image || '',
     access_type: course.access_type || 'general', price: String(course.price ?? 0),
     currency: course.currency || 'EGP', access_days: course.access_days ?? '', status: course.status || 'draft',
+    level: course.level || 'beginner', has_certificate: !!course.has_certificate,
+    // One bullet per line is the cheapest editor that round-trips a list.
+    objectives: (course.objectives || []).join('\n'),
+    objectives_en: (course.objectives_en || []).join('\n'),
   };
 }
 
@@ -61,10 +80,20 @@ function payload(form) {
     category_id: form.category_id ? Number(form.category_id) : null,
     price: Number(form.price || 0),
     access_days: form.access_days === '' ? null : Number(form.access_days),
+    objectives: form.objectives.split('\n'),
+    objectives_en: form.objectives_en.split('\n'),
   };
 }
 
 function errorMessage(error, language) {
+  // A sold course cannot be deleted without destroying enrolment and payment history,
+  // so say that plainly and point at the alternative.
+  if (error?.data?.error === 'course_in_use') {
+    const { enrollments = 0, payments = 0 } = error.data;
+    return language === 'en'
+      ? `This course cannot be deleted: ${enrollments} enrolment(s) and ${payments} payment(s) reference it. Unpublish it instead to hide it from the site.`
+      : `لا يمكن حذف هذه الدورة: مرتبطة بـ ${enrollments} اشتراك و ${payments} معاملة. أخفِها بدلاً من حذفها.`;
+  }
   const labels = {
     title_required: language === 'en' ? 'Arabic title is required.' : 'العنوان العربي مطلوب.',
     valid_instructor_required: language === 'en' ? 'Choose a valid instructor.' : 'اختر مدرّباً صحيحاً.',
@@ -87,16 +116,39 @@ export function CourseEditor({ routeParams = {} }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
+  const coverRef = useRef(null);
+
+  // The cover is what the course looks like everywhere it is listed: the home row, the
+  // catalogue card, the top of its own page. Same upload endpoint as instructor photos.
+  async function pickCover(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setError('');
+    try {
+      const { url } = await api.uploadImage(file);
+      setForm((current) => ({ ...current, image: url }));
+    } catch (failure) {
+      setError(errorMessage(failure, language) || c.coverError);
+    } finally {
+      if (coverRef.current) coverRef.current.value = '';
+    }
+  }
 
   useEffect(() => {
     let active = true;
     Promise.all([
-      api.users({ role: 'instructor' }),
+      api.users({ role: 'instructor', per_page: 100, active: 1 }),
       api.categories(),
       editing ? api.course(courseId) : Promise.resolve(null),
     ]).then(([usersResult, categoryResult, courseResult]) => {
       if (!active) return;
       const nextInstructors = usersResult.users || [];
+      // Only active instructors may be picked, but a course already owned by a
+      // deactivated one must not render with an empty select.
+      const owner = courseResult?.course?.instructor;
+      if (owner && !nextInstructors.some((person) => person.id === owner.id)) {
+        nextInstructors.push({ ...owner, is_active: false });
+      }
       setInstructors(nextInstructors);
       setCategories(orderedCategories(categoryResult.categories || []));
       if (courseResult) setForm(courseForm(courseResult.course));
@@ -136,17 +188,39 @@ export function CourseEditor({ routeParams = {} }) {
           <Field label={c.englishTitle}><input dir="ltr" value={form.title_en} onChange={set('title_en')} /></Field>
           <Field label={c.arabicDescription}><textarea value={form.description} onChange={set('description')} /></Field>
           <Field label={c.englishDescription}><textarea dir="ltr" value={form.description_en} onChange={set('description_en')} /></Field>
+          <Field label={c.cover} hint={c.coverHint}>
+            <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={pickCover} />
+          </Field>
+          {form.image && (
+            <div className="course-cover-preview">
+              <img src={form.image} alt="" />
+              <button type="button" className="btn btn-text btn-sm" onClick={() => setForm((current) => ({ ...current, image: '' }))}>
+                {c.coverRemove}
+              </button>
+            </div>
+          )}
         </div>
       </section>
       <section className="catalog-panel">
         <div className="catalog-form-grid">
-          <Field label={c.instructor}><select value={form.instructor_id} onChange={set('instructor_id')}><option value="">{c.chooseInstructor}</option>{instructors.map((instructor) => <option key={instructor.id} value={instructor.id}>{instructor.name}</option>)}</select></Field>
+          <Field label={c.instructor}><select value={form.instructor_id} onChange={set('instructor_id')}><option value="">{c.chooseInstructor}</option>{instructors.map((instructor) => <option key={instructor.id} value={instructor.id}>{instructor.name}{instructor.is_active === false ? ` (${c.inactive})` : ''}</option>)}</select></Field>
           <Field label={c.category}><select value={form.category_id} onChange={set('category_id')}><option value="">{c.chooseCategory}</option>{categories.map((category) => <option key={category.id} value={category.id}>{localizedCatalogValue(category, 'name', language)}</option>)}</select></Field>
           <Field label={c.accessType}><select value={form.access_type} onChange={set('access_type')}>{ACCESS_TYPES.map((access) => <option key={access} value={access}>{t(`catalog.access.${access}`)}</option>)}</select></Field>
           <Field label={c.status}><select value={form.status} onChange={set('status')}>{CATALOG_STATUSES.map((status) => <option key={status} value={status}>{t(`catalog.status.${status}`)}</option>)}</select></Field>
           <Field label={c.price}><input type="number" min="0" value={form.price} disabled={!['baytarian', 'general'].includes(form.access_type)} onChange={set('price')} /></Field>
           <Field label={c.currency}><input dir="ltr" maxLength="3" value={form.currency} onChange={set('currency')} /></Field>
           <Field label={c.accessDays}><input type="number" min="1" placeholder={c.lifetime} value={form.access_days} onChange={set('access_days')} /></Field>
+          <Field label={c.level}><select value={form.level} onChange={set('level')}>{LEVELS.map((level) => <option key={level} value={level}>{t(`level.${level}`)}</option>)}</select></Field>
+          <Field label={c.certificate}>
+            <input type="checkbox" checked={form.has_certificate}
+              onChange={(event) => setForm((current) => ({ ...current, has_certificate: event.target.checked }))} />
+          </Field>
+        </div>
+      </section>
+      <section className="catalog-panel">
+        <div className="catalog-form-grid two-columns">
+          <Field label={c.objectives} hint={c.objectiveHint}><textarea rows="6" value={form.objectives} onChange={set('objectives')} /></Field>
+          <Field label={c.objectivesEn} hint={c.objectiveHint}><textarea rows="6" dir="ltr" value={form.objectives_en} onChange={set('objectives_en')} /></Field>
         </div>
       </section>
       <ErrText>{error}</ErrText>
@@ -158,11 +232,12 @@ export function CourseEditor({ routeParams = {} }) {
   </section>;
 }
 
-function CourseList() {
+function CourseList({ initialStatus = '' }) {
   const { language, t } = useAdminLanguage();
   const c = COPY[language];
   const [rows, setRows] = useState(null);
-  const [status, setStatus] = useState('');
+  // Seeded from the URL so a dashboard tile lands on the rows it counted.
+  const [status, setStatus] = useState(() => initialStatus || '');
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const visibleRows = useMemo(() => rows || [], [rows]);
@@ -178,6 +253,18 @@ function CourseList() {
     try { await api.courseUpdate(course.id, { status: course.status === 'published' ? 'unpublished' : 'published' }); await load(); }
     catch (error) { toast.error(errorMessage(error, language)); }
   }
+  async function copyPayLink(course) {
+    const url = `${window.location.origin}/buy/${course.slug}?go=1`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(c.payLinkCopied);
+    } catch {
+      // No clipboard permission, or an insecure origin. Showing the link is still useful:
+      // it can be selected out of the toast by hand.
+      toast.error(`${c.payLinkFailed} ${url}`);
+    }
+  }
+
   async function remove(course) {
     if (!await confirmDialog(c.deleteConfirm)) return;
     try { await api.courseDelete(course.id); await load(); }
@@ -200,6 +287,18 @@ function CourseList() {
         <td>{course.is_paid ? `${course.price} ${course.currency}` : '—'}</td>
         <td>{course.instructor?.name || '—'}</td><td>{course.enrolled_count ?? 0}</td>
         <td className="actions">
+          {/* The direct payment link, for WhatsApp. `?go=1` sends the student straight to
+              the gateway instead of to a page with another button on it.
+
+              Only for a paid, published course: a free one has nothing to pay for, and a
+              draft's link would 404 in front of a student. It is built from the current
+              origin rather than a written-out domain so a staging admin hands out staging
+              links. */}
+          {course.is_paid && course.status === 'published' && (
+            <button className="btn btn-tonal btn-sm" type="button" onClick={() => copyPayLink(course)}>
+              <Link2 size={14} /> {c.payLink}
+            </button>
+          )}
           <Link className="btn btn-tonal btn-sm" to={`/courses/${course.id}/content`}><ListVideo size={14} /> {c.content}</Link>
           <Link className="btn btn-tonal btn-sm" to={`/courses/${course.id}/edit`}><Pencil size={14} /> {c.edit}</Link>
           <button className="btn btn-tonal btn-sm" type="button" onClick={() => togglePublish(course)}>{course.status === 'published' ? <EyeOff size={14} /> : <Eye size={14} />} {course.status === 'published' ? c.unpublish : c.publish}</button>
@@ -211,10 +310,10 @@ function CourseList() {
   </section>;
 }
 
-export default function Courses({ routeParams = {} }) {
+export default function Courses({ routeParams = {}, searchParams }) {
   const location = useLocation();
   if (location.pathname.endsWith('/new') || location.pathname.endsWith('/edit')) {
     return <CourseEditor routeParams={routeParams} />;
   }
-  return <CourseList />;
+  return <CourseList initialStatus={searchParams?.get('status') || ''} />;
 }

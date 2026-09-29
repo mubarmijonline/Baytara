@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { auth } from '../lib/api.js';
 import { startAudioWatermark, watermarkState } from '../lib/audioWatermark.js';
 import { diagEnabled, diagLog } from '../lib/diag.js';
-import { startActivityGuard } from '../lib/activityGuard.js';
 
 const PLAYER_API_URL = 'https://player.vdocipher.com/v2/api.js';
 let playerApiPromise;
@@ -192,25 +191,6 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
       }
     }).catch((error) => active && onSecurityError?.(error));
 
-    // Viewer activity guard: pause and record the behaviour that surrounds a capture
-    // attempt (PrintScreen, save shortcuts, leaving the page, DevTools). It cannot see a
-    // recorder that is already running — measured, see docs/VIDEO_PROTECTION.md.
-    const stopGuard = startActivityGuard({
-      onSuspicious: (reason) => {
-        diagLog('SUSPICIOUS', reason);
-        send({
-          event_id: eventId(),
-          type: 'suspicious',
-          position_seconds: 0,
-          duration_seconds: 1,
-          watched_seconds: 0,
-          covered_seconds: 0,
-          metadata: { reason },
-        });
-      },
-      onPause: () => { try { if (player) player.video.pause(); } catch { /* player gone */ } },
-    });
-
     // The native shell (Capacitor) calls this when iOS reports the screen is being
     // recorded or mirrored. iOS cannot strip audio from a recording, so the only real
     // defence is to stop playing: pause and mute until the recording ends.
@@ -226,7 +206,6 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
 
     return () => {
       active = false;
-      stopGuard();
       if (stopWatermark) stopWatermark();
       delete window.__baytaraCaptureChanged;
       if (player) {
@@ -254,7 +233,6 @@ export default function SecureVdoPlayer({ playback, title, onEnded, onSecurityEr
       allow="encrypted-media; fullscreen"
       allowFullScreen
       referrerPolicy="strict-origin-when-cross-origin"
-      style={{ width: '100%', height: '100%', border: 0 }}
     />
     </div>
   );

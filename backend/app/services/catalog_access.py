@@ -40,6 +40,8 @@ def audience_error(user, access_type):
     if getattr(user, "role", None) == "admin":
         return None
 
+    # Students and licensed doctors are both verified veterinarians and reach the same
+    # content; `is_vet_student` records which kind, and gates nothing.
     is_vet = bool(getattr(user, "is_baytarian", False))
     if access_type in {"vet_free", "baytarian"} and not is_vet:
         return "needs_baytarian"
@@ -48,7 +50,7 @@ def audience_error(user, access_type):
     return None
 
 
-def validate_catalog_item(data, current=None):
+def validate_catalog_item(data, current=None, require_category=True):
     """Validate and normalize the shared commerce fields for a course or video."""
     current = current or {}
     if not isinstance(current, dict):
@@ -86,12 +88,19 @@ def validate_catalog_item(data, current=None):
     status = normalized.get("status", "draft")
     if status not in CATALOG_STATUSES:
         errors.append("invalid_status")
-    if status == PUBLISHED_STATUS and not normalized.get("category_id"):
+    # A course always belongs to a section. A video need not: the platform's own promo and
+    # how-to clips belong to no specialty, and forcing one put them in front of the wrong
+    # audience (the client's were filed under ruminant surgery).
+    if require_category and status == PUBLISHED_STATUS and not normalized.get("category_id"):
         errors.append("category_required")
 
     if errors:
         raise CatalogValidationError(errors)
 
+    # "No section" arrives as 0 from a <select> whose empty option went through Number(),
+    # and as "" from a form post. Both mean the same thing as absent, and treating them
+    # as a section id is what made every uncategorised upload fail with invalid_category.
+    normalized["category_id"] = normalized.get("category_id") or None
     normalized["access_type"] = access_type
     normalized["currency"] = currency
     normalized["price"] = price
@@ -190,6 +199,18 @@ def video_access(user, video):
     if entitlement and entitlement.has_access():
         return True, None
     expired_entitlement = bool(entitlement and entitlement.is_expired())
+
+    # A course with no fee is watched, not joined: there is no enrollment to look for,
+    # so belonging to one is enough on its own. The audience rule still applies —
+    # vet_free costs nothing but is still instructors only.
+    if course_ids:
+        from ..models.catalog import Course as _Course
+
+        free_courses = _Course.query.filter(
+            _Course.id.in_(course_ids), _Course.access_type.in_(FREE_ACCESS),
+        ).all()
+        if any(audience_error(user, c.access_type) is None for c in free_courses):
+            return True, None
 
     expired_course_access = False
     if course_ids:

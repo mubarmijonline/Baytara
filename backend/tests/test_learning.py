@@ -165,7 +165,7 @@ def demo():
     with app.app_context():
         db.create_all()
         free_course, free_lessons = _seed(f"free{tag}", price=0)
-        paid_course, _ = _seed(f"paid{tag}", price=199)
+        paid_course, paid_lessons = _seed(f"paid{tag}", price=199)
 
     c = app.test_client()
     h = _auth(c, tag)
@@ -176,20 +176,33 @@ def demo():
     # paid course self-enroll rejected (payment comes in Phase 4)
     assert c.post("/api/v1/enrollments", json={"course_id": paid_course}, headers=h).status_code == 402
 
-    # free enroll ok, idempotent
-    assert c.post("/api/v1/enrollments", json={"course_id": free_course}, headers=h).status_code == 201
-    assert c.post("/api/v1/enrollments", json={"course_id": free_course}, headers=h).status_code == 200
-
-    # progress on non-enrolled lesson denied
+    # A course with no fee is watched, not joined: nothing is recorded and the answer
+    # is the same however many times it is asked.
+    for _ in range(2):
+        free = c.post("/api/v1/enrollments", json={"course_id": free_course}, headers=h)
+        assert free.status_code == 200 and free.get_json() == {"enrollment": None, "free": True}
     with app.app_context():
-        other, other_lessons = _seed(f"other{tag}", price=0)
+        from app.models import Enrollment
+        assert Enrollment.query.filter_by(course_id=free_course).count() == 0
+
+    # Progress hangs off an enrollment, so it belongs to a paid seat. Granted here the
+    # way the payment flow grants it.
+    with app.app_context():
+        from app.models import Enrollment, User
+        uid = User.query.filter_by(email=f"s_{tag}@t.test").one().id
+        db.session.add(Enrollment(user_id=uid, course_id=paid_course, source="purchase", status="active"))
+        db.session.commit()
+
+    # progress on a course the learner has no seat in is denied
+    with app.app_context():
+        other, other_lessons = _seed(f"other{tag}", price=199)
     assert c.post("/api/v1/progress", json={"lesson_id": other_lessons[0]}, headers=h).status_code == 403
 
     # complete 1 of 2 lessons -> 50%
-    r = c.post("/api/v1/progress", json={"lesson_id": free_lessons[0], "completed": True}, headers=h)
+    r = c.post("/api/v1/progress", json={"lesson_id": paid_lessons[0], "completed": True}, headers=h)
     assert r.status_code == 200 and r.get_json()["progress"]["percent"] == 50, r.get_json()
     # complete both -> 100%
-    r = c.post("/api/v1/progress", json={"lesson_id": free_lessons[1], "completed": True}, headers=h)
+    r = c.post("/api/v1/progress", json={"lesson_id": paid_lessons[1], "completed": True}, headers=h)
     assert r.get_json()["progress"]["percent"] == 100
 
     # my enrollments reflects the 100%
@@ -199,7 +212,7 @@ def demo():
     # persisted per-lesson progress is readable back (survives reload)
     with app.app_context():
         from app.models import Course
-        slug = db.session.get(Course, free_course).slug
+        slug = db.session.get(Course, paid_course).slug
     prog = c.get(f"/api/v1/progress?course={slug}", headers=h)
     assert prog.status_code == 200, prog.get_json()
     body = prog.get_json()
@@ -211,3 +224,61 @@ def demo():
 
 if __name__ == "__main__":
     demo()
+
+
+def _issued_certificate(app):
+    """One real certificate row, without walking a whole course to completion."""
+    from app.models import Certificate
+    with app.app_context():
+        user = User.query.filter_by(role="student").first() or User.query.first()
+        course = Course.query.first()
+        certificate = Certificate(serial=Certificate.new_serial(),
+                                  user_id=user.id, course_id=course.id)
+        db.session.add(certificate)
+        db.session.commit()
+        return certificate.serial
+
+
+def test_certificate_qr_encodes_the_public_verification_link(learning_app):
+    """The QR is what makes a printed certificate checkable, so it has to resolve to the
+    same page the serial does -- and be a real PNG, because the sheet prints it."""
+    app = learning_app[0] if isinstance(learning_app, tuple) else learning_app
+    serial = _issued_certificate(app)
+    client = app.test_client()
+
+    response = client.get(f"/api/v1/certificates/{serial}/qr.png")
+    assert response.status_code == 200, response.get_data()[:200]
+    assert response.mimetype == "image/png"
+    assert response.get_data()[:8] == b"\x89PNG\r\n\x1a\n"
+    # a serial's link never changes, so it is worth caching
+    assert "max-age" in response.headers.get("Cache-Control", "")
+
+    # and it really does encode the verification URL, not just any image
+    try:
+        from pyzbar.pyzbar import decode        # optional; skipped when absent
+        from PIL import Image
+        import io as _io
+        decoded = decode(Image.open(_io.BytesIO(response.get_data())))
+        assert decoded, "QR did not decode"
+        assert decoded[0].data.decode().endswith(f"/certificates/{serial}")
+    except ImportError:
+        pass
+
+
+def test_certificate_qr_refuses_a_serial_that_does_not_exist(learning_app):
+    """Otherwise the endpoint would mint a QR code for any string handed to it, which
+    would scan happily and lead to a 404 -- a certificate that looks verifiable."""
+    app = learning_app[0] if isinstance(learning_app, tuple) else learning_app
+    response = app.test_client().get("/api/v1/certificates/BT-NOTREAL99/qr.png")
+    assert response.status_code == 404
+    assert response.get_json()["error"] == "not_found"
+
+
+def test_certificate_qr_needs_no_account(learning_app):
+    """Public, like the verification page it points at: whoever holds the serial can
+    already read the page, and the image carries nothing further."""
+    app = learning_app[0] if isinstance(learning_app, tuple) else learning_app
+    serial = _issued_certificate(app)
+    client = app.test_client()
+    client.environ_base.pop("HTTP_AUTHORIZATION", None)
+    assert client.get(f"/api/v1/certificates/{serial}/qr.png").status_code == 200

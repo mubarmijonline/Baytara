@@ -2,7 +2,8 @@ import { Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { ACCESS_TYPES, CATEGORY_KEYS, VIDEO_VIEWS } from '../catalog.js';
+import { ACCESS_TYPES, VIDEO_VIEWS, orderedCategories } from '../catalog.js';
+import PinnedVideos from '../components/PinnedVideos.jsx';
 import VideoFolderTree from '../components/VideoFolderTree.jsx';
 import VideoViews, { VideoViewSwitcher } from '../components/VideoViews.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
@@ -50,8 +51,11 @@ export default function Videos({ searchParams, setSearchParams }) {
   const requestController = useRef(null);
   const loadingRef = useRef(false);
   const categorySlug = searchParams.get('category') || '';
-  const fixedCategory = CATEGORY_KEYS.includes(categorySlug);
-  const categoryId = fixedCategory ? categories.find((category) => category.slug === categorySlug)?.id : undefined;
+  // Any section that exists is filterable, not only the six the platform ships with.
+  // Restricting this to the built-in keys is what made a section the client had created
+  // himself vanish from the filter the moment it was picked.
+  const categoryId = categories.find((category) => category.slug === categorySlug)?.id;
+  const knownCategory = categoryId !== undefined;
   const query = searchParams.get('q') || '';
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const searchPending = query !== debouncedQuery;
@@ -119,8 +123,8 @@ export default function Videos({ searchParams, setSearchParams }) {
     if (rawPage && String(page) !== rawPage) updateQuery({ page: page === 1 ? '' : String(page) }, false);
   }, [page, rawPage]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (categoriesLoaded && categorySlug && (!fixedCategory || !categoryId)) updateQuery({ category: '' });
-  }, [categoriesLoaded, categorySlug, fixedCategory, categoryId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (categoriesLoaded && categorySlug && !knownCategory) updateQuery({ category: '' });
+  }, [categoriesLoaded, categorySlug, knownCategory]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (query === debouncedQuery) return undefined;
     abortRequest();
@@ -133,25 +137,42 @@ export default function Videos({ searchParams, setSearchParams }) {
     return () => clearTimeout(timeout);
   }, [query, debouncedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (searchPending || !categoriesLoaded || (categorySlug && (!fixedCategory || !categoryId))) return undefined;
+    if (searchPending || !categoriesLoaded || (categorySlug && !knownCategory)) return undefined;
     const controller = load();
     return () => abortRequest(controller);
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [folder, page, providerStatus, categoryId, access, publication, courseId, assignment, query, debouncedQuery, categoriesLoaded]);
 
+  // A video packaging on our server finishes minutes later, in the background. Without
+  // this the row said "Converting" until somebody thought to press refresh — including
+  // for videos that were already done.
+  const converting = (library?.items || []).some(
+    (item) => item.catalog?.source === 'local'
+      && item.catalog?.local_status
+      && item.catalog.local_status !== 'ready'
+      && item.catalog.local_status !== 'failed',
+  );
+  useEffect(() => {
+    if (!converting) return undefined;
+    const timer = setInterval(() => load(true), 15000);
+    return () => clearInterval(timer);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [converting]);
+
   const currentPage = library?.page || page;
   const pageCount = library?.pages || 1;
   return <section className="video-library">
     <header className="video-library-header"><div><h2>{t('pages.videoLibrary')}</h2><p>{t('video.librarySubtitle')}</p></div><div className="video-library-actions"><button className="btn btn-tonal btn-sm" type="button" disabled={loading || searchPending} onClick={() => load(true)}>{t('common.refresh')}</button><button className="btn btn-filled btn-sm" type="button" onClick={() => navigate('/videos/new')}><Upload size={16} /> {t('video.uploadVideo')}</button></div></header>
+    <PinnedVideos />
     <div className="video-library-layout"><VideoFolderTree selectedId={folder} onSelect={(id) => updateQuery({ folder: id === 'root' ? '' : id })} /><div className="video-library-main"><div className="video-library-toolbar">
       <input aria-label={t('common.search')} value={query} placeholder={t('video.searchPlaceholder')} onChange={(event) => updateQuery({ q: event.target.value })} />
-      <select aria-label={t('catalog.category')} value={categorySlug} onChange={(event) => updateQuery({ category: event.target.value })}><option value="">{t('video.allCategories')}</option>{categories.filter((category) => CATEGORY_KEYS.includes(category.slug)).map((category) => <option key={category.id} value={category.slug}>{language === 'en' ? category.name_en || category.name : category.name || category.name_en}</option>)}</select>
+      <select aria-label={t('catalog.category')} value={categorySlug} onChange={(event) => updateQuery({ category: event.target.value })}><option value="">{t('video.allCategories')}</option>{orderedCategories(categories).map((category) => <option key={category.id} value={category.slug}>{language === 'en' ? category.name_en || category.name : category.name || category.name_en}</option>)}</select>
       <select aria-label={t('catalog.accessType')} value={access} onChange={(event) => updateQuery({ access: event.target.value })}><option value="">{t('video.allAccess')}</option>{ACCESS_TYPES.map((value) => <option key={value} value={value}>{t(`catalog.access.${value}`)}</option>)}</select>
       <select aria-label={t('video.providerState')} value={providerStatus} onChange={(event) => updateQuery({ status: event.target.value })}><option value="">{t('video.allProviderStatuses')}</option>{PROVIDER_STATUSES.map((value) => <option key={value} value={value}>{t(`video.providerStatus.${value}`)}</option>)}</select>
       <select aria-label={t('video.publication')} value={publication} onChange={(event) => updateQuery({ publication: event.target.value })}><option value="">{t('video.allPublications')}</option>{PUBLICATION_STATUSES.map((value) => <option key={value} value={value}>{t(`catalog.status.${value}`)}</option>)}</select>
       <select aria-label={t('video.course')} value={courseId} onChange={(event) => updateQuery({ course: event.target.value })}><option value="">{t('video.allCourses')}</option>{courses.map((course) => <option key={course.id} value={course.id}>{language === 'en' ? course.title_en || course.title : course.title || course.title_en}</option>)}</select>
       <select aria-label={t('video.assignment')} value={assignment} onChange={(event) => updateQuery({ assignment: event.target.value })}><option value="">{t('video.allAssignments')}</option><option value="assigned">{t('video.assignment.assigned')}</option><option value="unassigned">{t('video.assignment.unassigned')}</option></select>
       <VideoViewSwitcher view={view} onChange={selectView} />
-    </div>{error && <div className="error-text video-error">{error === 'no_api_key' ? <>{t('video.noApiKey')} <Link to="/settings">{t('nav.settings')}</Link></> : t('errors.load')}</div>}{library === null ? <div className="video-skeletons" aria-label={t('common.loading')}><span /><span /><span /></div> : <><VideoViews view={view} videos={library.items || []} /><div className="video-pagination"><button className="btn btn-tonal btn-sm" type="button" aria-label={t('video.previousPage')} disabled={currentPage <= 1} onClick={() => updateQuery({ page: currentPage - 1 === 1 ? '' : String(currentPage - 1) }, false)}>{t('video.previousPage')}</button><span>{t('video.page')} {currentPage} / {pageCount}</span><button className="btn btn-tonal btn-sm" type="button" aria-label={t('video.nextPage')} disabled={currentPage >= pageCount} onClick={() => updateQuery({ page: String(currentPage + 1) }, false)}>{t('video.nextPage')}</button></div></>}</div></div>
+    </div>{error && <div className="error-text video-error">{error === 'no_api_key' ? <>{t('video.noApiKey')} <Link to="/settings">{t('nav.settings')}</Link></> : t('errors.load')}</div>}{library === null ? <div className="video-skeletons" aria-label={t('common.loading')}><span /><span /><span /></div> : <><VideoViews view={view} videos={library.items || []} onDeleted={() => load(true)} /><div className="video-pagination"><button className="btn btn-tonal btn-sm" type="button" aria-label={t('video.previousPage')} disabled={currentPage <= 1} onClick={() => updateQuery({ page: currentPage - 1 === 1 ? '' : String(currentPage - 1) }, false)}>{t('video.previousPage')}</button><span>{t('video.page')} {currentPage} / {pageCount}</span><button className="btn btn-tonal btn-sm" type="button" aria-label={t('video.nextPage')} disabled={currentPage >= pageCount} onClick={() => updateQuery({ page: String(currentPage + 1) }, false)}>{t('video.nextPage')}</button></div></>}</div></div>
   </section>;
 }

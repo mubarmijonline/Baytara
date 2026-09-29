@@ -2,6 +2,7 @@ import { confirmDialog, promptDialog } from '../dialog.jsx';
 import { toast } from '../toast.jsx';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import DeviceSwapRequests from '../components/DeviceSwapRequests.jsx';
 import { Modal, Field, ErrText, apiError } from '../ui.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 import { pageCopy } from '../page-copy.js';
@@ -64,22 +65,37 @@ function UserForm({ user, onClose, onSaved }) {
   );
 }
 
-export default function Users() {
+export default function Users({ searchParams }) {
   const { language } = useAdminLanguage();
   const copy = pageCopy('users', language);
   const common = pageCopy('common', language);
   const [rows, setRows] = useState(null);
-  const [role, setRole] = useState('');
+  // Seeded from the URL so a dashboard tile lands on the rows it counted.
+  const [role, setRole] = useState(() => searchParams.get('role') || '');
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(undefined); // undefined=closed, null=new, obj=edit
   const [err, setErr] = useState('');
+  // The endpoint has always paginated at 20 and this page never asked for a page or read
+  // `pages` back, so it showed the newest twenty and nothing else: once the account list
+  // outgrew one page, every earlier member became unreachable from the admin.
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   async function load() {
     setErr('');
-    try { setRows((await api.users({ role, q })).users); }
-    catch { setErr(common.loadError); }
+    try {
+      const result = await api.users({ role, q, page, per_page: 20 });
+      setRows(result.users);
+      setPages(result.pages || 1);
+      setTotal(result.total || 0);
+    } catch { setErr(common.loadError); }
   }
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [role]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [role, page]);
+
+  // A filter or a search starts over at the first page; staying on page 4 of a result set
+  // that now has one page shows an empty table and looks like a broken filter.
+  const restart = () => (page === 1 ? load() : setPage(1));
 
   async function toggleActive(u) {
     try { await api.userUpdate(u.id, { is_active: !u.is_active }); load(); }
@@ -93,14 +109,15 @@ export default function Users() {
 
   return (
     <>
+      <DeviceSwapRequests />
       <h2>{copy.heading}</h2>
       <div className="toolbar">
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
+        <select value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }}>
           {copy.filters.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <input placeholder={copy.searchPlaceholder} value={q} onChange={(e) => setQ(e.target.value)}
-               onKeyDown={(e) => e.key === 'Enter' && load()} />
-        <button className="btn btn-tonal btn-sm" onClick={load}>{copy.search}</button>
+               onKeyDown={(e) => e.key === 'Enter' && restart()} />
+        <button className="btn btn-tonal btn-sm" onClick={restart}>{copy.search}</button>
         <button className="btn btn-filled btn-sm" onClick={() => setEditing(null)}>{copy.new}</button>
       </div>
       <ErrText>{err}</ErrText>
@@ -124,6 +141,17 @@ export default function Users() {
             {rows.length === 0 && <tr><td colSpan="5" className="empty">{copy.empty}</td></tr>}
           </tbody>
         </table>
+      )}
+      {rows && pages > 1 && (
+        <div className="report-pagination">
+          <button type="button" className="btn btn-tonal btn-sm" disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}>{common.previous}</button>
+          {/* The total is worth showing here rather than just the page number: "3 / 7" does
+              not tell an admin how many accounts they actually have. */}
+          <span>{common.page} {page} {common.of} {pages} · {total}</span>
+          <button type="button" className="btn btn-tonal btn-sm" disabled={page >= pages}
+            onClick={() => setPage((p) => p + 1)}>{common.next}</button>
+        </div>
       )}
       {editing !== undefined && (
         <UserForm user={editing} onClose={() => setEditing(undefined)} onSaved={() => { setEditing(undefined); load(); }} />

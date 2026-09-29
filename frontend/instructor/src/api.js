@@ -27,6 +27,15 @@ export const api = {
   course: (id) => req('/instructor/courses/' + id),
   courseCreate: (b) => req('/instructor/courses', { method: 'POST', body: JSON.stringify(b) }),
   courseUpdate: (id, b) => req('/instructor/courses/' + id, { method: 'PATCH', body: JSON.stringify(b) }),
+
+  // The end-of-course exam. Same endpoints and same shared validation as the admin
+  // portal -- the instructor writes the exam for their own course, and the server checks
+  // ownership on every one of these.
+  courseExam: (cid) => req(`/instructor/courses/${cid}/exam`),
+  courseExamSave: (cid, b) => req(`/instructor/courses/${cid}/exam`, { method: 'PUT', body: JSON.stringify(b) }),
+  examQuestionCreate: (cid, b) => req(`/instructor/courses/${cid}/exam/questions`, { method: 'POST', body: JSON.stringify(b) }),
+  examQuestionUpdate: (qid, b) => req(`/instructor/exam-questions/${qid}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  examQuestionDelete: (qid) => req(`/instructor/exam-questions/${qid}`, { method: 'DELETE' }),
   courseDelete: (id) => req('/instructor/courses/' + id, { method: 'DELETE' }),
   moduleCreate: (cid, b) => req(`/instructor/courses/${cid}/modules`, { method: 'POST', body: JSON.stringify(b) }),
   moduleDelete: (id) => req('/instructor/modules/' + id, { method: 'DELETE' }),

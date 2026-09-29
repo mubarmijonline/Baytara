@@ -1,9 +1,9 @@
 /* @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import App from '../src/App.jsx';
 import { setToken } from '../src/api.js';
@@ -62,7 +62,7 @@ it.each([
   ['/admin/baytarian', 'Veterinarian verification'],
   ['/admin/hierarchy', 'Hierarchy'],
   ['/admin/video-reports', 'Video monitoring'],
-  ['/admin/articles', 'Content and articles'],
+  ['/admin/articles', 'Baytara Library'],
   ['/admin/users', 'Users'],
   ['/admin/messages', 'Messages'],
   ['/admin/settings', 'Site settings'],
@@ -76,7 +76,7 @@ it.each([
 it('localizes article and user dialogs', async () => {
   const user = userEvent.setup();
   const view = renderAdmin('/admin/articles');
-  await screen.findByRole('heading', { name: 'Content and articles' });
+  await screen.findByRole('heading', { name: 'Baytara Library' });
   await user.click(screen.getByRole('button', { name: 'New article' }));
   expect(screen.getByRole('dialog', { name: 'New article' })).toBeVisible();
 
@@ -103,10 +103,21 @@ it('localizes veterinarian statuses and actions', async () => {
     return json({});
   });
 
+  // The details window turns each document into a blob URL. Browsers have these; jsdom
+  // does not, and without them the window's cleanup throws instead of rendering.
+  const { createObjectURL, revokeObjectURL } = URL;
+  URL.createObjectURL = vi.fn(() => 'blob:document-1');
+  URL.revokeObjectURL = vi.fn();
+  onTestFinished(() => { URL.createObjectURL = createObjectURL; URL.revokeObjectURL = revokeObjectURL; });
   renderAdmin('/admin/baytarian');
 
   expect(await screen.findByText('Pending review')).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Document 1' })).toBeVisible();
+  // One Verify per row since 0a0a1a1; the documents and Reject live in the details window,
+  // so nobody rejects a doctor without having looked at what they sent.
   expect(screen.getByRole('button', { name: 'Verify' })).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Reject' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+  expect(await screen.findByRole('button', { name: 'Reject' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Close' })).toBeVisible();
+  expect(await screen.findByRole('img', { name: 'Document 1' })).toBeVisible();
 });
