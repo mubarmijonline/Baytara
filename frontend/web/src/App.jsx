@@ -27,6 +27,7 @@ import Privacy from './pages/Privacy.jsx';
 import Refund from './pages/Refund.jsx';
 import Terms from './pages/Terms.jsx';
 import Delivery from './pages/Delivery.jsx';
+import DeleteAccount from './pages/DeleteAccount.jsx';
 import Learn from './pages/Learn.jsx';
 import Buy from './pages/Buy.jsx';
 import PaymentCallback from './pages/PaymentCallback.jsx';
@@ -77,6 +78,7 @@ export default function App() {
         {/* Both required by Kashier's merchant review, which looks for them in the footer. */}
         <Route path="/terms" element={<Terms />} />
         <Route path="/delivery" element={<Delivery />} />
+        <Route path="/account/delete" element={<DeleteAccount />} />
         <Route path="/learn/:courseId/:lessonId" element={<Learn />} />
         <Route path="*" element={<NotFound />} />
       </Route>

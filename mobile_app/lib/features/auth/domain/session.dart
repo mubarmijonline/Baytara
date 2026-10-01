@@ -13,6 +13,7 @@ class AuthUser {
     this.role = 'student',
     this.isBaytarian = false,
     this.isVetStudent = false,
+    this.hasPassword = true,
   });
 
   final int id;
@@ -28,6 +29,10 @@ class AuthUser {
   /// Records which kind of vet. Gates nothing -- students and licensed doctors reach
   /// identical content.
   final bool isVetStudent;
+
+  /// False for a Google-only account. Decides whether closing the account asks for a
+  /// password: there is none to ask for.
+  final bool hasPassword;
 
   /// A phone number is mandatory before any video plays: it is burned into the watermark.
   /// Google sign-in does not supply one, which is why this is a whole route and not a field.

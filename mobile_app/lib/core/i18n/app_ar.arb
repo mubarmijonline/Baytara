@@ -534,5 +534,21 @@
   "verifyToWatch": "وثّق حسابك كطبيب بيطري للمشاهدة",
   "verifyNow": "توثيق الحساب الآن",
   "homePlatformVideos": "تعرّف على المنصة",
-  "homePlatformVideosSubtitle": "فيديوهات قصيرة عن منصة بيطرة."
+  "homePlatformVideosSubtitle": "فيديوهات قصيرة عن منصة بيطرة.",
+  "errWrongPassword": "كلمة المرور غير صحيحة.",
+  "deleteAccountTitle": "حذف الحساب",
+  "deleteAccountRemovedTitle": "ما الذي يُحذف",
+  "deleteAccountRemoved1": "اسمك وبريدك الإلكتروني ورقم هاتفك وصورك.",
+  "deleteAccountRemoved2": "رقمك القومي وصور الكارنيه والمستندات التي رفعتها للتوثيق.",
+  "deleteAccountRemoved3": "تقييماتك للدورات، وشهاداتك (فلن تعود صفحة التحقق من الشهادة تعمل).",
+  "deleteAccountRemoved4": "أجهزتك المسجلة وإشعاراتك.",
+  "deleteAccountKeptTitle": "ما الذي نحتفظ به",
+  "deleteAccountKept1": "سجلات الدفع والاشتراكات، بدون اسمك أو بيانات تواصلك، لأنها سجلات مالية نلتزم بحفظها.",
+  "deleteAccountFinal": "الحذف نهائي ولا يمكن التراجع عنه، وستفقد الوصول لكل الدورات التي اشتريتها. يمكنك إنشاء حساب جديد بنفس البريد لاحقاً، لكنه سيبدأ فارغاً.",
+  "deleteAccountPassword": "كلمة المرور",
+  "deleteAccountConfirm": "أفهم أن حذف الحساب نهائي وأنني سأفقد الوصول لكل دوراتي.",
+  "deleteAccountSubmit": "حذف حسابي نهائياً",
+  "deleteAccountWorking": "جارٍ الحذف…",
+  "deleteAccountDone": "تم حذف حسابك.",
+  "deleteAccountStaff": "حسابات المحاضرين والإدارة تُغلق من خلال إدارة المنصة."
 }

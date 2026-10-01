@@ -6,6 +6,25 @@ This file holds the plan for the work currently in flight.
 
 ---
 
+## In flight, milestone 27: account deletion, and the schema drift pass
+
+See `docs/milestones/27-account-deletion-and-schema-drift.md`. Built and tested; waiting on
+the production migration and deploy.
+
+- **Account deletion.** `services/account_deletion.py` anonymises the user row in one
+  transaction and deletes the files after the commit. `DELETE /auth/account` takes
+  `confirm` and, when the account has one, the password; a wrong one is 403 so neither
+  client drops the session. Students only. `users.deleted_at` (migration `c3d9e1a7f2b4`)
+  marks it, and the admin cannot re-enable such an account. Website page
+  `/account/delete` (the URL for both stores); app screen under Settings.
+- **Schema drift.** Migration `d8f2a4c6e1b9` drops the four `<table>_<column>_key` unique
+  constraints that duplicate a unique index, Postgres only, `IF EXISTS`. `UserDevice`
+  declares `ix_user_devices_user_group` as the device-group migration built it.
+- **Deploy order.** `flask db upgrade` before the restart (as `deploy/deploy.sh` does):
+  code with the `deleted_at` column must never run against a database without it.
+
+---
+
 ## Delivered, milestone 25: uploading into a paid course, and linking by VdoCipher ID
 
 See `docs/milestones/25-paid-course-uploads-and-link-by-id.md`. Uploads into a paid
@@ -72,10 +91,10 @@ disabled under `prefers-reduced-motion`.
 
 ---
 
-## In flight — milestone 15: admin portal navigation and dashboard refresh
+## Delivered — milestone 15: admin portal navigation and dashboard refresh
 
 See `docs/milestones/15-admin-dashboard-refresh.md` for the goal and the acceptance
-check. This is the how.
+check. Live; kept here as the record of how.
 
 ### The constraint that shapes everything
 

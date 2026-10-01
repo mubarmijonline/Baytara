@@ -145,6 +145,8 @@ def _user_json(user: User):
             "vet_governorate": user.vet_governorate,
             "vet_card_expires_at": user.vet_card_expires_at.isoformat() if user.vet_card_expires_at else None,
             "avatar_url": user.avatar_url, "cover_url": user.cover_url,
+            # Whether a password must be re-entered to close the account.
+            "has_password": bool(user.password_hash),
             "created_at": user.created_at.isoformat() if user.created_at else None}
 
 
@@ -401,6 +403,33 @@ def logout():
         UserDevice.query.filter_by(user_id=int(get_jwt_identity()), device_id=device_id).delete()
         db.session.commit()
     return jsonify(status="logged_out")
+
+
+@bp.delete("/account")
+@jwt_required()
+def delete_own_account():
+    """Close the caller's own account. See services/account_deletion.py for what goes.
+
+    `confirm: true` is required from everyone. An account with a password must also
+    re-enter it, so a phone left unlocked is not enough. A Google-only account has no
+    password to ask for; for it the signed-in session and the confirmation are the proof.
+    """
+    from ...services.account_deletion import delete_account, may_self_delete
+
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not user.is_active:
+        return jsonify(error="invalid_user"), 401
+    if not may_self_delete(user):
+        return jsonify(error="staff_account"), 403
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify(error="confirmation_required"), 422
+    if user.password_hash and not verify_password(user.password_hash, body.get("password") or ""):
+        # 403, not 401: every client reads a 401 as "signed out" and drops the session,
+        # which is the wrong answer to a mistyped password.
+        return jsonify(error="wrong_password"), 403
+    delete_account(user)
+    return jsonify(status="deleted")
 
 
 @bp.get("/devices")

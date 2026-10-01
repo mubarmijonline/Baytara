@@ -126,6 +126,16 @@ class SettingsScreen extends ConsumerWidget {
                   style: const TextStyle(color: Color(0xFFB3261E))),
               onTap: () => _confirmSignOut(context, ref),
             ),
+            // App Store 5.1.1(v): an app that creates accounts must let them be deleted
+            // from inside it. Staff accounts are closed by the platform team instead.
+            if (session.user.role == 'student')
+              ListTile(
+                leading: const Icon(Icons.delete_forever_outlined,
+                    color: Color(0xFFB3261E)),
+                title: Text(l.deleteAccountTitle,
+                    style: const TextStyle(color: Color(0xFFB3261E))),
+                onTap: () => context.push('/account/delete'),
+              ),
           ],
           const SizedBox(height: 20),
           version.maybeWhen(

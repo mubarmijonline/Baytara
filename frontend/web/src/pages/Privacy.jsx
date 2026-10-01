@@ -12,7 +12,7 @@ import { useSiteSettings } from '../lib/site-settings.jsx';
 // ponytail: the text lives here rather than in site_settings — a legal document
 // nobody edits weekly does not need an admin editor, a settings schema, and a
 // migration. Move it into settings the first time someone asks to edit it.
-const UPDATED = { ar: '17 أغسطس 2026', en: '17 August 2026' };
+const UPDATED = { ar: '1 أكتوبر 2026', en: '1 October 2026' };
 
 const DOC = {
   ar: [
@@ -68,7 +68,8 @@ const DOC = {
       items: [
         'مراجعة بياناتك وتحديث رقم هاتفك من لوحة حسابك.',
         'إزالة أي جهاز مسجَّل على حسابك في أي وقت.',
-        'طلب نسخة من بياناتك أو حذف حسابك بمراسلتنا على بريد الدعم.',
+        'حذف حسابك بنفسك في أي وقت من صفحة «حذف الحساب» (baytara.app/account/delete) أو من إعدادات التطبيق.',
+        'طلب نسخة من بياناتك بمراسلتنا على بريد الدعم.',
       ],
     },
     {
@@ -145,7 +146,8 @@ const DOC = {
       items: [
         'Review your details and update your phone number from your dashboard.',
         'Remove any registered device from your account at any time.',
-        'Request a copy of your data, or deletion of your account, by writing to our support address.',
+        'Delete your account yourself at any time, from the Delete account page (baytara.app/account/delete) or from the app settings.',
+        'Request a copy of your data by writing to our support address.',
       ],
     },
     {

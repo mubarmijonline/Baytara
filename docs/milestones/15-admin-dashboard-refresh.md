@@ -1,6 +1,8 @@
 # 15 — Admin portal: navigation and dashboard refresh
 
-**Status:** in progress.
+**Status:** done and live (status corrected 2026-10-01). The four sidebar groups, the
+`Ctrl/Cmd + K` quick search, the phone drawer and the reordered dashboard are in the
+deployed admin bundle; the admin suite covers the routing invariants (milestone 23).
 
 ## Goal
 

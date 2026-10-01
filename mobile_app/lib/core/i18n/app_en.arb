@@ -534,5 +534,21 @@
   "verifyToWatch": "Verify your account as a veterinarian to watch",
   "verifyNow": "Verify my account now",
   "homePlatformVideos": "Getting started",
-  "homePlatformVideosSubtitle": "Short videos on how to use Baytara."
+  "homePlatformVideosSubtitle": "Short videos on how to use Baytara.",
+  "errWrongPassword": "That password is not correct.",
+  "deleteAccountTitle": "Delete account",
+  "deleteAccountRemovedTitle": "What is deleted",
+  "deleteAccountRemoved1": "Your name, email address, phone number and photos.",
+  "deleteAccountRemoved2": "Your national ID and the card images and documents you uploaded for verification.",
+  "deleteAccountRemoved3": "Your course reviews and your certificates (their verification page will stop working).",
+  "deleteAccountRemoved4": "Your registered devices and your notifications.",
+  "deleteAccountKeptTitle": "What we keep",
+  "deleteAccountKept1": "Payment and enrolment records, without your name or contact details, because they are financial records we are required to keep.",
+  "deleteAccountFinal": "Deletion is permanent and cannot be undone, and you will lose access to every course you bought. You can register again later with the same email, but the new account starts empty.",
+  "deleteAccountPassword": "Password",
+  "deleteAccountConfirm": "I understand that deleting my account is permanent and that I will lose access to all my courses.",
+  "deleteAccountSubmit": "Delete my account permanently",
+  "deleteAccountWorking": "Deleting…",
+  "deleteAccountDone": "Your account has been deleted.",
+  "deleteAccountStaff": "Instructor and admin accounts are closed by the platform team."
 }

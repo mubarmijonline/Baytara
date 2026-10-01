@@ -224,6 +224,7 @@ export const auth = {
   logoutServer: () => authFetch('/auth/logout', { method: 'POST', body: JSON.stringify({ device_id: getDeviceId() }) }).catch(() => {}),
   me: () => authFetch('/auth/me'),
   profile: (body) => authFetch('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteAccount: (password) => authFetch('/auth/account', { method: 'DELETE', body: JSON.stringify({ confirm: true, password }) }),
   devices: () => authFetch('/auth/devices'),
   removeDevice: (id) => authFetch(`/auth/devices/${id}`, { method: 'DELETE' }),
   requestDeviceSwap: (reason) => authFetch('/auth/devices/swap-requests', { method: 'POST', body: JSON.stringify({ reason }) }),

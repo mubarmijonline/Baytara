@@ -11,6 +11,7 @@ import 'package:baytara/core/network/api_error.dart';
 import 'package:baytara/core/network/dio_client.dart';
 import 'package:baytara/core/storage/device_id.dart';
 import 'package:baytara/core/storage/secure_store.dart';
+import 'package:baytara/features/auth/data/auth_dto.dart';
 import 'package:baytara/features/auth/data/auth_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -205,5 +206,45 @@ void main() {
     expect(stored.containsKey('baytara_refresh_token'), isFalse);
     expect(stored.containsKey('baytara_device_id'), isTrue,
         reason: 'the device id identifies the install, not the session');
+  });
+
+  group('closing the account', () {
+    test('sends the confirmation and the password, then drops the session', () async {
+      build((o, body) async => _json('{"status":"deleted"}', 200));
+      stored['baytara_access_token'] = 'acc';
+      stored['baytara_refresh_token'] = 'ref';
+
+      await repo.deleteAccount(password: 'secret123');
+
+      final request = adapter.seen.single;
+      expect(request.method, 'DELETE');
+      expect(request.path, endsWith('/auth/account'));
+      expect(request.data, {'confirm': true, 'password': 'secret123'});
+      expect(stored.containsKey('baytara_access_token'), isFalse);
+      expect(stored.containsKey('baytara_refresh_token'), isFalse);
+    });
+
+    test('a Google-only account sends no password at all', () async {
+      build((o, body) async => _json('{"status":"deleted"}', 200));
+      await repo.deleteAccount();
+      expect(adapter.seen.single.data, {'confirm': true});
+    });
+
+    test('a wrong password keeps the session and says which mistake it was', () async {
+      build((o, body) async => _json('{"error":"wrong_password"}', 403));
+      stored['baytara_access_token'] = 'acc';
+
+      await expectLater(
+        repo.deleteAccount(password: 'nope'),
+        throwsA(isA<ApiException>()
+            .having((e) => e.code, 'code', ApiErrorCode.wrongPassword)),
+      );
+      expect(stored['baytara_access_token'], 'acc');
+    });
+
+    test('has_password is read, and an older server that omits it means ask', () {
+      expect(authUserFromJson({'id': 1, 'has_password': false}).hasPassword, isFalse);
+      expect(authUserFromJson({'id': 1}).hasPassword, isTrue);
+    });
   });
 }

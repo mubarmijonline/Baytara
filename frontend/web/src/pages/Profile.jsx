@@ -807,6 +807,12 @@ export default function Profile() {
                   </div>
                 </form>
               </section>
+
+              <section style={card}>
+                <h2 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: DARK }}>{t('profile.deleteTitle')}</h2>
+                <p style={{ margin: '0 0 12px', fontSize: 13.5, color: colors.muted, lineHeight: 1.8 }}>{t('profile.deleteBody')}</p>
+                <Link to="/account/delete" style={{ color: '#b3261e', fontSize: 14, fontWeight: 700 }}>{t('profile.deleteLink')}</Link>
+              </section>
             </>
           )}
         </main>

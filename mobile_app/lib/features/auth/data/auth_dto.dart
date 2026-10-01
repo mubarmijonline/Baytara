@@ -12,6 +12,7 @@ AuthUser authUserFromJson(Map<String, dynamic> json) => AuthUser(
       role: json['role'] as String? ?? 'student',
       isBaytarian: json['is_baytarian'] as bool? ?? false,
       isVetStudent: json['is_vet_student'] as bool? ?? false,
+      hasPassword: json['has_password'] as bool? ?? true,
     );
 
 /// The subset of the profile worth caching for an instant cold start. Only what the route
@@ -24,6 +25,7 @@ Map<String, dynamic> authUserToJson(AuthUser u) => {
       'role': u.role,
       'is_baytarian': u.isBaytarian,
       'is_vet_student': u.isVetStudent,
+      'has_password': u.hasPassword,
     };
 
 /// One row of GET /auth/devices.
