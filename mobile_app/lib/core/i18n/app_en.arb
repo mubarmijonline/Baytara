@@ -19,7 +19,7 @@
   "errPhoneRequired": "Add your phone number before watching lessons.",
   "errDeviceLimit": "You have reached the device limit. Remove one to continue.",
   "errDeviceMismatch": "Sign in again on this device.",
-  "errNotEntitled": "This content is not part of your access.",
+  "errNotEntitled": "Subscribe to the course to unlock this lecture.",
   "errAccessExpired": "Your access to this course has ended. You can renew it.",
   "errNeedsBaytarian": "This content is for verified veterinarians. Verify your account as a veterinarian to watch.",
   "errNonVetsOnly": "This tier is for non-veterinarians.",

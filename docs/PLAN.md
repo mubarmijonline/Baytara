@@ -6,7 +6,16 @@ This file holds the plan for the work currently in flight.
 
 ---
 
-## In flight, milestone 26: link previews for articles and book summaries
+## In flight, milestone 28: complimentary course access, and the locked-lecture sentence
+
+See `docs/milestones/28-complimentary-access-and-lecture-lock-copy.md`. The lesson lock the
+client asked for already exists (they tested as an admin); only its sentence changes. New:
+an admin grant of a course to any number of users, as `admin_grant` enrolments, no payment,
+no schema change (`enrollments.source` already exists).
+
+---
+
+## Delivered, milestone 26: link previews for articles and book summaries
 
 See `docs/milestones/26-link-previews.md`.
 
@@ -29,10 +38,10 @@ See `docs/milestones/26-link-previews.md`.
 
 ---
 
-## In flight, milestone 27: account deletion, and the schema drift pass
+## Delivered, milestone 27: account deletion, and the schema drift pass
 
-See `docs/milestones/27-account-deletion-and-schema-drift.md`. Built and tested; waiting on
-the production migration and deploy.
+See `docs/milestones/27-account-deletion-and-schema-drift.md`. Live on the API and the
+website since 2026-10-01; the app screen ships with the next release.
 
 - **Account deletion.** `services/account_deletion.py` anonymises the user row in one
   transaction and deletes the files after the commit. `DELETE /auth/account` takes
