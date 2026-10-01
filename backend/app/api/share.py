@@ -53,7 +53,8 @@ def _plain(text, limit=DESCRIPTION_LIMIT):
     if len(text) <= limit:
         return text
     cut = text[:limit].rsplit(" ", 1)[0]
-    return cut + "…"
+    # "الذكية.…" reads as a typo: drop the sentence's own closing mark before ours.
+    return cut.rstrip(" .,،؛;:!?؟-—") + "…"
 
 
 def _absolute(url):

@@ -110,6 +110,16 @@ def test_an_arabic_slug_is_found_and_handed_back_encoded(app):
         "https://baytara.test/blog/%D8%AF%D9%84%D9%8A%D9%84-%D8%A7%D9%84%D8%B9%D9%8A%D8%A7%D8%AF%D8%A9"]
 
 
+def test_a_cut_description_does_not_end_in_a_full_stop_and_an_ellipsis(app):
+    with app.app_context():
+        db.session.add(Article(title="t", slug="stop", status="published",
+                               excerpt=("جملة. " * 40).strip(), body=""))
+        db.session.commit()
+    page = app.test_client().get("/blog/stop").get_data(as_text=True)
+    [description] = meta(page, "property", "og:description")
+    assert description.endswith("جملة…")
+
+
 def test_a_book_link_carries_its_own_card(app):
     page = app.test_client().get("/library/pharmacology").get_data(as_text=True)
     assert meta(page, "property", "og:title") == ["علم الأدوية البيطرية"]
