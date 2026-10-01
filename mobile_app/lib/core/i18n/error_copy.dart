@@ -16,6 +16,8 @@ extension ApiErrorCopy on ApiErrorCode {
         ApiErrorCode.invalidUser => l.errAuthRequired,
         ApiErrorCode.invalidGoogleToken => l.errGoogleFailed,
         ApiErrorCode.googleNotConfigured => l.errGoogleUnavailable,
+        ApiErrorCode.wrongPassword => l.errWrongPassword,
+        ApiErrorCode.staffAccount => l.deleteAccountStaff,
 
         ApiErrorCode.deviceLimitReached => l.errDeviceLimit,
         ApiErrorCode.deviceSwapLimitReached => l.errDeviceSwapLimit,

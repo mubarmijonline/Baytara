@@ -1,8 +1,9 @@
 # 19 — What Kashier checks before they switch us on
 
-**Status:** built and tested (website build green, 99 tests). **Not deployed:** two of the
-pages are legal text drafted here rather than written by the client, and publishing those
-on a commercial site is the client's call, not ours.
+**Status:** done and live. Shipped with commit 507c836 (2026-09-24): `/terms` and
+`/delivery` are routed and linked from the footer on baytara.app (checked 2026-10-01).
+**Still open:** both pages are legal text drafted here rather than written by the client,
+and no written sign-off from the client on that text is recorded. Get one.
 
 ## Goal
 

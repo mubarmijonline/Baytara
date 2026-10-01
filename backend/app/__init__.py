@@ -47,5 +47,9 @@ def create_app(config=None):
     app.register_blueprint(baytarian_bp, url_prefix="/api/v1")
     app.register_blueprint(admin_bp, url_prefix="/api/v1/admin")
     app.register_blueprint(admin_video_reports_bp, url_prefix="/api/v1/admin/video-reports")
+    # Not under /api: nginx sends /blog/<slug> and /library/<slug> here so a shared link
+    # carries its own preview card. See app/api/share.py.
+    from .api.share import bp as share_bp
+    app.register_blueprint(share_bp)
 
     return app

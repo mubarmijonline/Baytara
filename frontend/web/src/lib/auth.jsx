@@ -58,6 +58,13 @@ export function AuthProvider({ children }) {
     setUser(res.user);
     return res.user;
   }
+  // Closing the account ends the session with it. No server logout: the devices are
+  // already gone with the account, and the call would only fail.
+  async function closeAccount(password) {
+    await auth.deleteAccount(password);
+    clearTokens();
+    setUser(null);
+  }
   function logout() {
     auth.logoutServer();
     clearTokens();
@@ -65,7 +72,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, loading, login, register, loginWithGoogle, updateProfile, uploadProfileImage, refresh, logout }}>
+    <AuthCtx.Provider value={{ user, loading, login, register, loginWithGoogle, updateProfile, uploadProfileImage, refresh, logout, closeAccount }}>
       {children}
     </AuthCtx.Provider>
   );

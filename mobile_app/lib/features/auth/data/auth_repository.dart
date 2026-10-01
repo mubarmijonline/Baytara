@@ -128,6 +128,22 @@ class AuthRepository {
     }
   }
 
+  /// Closes the account for good (DELETE /auth/account), then clears the tokens.
+  ///
+  /// [password] is required by the server when the account has one; a Google-only account
+  /// sends none. No logout call afterwards: the devices went with the account.
+  Future<void> deleteAccount({String? password}) async {
+    try {
+      await _dio.delete<dynamic>(
+        '/auth/account',
+        data: {'confirm': true, 'password': ?password},
+      );
+    } catch (e) {
+      throw asApiException(e);
+    }
+    await _store.clearTokens();
+  }
+
   /// Frees this device's slot server-side, then clears the tokens.
   ///
   /// The server call is best-effort: if it fails the user still expects to be signed out

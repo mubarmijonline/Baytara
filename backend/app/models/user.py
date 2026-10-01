@@ -45,6 +45,9 @@ class User(db.Model):
     vet_governorate = db.Column(db.String(40))
     vet_card_expires_at = db.Column(db.Date)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    # Set when the learner closed the account themselves (services/account_deletion.py).
+    # The row stays, anonymised, because payments and enrolments point at it.
+    deleted_at = db.Column(db.DateTime(timezone=True))
 
     # instructor public-profile fields (used when role == instructor)
     headline = db.Column(db.String(200))
@@ -156,7 +159,13 @@ class UserDevice(db.Model):
     device is blocked until one is removed."""
 
     __tablename__ = "user_devices"
-    __table_args__ = (db.UniqueConstraint("user_id", "device_id", name="uq_device_user_device"),)
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "device_id", name="uq_device_user_device"),
+        # The limit counts one user's groups, so the lookup is always by both. Declared
+        # here as the device_group migration built it; a bare index on device_group
+        # alone was what the model used to claim, and never existed.
+        db.Index("ix_user_devices_user_group", "user_id", "device_group"),
+    )
 
     MAX_DEVICES = 2
 
@@ -181,7 +190,7 @@ class UserDevice(db.Model):
     # The machine this browser runs on. Browsers cannot share storage, so each one has
     # its own device_id; they share a group when they report the same machine, and the
     # limit counts groups. NULL for rows that predate it, which then stand alone.
-    device_group = db.Column(db.String(64), index=True)
+    device_group = db.Column(db.String(64))
     label = db.Column(db.String(160))  # user-agent snippet for the user to recognize it
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     last_seen = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

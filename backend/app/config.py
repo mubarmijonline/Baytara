@@ -29,6 +29,9 @@ class BaseConfig:
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", "4096")) * 1024 * 1024
     # Public site origin — used to build Fawaterak redirect + webhook URLs
     SITE_URL = os.environ.get("SITE_URL", "https://baytara.app")
+    # The website shell nginx serves (its `root` + index.html). Shared article and book
+    # links are answered from it with their own preview tags; see app/api/share.py.
+    WEB_INDEX_HTML = os.environ.get("WEB_INDEX_HTML", "/var/www/baytara/index.html")
     # Google Sign-In: OAuth client ids accepted as the ID-token audience
     # (web first, then Android/iOS). Empty list = Google sign-in is disabled and
     # the frontend hides the button.

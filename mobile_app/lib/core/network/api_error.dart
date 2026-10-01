@@ -25,6 +25,11 @@ enum ApiErrorCode {
   /// Google sign-in is not configured server-side (503). Hide the button rather than
   /// letting the user press something that cannot work.
   googleNotConfigured('google_not_configured'),
+  /// Closing the account: the password re-entered to confirm it was wrong. 403 rather than
+  /// 401 on purpose, so the session survives a typo.
+  wrongPassword('wrong_password'),
+  /// Closing the account: instructors and admins are closed by the platform team.
+  staffAccount('staff_account'),
   notFound('not_found'),
 
   // --- device binding ---

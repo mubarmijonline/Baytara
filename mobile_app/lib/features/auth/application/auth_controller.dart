@@ -161,6 +161,18 @@ class AuthController {
     _session.signedOut();
   }
 
+  /// Closes the account, then ends the session exactly as signing out does.
+  Future<void> deleteAccount({String? password}) async {
+    await _repo.deleteAccount(password: password);
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {
+      // Not signed in with Google, or the plugin is unavailable. Nothing to undo.
+    }
+    _ref.read(sessionEndedProvider.notifier).clear();
+    _session.signedOut();
+  }
+
   Future<DeviceList> devices() => _repo.devices();
 
   Future<SwapAllowance> removeDevice(int id) => _repo.removeDevice(id);

@@ -79,7 +79,7 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
 - [x] Course lifecycle (draft/publish/unpublish/delete) + modules/lessons editor
 - [~] Video: lesson `vdocipher_video_id` field editable; no upload UI yet (VdoCipher = Phase 5)
 - [ ] Reports, instructor permissions, audit logs, settings (need new backend tables)
-- [~] Navigation + dashboard refresh (milestone 15) — seventeen flat destinations grouped
+- [x] Navigation + dashboard refresh (milestone 15, live) — seventeen flat destinations grouped
   into four sections with a `Ctrl+K` quick search, a real drawer below 900px, and `paths`
   finally in the sidebar instead of reachable only from one tile. The dashboard leads with
   the queues that are actually waiting instead of thirty tiles of equal weight. Nothing
@@ -145,9 +145,14 @@ Full technical plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md)
   policy pages and the second certificate kind in the app.
   `docs/milestones/21-exam-everywhere.md`
 - [ ] Check Google Play's billing policy against in-app checkout before the Play submission.
-- [ ] Schema drift found while migrating: autogenerate wants to drop unique constraints on
-  `certificates.serial`, `learning_paths.slug`, `video_playback_events.client_event_id` and
-  `video_playback_sessions.public_id`. Kept out of the promo migration; needs its own pass.
+- [~] Schema drift: each of `certificates.serial`, `learning_paths.slug`,
+  `video_playback_events.client_event_id` and `video_playback_sessions.public_id` was unique
+  twice in Postgres (a constraint and a unique index); the redundant constraints are dropped by
+  a hand-written migration, and the device-group index is declared as it really is. Built,
+  not yet applied to production. `docs/milestones/27-account-deletion-and-schema-drift.md`
+- [~] Account deletion, students only, from `/account/delete` on the website and Settings in
+  the app: anonymised rather than removed, so payments and enrolments keep their books;
+  identity, documents, photos, reviews and certificates go. Built and tested, not yet live.
 - [x] Header wordmark enlarged and given clear air, laptop and phone, with the header's
   height finally a CSS variable instead of a literal repeated across five rules.
   `docs/milestones/18-header-logo.md`
@@ -229,8 +234,8 @@ Android first — iOS code is written but cannot be compiled on this Linux serve
   unanswered, flagged since mobile-03), and Apple IAP vs the reader model.
 
 **Backend gaps this surfaced** (none are client-side fixable):
-- No password-reset endpoint.
-- No account-deletion endpoint — App Store review will ask for one.
+- No password-reset endpoint (no email or SMS sender exists to deliver a reset).
+- Account deletion: built in milestone 27, awaiting deploy.
 - No push infrastructure; notifications are a 60s poll.
 - A device-limit refusal carries no token, so neither `DELETE /auth/devices/<id>` nor the
   swap request can be reached from the screen that refusal lands on. A learner whose two

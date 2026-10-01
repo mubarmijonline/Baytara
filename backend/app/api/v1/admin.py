@@ -132,6 +132,7 @@ def _user_json(u):
             "is_active": u.is_active, "is_baytarian": u.is_baytarian,
             "is_vet_student": u.is_vet_student,
             "created_at": u.created_at.isoformat() if u.created_at else None,
+            "deleted_at": u.deleted_at.isoformat() if u.deleted_at else None,
             "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or [],
             "category_id": u.category_id, "max_devices": u.max_devices,
             "category": u.category.to_dict() if u.category else None,
@@ -242,6 +243,10 @@ def users_update(uid):
     if "is_active" in d:
         if u.id == _uid() and not d["is_active"]:
             return jsonify(error="cannot_disable_self"), 409
+        # A learner who closed their account was promised it is gone. Switching it back
+        # on would revive an empty shell under somebody's old payments.
+        if u.deleted_at and d["is_active"]:
+            return jsonify(error="account_deleted"), 409
         u.is_active = bool(d["is_active"])
     if d.get("password"):
         u.password_hash = hash_password(d["password"])
