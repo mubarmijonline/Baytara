@@ -432,6 +432,33 @@ def enrollment_cancel(eid):
     return jsonify(enrollment=_enrollment_json(e, payment))
 
 
+@bp.post("/courses/<int:cid>/grants")
+@require_role("admin")
+def course_grants(cid):
+    """Open a paid course to chosen people without payment. services/course_grants.py."""
+    from ...services.course_grants import ACCESS_CHOICES, MAX_PER_CALL, grant_course
+
+    course = db.session.get(Course, cid)
+    if not course:
+        return jsonify(error="not_found"), 404
+    # A free course is watched without an enrolment at all; there is nothing to grant.
+    if course.access_type in FREE_ACCESS:
+        return jsonify(error="course_is_free"), 409
+    d = request.get_json(silent=True) or {}
+    ids = d.get("user_ids")
+    if (not isinstance(ids, list) or not ids
+            or not all(isinstance(i, int) and not isinstance(i, bool) for i in ids)):
+        return jsonify(error="user_ids_required"), 422
+    if len(ids) > MAX_PER_CALL:
+        return jsonify(error="too_many_users", max=MAX_PER_CALL), 422
+    access = d.get("access", "course")
+    if access not in ACCESS_CHOICES:
+        return jsonify(error="bad_access"), 422
+    granted, skipped = grant_course(course, ids, access)
+    db.session.commit()
+    return jsonify(granted=granted, skipped=skipped, enrolled_count=course.enrolled_count)
+
+
 # ------------------------------ categories ------------------------------
 
 @bp.post("/categories")

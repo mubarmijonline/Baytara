@@ -1,10 +1,11 @@
-import { ArrowLeft, Eye, EyeOff, Link2, ListVideo, Pencil, Plus, Save, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Gift, Link2, ListVideo, Pencil, Plus, Save, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import {
   ACCESS_TYPES, CATALOG_STATUSES, LEVELS, catalogErrorCodes, localizedCatalogValue, orderedCategories,
 } from '../catalog.js';
+import CourseGrantDialog from '../components/CourseGrantDialog.jsx';
 import { confirmDialog } from '../dialog.jsx';
 import { useAdminLanguage } from '../i18n.jsx';
 import { toast } from '../toast.jsx';
@@ -16,7 +17,7 @@ const COPY = {
     allStatuses: 'كل الحالات', title: 'العنوان', instructor: 'المدرّب', category: 'الفئة', access: 'الوصول',
     price: 'السعر', enrolled: 'المسجّلون', actions: 'الإجراءات', noCourses: 'لا توجد دورات.', loading: 'جارٍ التحميل…',
     payLink: 'لينك الدفع', payLinkCopied: 'اتنسخ لينك الدفع — ابعته للطالب على واتساب.',
-    payLinkFailed: 'تعذّر النسخ. اللينك:',
+    payLinkFailed: 'تعذّر النسخ. اللينك:', grant: 'منح وصول مجاني',
     content: 'المحتوى', edit: 'تعديل', publish: 'نشر', unpublish: 'إخفاء', delete: 'حذف',
     cover: 'صورة الدورة', coverHint: 'تظهر في قوائم الدورات وأعلى صفحة الدورة. مقاس 16:9 يعطي أفضل نتيجة.',
     coverRemove: 'إزالة الصورة', coverError: 'تعذّر رفع الصورة.',
@@ -34,7 +35,7 @@ const COPY = {
     allStatuses: 'All statuses', title: 'Title', instructor: 'Instructor', category: 'Category', access: 'Access',
     price: 'Price', enrolled: 'Enrolled', actions: 'Actions', noCourses: 'No courses found.', loading: 'Loading…',
     payLink: 'Payment link', payLinkCopied: 'Payment link copied. Send it to the student on WhatsApp.',
-    payLinkFailed: 'Could not copy. The link is:',
+    payLinkFailed: 'Could not copy. The link is:', grant: 'Free access',
     content: 'Content', edit: 'Edit', publish: 'Publish', unpublish: 'Unpublish', delete: 'Delete',
     cover: 'Course image', coverHint: 'Shown in course listings and at the top of the course page. 16:9 works best.',
     coverRemove: 'Remove image', coverError: 'Could not upload the image.',
@@ -240,6 +241,7 @@ function CourseList({ initialStatus = '' }) {
   const [status, setStatus] = useState(() => initialStatus || '');
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
+  const [granting, setGranting] = useState(null);
   const visibleRows = useMemo(() => rows || [], [rows]);
 
   async function load() {
@@ -299,6 +301,13 @@ function CourseList({ initialStatus = '' }) {
               <Link2 size={14} /> {c.payLink}
             </button>
           )}
+          {/* Free seats for reviewers and influencers. Paid courses only: a free course is
+              watched without any enrolment, so there is nothing to grant. */}
+          {course.is_paid && (
+            <button className="btn btn-tonal btn-sm" type="button" onClick={() => setGranting(course)}>
+              <Gift size={14} /> {c.grant}
+            </button>
+          )}
           <Link className="btn btn-tonal btn-sm" to={`/courses/${course.id}/content`}><ListVideo size={14} /> {c.content}</Link>
           <Link className="btn btn-tonal btn-sm" to={`/courses/${course.id}/edit`}><Pencil size={14} /> {c.edit}</Link>
           <button className="btn btn-tonal btn-sm" type="button" onClick={() => togglePublish(course)}>{course.status === 'published' ? <EyeOff size={14} /> : <Eye size={14} />} {course.status === 'published' ? c.unpublish : c.publish}</button>
@@ -307,6 +316,7 @@ function CourseList({ initialStatus = '' }) {
       </tr>)}
       {!visibleRows.length && <tr><td colSpan="7" className="empty">{c.noCourses}</td></tr>}
     </tbody></table></div>}
+    {granting && <CourseGrantDialog course={granting} onClose={() => setGranting(null)} onDone={load} />}
   </section>;
 }
 

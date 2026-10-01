@@ -855,3 +855,9 @@ select option { font-weight: 600; }
 .course-add-found { flex-basis: 100%; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
 .video-link-existing { margin-bottom: 16px; padding: 14px 16px; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface); }
 .video-link-existing p { margin: 4px 0 10px; color: var(--muted); font-size: 13px; }
+
+/* Free-access dialog (components/CourseGrantDialog.jsx): the picked people as removable chips. */
+.grant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.grant-chips .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 12px; font-size: 13px; }
+.grant-chips .chip .btn { padding: 2px; min-height: 0; }
+.grant-skipped { margin: 0 0 16px; padding-inline-start: 20px; line-height: 1.9; }
