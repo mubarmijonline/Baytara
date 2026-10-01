@@ -6,6 +6,29 @@ This file holds the plan for the work currently in flight.
 
 ---
 
+## In flight, milestone 26: link previews for articles and book summaries
+
+See `docs/milestones/26-link-previews.md`.
+
+- **Default card in the shell.** `frontend/web/index.html` gains `og:*` and `twitter:*`
+  tags with a 1200x630 brand image (`public/brand/og-default.png`). Every route gets it.
+- **Per-item card from Flask.** A new blueprint (`backend/app/api/share.py`, no `/api`
+  prefix) answers `GET /blog/<slug>` and `GET /library/<slug>`: it reads the deployed
+  `index.html` (`WEB_INDEX_HTML`, default `/var/www/baytara/index.html`, the same root nginx
+  serves), strips the shell's title, description, canonical, `og:*` and `twitter:*` tags,
+  and inserts the item's own. Published items only; anything else gets the shell unchanged.
+  Cover URLs are made absolute against `SITE_URL`. All values are HTML-escaped.
+- **nginx, this site only.** One regex location for `^/(blog|library)/[^/]+/?$` proxies to
+  gunicorn with the same security snippet and `no-store` as the SPA location. A 404 (an API
+  that predates the route), any 5xx or a stopped API falls back to the static `index.html` via `error_page`, so the page can never
+  be lost to this feature. Flask answers 503 if it cannot read the shell, which takes the
+  same fallback.
+- **Not touched.** The React app, the API, the app-link files, other sites' configs.
+  Courses, videos and paths keep the default card for now; they can reuse the same
+  blueprint later.
+
+---
+
 ## In flight, milestone 27: account deletion, and the schema drift pass
 
 See `docs/milestones/27-account-deletion-and-schema-drift.md`. Built and tested; waiting on
