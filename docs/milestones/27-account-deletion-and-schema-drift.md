@@ -1,8 +1,7 @@
 # 27 - Account deletion, and the schema drift pass
 
-**Status:** backend live since 2026-10-01 16:28 (both migrations applied, API restarted).
-**Website page and app screen not published yet:** the website needs its build published,
-and the app reaches phones only with the next release.
+**Status:** live on the website and the API since 2026-10-01 (API 16:28, website 16:38).
+The app screen reaches phones only with the next release.
 
 The deploy ran in the wrong order: the API restarted onto this code about a minute before
 the migration ran, and for that minute every endpoint that reads a user answered 500. The
@@ -80,7 +79,8 @@ After both migrations apply, the comparison should report nothing.
 - [x] Website: `src/pages/delete-account.test.jsx` (4 tests); full suite 112 passed; build passes.
 - [x] App: four deletion cases in `test/auth_flow_test.dart`; `flutter analyze` clean; 269 tests passed.
 - [x] Production: both migrations applied (`d8f2a4c6e1b9` is head), backend restarted.
-- [ ] Production: website build published, so `/account/delete` renders the page.
+- [x] Production: website build published; `https://baytara.app/account/delete` renders the
+  page in a headless browser, with the sign-in link returning to it for a visitor.
 - [x] Live API, throwaway account: wrong password 403 `wrong_password` and the session kept;
   right password 200; the old email and password then 401; the same email registers again
   as a new account (new id). Both throwaway accounts were closed afterwards.
