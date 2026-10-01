@@ -1,10 +1,11 @@
 # 26: Link previews for articles and book summaries
 
-**Status:** partly live, 2026-10-01. The default card (checks 3 and 4) and the nginx route
-with its fallback (check 5) are live. The per-item cards (checks 1 and 2) go live on the
-next backend restart, which was held because another session's unmigrated model change was
-in the same checkout. Check 6 waits on that restart. No book summary is published yet, so
-`/library/<slug>` is covered by tests only.
+**Status:** live, 2026-10-01. The backend restart at 16:27:43 loaded the route (the other
+session's migrations went in about a minute later). Verified live with a crawler user agent: the
+published article returns its own title, summary, cover and encoded `og:url`; the cover
+serves as `image/jpeg`; an unknown slug still answers 200. Still open: check 6 (Facebook
+debugger and a real WhatsApp share), and `/library/<slug>` on a real book, since none is
+published yet.
 
 ## Goal
 
