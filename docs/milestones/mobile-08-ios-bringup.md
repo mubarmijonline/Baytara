@@ -100,9 +100,11 @@ app:
   so two things are left, both outside this repo:
     1. enable **Associated Domains** for the App ID in the Apple Developer portal, or the
        build is rejected at signing;
-    2. publish `apple-app-site-association` on `baytara.app`, which
-       `APPLE_TEAM_ID=... deploy/gen_applinks.sh` writes. nginx already has the location
-       block and serves it as `application/json`.
+    2. publish `apple-app-site-association` on `baytara.app`. It is generated for team
+       `2T43SNWHAM` and committed under `frontend/web/public/.well-known/`, so it ships
+       with the site build; nginx already has the location block and serves it as
+       `application/json`. Rerun `APPLE_TEAM_ID=2T43SNWHAM deploy/gen_applinks.sh` if the
+       `components` list changes.
   The `components` list in that file must stay in step with the intent filters in
   `AndroidManifest.xml` and with `locationForLink()` in `lib/core/links/app_link.dart`.
 - A privacy policy URL (exists, `https://baytara.app/privacy`) and App Privacy answers.

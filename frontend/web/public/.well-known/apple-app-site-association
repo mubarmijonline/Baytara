@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["2T43SNWHAM.app.baytara.app"],
+        "components": [
+          { "/": "/library", "comment": "the library shelf" },
+          { "/": "/library/*", "comment": "one book summary" },
+          { "/": "/blog", "comment": "the blog index, which is the library" },
+          { "/": "/blog/*", "comment": "one article, as the website addresses it" },
+          { "/": "/articles/*", "comment": "one article, as the app addresses it" },
+          { "/": "/payment/callback*", "comment": "the gateway's return" }
+        ]
+      }
+    ]
+  }
+}
