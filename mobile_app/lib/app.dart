@@ -9,7 +9,6 @@ import 'core/i18n/app_localizations.dart';
 import 'core/i18n/locale_controller.dart';
 import 'core/links/app_link.dart';
 import 'core/theme/app_theme.dart';
-import 'features/payments/application/checkout_controller.dart';
 import 'features/payments/application/deep_links.dart';
 import 'router/app_router.dart';
 
@@ -26,19 +25,15 @@ class _BaytaraAppState extends ConsumerState<BaytaraApp> {
   @override
   void initState() {
     super.initState();
-    // Started once for the life of the app so a payment return is caught whether the app
-    // was running or cold started.
+    // Started once for the life of the app so a shared link is caught whether the app was
+    // running or cold started.
     _deepLinks.start(_onDeepLink);
   }
 
   void _onDeepLink(Uri uri) {
-    final callback = parsePaymentCallback(uri);
-    if (callback.paymentId != null) {
-      // Only the id is used, and only to ask the server what happened. The `status`
-      // parameter in the URL is never treated as an outcome.
-      ref.read(routerProvider).push('/payment/callback?pid=${callback.paymentId}');
-      return;
-    }
+    // No payment return is handled here: checkout is website-only, so the gateway's
+    // redirect to /payment/callback belongs to the browser the user paid in. The app no
+    // longer claims that path (AndroidManifest.xml).
 
     // A shared page: a book summary or an article. The OS handed it to us because the app
     // claims those paths on baytara.app, so the reader lands on the screen rather than in

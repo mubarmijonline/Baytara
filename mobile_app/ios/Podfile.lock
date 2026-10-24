@@ -1,0 +1,29 @@
+PODS:
+  - Flutter (1.0.0)
+  - vdocipher_flutter (2.8.5):
+    - Flutter
+    - VdoFramework (= 2.9.4)
+  - VdoFramework (2.9.4)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - vdocipher_flutter (from `.symlinks/plugins/vdocipher_flutter/ios`)
+
+SPEC REPOS:
+  trunk:
+    - VdoFramework
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  vdocipher_flutter:
+    :path: ".symlinks/plugins/vdocipher_flutter/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  vdocipher_flutter: 0bec9b0f2093a3906c06d5e6d7f3e9ab3ccf5e2f
+  VdoFramework: da31f7ea97352e36e2ce910095417cabc3ccf437
+
+PODFILE CHECKSUM: 3ba3a73b1b12adcf321a227a745625fe0888cc82
+
+COCOAPODS: 1.16.2

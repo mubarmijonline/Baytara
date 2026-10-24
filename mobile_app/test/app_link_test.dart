@@ -34,8 +34,7 @@ void main() {
     });
 
     test('a payment return is not routed as a page', () {
-      // checkout_controller.dart owns it, and it must ask the server rather than trust
-      // the URL.
+      // Checkout is website-only, so the return belongs to the browser the user paid in.
       expect(
         locationForLink(Uri.parse('https://baytara.app/payment/callback?pid=9&status=paid')),
         isNull,

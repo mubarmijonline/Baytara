@@ -167,9 +167,10 @@ class _Cta extends StatelessWidget {
       return _Notice(text: l.errNoVideo);
     }
 
-    if (access.reason == LockReason.needsPurchase &&
-        !PurchaseAvailability.purchasesEnabled) {
-      return _Notice(text: l.checkoutUnavailableOnThisPlatform);
+    // Buying is website-only (see purchase_availability.dart): the price stays on the page,
+    // but there is no button and, on iOS, no link out.
+    if (access.reason == LockReason.needsPurchase) {
+      return _Notice(text: PurchaseAvailability.unavailableNotice(l));
     }
     if (access.reason == LockReason.needsBaytarian) {
       return const VerifyToWatchPrompt();
@@ -185,12 +186,8 @@ class _Cta extends StatelessWidget {
       LockReason.needsPhone => (l.phoneSave, () => context.push('/auth/phone')),
       // Returned early above, with the sentence and the button the website shows.
       LockReason.needsBaytarian => (l.verifyNow, () => context.push('/verify')),
-      LockReason.needsPurchase => (
-          '${l.lockNeedsPurchase} · ${priceLabel(video.price, video.currency, l)}',
-          () => context.push('/buy/${video.id}?kind=video&video_id=${video.id}'),
-        ),
       // Returned early above, but the compiler cannot see that.
-      LockReason.nonVeterinariansOnly => (l.lockNonVets, () {}),
+      LockReason.needsPurchase || LockReason.nonVeterinariansOnly => (l.lockNonVets, () {}),
     };
 
     return SizedBox(
