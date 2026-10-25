@@ -192,6 +192,7 @@ const COPY = {
       activeAccount: 'الحساب مفعّل', headline: 'المسمّى المهني (يظهر بالموقع)', bio: 'نبذة', expertise: 'مجالات الخبرة (افصل بفاصلة)',
       instructorProfileHint: 'الصورة والمسمّى والنبذة والخبرات والقسم تُدار من صفحة «المحاضرون».',
       active: 'مفعّل', inactive: 'معطّل', activate: 'تفعيل', deactivate: 'تعطيل', empty: 'لا نتائج.',
+      reviewAccount: 'حساب مراجعة المتجر',
       deleteConfirm: (name) => `حذف ${name}؟`, columns: ['الاسم', 'البريد', 'الدور', 'الحالة', 'إجراءات'],
     },
     messages: {
@@ -397,6 +398,7 @@ const COPY = {
       activeAccount: 'Account is active', headline: 'Professional title (shown publicly)', bio: 'Bio', expertise: 'Expertise (comma separated)',
       instructorProfileHint: 'Photo, title, bio, expertise and section are managed on the Instructors page.',
       active: 'Active', inactive: 'Inactive', activate: 'Activate', deactivate: 'Deactivate', empty: 'No results.',
+      reviewAccount: 'Review account',
       deleteConfirm: (name) => `Delete ${name}?`, columns: ['Name', 'Email', 'Role', 'Status', 'Actions'],
     },
     messages: {

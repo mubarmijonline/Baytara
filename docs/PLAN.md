@@ -6,6 +6,18 @@ This file holds the plan for the work currently in flight.
 
 ---
 
+## In flight, milestone 31: the App Store / Google Play review account
+
+See `docs/milestones/31-store-review-account.md`. One CLI command,
+`flask create-review-account`, creates or refreshes the account the store reviewers sign
+in with: a student with no device limit, verified as a vet unless `--no-vet`, given
+lifetime seats in every published course its audience allows, and exempt from the
+suspicious-activity playback block (events are still recorded). New column
+`users.is_review_account`. The admin's direct-verify logic moves to
+`services/vet_verification.py` so the endpoint and the command share it.
+
+---
+
 ## In flight, milestone 30: Kashier through the hosted payment page
 
 See `docs/milestones/30-kashier-hosted-checkout.md`. Checkout moves from the

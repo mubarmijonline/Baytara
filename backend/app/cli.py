@@ -1,4 +1,5 @@
 import click
+from marshmallow import ValidationError, validate
 from sqlalchemy import func
 
 from .extensions import db
@@ -18,6 +19,10 @@ from .models import (
 )
 from .models.catalog import FIXED_CATEGORIES
 from .security import hash_password
+from .services import course_grants
+from .services.catalog_access import PUBLISHED_STATUS, access_is_paid
+from .services.phone import normalize_mobile
+from .services.vet_verification import verify_directly
 
 
 PROTECTED_CLEANUP_TABLES = {"users", "settings", "categories"}
@@ -233,3 +238,103 @@ def register_cli(app):
             action = "created as admin"
         db.session.commit()
         click.echo(f"{email} {action}.")
+
+    @app.cli.command("create-review-account")
+    @click.argument("email")
+    @click.argument("name")
+    @click.argument("phone")
+    @click.option("--vet/--no-vet", default=True, show_default=True,
+                  help="Verified veterinarian (vet courses) or not (general courses).")
+    @click.option("--max-devices", default=10, show_default=True, type=click.IntRange(min=1))
+    @click.option("--apply", is_flag=True, help="Write the changes. Without it nothing is saved.")
+    def create_review_account(email, name, phone, vet, max_devices, apply):
+        """Create or refresh the App Store / Google Play review account.
+
+        Dry run unless --apply. On --apply the password is asked for twice, never taken as
+        an argument. Every published course the audience rule allows is opened for life,
+        with no payment. Safe to re-run: it brings the account back to the same state.
+        """
+        email = email.strip().lower()
+        try:
+            validate.Email()(email)
+        except ValidationError:
+            raise click.ClickException(f"{email!r} is not an email address.")
+        name = name.strip()
+        if not name:
+            raise click.ClickException("NAME is empty.")
+        mobile = normalize_mobile(phone)
+        if not mobile:
+            raise click.ClickException(
+                f"{phone!r} is not a mobile number Baytara accepts (e.g. +201012345678).")
+
+        user = User.query.filter_by(email=email).first()
+        # A typo must not quietly demote the owner and reset their password.
+        if user and user.role != "student":
+            raise click.ClickException(
+                f"{email} is an existing {user.role} account; refusing to make it a review account.")
+
+        password_hash = None
+        if apply:
+            password = click.prompt("Password", hide_input=True, confirmation_prompt=True)
+            if not 8 <= len(password) <= 128:
+                raise click.ClickException("The password must be 8 to 128 characters.")
+            password_hash = hash_password(password)
+
+        # One code path for both modes: the dry run does the work and rolls it back, so
+        # what it prints is exactly what --apply would do.
+        created = user is None
+        try:
+            if created:
+                user = User(email=email)
+                db.session.add(user)
+            if password_hash:
+                user.password_hash = password_hash
+            user.name = name
+            user.phone = mobile
+            user.role = "student"
+            user.is_active = True
+            user.deleted_at = None
+            user.max_devices = max_devices
+            user.is_review_account = True
+            db.session.flush()
+
+            if not vet:
+                user.is_baytarian = user.is_vet_student = False
+                verified = "no"
+            elif user.is_baytarian:
+                verified = "yes (already)"
+            else:
+                verify_directly(user, note="App Store / Google Play review account")
+                verified = "yes"
+
+            rows = []
+            courses = Course.query.filter_by(status=PUBLISHED_STATUS).order_by(Course.id).all()
+            for course in courses:
+                source = course_grants.SOURCE if access_is_paid(course.access_type) else "free"
+                granted, skipped = course_grants.grant_course(
+                    course, [user.id], access="lifetime", source=source)
+                reason = skipped[0]["reason"] if skipped else None
+                status = ("enrolled" if granted else
+                          "already enrolled" if reason == "already_enrolled" else f"skipped ({reason})")
+                rows.append((course.id, course.access_type, status, course.title))
+            uid = user.id
+
+            if apply:
+                db.session.commit()
+            else:
+                db.session.rollback()
+        except Exception:
+            db.session.rollback()
+            raise
+
+        if not apply:
+            click.echo("DRY RUN: nothing is written. This is what --apply would do.")
+        click.echo(f"User:        {email}{f' (id={uid})' if apply or not created else ''} "
+                   f"{'created' if created else 'updated'}")
+        click.echo(f"Verified:    {verified}")
+        click.echo(f"Max devices: {max_devices}")
+        click.echo(f"Courses:     {len(rows)} published")
+        for course_id, access_type, status, title in rows:
+            click.echo(f"  #{course_id:<5} {access_type:<10} {status:<32} {title}")
+        if not apply:
+            click.echo("(dry run, nothing written; pass --apply to write)")

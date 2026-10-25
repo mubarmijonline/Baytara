@@ -63,6 +63,10 @@ class User(db.Model):
     # Per-account device allowance. NULL = the contract default (UserDevice.MAX_DEVICES).
     # Raised only for staff/testing accounts, never as a way around البند2 for buyers.
     max_devices = db.Column(db.Integer)
+    # The App Store / Google Play reviewers' account (`flask create-review-account`). Its
+    # suspicious-activity events are still recorded, but they do not block its playback:
+    # a reviewer pressing screenshot keys must not end up with a rejected build.
+    is_review_account = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     # Self-service device swaps. The client allows one per subscription window -- long
     # enough that buying a phone is covered, short enough that passing an account around is
     # not. `device_swap_grants` is what an admin adds when they approve a request.

@@ -360,7 +360,9 @@ def playback():
                            VideoPlaybackEvent.event_type == "suspicious",
                            VideoPlaybackEvent.created_at >= now - SUSPICIOUS_WINDOW)
                    .count())
-        if flagged >= SUSPICIOUS_LIMIT:
+        # The store reviewers' account keeps its events on record but is never blocked:
+        # a reviewer trying screenshot keys must not see playback refused.
+        if flagged >= SUSPICIOUS_LIMIT and not user.is_review_account:
             # tell the admins once per block so a repeat offender is not just a log line
             minutes = int(SUSPICIOUS_WINDOW.total_seconds() // 60)
             for admin in User.query.filter_by(role="admin", is_active=True).all():
