@@ -16,6 +16,7 @@ import '../features/account/ui/notifications_screen.dart';
 import '../features/account/ui/profile_screen.dart';
 import '../features/account/ui/delete_account_screen.dart';
 import '../features/account/ui/settings_screen.dart';
+import '../features/tools/ui/sonar_screen.dart';
 import '../features/catalogue/ui/course_detail_screen.dart';
 import '../features/catalogue/ui/bundles_screen.dart';
 import '../features/catalogue/ui/business_screen.dart';
@@ -101,6 +102,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/account/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/account/delete', builder: (_, _) => const DeleteAccountScreen()),
+      // Signed in only: not in Routes._public, so the guard sends a visitor to sign in.
+      GoRoute(path: '/tools/sonar', builder: (_, _) => const SonarScreen()),
 
       // Where the gateway's deep link lands. Confirms with the server; the URL's `status`
       // parameter is not consulted.

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بيطرة | قياسات السونار التناسلي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #121826;
+            color: #e2e8f0;
+        }
+        .input-field {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            color: #f3f4f6;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 max-w-md mx-auto pb-20">
+
+    <!-- Header -->
+    <div class="text-center mb-4 bg-gray-800 p-5 rounded-2xl shadow-lg border-b-4 border-blue-500">
+        <h1 class="text-2xl font-extrabold text-blue-400 mb-1">منصة بيطرة</h1>
+        <h2 class="text-base text-gray-300">حاسبة قياسات السونار التناسلي</h2>
+        <p class="text-xs text-blue-300 mt-1">إصدار أمواج الحياة - V5.0 المعتمد</p>
+    </div>
+
+    <!-- النتيجة الفورية (تظهر تلقائياً أمامك بدون سحب الشاشة) -->
+    <div id="topResultArea" class="hidden mb-5"></div>
+
+    <!-- Input Form -->
+    <div class="bg-gray-800 p-5 rounded-2xl shadow-lg mb-6">
+        <div class="mb-4">
+            <label class="block text-sm font-semibold mb-2 text-gray-300">رقم/اسم الحالة (اختياري)</label>
+            <input type="text" id="animalId" class="input-field w-full px-4 py-3 rounded-xl" placeholder="مثال: بقرة رقم 45">
+        </div>
+
+        <div class="mb-5">
+            <label class="block text-sm font-semibold mb-2 text-gray-300">الفصيلة</label>
+            <select id="species" onchange="checkSpecies()" class="input-field w-full px-4 py-3 rounded-xl font-bold text-blue-400">
+                <option value="bovine">الأبقار (Bovine)</option>
+                <option value="buffalo">الجاموس (Buffalo)</option>
+                <option value="equine">الخيول (Equine)</option>
+                <option value="ovine">الأغنام (Ovine)</option>
+                <option value="caprine">الماعز (Caprine)</option>
+            </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div id="vesicleBox" class="col-span-2">
+                <label id="vesicleLbl" class="block text-xs font-semibold mb-1 text-blue-300">قطر الحويصلة / كيس الحمل GSD (mm)</label>
+                <input type="number" step="any" id="vesicle" class="input-field w-full px-3 py-2 rounded-lg text-center" placeholder="0">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1 text-gray-400">محجر العين Eye (mm)</label>
+                <input type="number" step="any" id="eyeOrbit" class="input-field w-full px-3 py-2 rounded-lg text-center" placeholder="0">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1 text-gray-400">طول الجنين CRL (mm)</label>
+                <input type="number" step="any" id="crl" class="input-field w-full px-3 py-2 rounded-lg text-center" placeholder="0">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1 text-gray-400">قطر الرأس BPD (mm)</label>
+                <input type="number" step="any" id="bpd" class="input-field w-full px-3 py-2 rounded-lg text-center" placeholder="0">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1 text-gray-400">طول الرأس HL (mm)</label>
+                <input type="number" step="any" id="hl" class="input-field w-full px-3 py-2 rounded-lg text-center" placeholder="0">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1 text-gray-400">قطر الجذع Trunk (mm)</label>
+                <input type="number" step="any" id="trunk" class="input-field w-full px-3 py-2 rounded-lg text-center" placeholder="0">
+            </div>
+            <div id="placentomeBox">
+                <label class="block text-xs font-semibold mb-1 text-gray-400">الفلقيات Placentomes (mm)</label>
+                <input type="number" step="any" id="placentome" class="input-field w-full px-3 py-2 rounded-lg text-center" placeholder="0">
+            </div>
+        </div>
+
+        <button onclick="calculateAndSave()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition duration-200 mt-2">
+            حساب العمر وتسجيل الحالة
+        </button>
+    </div>
+
+    <!-- Results Section -->
+    <div id="resultsArea" class="hidden">
+        <div class="bg-gray-800 p-3 rounded-xl border border-gray-700 mb-4">
+            <h3 class="text-lg font-bold text-blue-400 mb-3 text-center">سجل الفحوصات (جلسة اليوم)</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="copyAllRecords()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-sm shadow">
+                    📋 نسخ التقرير
+                </button>
+                <button onclick="clearRecords()" class="w-full bg-red-900 hover:bg-red-800 text-red-100 font-bold py-3 px-4 rounded-xl text-sm shadow border border-red-700">
+                    🗑️ مسح السجل
+                </button>
+            </div>
+        </div>
+        <div id="recordsList" class="space-y-4"></div>
+    </div>
+
+    <script>
+        var sessionTextReport = "";
+
+        // إخفاء خانة الفلقيات في الخيول فقط
+        function checkSpecies() {
+            var sp = document.getElementById('species').value;
+            var pBox = document.getElementById('placentomeBox');
+            var vBox = document.getElementById('vesicleBox');
+            var vLbl = document.getElementById('vesicleLbl');
+
+            if (sp === 'equine') {
+                document.getElementById('placentome').value = '';
+                pBox.classList.add('hidden');
+                vBox.classList.remove('col-span-2');
+                vLbl.textContent = 'الحويصلة EV (mm)';
+            } else {
+                pBox.classList.remove('hidden');
+                vBox.classList.add('col-span-2');
+                vLbl.textContent = 'قطر الحويصلة / كيس الحمل GSD (mm)';
+            }
+        }
+
+        function getSpeciesName(code) {
+            if (code === 'bovine') return 'أبقار';
+            if (code === 'buffalo') return 'جاموس';
+            if (code === 'equine') return 'خيول';
+            if (code === 'ovine') return 'أغنام';
+            if (code === 'caprine') return 'ماعز';
+            return code;
+        }
+
+        function getExpectedBirth(species, ageDays) {
+            var total = 283;
+            if (species === 'buffalo') total = 310;
+            if (species === 'equine') total = 340;
+            if (species === 'ovine' || species === 'caprine') total = 150;
+
+            var rem = total - ageDays;
+            if (rem <= 0) return 'مكتمل النمو / على وشك الولادة';
+
+            var d = new Date();
+            d.setDate(d.getDate() + rem);
+            return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function calculateAndSave() {
+            var animalId = document.getElementById('animalId').value || 'بدون رقم';
+            var species = document.getElementById('species').value;
+
+            var vesicle = parseFloat(document.getElementById('vesicle').value) || 0;
+            var eyeOrbit = parseFloat(document.getElementById('eyeOrbit').value) || 0;
+            var crl = parseFloat(document.getElementById('crl').value) || 0;
+            var bpd = parseFloat(document.getElementById('bpd').value) || 0;
+            var hl = parseFloat(document.getElementById('hl').value) || 0;
+            var trunk = parseFloat(document.getElementById('trunk').value) || 0;
+            var placentome = (species === 'equine') ? 0 : (parseFloat(document.getElementById('placentome').value) || 0);
+
+            if (vesicle <= 0 && eyeOrbit <= 0 && crl <= 0 && bpd <= 0 && hl <= 0 && trunk <= 0 && placentome <= 0) {
+                alert("يرجى إدخال قياس واحد على الأقل ليتمكن التطبيق من حساب العمر!");
+                return;
+            }
+
+            var ages = [];
+            var badgesHtml = "";
+            var reportMeasures = [];
+
+            // المعادلات العلمية المحدثة لأعلى دقة مرجعية في الفصائل الخمس
+            if (species === 'bovine') {
+                if (vesicle > 0) { var a1 = Math.round(22.5 + (0.55 * vesicle)); ages.push(a1); badgesHtml += makeBadge('GSD', vesicle, a1); reportMeasures.push('GSD:' + vesicle); }
+                if (eyeOrbit > 0) { var a2 = Math.round(27 + (5.2 * eyeOrbit) + (0.065 * eyeOrbit * eyeOrbit)); ages.push(a2); badgesHtml += makeBadge('العين', eyeOrbit, a2); reportMeasures.push('العين:' + eyeOrbit); }
+                if (crl > 0) { var a3 = Math.round(21 + (2.1 * Math.sqrt(crl)) + (0.37 * crl)); ages.push(a3); badgesHtml += makeBadge('CRL', crl, a3); reportMeasures.push('CRL:' + crl); }
+                if (bpd > 0) { var a4 = Math.round(24.5 + (2.42 * bpd)); ages.push(a4); badgesHtml += makeBadge('BPD', bpd, a4); reportMeasures.push('BPD:' + bpd); }
+                if (hl > 0) { var a5 = Math.round(26 + (1.38 * hl)); ages.push(a5); badgesHtml += makeBadge('HL', hl, a5); reportMeasures.push('HL:' + hl); }
+                if (trunk > 0) { var a6 = Math.round(28 + (1.62 * trunk)); ages.push(a6); badgesHtml += makeBadge('الجذع', trunk, a6); reportMeasures.push('الجذع:' + trunk); }
+                if (placentome > 0) { var a7 = Math.round(42 + (2.65 * placentome)); ages.push(a7); badgesHtml += makeBadge('الفلقيات', placentome, a7); reportMeasures.push('الفلقيات:' + placentome); }
+            } 
+            else if (species === 'buffalo') {
+                if (vesicle > 0) { var b1 = Math.round(24.5 + (0.58 * vesicle)); ages.push(b1); badgesHtml += makeBadge('GSD', vesicle, b1); reportMeasures.push('GSD:' + vesicle); }
+                if (eyeOrbit > 0) { var b2 = Math.round(30 + (5.6 * eyeOrbit) + (0.07 * eyeOrbit * eyeOrbit)); ages.push(b2); badgesHtml += makeBadge('العين', eyeOrbit, b2); reportMeasures.push('العين:' + eyeOrbit); }
+                if (crl > 0) { var b3 = Math.round(23 + (2.2 * Math.sqrt(crl)) + (0.38 * crl)); ages.push(b3); badgesHtml += makeBadge('CRL', crl, b3); reportMeasures.push('CRL:' + crl); }
+                if (bpd > 0) { var b4 = Math.round(27 + (2.58 * bpd)); ages.push(b4); badgesHtml += makeBadge('BPD', bpd, b4); reportMeasures.push('BPD:' + bpd); }
+                if (hl > 0) { var b5 = Math.round(29 + (1.48 * hl)); ages.push(b5); badgesHtml += makeBadge('HL', hl, b5); reportMeasures.push('HL:' + hl); }
+                if (trunk > 0) { var b6 = Math.round(30 + (1.72 * trunk)); ages.push(b6); badgesHtml += makeBadge('الجذع', trunk, b6); reportMeasures.push('الجذع:' + trunk); }
+                if (placentome > 0) { var b7 = Math.round(45 + (2.85 * placentome)); ages.push(b7); badgesHtml += makeBadge('الفلقيات', placentome, b7); reportMeasures.push('الفلقيات:' + placentome); }
+            } 
+            else if (species === 'equine') {
+                if (vesicle > 0) {
+                    var e1 = vesicle <= 24 ? Math.round(9 + (0.32 * vesicle)) : (vesicle <= 28 ? Math.round(17 + ((vesicle - 24) * 2.0)) : Math.round(25 + ((vesicle - 28) * 0.52)));
+                    ages.push(e1); badgesHtml += makeBadge('EV', vesicle, e1); reportMeasures.push('EV:' + vesicle);
+                }
+                if (eyeOrbit > 0) { var e2 = Math.round(22 + (5.3 * eyeOrbit) + (0.05 * eyeOrbit * eyeOrbit)); ages.push(e2); badgesHtml += makeBadge('العين', eyeOrbit, e2); reportMeasures.push('العين:' + eyeOrbit); }
+                if (crl > 0) { var e3 = Math.round(21 + (1.6 * Math.sqrt(crl)) + (0.36 * crl)); ages.push(e3); badgesHtml += makeBadge('CRL', crl, e3); reportMeasures.push('CRL:' + crl); }
+                if (bpd > 0) { var e4 = Math.round(25 + (2.32 * bpd)); ages.push(e4); badgesHtml += makeBadge('BPD', bpd, e4); reportMeasures.push('BPD:' + bpd); }
+                if (hl > 0) { var e5 = Math.round(26 + (1.35 * hl)); ages.push(e5); badgesHtml += makeBadge('HL', hl, e5); reportMeasures.push('HL:' + hl); }
+                if (trunk > 0) { var e6 = Math.round(26 + (1.52 * trunk)); ages.push(e6); badgesHtml += makeBadge('الجذع', trunk, e6); reportMeasures.push('الجذع:' + trunk); }
+            } 
+            else if (species === 'ovine') {
+                if (vesicle > 0) { var o1 = Math.round(17 + (0.55 * vesicle)); ages.push(o1); badgesHtml += makeBadge('GSD', vesicle, o1); reportMeasures.push('GSD:' + vesicle); }
+                if (eyeOrbit > 0) { var o2 = Math.round(20 + (5.2 * eyeOrbit) + (0.055 * eyeOrbit * eyeOrbit)); ages.push(o2); badgesHtml += makeBadge('العين', eyeOrbit, o2); reportMeasures.push('العين:' + eyeOrbit); }
+                if (crl > 0) { var o3 = Math.round(18.5 + (1.55 * Math.sqrt(crl)) + (0.31 * crl)); ages.push(o3); badgesHtml += makeBadge('CRL', crl, o3); reportMeasures.push('CRL:' + crl); }
+                if (bpd > 0) { var o4 = Math.round(20.5 + (2.1 * bpd)); ages.push(o4); badgesHtml += makeBadge('BPD', bpd, o4); reportMeasures.push('BPD:' + bpd); }
+                if (hl > 0) { var o5 = Math.round(21 + (1.35 * hl)); ages.push(o5); badgesHtml += makeBadge('HL', hl, o5); reportMeasures.push('HL:' + hl); }
+                if (trunk > 0) { var o6 = Math.round(22 + (1.62 * trunk)); ages.push(o6); badgesHtml += makeBadge('الجذع', trunk, o6); reportMeasures.push('الجذع:' + trunk); }
+                if (placentome > 0) { var o7 = Math.round(18 + (1.95 * Math.min(placentome, 32))); ages.push(o7); badgesHtml += makeBadge('الفلقيات', placentome, o7); reportMeasures.push('الفلقيات:' + placentome); }
+            } 
+            else if (species === 'caprine') {
+                if (vesicle > 0) { var c1 = Math.round(18 + (0.56 * vesicle)); ages.push(c1); badgesHtml += makeBadge('GSD', vesicle, c1); reportMeasures.push('GSD:' + vesicle); }
+                if (eyeOrbit > 0) { var c2 = Math.round(22 + (5.4 * eyeOrbit) + (0.06 * eyeOrbit * eyeOrbit)); ages.push(c2); badgesHtml += makeBadge('العين', eyeOrbit, c2); reportMeasures.push('العين:' + eyeOrbit); }
+                if (crl > 0) { var c3 = Math.round(19.5 + (1.55 * Math.sqrt(crl)) + (0.32 * crl)); ages.push(c3); badgesHtml += makeBadge('CRL', crl, c3); reportMeasures.push('CRL:' + crl); }
+                if (bpd > 0) { var c4 = Math.round(21.5 + (2.18 * bpd)); ages.push(c4); badgesHtml += makeBadge('BPD', bpd, c4); reportMeasures.push('BPD:' + bpd); }
+                if (hl > 0) { var c5 = Math.round(22 + (1.4 * hl)); ages.push(c5); badgesHtml += makeBadge('HL', hl, c5); reportMeasures.push('HL:' + hl); }
+                if (trunk > 0) { var c6 = Math.round(23 + (1.62 * trunk)); ages.push(c6); badgesHtml += makeBadge('الجذع', trunk, c6); reportMeasures.push('الجذع:' + trunk); }
+                if (placentome > 0) { var c7 = Math.round(19 + (2.0 * Math.min(placentome, 32))); ages.push(c7); badgesHtml += makeBadge('الفلقيات', placentome, c7); reportMeasures.push('الفلقيات:' + placentome); }
+            }
+
+            var sum = 0;
+            for (var i = 0; i < ages.length; i++) {
+                sum += ages[i];
+            }
+            var averageAge = Math.round(sum / ages.length);
+
+            var months = Math.floor(averageAge / 30);
+            var remDays = averageAge % 30;
+            var monthsStr = months === 0 ? "أقل من شهر" : (months + " شهر و " + remDays + " يوم");
+
+            var speciesName = getSpeciesName(species);
+            var expectedBirth = getExpectedBirth(species, averageAge);
+            var timeNow = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+            // حفظ السطر في التقرير النصي للنسخ
+            sessionTextReport = "• حالة (" + animalId + ") [" + speciesName + "] -> العمر: " + averageAge + " يوم (" + monthsStr + ") | الولادة: " + expectedBirth + "\n" + sessionTextReport;
+
+            // بناء الكارت
+            var cardHtml = '<div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-sm relative">' +
+                '<div class="flex justify-between items-start mb-2">' +
+                    '<span class="bg-blue-900 text-blue-200 text-xs px-2.5 py-1 rounded-md font-bold">' + speciesName + '</span>' +
+                    '<span class="text-xs text-gray-400">' + timeNow + '</span>' +
+                '</div>' +
+                '<h4 class="text-lg font-bold text-white mb-2">حالة: ' + animalId + '</h4>' +
+                '<div class="flex flex-wrap gap-2 mb-3">' + badgesHtml + '</div>' +
+                '<div class="bg-green-900/30 border border-green-800 p-3 rounded-lg text-center">' +
+                    '<span class="block text-xs text-green-400 mb-1">متوسط العمر التقديري (AUA)</span>' +
+                    '<span class="text-xl font-bold text-green-300">' + averageAge + ' يوماً تقريباً (' + monthsStr + ')</span>' +
+                    '<div class="mt-2 pt-2 border-t border-green-800/60 text-xs text-gray-200">' +
+                        'ميعاد الولادة المتوقع: <span class="font-bold text-white">' + expectedBirth + '</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+            // إظهار النتيجة الفورية في أعلى الشاشة مباشرة بدون سحب
+            var topArea = document.getElementById('topResultArea');
+            topArea.innerHTML = '<div class="border-2 border-emerald-500 rounded-xl p-1 bg-emerald-950/40">' +
+                '<div class="text-center text-xs font-bold text-emerald-300 py-1">✨ النتيجة الفورية للحالة الحالية</div>' +
+                cardHtml + '</div>';
+            topArea.classList.remove('hidden');
+
+            // إضافة الكارت أيضاً إلى سجل الفحوصات بالأسفل
+            document.getElementById('resultsArea').classList.remove('hidden');
+            document.getElementById('recordsList').insertAdjacentHTML('afterbegin', cardHtml);
+
+            // تصفير الخانات للحالة القادمة
+            document.getElementById('animalId').value = '';
+            document.getElementById('vesicle').value = '';
+            document.getElementById('eyeOrbit').value = '';
+            document.getElementById('crl').value = '';
+            document.getElementById('bpd').value = '';
+            document.getElementById('hl').value = '';
+            document.getElementById('trunk').value = '';
+            document.getElementById('placentome').value = '';
+
+            // رفع الشاشة لأعلى نقطة لرؤية النتيجة الفورية مباشرة
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function makeBadge(label, val, age) {
+            return '<span class="text-xs bg-gray-700 px-2 py-1 rounded border border-gray-600 text-gray-300">' +
+                label + ': ' + val + 'mm <span class="text-blue-300 font-bold">(' + age + ' ي)</span></span>';
+        }
+
+        function copyAllRecords() {
+            if (!sessionTextReport) return;
+            var fullText = "📋 تقرير فحص السونار التناسلي - منصة بيطرة:\n\n" + sessionTextReport;
+            var ta = document.createElement('textarea');
+            ta.value = fullText;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            alert("تم نسخ التقرير بنجاح!");
+        }
+
+        function clearRecords() {
+            if (confirm("هل تريد مسح جميع سجلات الجلسة الحالية؟")) {
+                sessionTextReport = "";
+                document.getElementById('recordsList').innerHTML = '';
+                document.getElementById('resultsArea').classList.add('hidden');
+                document.getElementById('topResultArea').classList.add('hidden');
+            }
+        }
+
+        checkSpecies();
+    </script>
+</body>
+</html>

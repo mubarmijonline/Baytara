@@ -34,6 +34,7 @@ def create_app(config=None):
     from .api.v1.instructor import bp as instructor_bp
     from .api.v1.notifications import bp as notifications_bp
     from .api.v1.baytarian import bp as baytarian_bp
+    from .api.v1.tools import bp as tools_bp
     app.register_blueprint(health_bp, url_prefix="/api/v1")
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(courses_bp, url_prefix="/api/v1")
@@ -45,6 +46,7 @@ def create_app(config=None):
     app.register_blueprint(instructor_bp, url_prefix="/api/v1/instructor")
     app.register_blueprint(notifications_bp, url_prefix="/api/v1")
     app.register_blueprint(baytarian_bp, url_prefix="/api/v1")
+    app.register_blueprint(tools_bp, url_prefix="/api/v1")
     app.register_blueprint(admin_bp, url_prefix="/api/v1/admin")
     app.register_blueprint(admin_video_reports_bp, url_prefix="/api/v1/admin/video-reports")
     # Not under /api: nginx sends /blog/<slug> and /library/<slug> here so a shared link

@@ -4,7 +4,8 @@ The account is anonymised rather than removed. Payments, enrolments, progress an
 attempts stay, because they are the platform's accounting and an instructor's revenue,
 and a refund dispute months later still has to find the payment. What identifies the
 person goes: name, email, phone, national ID and its photo, the verification card
-images, the profile photos, reviews, certificates, devices and notifications. The
+images, the profile photos, reviews, certificates, devices, notifications and the
+ultrasound calculator's saved cases. The
 email is freed so the same address can register again as a new account.
 
 Staff accounts are refused here. An instructor's courses cannot exist without them,
@@ -19,7 +20,7 @@ from flask import current_app
 from ..extensions import db
 from ..models import (
     BaytarianRequest, Certificate, CompletionCertificate, Course, CourseReview,
-    DeviceSwapRequest, Notification, User, UserDevice, refresh_course_rating,
+    DeviceSwapRequest, Notification, SonarExam, User, UserDevice, refresh_course_rating,
 )
 
 DELETED_NAME = "حساب محذوف"
@@ -76,6 +77,7 @@ def delete_account(user):
     Certificate.query.filter_by(user_id=uid).delete()
     CompletionCertificate.query.filter_by(user_id=uid).delete()
     Notification.query.filter_by(user_id=uid).delete()
+    SonarExam.query.filter_by(user_id=uid).delete()
     UserDevice.query.filter_by(user_id=uid).delete()
     DeviceSwapRequest.query.filter_by(user_id=uid).delete()
     BaytarianRequest.query.filter_by(user_id=uid).delete()

@@ -224,6 +224,11 @@ export const auth = {
   logoutServer: () => authFetch('/auth/logout', { method: 'POST', body: JSON.stringify({ device_id: getDeviceId() }) }).catch(() => {}),
   me: () => authFetch('/auth/me'),
   profile: (body) => authFetch('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
+  // Reproductive ultrasound calculator (milestone 29): computed and saved server-side.
+  sonarCalculate: (body) => authFetch('/tools/sonar', { method: 'POST', body: JSON.stringify(body) }),
+  sonarHistory: (before) => authFetch('/tools/sonar' + (before ? `?before=${before}` : '')),
+  sonarDelete: (id) => authFetch(`/tools/sonar/${id}`, { method: 'DELETE' }),
+  sonarClear: () => authFetch('/tools/sonar', { method: 'DELETE' }),
   deleteAccount: (password) => authFetch('/auth/account', { method: 'DELETE', body: JSON.stringify({ confirm: true, password }) }),
   devices: () => authFetch('/auth/devices'),
   removeDevice: (id) => authFetch(`/auth/devices/${id}`, { method: 'DELETE' }),

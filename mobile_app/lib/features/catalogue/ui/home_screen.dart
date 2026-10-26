@@ -148,6 +148,44 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
+            // The ultrasound calculator (milestone 29). Always offered; signing in is asked
+            // for on the way in, by the route guard.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => context.push('/tools/sonar'),
+                    child: Ink(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: BrandGradients.darkPanel,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.monitor_heart_outlined, color: BrandColors.gold, size: 30),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(l.sonarEntry,
+                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                              Text(l.sonarEntrySubtitle,
+                                  style: const TextStyle(color: Color(0xFFC9D2F2), fontSize: 12.5)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_left, color: Colors.white),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
             // 4. Free videos.
             if (videos.items.isNotEmpty)
               SliverToBoxAdapter(

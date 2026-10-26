@@ -6,7 +6,17 @@ This file holds the plan for the work currently in flight.
 
 ---
 
-## In flight, milestone 28: complimentary course access, and the locked-lecture sentence
+## In flight, milestone 29: the reproductive ultrasound calculator
+
+See `docs/milestones/29-sonar-calculator.md`. The client's formulas, unchanged, ported to
+`services/sonar.py` and checked against the original JavaScript. `POST /api/v1/tools/sonar`
+(signed in) computes and saves a case to a new `sonar_exams` table (hand-written
+migration); `GET` lists the account's history, `DELETE` removes one or all. Website page
+`/tools/sonar` in the header; app screen `/tools/sonar` from home and settings.
+
+---
+
+## Delivered, milestone 28: complimentary course access, and the locked-lecture sentence
 
 See `docs/milestones/28-complimentary-access-and-lecture-lock-copy.md`. The lesson lock the
 client asked for already exists (they tested as an admin); only its sentence changes. New:

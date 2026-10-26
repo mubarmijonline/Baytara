@@ -24,6 +24,7 @@ from .exam import (
 )
 from .payment import InstapayAccount, InstapayPayment, Payment, PromoCode
 from .content import Setting, Article, Book, ContactMessage, Notification, push_notification
+from .tools import SonarExam
 from .video_monitoring import (
     PLAYBACK_EVENT_TYPES,
     PLAYBACK_SESSION_STATUSES,
@@ -41,5 +42,5 @@ __all__ = [
     "PASS_PERCENT_DEFAULT", "grade", "passed_attempt",
     "Enrollment", "LessonProgress", "VideoEntitlement", "InstapayAccount", "InstapayPayment",
     "Payment", "PromoCode", "Setting", "Article", "Book", "ContactMessage", "Notification", "push_notification",
-    "PLAYBACK_EVENT_TYPES", "PLAYBACK_SESSION_STATUSES", "VideoPlaybackEvent", "VideoPlaybackSession",
+    "SonarExam", "PLAYBACK_EVENT_TYPES", "PLAYBACK_SESSION_STATUSES", "VideoPlaybackEvent", "VideoPlaybackSession",
 ]

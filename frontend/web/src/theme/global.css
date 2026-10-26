@@ -843,3 +843,7 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
     transform: none;
   }
 }
+
+/* Ultrasound calculator (pages/SonarCalculator.jsx): form beside results on wide screens,
+   stacked below that so neither column is squeezed. */
+@media (max-width: 900px) { .sonar-grid { grid-template-columns: minmax(0, 1fr) !important; } }
