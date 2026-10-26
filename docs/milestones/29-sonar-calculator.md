@@ -1,7 +1,7 @@
 # 29 - Reproductive ultrasound calculator (حاسبة قياسات السونار التناسلي)
 
-**Status:** in progress (client request, 2026-10-26; source file `Baytara_sonar_v5.html`,
-"إصدار أمواج الحياة - V5.0").
+**Status:** live on the website and API since 2026-10-26 (client request, source file
+`Baytara_sonar_v5.html`, "إصدار أمواج الحياة - V5.0"). The app screen ships with the next release.
 
 ## Goal
 
@@ -53,4 +53,6 @@ for five species (cattle, buffalo, horses, sheep, goats) and the expected calvin
   never calls the API. `src/pages/sonar.test.jsx` (3); suite 115 passed.
 - [x] App: home card and Settings entry, signed-in route. `test/sonar_test.dart` (3);
   analyze clean; 272 passed.
-- [ ] Live: a calculation on baytara.app matches the source file for the same inputs.
+- [x] Live: a throwaway account on baytara.app got [24, 43, 26, 32, 30, 33, 50], average 34,
+  for cattle with every measurement at 3 mm; the client's script gives the same. The account
+  and its case were then deleted. The page shows the sign-up gate to a visitor.
