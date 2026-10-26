@@ -6,7 +6,17 @@ This file holds the plan for the work currently in flight.
 
 ---
 
-## In flight, milestone 29: the reproductive ultrasound calculator
+## In flight, milestone 30: Kashier through the hosted payment page
+
+See `docs/milestones/30-kashier-hosted-checkout.md`. Checkout moves from the
+payment-sessions API (needs the Secret key, which Kashier refuses for this account) to a
+signed `checkout.kashier.io` link (Merchant ID + Payment API key). New
+`/payment/kashier/return` verifies the redirect signature; the webhook and the return share
+one settle path; `_apply_paid` claims with a conditional UPDATE; test mode is admin-only.
+
+---
+
+## Delivered, milestone 29: the reproductive ultrasound calculator
 
 See `docs/milestones/29-sonar-calculator.md`. The client's formulas, unchanged, ported to
 `services/sonar.py` and checked against the original JavaScript. `POST /api/v1/tools/sonar`
