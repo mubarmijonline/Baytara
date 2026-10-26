@@ -1,8 +1,8 @@
 import json
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, redirect, request, current_app
+from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
 
 from ...extensions import db
 from ...models import (
@@ -158,6 +158,14 @@ def _apply_paid(p):
     (البند2 SQL-Transaction). Idempotent: a re-delivered 'paid' webhook is a no-op."""
     if p.status == "paid":
         return
+    # Claim before granting. The browser's return and Kashier's webhook can arrive
+    # together in two workers; only the one whose UPDATE flips the row from not-paid to
+    # paid grants anything, and the other finds nothing to claim.
+    claimed = (Payment.query.filter(Payment.id == p.id, Payment.status != "paid")
+               .update({"status": "paid", "paid_at": _now()}, synchronize_session=False))
+    if not claimed:
+        db.session.refresh(p)
+        return
     p.status = "paid"
     p.paid_at = _now()
     if p.kind == "renewal":
@@ -221,13 +229,28 @@ def payment_quote():
     return jsonify(**body)
 
 
+def _viewer_is_admin():
+    """Whether the caller is a signed-in admin. Public routes ask this optionally."""
+    try:
+        verify_jwt_in_request(optional=True)
+        identity = get_jwt_identity()
+    except Exception:  # noqa: BLE001 - a bad or expired token is simply "not an admin"
+        return False
+    user = db.session.get(User, int(identity)) if identity else None
+    return bool(user and user.role == "admin" and user.is_active)
+
+
 def active_gateway():
     """Which gateway checkout should use, or None while neither is set up.
 
     Kashier wins when its keys are present: it is the one being onboarded, and having
     both configured at once is a migration window, not a permanent state.
+
+    In Kashier's test mode only admins get it. Test mode accepts Kashier's published test
+    cards, and a test payment is signed as validly as a real one, so offering it to the
+    public would hand out courses for a card number anyone can look up.
     """
-    if kashier.configured():
+    if kashier.configured() and (kashier.mode() == "live" or _viewer_is_admin()):
         return "kashier"
     if fawaterk.configured():
         return "fawaterk"
@@ -285,22 +308,24 @@ def checkout():
 
     site = current_app.config["SITE_URL"].rstrip("/")
     if gateway == "kashier":
+        order_id = kashier.order_id_for(p.id)
         try:
-            r = kashier.create_session(
-                charge, "EGP", p.id,
-                {"email": user.email, "reference": user.id},
-                ctx["title"],
-                redirect_url=f"{site}/payment/callback?pid={p.id}",
+            # The return goes to our API, not straight to the page: Kashier signs every
+            # query param it sends back, so the redirect URL must carry none of ours.
+            url = kashier.checkout_url(
+                charge, "EGP", order_id,
+                redirect_url=f"{site}/api/v1/payment/kashier/return",
                 webhook_url=f"{site}/api/v1/payment/kashier/webhook",
-                failure_url=f"{site}/payment/callback?status=fail&pid={p.id}",
+                language=user.locale or "ar",
             )
         except KashierError as e:
             db.session.rollback()
             return jsonify(error="gateway_error", detail=str(e)), 502
-        p.invoice_key = r["session_id"]
-        p.pay_url = r["url"]
+        p.invoice_id = order_id
+        p.invoice_key = kashier.mode()   # the mode the link was signed in, for the record
+        p.pay_url = url
         db.session.commit()
-        return jsonify(url=r["url"], payment_id=p.id, gateway=gateway), 201
+        return jsonify(url=url, payment_id=p.id, gateway=gateway), 201
 
     parts = (user.name or "").strip().split(" ", 1)
     customer = {"first_name": parts[0] or "Baytara", "last_name": (parts[1] if len(parts) > 1 else "."),
@@ -380,38 +405,32 @@ def fawaterk_webhook():
 # ----------------------------- Kashier webhook (public, signature-verified) -----------------------------
 
 def _kashier_payment(result):
-    """The Payment a Kashier event belongs to.
-
-    Our order reference is the Payment id, and Kashier echoes it back under one of two
-    names depending on the call, so try both before falling back to the session id we
-    stored at checkout.
-    """
+    """The Payment a Kashier answer belongs to: our "BT-<id>" order id comes back as
+    merchantOrderId. Later events on the same purchase (a refund) can also be matched on
+    the Kashier order id the first answer left behind."""
     for reference in (result.get("merchant_order_id"), result.get("order_reference")):
-        if reference and str(reference).isdigit():
-            payment = db.session.get(Payment, int(reference))
+        pid = kashier.payment_id_from(reference)
+        if pid:
+            payment = db.session.get(Payment, pid)
             if payment and payment.gateway == "kashier":
                 return payment
-    # Later events on the same purchase -- a refund, say -- can be matched on the
-    # Kashier order id the first webhook left behind.
     order_id = result.get("kashier_order_id")
     if order_id:
-        return Payment.query.filter_by(invoice_id=order_id, gateway="kashier").first()
+        return Payment.query.filter_by(reference_number=order_id, gateway="kashier").first()
     return None
 
 
-@bp.post("/payment/kashier/webhook")
-def kashier_webhook():
-    payload = request.get_json(silent=True) or {}
-    result = kashier.verify_webhook(payload, request.headers.get("x-kashier-signature"))
-    if not result.get("ok"):
-        return jsonify(error="invalid_signature"), 400
-
+def _settle_kashier(result):
+    """Apply one verified Kashier answer, from the webhook or the browser's return.
+    Returns (payment or None, outcome). Idempotent: the second answer for the same
+    payment changes nothing."""
     p = _kashier_payment(result)
     if not p:
-        return jsonify(error="unknown_payment"), 404
-
-    # A correctly signed event for the wrong amount is not this purchase. Refusing to
-    # grant on it is the difference between a gateway and an honour system.
+        current_app.logger.warning("kashier answer for an order that is not ours: %s",
+                                   result.get("merchant_order_id"))
+        return None, "unknown_payment"
+    # A correctly signed answer for the wrong amount is not this purchase. Credit what
+    # Kashier says arrived, and when that is not what was asked, grant nothing.
     if result["status"] == "paid":
         try:
             charged = float(result.get("amount") or 0)
@@ -422,15 +441,12 @@ def kashier_webhook():
                 "kashier amount mismatch on payment %s: charged %s %s, expected %s %s",
                 p.id, charged, result.get("currency"), float(p.amount), p.currency,
             )
-            return jsonify(error="amount_mismatch"), 409
-
+            return p, "amount_mismatch"
     p.payment_method = result.get("payment_method") or p.payment_method
-    p.reference_number = result.get("transaction_id") or p.reference_number
-    p.invoice_id = result.get("kashier_order_id") or p.invoice_id
+    p.reference_number = result.get("kashier_order_id") or result.get("transaction_id") or p.reference_number
     try:
         if result["status"] == "paid":
-            if p.status != "paid":
-                _apply_paid(p)   # atomic grant; a repeated webhook must not enroll twice
+            _apply_paid(p)
         elif result["status"] == "refunded":
             p.status = "refunded"
         elif result["status"] == "failed" and p.status != "paid":
@@ -439,7 +455,37 @@ def kashier_webhook():
     except Exception:  # noqa: BLE001
         db.session.rollback()
         raise
-    return jsonify(ok=True)
+    return p, result["status"]
+
+
+@bp.post("/payment/kashier/webhook")
+def kashier_webhook():
+    """Kashier's server-to-server notice. Only a bad signature is refused: anything signed
+    and understood answers 200, or Kashier keeps retrying something we have already
+    decided about (an order that is not ours, a wrong amount, a repeat)."""
+    payload = request.get_json(silent=True) or {}
+    result = kashier.verify_webhook(payload, request.headers.get("x-kashier-signature"))
+    if not result.get("ok"):
+        return jsonify(error="invalid_signature"), 400
+    _, outcome = _settle_kashier(result)
+    return jsonify(ok=True, outcome=outcome)
+
+
+@bp.get("/payment/kashier/return")
+def kashier_return():
+    """Where the hosted page sends the buyer back. The query is signed by Kashier, so a
+    verified SUCCESS settles exactly as the webhook would (a wallet confirmed by USSD may
+    only ever be seen here or only there). Then on to the result page, which reads the
+    outcome from our own record."""
+    site = current_app.config["SITE_URL"].rstrip("/")
+    result = kashier.verify_return(list(request.args.items(multi=True)))
+    pid = kashier.payment_id_from(result.get("merchant_order_id"))
+    if not result.get("ok") or not pid:
+        current_app.logger.warning("kashier return with a bad signature for %s", pid)
+        return redirect(f"{site}/payment/callback?status=fail" + (f"&pid={pid}" if pid else ""))
+    p, outcome = _settle_kashier(result)
+    status = "fail" if outcome in ("failed", "amount_mismatch") else "success"
+    return redirect(f"{site}/payment/callback?status={status}&pid={p.id if p else pid}")
 
 
 # ----------------------------- admin (transactions, read-only) -----------------------------
