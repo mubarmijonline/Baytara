@@ -83,6 +83,11 @@ class SettingsScreen extends ConsumerWidget {
             title: Text(l.libraryTitle),
             onTap: () => context.push('/library'),
           ),
+          ListTile(
+            leading: const Icon(Icons.monitor_heart_outlined),
+            title: Text(l.sonarEntry),
+            onTap: () => context.push('/tools/sonar'),
+          ),
           // Terms, refund and delivery open on the website. Not a purchase link, so
           // Guideline 3.1.1 has nothing to say about them, and one copy of a legal
           // document is the only number of copies worth having.

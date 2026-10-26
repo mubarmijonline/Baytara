@@ -1,0 +1,6554 @@
+[
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 0.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 1
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 2.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 3
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 7.5
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 10
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 12.3
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 18
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 24
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 25
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 27.5
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 28
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 33
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 40
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 55
+  },
+  "ages": [
+   53
+  ],
+  "age": 53
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 80
+  },
+  "ages": [
+   67
+  ],
+  "age": 67
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 120
+  },
+  "ages": [
+   89
+  ],
+  "age": 89
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 250
+  },
+  "ages": [
+   160
+  ],
+  "age": 160
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 0.5
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 1
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 2.5
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 3
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 7.5
+  },
+  "ages": [
+   70
+  ],
+  "age": 70
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 10
+  },
+  "ages": [
+   86
+  ],
+  "age": 86
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 12.3
+  },
+  "ages": [
+   101
+  ],
+  "age": 101
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 18
+  },
+  "ages": [
+   142
+  ],
+  "age": 142
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 24
+  },
+  "ages": [
+   189
+  ],
+  "age": 189
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 25
+  },
+  "ages": [
+   198
+  ],
+  "age": 198
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 27.5
+  },
+  "ages": [
+   219
+  ],
+  "age": 219
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 28
+  },
+  "ages": [
+   224
+  ],
+  "age": 224
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 33
+  },
+  "ages": [
+   269
+  ],
+  "age": 269
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 40
+  },
+  "ages": [
+   339
+  ],
+  "age": 339
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 55
+  },
+  "ages": [
+   510
+  ],
+  "age": 510
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 80
+  },
+  "ages": [
+   859
+  ],
+  "age": 859
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 120
+  },
+  "ages": [
+   1587
+  ],
+  "age": 1587
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "eye_orbit": 250
+  },
+  "ages": [
+   5390
+  ],
+  "age": 5390
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 0.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 1
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 2.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 3
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 7.5
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 10
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 12.3
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 18
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 24
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 25
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 27.5
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 28
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 33
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 40
+  },
+  "ages": [
+   49
+  ],
+  "age": 49
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 55
+  },
+  "ages": [
+   57
+  ],
+  "age": 57
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 80
+  },
+  "ages": [
+   69
+  ],
+  "age": 69
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 120
+  },
+  "ages": [
+   88
+  ],
+  "age": 88
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "crl": 250
+  },
+  "ages": [
+   147
+  ],
+  "age": 147
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 0.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 1
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 2.5
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 3
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 7.5
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 10
+  },
+  "ages": [
+   49
+  ],
+  "age": 49
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 12.3
+  },
+  "ages": [
+   54
+  ],
+  "age": 54
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 18
+  },
+  "ages": [
+   68
+  ],
+  "age": 68
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 24
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 25
+  },
+  "ages": [
+   85
+  ],
+  "age": 85
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 27.5
+  },
+  "ages": [
+   91
+  ],
+  "age": 91
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 28
+  },
+  "ages": [
+   92
+  ],
+  "age": 92
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 33
+  },
+  "ages": [
+   104
+  ],
+  "age": 104
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 40
+  },
+  "ages": [
+   121
+  ],
+  "age": 121
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 55
+  },
+  "ages": [
+   158
+  ],
+  "age": 158
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 80
+  },
+  "ages": [
+   218
+  ],
+  "age": 218
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 120
+  },
+  "ages": [
+   315
+  ],
+  "age": 315
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "bpd": 250
+  },
+  "ages": [
+   630
+  ],
+  "age": 630
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 0.5
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 1
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 2.5
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 3
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 7.5
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 10
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 12.3
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 18
+  },
+  "ages": [
+   51
+  ],
+  "age": 51
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 24
+  },
+  "ages": [
+   59
+  ],
+  "age": 59
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 25
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 27.5
+  },
+  "ages": [
+   64
+  ],
+  "age": 64
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 28
+  },
+  "ages": [
+   65
+  ],
+  "age": 65
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 33
+  },
+  "ages": [
+   72
+  ],
+  "age": 72
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 40
+  },
+  "ages": [
+   81
+  ],
+  "age": 81
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 55
+  },
+  "ages": [
+   102
+  ],
+  "age": 102
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 80
+  },
+  "ages": [
+   136
+  ],
+  "age": 136
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 120
+  },
+  "ages": [
+   192
+  ],
+  "age": 192
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "hl": 250
+  },
+  "ages": [
+   371
+  ],
+  "age": 371
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 0.5
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 1
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 2.5
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 3
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 7.5
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 10
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 12.3
+  },
+  "ages": [
+   48
+  ],
+  "age": 48
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 18
+  },
+  "ages": [
+   57
+  ],
+  "age": 57
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 24
+  },
+  "ages": [
+   67
+  ],
+  "age": 67
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 25
+  },
+  "ages": [
+   69
+  ],
+  "age": 69
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 27.5
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 28
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 33
+  },
+  "ages": [
+   81
+  ],
+  "age": 81
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 40
+  },
+  "ages": [
+   93
+  ],
+  "age": 93
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 55
+  },
+  "ages": [
+   117
+  ],
+  "age": 117
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 80
+  },
+  "ages": [
+   158
+  ],
+  "age": 158
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 120
+  },
+  "ages": [
+   222
+  ],
+  "age": 222
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "trunk": 250
+  },
+  "ages": [
+   433
+  ],
+  "age": 433
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 0.5
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 1
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 2.5
+  },
+  "ages": [
+   49
+  ],
+  "age": 49
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 3
+  },
+  "ages": [
+   50
+  ],
+  "age": 50
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 7.5
+  },
+  "ages": [
+   62
+  ],
+  "age": 62
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 10
+  },
+  "ages": [
+   69
+  ],
+  "age": 69
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 12.3
+  },
+  "ages": [
+   75
+  ],
+  "age": 75
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 18
+  },
+  "ages": [
+   90
+  ],
+  "age": 90
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 24
+  },
+  "ages": [
+   106
+  ],
+  "age": 106
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 25
+  },
+  "ages": [
+   108
+  ],
+  "age": 108
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 27.5
+  },
+  "ages": [
+   115
+  ],
+  "age": 115
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 28
+  },
+  "ages": [
+   116
+  ],
+  "age": 116
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 33
+  },
+  "ages": [
+   129
+  ],
+  "age": 129
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 40
+  },
+  "ages": [
+   148
+  ],
+  "age": 148
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 55
+  },
+  "ages": [
+   188
+  ],
+  "age": 188
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 80
+  },
+  "ages": [
+   254
+  ],
+  "age": 254
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 120
+  },
+  "ages": [
+   360
+  ],
+  "age": 360
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "placentome": 250
+  },
+  "ages": [
+   705
+  ],
+  "age": 705
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 3,
+   "eye_orbit": 3,
+   "crl": 3,
+   "bpd": 3,
+   "hl": 3,
+   "trunk": 3,
+   "placentome": 3
+  },
+  "ages": [
+   24,
+   43,
+   26,
+   32,
+   30,
+   33,
+   50
+  ],
+  "age": 34
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 9.5,
+   "eye_orbit": 9.5,
+   "crl": 9.5,
+   "bpd": 9.5,
+   "hl": 9.5,
+   "trunk": 9.5,
+   "placentome": 9.5
+  },
+  "ages": [
+   28,
+   82,
+   31,
+   47,
+   39,
+   43,
+   67
+  ],
+  "age": 48
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 21,
+   "eye_orbit": 21,
+   "crl": 21,
+   "bpd": 21,
+   "hl": 21,
+   "trunk": 21,
+   "placentome": 21
+  },
+  "ages": [
+   34,
+   165,
+   38,
+   75,
+   55,
+   62,
+   98
+  ],
+  "age": 75
+ },
+ {
+  "species": "bovine",
+  "measures": {
+   "vesicle": 44,
+   "eye_orbit": 44,
+   "crl": 44,
+   "bpd": 44,
+   "hl": 44,
+   "trunk": 44,
+   "placentome": 44
+  },
+  "ages": [
+   47,
+   382,
+   51,
+   131,
+   87,
+   99,
+   159
+  ],
+  "age": 137
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 0.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 1
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 2.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 3
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 7.5
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 10
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 12.3
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 18
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 24
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 25
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 27.5
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 28
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 33
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 40
+  },
+  "ages": [
+   48
+  ],
+  "age": 48
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 55
+  },
+  "ages": [
+   56
+  ],
+  "age": 56
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 80
+  },
+  "ages": [
+   71
+  ],
+  "age": 71
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 120
+  },
+  "ages": [
+   94
+  ],
+  "age": 94
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 250
+  },
+  "ages": [
+   170
+  ],
+  "age": 170
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 0.5
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 1
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 2.5
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 3
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 7.5
+  },
+  "ages": [
+   76
+  ],
+  "age": 76
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 10
+  },
+  "ages": [
+   93
+  ],
+  "age": 93
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 12.3
+  },
+  "ages": [
+   109
+  ],
+  "age": 109
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 18
+  },
+  "ages": [
+   153
+  ],
+  "age": 153
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 24
+  },
+  "ages": [
+   205
+  ],
+  "age": 205
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 25
+  },
+  "ages": [
+   214
+  ],
+  "age": 214
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 27.5
+  },
+  "ages": [
+   237
+  ],
+  "age": 237
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 28
+  },
+  "ages": [
+   242
+  ],
+  "age": 242
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 33
+  },
+  "ages": [
+   291
+  ],
+  "age": 291
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 40
+  },
+  "ages": [
+   366
+  ],
+  "age": 366
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 55
+  },
+  "ages": [
+   550
+  ],
+  "age": 550
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 80
+  },
+  "ages": [
+   926
+  ],
+  "age": 926
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 120
+  },
+  "ages": [
+   1710
+  ],
+  "age": 1710
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "eye_orbit": 250
+  },
+  "ages": [
+   5805
+  ],
+  "age": 5805
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 0.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 1
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 2.5
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 3
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 7.5
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 10
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 12.3
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 18
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 24
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 25
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 27.5
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 28
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 33
+  },
+  "ages": [
+   48
+  ],
+  "age": 48
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 40
+  },
+  "ages": [
+   52
+  ],
+  "age": 52
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 55
+  },
+  "ages": [
+   60
+  ],
+  "age": 60
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 80
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 120
+  },
+  "ages": [
+   93
+  ],
+  "age": 93
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "crl": 250
+  },
+  "ages": [
+   153
+  ],
+  "age": 153
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 0.5
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 1
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 2.5
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 3
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 7.5
+  },
+  "ages": [
+   46
+  ],
+  "age": 46
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 10
+  },
+  "ages": [
+   53
+  ],
+  "age": 53
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 12.3
+  },
+  "ages": [
+   59
+  ],
+  "age": 59
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 18
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 24
+  },
+  "ages": [
+   89
+  ],
+  "age": 89
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 25
+  },
+  "ages": [
+   92
+  ],
+  "age": 92
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 27.5
+  },
+  "ages": [
+   98
+  ],
+  "age": 98
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 28
+  },
+  "ages": [
+   99
+  ],
+  "age": 99
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 33
+  },
+  "ages": [
+   112
+  ],
+  "age": 112
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 40
+  },
+  "ages": [
+   130
+  ],
+  "age": 130
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 55
+  },
+  "ages": [
+   169
+  ],
+  "age": 169
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 80
+  },
+  "ages": [
+   233
+  ],
+  "age": 233
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 120
+  },
+  "ages": [
+   337
+  ],
+  "age": 337
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "bpd": 250
+  },
+  "ages": [
+   672
+  ],
+  "age": 672
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 0.5
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 1
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 2.5
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 3
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 7.5
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 10
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 12.3
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 18
+  },
+  "ages": [
+   56
+  ],
+  "age": 56
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 24
+  },
+  "ages": [
+   65
+  ],
+  "age": 65
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 25
+  },
+  "ages": [
+   66
+  ],
+  "age": 66
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 27.5
+  },
+  "ages": [
+   70
+  ],
+  "age": 70
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 28
+  },
+  "ages": [
+   70
+  ],
+  "age": 70
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 33
+  },
+  "ages": [
+   78
+  ],
+  "age": 78
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 40
+  },
+  "ages": [
+   88
+  ],
+  "age": 88
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 55
+  },
+  "ages": [
+   110
+  ],
+  "age": 110
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 80
+  },
+  "ages": [
+   147
+  ],
+  "age": 147
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 120
+  },
+  "ages": [
+   207
+  ],
+  "age": 207
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "hl": 250
+  },
+  "ages": [
+   399
+  ],
+  "age": 399
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 0.5
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 1
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 2.5
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 3
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 7.5
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 10
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 12.3
+  },
+  "ages": [
+   51
+  ],
+  "age": 51
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 18
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 24
+  },
+  "ages": [
+   71
+  ],
+  "age": 71
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 25
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 27.5
+  },
+  "ages": [
+   77
+  ],
+  "age": 77
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 28
+  },
+  "ages": [
+   78
+  ],
+  "age": 78
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 33
+  },
+  "ages": [
+   87
+  ],
+  "age": 87
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 40
+  },
+  "ages": [
+   99
+  ],
+  "age": 99
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 55
+  },
+  "ages": [
+   125
+  ],
+  "age": 125
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 80
+  },
+  "ages": [
+   168
+  ],
+  "age": 168
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 120
+  },
+  "ages": [
+   236
+  ],
+  "age": 236
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "trunk": 250
+  },
+  "ages": [
+   460
+  ],
+  "age": 460
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 0.5
+  },
+  "ages": [
+   46
+  ],
+  "age": 46
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 1
+  },
+  "ages": [
+   48
+  ],
+  "age": 48
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 2.5
+  },
+  "ages": [
+   52
+  ],
+  "age": 52
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 3
+  },
+  "ages": [
+   54
+  ],
+  "age": 54
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 7.5
+  },
+  "ages": [
+   66
+  ],
+  "age": 66
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 10
+  },
+  "ages": [
+   74
+  ],
+  "age": 74
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 12.3
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 18
+  },
+  "ages": [
+   96
+  ],
+  "age": 96
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 24
+  },
+  "ages": [
+   113
+  ],
+  "age": 113
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 25
+  },
+  "ages": [
+   116
+  ],
+  "age": 116
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 27.5
+  },
+  "ages": [
+   123
+  ],
+  "age": 123
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 28
+  },
+  "ages": [
+   125
+  ],
+  "age": 125
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 33
+  },
+  "ages": [
+   139
+  ],
+  "age": 139
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 40
+  },
+  "ages": [
+   159
+  ],
+  "age": 159
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 55
+  },
+  "ages": [
+   202
+  ],
+  "age": 202
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 80
+  },
+  "ages": [
+   273
+  ],
+  "age": 273
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 120
+  },
+  "ages": [
+   387
+  ],
+  "age": 387
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "placentome": 250
+  },
+  "ages": [
+   758
+  ],
+  "age": 758
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 3,
+   "eye_orbit": 3,
+   "crl": 3,
+   "bpd": 3,
+   "hl": 3,
+   "trunk": 3,
+   "placentome": 3
+  },
+  "ages": [
+   26,
+   47,
+   28,
+   35,
+   33,
+   35,
+   54
+  ],
+  "age": 37
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 9.5,
+   "eye_orbit": 9.5,
+   "crl": 9.5,
+   "bpd": 9.5,
+   "hl": 9.5,
+   "trunk": 9.5,
+   "placentome": 9.5
+  },
+  "ages": [
+   30,
+   90,
+   33,
+   52,
+   43,
+   46,
+   72
+  ],
+  "age": 52
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 21,
+   "eye_orbit": 21,
+   "crl": 21,
+   "bpd": 21,
+   "hl": 21,
+   "trunk": 21,
+   "placentome": 21
+  },
+  "ages": [
+   37,
+   178,
+   41,
+   81,
+   60,
+   66,
+   105
+  ],
+  "age": 81
+ },
+ {
+  "species": "buffalo",
+  "measures": {
+   "vesicle": 44,
+   "eye_orbit": 44,
+   "crl": 44,
+   "bpd": 44,
+   "hl": 44,
+   "trunk": 44,
+   "placentome": 44
+  },
+  "ages": [
+   50,
+   412,
+   54,
+   141,
+   94,
+   106,
+   170
+  ],
+  "age": 147
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 0.5
+  },
+  "ages": [
+   9
+  ],
+  "age": 9
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 1
+  },
+  "ages": [
+   9
+  ],
+  "age": 9
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 2.5
+  },
+  "ages": [
+   10
+  ],
+  "age": 10
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 3
+  },
+  "ages": [
+   10
+  ],
+  "age": 10
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 7.5
+  },
+  "ages": [
+   11
+  ],
+  "age": 11
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 10
+  },
+  "ages": [
+   12
+  ],
+  "age": 12
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 12.3
+  },
+  "ages": [
+   13
+  ],
+  "age": 13
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 18
+  },
+  "ages": [
+   15
+  ],
+  "age": 15
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 24
+  },
+  "ages": [
+   17
+  ],
+  "age": 17
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 25
+  },
+  "ages": [
+   19
+  ],
+  "age": 19
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 27.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 28
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 33
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 40
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 55
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 80
+  },
+  "ages": [
+   52
+  ],
+  "age": 52
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 120
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 250
+  },
+  "ages": [
+   140
+  ],
+  "age": 140
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 0.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 1
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 2.5
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 3
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 7.5
+  },
+  "ages": [
+   65
+  ],
+  "age": 65
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 10
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 12.3
+  },
+  "ages": [
+   95
+  ],
+  "age": 95
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 18
+  },
+  "ages": [
+   134
+  ],
+  "age": 134
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 24
+  },
+  "ages": [
+   178
+  ],
+  "age": 178
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 25
+  },
+  "ages": [
+   186
+  ],
+  "age": 186
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 27.5
+  },
+  "ages": [
+   206
+  ],
+  "age": 206
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 28
+  },
+  "ages": [
+   210
+  ],
+  "age": 210
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 33
+  },
+  "ages": [
+   251
+  ],
+  "age": 251
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 40
+  },
+  "ages": [
+   314
+  ],
+  "age": 314
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 55
+  },
+  "ages": [
+   465
+  ],
+  "age": 465
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 80
+  },
+  "ages": [
+   766
+  ],
+  "age": 766
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 120
+  },
+  "ages": [
+   1378
+  ],
+  "age": 1378
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "eye_orbit": 250
+  },
+  "ages": [
+   4472
+  ],
+  "age": 4472
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 0.5
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 1
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 2.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 3
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 7.5
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 10
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 12.3
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 18
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 24
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 25
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 27.5
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 28
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 33
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 40
+  },
+  "ages": [
+   46
+  ],
+  "age": 46
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 55
+  },
+  "ages": [
+   53
+  ],
+  "age": 53
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 80
+  },
+  "ages": [
+   64
+  ],
+  "age": 64
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 120
+  },
+  "ages": [
+   82
+  ],
+  "age": 82
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "crl": 250
+  },
+  "ages": [
+   136
+  ],
+  "age": 136
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 0.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 1
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 2.5
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 3
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 7.5
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 10
+  },
+  "ages": [
+   48
+  ],
+  "age": 48
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 12.3
+  },
+  "ages": [
+   54
+  ],
+  "age": 54
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 18
+  },
+  "ages": [
+   67
+  ],
+  "age": 67
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 24
+  },
+  "ages": [
+   81
+  ],
+  "age": 81
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 25
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 27.5
+  },
+  "ages": [
+   89
+  ],
+  "age": 89
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 28
+  },
+  "ages": [
+   90
+  ],
+  "age": 90
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 33
+  },
+  "ages": [
+   102
+  ],
+  "age": 102
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 40
+  },
+  "ages": [
+   118
+  ],
+  "age": 118
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 55
+  },
+  "ages": [
+   153
+  ],
+  "age": 153
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 80
+  },
+  "ages": [
+   211
+  ],
+  "age": 211
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 120
+  },
+  "ages": [
+   303
+  ],
+  "age": 303
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "bpd": 250
+  },
+  "ages": [
+   605
+  ],
+  "age": 605
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 0.5
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 1
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 2.5
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 3
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 7.5
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 10
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 12.3
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 18
+  },
+  "ages": [
+   50
+  ],
+  "age": 50
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 24
+  },
+  "ages": [
+   58
+  ],
+  "age": 58
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 25
+  },
+  "ages": [
+   60
+  ],
+  "age": 60
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 27.5
+  },
+  "ages": [
+   63
+  ],
+  "age": 63
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 28
+  },
+  "ages": [
+   64
+  ],
+  "age": 64
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 33
+  },
+  "ages": [
+   71
+  ],
+  "age": 71
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 40
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 55
+  },
+  "ages": [
+   100
+  ],
+  "age": 100
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 80
+  },
+  "ages": [
+   134
+  ],
+  "age": 134
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 120
+  },
+  "ages": [
+   188
+  ],
+  "age": 188
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "hl": 250
+  },
+  "ages": [
+   364
+  ],
+  "age": 364
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 0.5
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 1
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 2.5
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 3
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 7.5
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 10
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 12.3
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 18
+  },
+  "ages": [
+   53
+  ],
+  "age": 53
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 24
+  },
+  "ages": [
+   62
+  ],
+  "age": 62
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 25
+  },
+  "ages": [
+   64
+  ],
+  "age": 64
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 27.5
+  },
+  "ages": [
+   68
+  ],
+  "age": 68
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 28
+  },
+  "ages": [
+   69
+  ],
+  "age": 69
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 33
+  },
+  "ages": [
+   76
+  ],
+  "age": 76
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 40
+  },
+  "ages": [
+   87
+  ],
+  "age": 87
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 55
+  },
+  "ages": [
+   110
+  ],
+  "age": 110
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 80
+  },
+  "ages": [
+   148
+  ],
+  "age": 148
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 120
+  },
+  "ages": [
+   208
+  ],
+  "age": 208
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "trunk": 250
+  },
+  "ages": [
+   406
+  ],
+  "age": 406
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 3,
+   "eye_orbit": 3,
+   "crl": 3,
+   "bpd": 3,
+   "hl": 3,
+   "trunk": 3
+  },
+  "ages": [
+   10,
+   38,
+   25,
+   32,
+   30,
+   31
+  ],
+  "age": 28
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 9.5,
+   "eye_orbit": 9.5,
+   "crl": 9.5,
+   "bpd": 9.5,
+   "hl": 9.5,
+   "trunk": 9.5
+  },
+  "ages": [
+   12,
+   77,
+   29,
+   47,
+   39,
+   40
+  ],
+  "age": 41
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 21,
+   "eye_orbit": 21,
+   "crl": 21,
+   "bpd": 21,
+   "hl": 21,
+   "trunk": 21
+  },
+  "ages": [
+   16,
+   155,
+   36,
+   74,
+   54,
+   58
+  ],
+  "age": 66
+ },
+ {
+  "species": "equine",
+  "measures": {
+   "vesicle": 44,
+   "eye_orbit": 44,
+   "crl": 44,
+   "bpd": 44,
+   "hl": 44,
+   "trunk": 44
+  },
+  "ages": [
+   33,
+   352,
+   47,
+   127,
+   85,
+   93
+  ],
+  "age": 123
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 0.5
+  },
+  "ages": [
+   17
+  ],
+  "age": 17
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 1
+  },
+  "ages": [
+   18
+  ],
+  "age": 18
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 2.5
+  },
+  "ages": [
+   18
+  ],
+  "age": 18
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 3
+  },
+  "ages": [
+   19
+  ],
+  "age": 19
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 7.5
+  },
+  "ages": [
+   21
+  ],
+  "age": 21
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 10
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 12.3
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 18
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 24
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 25
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 27.5
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 28
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 33
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 40
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 55
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 80
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 120
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 250
+  },
+  "ages": [
+   155
+  ],
+  "age": 155
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 0.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 1
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 2.5
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 3
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 7.5
+  },
+  "ages": [
+   62
+  ],
+  "age": 62
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 10
+  },
+  "ages": [
+   78
+  ],
+  "age": 78
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 12.3
+  },
+  "ages": [
+   92
+  ],
+  "age": 92
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 18
+  },
+  "ages": [
+   131
+  ],
+  "age": 131
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 24
+  },
+  "ages": [
+   176
+  ],
+  "age": 176
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 25
+  },
+  "ages": [
+   184
+  ],
+  "age": 184
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 27.5
+  },
+  "ages": [
+   205
+  ],
+  "age": 205
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 28
+  },
+  "ages": [
+   209
+  ],
+  "age": 209
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 33
+  },
+  "ages": [
+   251
+  ],
+  "age": 251
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 40
+  },
+  "ages": [
+   316
+  ],
+  "age": 316
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 55
+  },
+  "ages": [
+   472
+  ],
+  "age": 472
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 80
+  },
+  "ages": [
+   788
+  ],
+  "age": 788
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 120
+  },
+  "ages": [
+   1436
+  ],
+  "age": 1436
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "eye_orbit": 250
+  },
+  "ages": [
+   4758
+  ],
+  "age": 4758
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 0.5
+  },
+  "ages": [
+   20
+  ],
+  "age": 20
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 1
+  },
+  "ages": [
+   20
+  ],
+  "age": 20
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 2.5
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 3
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 7.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 10
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 12.3
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 18
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 24
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 25
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 27.5
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 28
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 33
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 40
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 55
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 80
+  },
+  "ages": [
+   57
+  ],
+  "age": 57
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 120
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "crl": 250
+  },
+  "ages": [
+   121
+  ],
+  "age": 121
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 0.5
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 1
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 2.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 3
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 7.5
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 10
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 12.3
+  },
+  "ages": [
+   46
+  ],
+  "age": 46
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 18
+  },
+  "ages": [
+   58
+  ],
+  "age": 58
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 24
+  },
+  "ages": [
+   71
+  ],
+  "age": 71
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 25
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 27.5
+  },
+  "ages": [
+   78
+  ],
+  "age": 78
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 28
+  },
+  "ages": [
+   79
+  ],
+  "age": 79
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 33
+  },
+  "ages": [
+   90
+  ],
+  "age": 90
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 40
+  },
+  "ages": [
+   105
+  ],
+  "age": 105
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 55
+  },
+  "ages": [
+   136
+  ],
+  "age": 136
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 80
+  },
+  "ages": [
+   189
+  ],
+  "age": 189
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 120
+  },
+  "ages": [
+   273
+  ],
+  "age": 273
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "bpd": 250
+  },
+  "ages": [
+   546
+  ],
+  "age": 546
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 0.5
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 1
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 2.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 3
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 7.5
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 10
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 12.3
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 18
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 24
+  },
+  "ages": [
+   53
+  ],
+  "age": 53
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 25
+  },
+  "ages": [
+   55
+  ],
+  "age": 55
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 27.5
+  },
+  "ages": [
+   58
+  ],
+  "age": 58
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 28
+  },
+  "ages": [
+   59
+  ],
+  "age": 59
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 33
+  },
+  "ages": [
+   66
+  ],
+  "age": 66
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 40
+  },
+  "ages": [
+   75
+  ],
+  "age": 75
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 55
+  },
+  "ages": [
+   95
+  ],
+  "age": 95
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 80
+  },
+  "ages": [
+   129
+  ],
+  "age": 129
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 120
+  },
+  "ages": [
+   183
+  ],
+  "age": 183
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "hl": 250
+  },
+  "ages": [
+   359
+  ],
+  "age": 359
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 0.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 1
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 2.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 3
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 7.5
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 10
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 12.3
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 18
+  },
+  "ages": [
+   51
+  ],
+  "age": 51
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 24
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 25
+  },
+  "ages": [
+   63
+  ],
+  "age": 63
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 27.5
+  },
+  "ages": [
+   67
+  ],
+  "age": 67
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 28
+  },
+  "ages": [
+   67
+  ],
+  "age": 67
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 33
+  },
+  "ages": [
+   75
+  ],
+  "age": 75
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 40
+  },
+  "ages": [
+   87
+  ],
+  "age": 87
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 55
+  },
+  "ages": [
+   111
+  ],
+  "age": 111
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 80
+  },
+  "ages": [
+   152
+  ],
+  "age": 152
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 120
+  },
+  "ages": [
+   216
+  ],
+  "age": 216
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "trunk": 250
+  },
+  "ages": [
+   427
+  ],
+  "age": 427
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 0.5
+  },
+  "ages": [
+   19
+  ],
+  "age": 19
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 1
+  },
+  "ages": [
+   20
+  ],
+  "age": 20
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 2.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 3
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 7.5
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 10
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 12.3
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 18
+  },
+  "ages": [
+   53
+  ],
+  "age": 53
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 24
+  },
+  "ages": [
+   65
+  ],
+  "age": 65
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 25
+  },
+  "ages": [
+   67
+  ],
+  "age": 67
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 27.5
+  },
+  "ages": [
+   72
+  ],
+  "age": 72
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 28
+  },
+  "ages": [
+   73
+  ],
+  "age": 73
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 33
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 40
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 55
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 80
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 120
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "placentome": 250
+  },
+  "ages": [
+   80
+  ],
+  "age": 80
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 3,
+   "eye_orbit": 3,
+   "crl": 3,
+   "bpd": 3,
+   "hl": 3,
+   "trunk": 3,
+   "placentome": 3
+  },
+  "ages": [
+   19,
+   36,
+   22,
+   27,
+   25,
+   27,
+   24
+  ],
+  "age": 26
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 9.5,
+   "eye_orbit": 9.5,
+   "crl": 9.5,
+   "bpd": 9.5,
+   "hl": 9.5,
+   "trunk": 9.5,
+   "placentome": 9.5
+  },
+  "ages": [
+   22,
+   74,
+   26,
+   40,
+   34,
+   37,
+   37
+  ],
+  "age": 39
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 21,
+   "eye_orbit": 21,
+   "crl": 21,
+   "bpd": 21,
+   "hl": 21,
+   "trunk": 21,
+   "placentome": 21
+  },
+  "ages": [
+   29,
+   153,
+   32,
+   65,
+   49,
+   56,
+   59
+  ],
+  "age": 63
+ },
+ {
+  "species": "ovine",
+  "measures": {
+   "vesicle": 44,
+   "eye_orbit": 44,
+   "crl": 44,
+   "bpd": 44,
+   "hl": 44,
+   "trunk": 44,
+   "placentome": 44
+  },
+  "ages": [
+   41,
+   355,
+   42,
+   113,
+   80,
+   93,
+   80
+  ],
+  "age": 115
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 0.5
+  },
+  "ages": [
+   18
+  ],
+  "age": 18
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 1
+  },
+  "ages": [
+   19
+  ],
+  "age": 19
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 2.5
+  },
+  "ages": [
+   19
+  ],
+  "age": 19
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 3
+  },
+  "ages": [
+   20
+  ],
+  "age": 20
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 7.5
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 10
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 12.3
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 18
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 24
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 25
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 27.5
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 28
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 33
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 40
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 55
+  },
+  "ages": [
+   49
+  ],
+  "age": 49
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 80
+  },
+  "ages": [
+   63
+  ],
+  "age": 63
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 120
+  },
+  "ages": [
+   85
+  ],
+  "age": 85
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 250
+  },
+  "ages": [
+   158
+  ],
+  "age": 158
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 0.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 1
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 2.5
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 3
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 7.5
+  },
+  "ages": [
+   66
+  ],
+  "age": 66
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 10
+  },
+  "ages": [
+   82
+  ],
+  "age": 82
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 12.3
+  },
+  "ages": [
+   97
+  ],
+  "age": 97
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 18
+  },
+  "ages": [
+   139
+  ],
+  "age": 139
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 24
+  },
+  "ages": [
+   186
+  ],
+  "age": 186
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 25
+  },
+  "ages": [
+   195
+  ],
+  "age": 195
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 27.5
+  },
+  "ages": [
+   216
+  ],
+  "age": 216
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 28
+  },
+  "ages": [
+   220
+  ],
+  "age": 220
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 33
+  },
+  "ages": [
+   266
+  ],
+  "age": 266
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 40
+  },
+  "ages": [
+   334
+  ],
+  "age": 334
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 55
+  },
+  "ages": [
+   501
+  ],
+  "age": 501
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 80
+  },
+  "ages": [
+   838
+  ],
+  "age": 838
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 120
+  },
+  "ages": [
+   1534
+  ],
+  "age": 1534
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "eye_orbit": 250
+  },
+  "ages": [
+   5122
+  ],
+  "age": 5122
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 0.5
+  },
+  "ages": [
+   21
+  ],
+  "age": 21
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 1
+  },
+  "ages": [
+   21
+  ],
+  "age": 21
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 2.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 3
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 7.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 10
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 12.3
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 18
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 24
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 25
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 27.5
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 28
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 33
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 40
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 55
+  },
+  "ages": [
+   49
+  ],
+  "age": 49
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 80
+  },
+  "ages": [
+   59
+  ],
+  "age": 59
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 120
+  },
+  "ages": [
+   75
+  ],
+  "age": 75
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "crl": 250
+  },
+  "ages": [
+   124
+  ],
+  "age": 124
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 0.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 1
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 2.5
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 3
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 7.5
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 10
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 12.3
+  },
+  "ages": [
+   48
+  ],
+  "age": 48
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 18
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 24
+  },
+  "ages": [
+   74
+  ],
+  "age": 74
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 25
+  },
+  "ages": [
+   76
+  ],
+  "age": 76
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 27.5
+  },
+  "ages": [
+   81
+  ],
+  "age": 81
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 28
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 33
+  },
+  "ages": [
+   93
+  ],
+  "age": 93
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 40
+  },
+  "ages": [
+   109
+  ],
+  "age": 109
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 55
+  },
+  "ages": [
+   141
+  ],
+  "age": 141
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 80
+  },
+  "ages": [
+   196
+  ],
+  "age": 196
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 120
+  },
+  "ages": [
+   283
+  ],
+  "age": 283
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "bpd": 250
+  },
+  "ages": [
+   567
+  ],
+  "age": 567
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 0.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 1
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 2.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 3
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 7.5
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 10
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 12.3
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 18
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 24
+  },
+  "ages": [
+   56
+  ],
+  "age": 56
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 25
+  },
+  "ages": [
+   57
+  ],
+  "age": 57
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 27.5
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 28
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 33
+  },
+  "ages": [
+   68
+  ],
+  "age": 68
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 40
+  },
+  "ages": [
+   78
+  ],
+  "age": 78
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 55
+  },
+  "ages": [
+   99
+  ],
+  "age": 99
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 80
+  },
+  "ages": [
+   134
+  ],
+  "age": 134
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 120
+  },
+  "ages": [
+   190
+  ],
+  "age": 190
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "hl": 250
+  },
+  "ages": [
+   372
+  ],
+  "age": 372
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 0.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 1
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 2.5
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 3
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 7.5
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 10
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 12.3
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 18
+  },
+  "ages": [
+   52
+  ],
+  "age": 52
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 24
+  },
+  "ages": [
+   62
+  ],
+  "age": 62
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 25
+  },
+  "ages": [
+   64
+  ],
+  "age": 64
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 27.5
+  },
+  "ages": [
+   68
+  ],
+  "age": 68
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 28
+  },
+  "ages": [
+   68
+  ],
+  "age": 68
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 33
+  },
+  "ages": [
+   76
+  ],
+  "age": 76
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 40
+  },
+  "ages": [
+   88
+  ],
+  "age": 88
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 55
+  },
+  "ages": [
+   112
+  ],
+  "age": 112
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 80
+  },
+  "ages": [
+   153
+  ],
+  "age": 153
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 120
+  },
+  "ages": [
+   217
+  ],
+  "age": 217
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "trunk": 250
+  },
+  "ages": [
+   428
+  ],
+  "age": 428
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 0.5
+  },
+  "ages": [
+   20
+  ],
+  "age": 20
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 1
+  },
+  "ages": [
+   21
+  ],
+  "age": 21
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 2.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 3
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 7.5
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 10
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 12.3
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 18
+  },
+  "ages": [
+   55
+  ],
+  "age": 55
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 24
+  },
+  "ages": [
+   67
+  ],
+  "age": 67
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 25
+  },
+  "ages": [
+   69
+  ],
+  "age": 69
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 27.5
+  },
+  "ages": [
+   74
+  ],
+  "age": 74
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 28
+  },
+  "ages": [
+   75
+  ],
+  "age": 75
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 33
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 40
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 55
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 80
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 120
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "placentome": 250
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 3,
+   "eye_orbit": 3,
+   "crl": 3,
+   "bpd": 3,
+   "hl": 3,
+   "trunk": 3,
+   "placentome": 3
+  },
+  "ages": [
+   20,
+   39,
+   23,
+   28,
+   26,
+   28,
+   25
+  ],
+  "age": 27
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 9.5,
+   "eye_orbit": 9.5,
+   "crl": 9.5,
+   "bpd": 9.5,
+   "hl": 9.5,
+   "trunk": 9.5,
+   "placentome": 9.5
+  },
+  "ages": [
+   23,
+   79,
+   27,
+   42,
+   35,
+   38,
+   38
+  ],
+  "age": 40
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 21,
+   "eye_orbit": 21,
+   "crl": 21,
+   "bpd": 21,
+   "hl": 21,
+   "trunk": 21,
+   "placentome": 21
+  },
+  "ages": [
+   30,
+   162,
+   33,
+   67,
+   51,
+   57,
+   61
+  ],
+  "age": 66
+ },
+ {
+  "species": "caprine",
+  "measures": {
+   "vesicle": 44,
+   "eye_orbit": 44,
+   "crl": 44,
+   "bpd": 44,
+   "hl": 44,
+   "trunk": 44,
+   "placentome": 44
+  },
+  "ages": [
+   43,
+   376,
+   44,
+   117,
+   84,
+   94,
+   83
+  ],
+  "age": 120
+ }
+]

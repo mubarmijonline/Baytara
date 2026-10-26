@@ -28,6 +28,7 @@ import Refund from './pages/Refund.jsx';
 import Terms from './pages/Terms.jsx';
 import Delivery from './pages/Delivery.jsx';
 import DeleteAccount from './pages/DeleteAccount.jsx';
+import SonarCalculator from './pages/SonarCalculator.jsx';
 import Learn from './pages/Learn.jsx';
 import Buy from './pages/Buy.jsx';
 import PaymentCallback from './pages/PaymentCallback.jsx';
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/delivery" element={<Delivery />} />
         <Route path="/account/delete" element={<DeleteAccount />} />
+        <Route path="/tools/sonar" element={<SonarCalculator />} />
         <Route path="/learn/:courseId/:lessonId" element={<Learn />} />
         <Route path="*" element={<NotFound />} />
       </Route>

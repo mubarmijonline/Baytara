@@ -148,6 +148,7 @@ const NAV = [
   ['/videos', 'nav.videos'],
   ['/content', 'nav.consultations'],
   ['/library', 'library.title'],
+  ['/tools/sonar', 'nav.sonar'],
   ['/pricing', 'nav.pricing'],
   ['/business', 'nav.business'],
 ];

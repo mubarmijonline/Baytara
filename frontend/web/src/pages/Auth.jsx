@@ -16,7 +16,8 @@ export default function Auth() {
   const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/dashboard';
   const { login, register, loginWithGoogle } = useAuth();
   const { t } = useI18n();
-  const [mode, setMode] = useState('login');
+  // ?mode=signup opens on the sign-up form, for links that invite someone to join.
+  const [mode, setMode] = useState(params.get('mode') === 'signup' ? 'signup' : 'login');
   const isSignup = mode === 'signup';
   const title = isSignup ? 'إنشاء حساب جديد' : 'تسجيل الدخول';
   const [f, setF] = useState({ name: '', email: '', phone: '', password: '' });
