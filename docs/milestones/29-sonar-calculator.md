@@ -66,3 +66,12 @@ for five species (cattle, buffalo, horses, sheep, goats) and the expected calvin
 - Formal Arabic instead of colloquial: "ستظهر النتيجة هنا"; "سيتم حفظ الحالة في حسابك،
   ويمكنك مسح السجل في أي وقت".
 
+## Fix, 2026-10-28: today refused just after midnight
+
+Client screenshot at 00:35: "تاريخ الفحص لا يمكن أن يكون في المستقبل" for today's date. The
+server took Cairo to be UTC+2; on summer time (UTC+3, until 29 October) it was still on the
+previous day between midnight and 1 am, and refused the browser's correct local date. Now
+"future" means later than today everywhere (UTC+14), the default date is Cairo's real one
+(zoneinfo), and the page and app clear the message when the date is changed. Regression test
+frozen at that instant.
+

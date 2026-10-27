@@ -149,7 +149,12 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
       firstDate: now.subtract(const Duration(days: 365)),
       lastDate: now,
     );
-    if (picked != null) setState(() => _examDate = picked);
+    if (picked != null) {
+      setState(() {
+        _examDate = picked;
+        _error = null;
+      });
+    }
   }
 
   Future<void> _clearAll() async {

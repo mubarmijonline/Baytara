@@ -374,7 +374,7 @@ export default function SonarCalculator() {
                   </label>
                   <label className="sonar-field">
                     <span>{c.examDate}</span>
-                    <input type="date" value={examDate} max={today()} onChange={(e) => setExamDate(e.target.value || today())} />
+                    <input type="date" value={examDate} max={today()} onChange={(e) => { setExamDate(e.target.value || today()); setError(''); }} />
                   </label>
                 </div>
 

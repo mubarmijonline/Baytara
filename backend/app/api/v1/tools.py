@@ -6,6 +6,7 @@ deleted here is the caller's own: there is no id-based route that could reach an
 account's history.
 """
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -25,22 +26,36 @@ def _user():
     return user if user and user.is_active else None
 
 
-def _today_cairo():
-    # Egypt is UTC+2 or +3 depending on the season; +2 is close enough to pick the
-    # calendar day a vet in the barn is living in, and never lands a day ahead.
-    return (datetime.now(timezone.utc) + timedelta(hours=2)).date()
+CAIRO = ZoneInfo("Africa/Cairo")
+# The furthest-ahead calendar on Earth (Line Islands, UTC+14). Its date is the latest
+# "today" any learner can be living in.
+EARLIEST_ZONE = timezone(timedelta(hours=14))
+
+
+def _utc_now():
+    return datetime.now(timezone.utc)
 
 
 def _exam_date(raw):
-    today = _today_cairo()
+    """The exam date from the request, or today in Cairo when none was sent.
+
+    The page and the app send the learner's own local date, and they already stop a
+    future day being picked. So "in the future" here means after today *everywhere*: a
+    date the earliest time zone has not reached yet. A fixed offset got this wrong. It
+    assumed Cairo was UTC+2, and in summer time (UTC+3) every scan entered between
+    midnight and 1 am was refused as tomorrow (client report, 2026-10-28, 00:35); a vet in
+    the Gulf would have lost two hours a night.
+    """
+    now = _utc_now()
     if not raw:
-        return today
+        return now.astimezone(CAIRO).date()
     try:
         value = date.fromisoformat(str(raw))
     except ValueError:
         raise SonarInputError("bad_date", "exam_date") from None
     # A scan can be recorded late, but not before it happened, and not years back.
-    if value > today or value < today - timedelta(days=366):
+    latest_today = now.astimezone(EARLIEST_ZONE).date()
+    if value > latest_today or value < now.astimezone(CAIRO).date() - timedelta(days=366):
         raise SonarInputError("bad_date", "exam_date")
     return value
 
