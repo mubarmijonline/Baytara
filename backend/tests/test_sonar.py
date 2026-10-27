@@ -146,3 +146,24 @@ def test_clear_history_and_paging(app):
     assert a.delete("/api/v1/tools/sonar").get_json() == {"deleted": 52}
     with app.app_context():
         assert SonarExam.query.count() == 0
+
+
+def test_today_is_accepted_just_after_midnight(app, monkeypatch):
+    """Client report, 2026-10-28 00:35 Cairo: "exam date cannot be in the future" for
+    today. Cairo was on summer time (UTC+3); the server assumed UTC+2 and was still on
+    the 27th. Frozen at that instant: today is accepted wherever the vet is, the default
+    is Cairo's date, and a day nowhere has reached yet is still refused."""
+    from datetime import datetime, timezone
+    import app.api.v1.tools as tools
+
+    monkeypatch.setattr(tools, "_utc_now", lambda: datetime(2026, 10, 27, 21, 35, tzinfo=timezone.utc))
+    a = signed_in(app, "a")
+    body = {"species": "bovine", "measures": {"crl": 30}}
+    for local_today in ("2026-10-28",   # Cairo, 00:35 EEST
+                        "2026-10-28",   # Riyadh / Dubai, 00:35 / 01:35
+                        "2026-10-27"):  # anyone still on the 27th
+        r = a.post("/api/v1/tools/sonar", json={**body, "exam_date": local_today})
+        assert r.status_code == 201, (local_today, r.get_json())
+    assert a.post("/api/v1/tools/sonar", json=body).get_json()["exam"]["exam_date"] == "2026-10-28"
+    r = a.post("/api/v1/tools/sonar", json={**body, "exam_date": "2026-10-30"})
+    assert r.status_code == 422 and r.get_json()["error"] == "bad_date"
