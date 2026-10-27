@@ -1,7 +1,7 @@
 # 30 - Kashier through the hosted payment page
 
-**Status:** code live; payments not open yet. Waiting on Kashier test keys or live
-activation (see "What happened with the keys").
+**Status:** code live; test-mode keys in production (admins only). A real test-mode card
+payment completed end to end on 2026-10-27. Live mode waits on the client's go-ahead.
 
 ## Why the change
 
@@ -33,15 +33,23 @@ was moved to it.
 
 ## What happened with the keys
 
-- Merchant ID: valid. Kashier's checkout page names the merchant ("Baytra", sic) in test
-  and live.
-- Payment API key: a test-mode sandbox payment with Kashier's own test card is refused
-  with "Forbidden request", with the canonical link formula, an HTTPS return and no
-  webhook. So it is not the **test** key. Most likely it is the **live** key.
-- Secret key: refused by both environments.
-- Reading: these are live keys, and the live account is not activated yet (Kashier still
-  needs the company address among other things). Not tried in live: a live attempt
-  would be a real card authorisation on the client's account.
+- **The Secret keys were never wrong.** Both arrived as iPhone WhatsApp screenshots, and
+  iOS hyphenates a long word where it wraps it: every hyphen in both Secret keys sat at
+  a line end, never mid-line. Without those hyphens (format: 32 hex, `$`, 96 hex) both
+  keys are accepted, test and live (a missing session answers 404 instead of 401). The
+  first reading of 2026-10-26, "live keys on an account not yet activated", was wrong.
+- The first API key (`…22ae`) is the live Payment API key; the test one ends `…c403`.
+- Kashier still shows the business name as "Baytra".
+
+## Test-mode run, 2026-10-27
+
+- Card: Kashier's test Visa, 3-D Secure emulator approved, redirect back with
+  `paymentStatus=SUCCESS`; our return endpoint verified the signature and settled: payment
+  `paid`, enrolment `active`. Kashier's server notice reached production and was answered
+  200 (only a bad signature is refused), so real Kashier webhooks verify there.
+- Wallet: the sandbox shows "تمت الموافقة" in an error-styled box and sends neither a
+  redirect nor a notice, so wallets cannot be proved in test mode. Watch the first live
+  wallet payment; the daily reconciliation is the safety net.
 
 ## Acceptance check
 
@@ -49,6 +57,7 @@ was moved to it.
   1033 passed.
 - [x] Local sandbox run with the client's keys: admin sees the gateway, a visitor does
   not; the checkout link opens Kashier's test page for this merchant.
-- [ ] A test-mode payment (card and wallet) completes and enrols, with the test keys.
+- [x] Test-mode card payment completes and enrols; Kashier's webhook verifies in production.
+- [ ] Wallet: not provable in Kashier's sandbox; watch the first live one.
 - [ ] Live activation; live keys in; mode switched to live; first real payment watched.
 - [ ] Webhook URL also registered in the Kashier dashboard (belt and braces).

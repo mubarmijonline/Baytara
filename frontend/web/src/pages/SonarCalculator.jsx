@@ -52,11 +52,11 @@ const COPY = {
     signIn: 'تسجيل الدخول', register: 'إنشاء حساب مجاني',
     disclaimer: 'النتائج تقديرية للمساعدة، ولا تغني عن تقدير الطبيب البيطري للحالة.',
     gestation: (n) => `حمل ${n} يوم`,
-    groupSac: 'الحويصلة والفلقيات', groupFetus: 'قياسات الجنين',
+    groupSac: 'الحويصلة والفلقيات', groupSacEquine: 'الحويصلة', groupFetus: 'قياسات الجنين',
     progress: (p) => `${p}% من مدة الحمل`,
     conception: 'الإخصاب التقريبي', examDay: 'يوم الفحص', birthDay: 'الولادة المتوقعة',
-    emptyTitle: 'النتيجة هتظهر هنا',
-    steps: ['اختر الفصيلة', 'أدخل قياساً واحداً أو أكثر بالمليمتر', 'احصل على العمر وميعاد الولادة، وتتحفظ الحالة في حسابك'],
+    emptyTitle: 'ستظهر النتيجة هنا',
+    steps: ['اختر الفصيلة', 'أدخل قياساً واحداً أو أكثر بالمليمتر', 'احصل على العمر وميعاد الولادة. سيتم حفظ الحالة في حسابك، ويمكنك مسح السجل في أي وقت'],
     gestationRef: 'مدة الحمل المعتمدة في الحاسبة',
     cols: { case: 'الحالة', species: 'الفصيلة', exam: 'تاريخ الفحص', age: 'العمر', birth: 'الولادة المتوقعة', measures: 'القياسات' },
     count: (n) => `${n} حالة`,
@@ -101,11 +101,11 @@ const COPY = {
     signIn: 'Sign in', register: 'Create a free account',
     disclaimer: 'Results are estimates to assist you and do not replace a veterinarian’s judgement of the case.',
     gestation: (n) => `${n}-day gestation`,
-    groupSac: 'Vesicle and placentomes', groupFetus: 'Fetal measurements',
+    groupSac: 'Vesicle and placentomes', groupSacEquine: 'Vesicle', groupFetus: 'Fetal measurements',
     progress: (p) => `${p}% of gestation`,
     conception: 'Approx. conception', examDay: 'Exam day', birthDay: 'Expected birth',
     emptyTitle: 'Your result appears here',
-    steps: ['Choose the species', 'Enter one or more measurements in mm', 'Get the age and expected birth; the case is saved to your account'],
+    steps: ['Choose the species', 'Enter one or more measurements in mm', 'Get the age and expected birth. The case is saved to your account, and you can clear your history at any time'],
     gestationRef: 'Gestation lengths used by the calculator',
     cols: { case: 'Case', species: 'Species', exam: 'Exam date', age: 'Age', birth: 'Expected birth', measures: 'Measurements' },
     count: (n) => `${n} case(s)`,
@@ -381,7 +381,8 @@ export default function SonarCalculator() {
                 <p className="sonar-hint">{c.hint}</p>
 
                 <fieldset className="sonar-group">
-                  <legend>{c.groupSac}</legend>
+                  {/* Horses have no placentomes, so their group is the vesicle alone. */}
+                  <legend>{species === 'equine' ? c.groupSacEquine : c.groupSac}</legend>
                   <div className="sonar-row">{SAC.filter((m) => fields.includes(m)).map(field)}</div>
                 </fieldset>
                 <fieldset className="sonar-group">

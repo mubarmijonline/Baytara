@@ -56,3 +56,13 @@ for five species (cattle, buffalo, horses, sheep, goats) and the expected calvin
 - [x] Live: a throwaway account on baytara.app got [24, 43, 26, 32, 30, 33, 50], average 34,
   for cattle with every measurement at 3 mm; the client's script gives the same. The account
   and its case were then deleted. The page shows the sign-up gate to a visitor.
+
+## Client feedback, 2026-10-27
+
+- Made unmissable: a gold "حاسبة السونار · جديد" pill first in the desktop header, a strip
+  on its own line under the header on phones and narrow screens (every page except the
+  calculator), first item in the phone menu, and a banner on the home page under the stats.
+- Horses have no placentomes: their measurement group is titled "الحويصلة" alone.
+- Formal Arabic instead of colloquial: "ستظهر النتيجة هنا"; "سيتم حفظ الحالة في حسابك،
+  ويمكنك مسح السجل في أي وقت".
+
