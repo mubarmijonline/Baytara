@@ -960,3 +960,30 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
   .sonar-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11.5px; color: #8a90ab; font-weight: 700; }
   .sonar-table td:last-child { position: absolute; top: 8px; inset-inline-end: 8px; width: auto; }
 }
+
+/* ---------- Ultrasound calculator promotion (components/SonarPromo.jsx, Header.jsx) ---------- */
+.sonar-nav-pill { display: inline-flex; align-items: center; gap: 6px; color: #E9BE43; text-decoration: none; border: 1.5px solid rgba(233,190,67,.65); background: rgba(233,190,67,.10); border-radius: 999px; padding: 6px 12px 6px 10px; font-weight: 800; white-space: nowrap; transition: background .15s, color .15s; }
+.sonar-nav-pill:hover, .sonar-nav-pill.is-on { background: #E9BE43; color: #16255C; }
+.sonar-nav-pill em, .sonar-drawer-item em, .sonar-strip em { font-style: normal; font-size: 10.5px; font-weight: 900; background: #E9BE43; color: #16255C; border-radius: 999px; padding: 1px 7px; }
+.sonar-nav-pill:hover em, .sonar-nav-pill.is-on em { background: #16255C; color: #E9BE43; }
+.sonar-drawer-item { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; padding: 12px 14px; border-radius: 12px; background: rgba(233,190,67,.12); border: 1px solid rgba(233,190,67,.45); color: #E9BE43; font-weight: 800; text-decoration: none; }
+.sonar-drawer-item span { flex: 1; }
+.sonar-strip { align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; background: linear-gradient(90deg, #E9BE43, #f4d77d); color: #16255C; font-weight: 800; font-size: 14px; text-decoration: none; }
+.sonar-strip em { background: #16255C; color: #E9BE43; }
+.sonar-banner { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 32px; align-items: center; background: linear-gradient(135deg, #16255C 0%, #3048A0 75%); border-radius: 24px; padding: 36px 40px; color: #fff; position: relative; overflow: hidden; box-shadow: 0 14px 34px rgba(22,37,92,.22); }
+.sonar-banner::after { content: ""; position: absolute; inset-inline-end: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(233,190,67,.28), transparent 70%); pointer-events: none; }
+.sonar-banner-badge { display: inline-flex; align-items: center; gap: 6px; background: #E9BE43; color: #16255C; font-weight: 900; font-size: 12.5px; border-radius: 999px; padding: 4px 12px; }
+.sonar-banner h2 { font-size: 30px; font-weight: 900; margin: 12px 0 8px; line-height: 1.3; }
+.sonar-banner p { font-size: 16px; color: #c9d2f2; line-height: 1.85; margin: 0 0 20px; max-width: 520px; }
+.sonar-banner-cta { display: inline-block; background: #E9BE43; color: #16255C; font-weight: 900; font-size: 16px; padding: 13px 28px; border-radius: 12px; text-decoration: none; transition: transform .15s, box-shadow .15s; }
+.sonar-banner-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(233,190,67,.35); }
+.sonar-banner-species { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; position: relative; z-index: 1; }
+.sonar-banner-species div { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 14px 10px; text-align: center; display: grid; gap: 2px; }
+.sonar-banner-species b { font-size: 16px; }
+.sonar-banner-species span { font-size: 12.5px; color: #E9BE43; }
+@media (max-width: 1100px) { .sonar-nav-pill em { display: none; } }
+@media (max-width: 900px) {
+  .sonar-banner { grid-template-columns: minmax(0, 1fr); padding: 26px 22px; gap: 20px; }
+  .sonar-banner h2 { font-size: 23px; }
+}
+@media (max-width: 480px) { .sonar-banner-species { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .sonar-banner-species div { padding: 10px 6px; } }

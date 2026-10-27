@@ -4,6 +4,7 @@ import { ChevronUp } from 'lucide-react';
 import { Container, SectionHeading } from '../components/Primitives.jsx';
 import Avatar from '../components/Avatar.jsx';
 import ResumeCard from '../components/ResumeCard.jsx';
+import { SonarBanner } from '../components/SonarPromo.jsx';
 import CourseCard from '../components/CourseCard.jsx';
 import VideoCard from '../components/VideoCard.jsx';
 import { colors, font, gradients } from '../theme/tokens.js';
@@ -457,6 +458,7 @@ export default function Home() {
     <div style={{ background: colors.surface }}>
       <Hero summary={summary} />
       <StatsBand />
+      <SonarBanner />
       <CategoriesSection />
       <PlatformVideosSection />
       <NewestCoursesSection />

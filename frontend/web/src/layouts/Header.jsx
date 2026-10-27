@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, LayoutDashboard, LogOut, Menu, Search, User, UserCog, X } from 'lucide-react';
+import { Activity, Bell, LayoutDashboard, LogOut, Menu, Search, User, UserCog, X } from 'lucide-react';
 import { colors, gradients, layout } from '../theme/tokens.js';
 import { auth } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
@@ -148,7 +148,6 @@ const NAV = [
   ['/videos', 'nav.videos'],
   ['/content', 'nav.consultations'],
   ['/library', 'library.title'],
-  ['/tools/sonar', 'nav.sonar'],
   ['/pricing', 'nav.pricing'],
   ['/business', 'nav.business'],
 ];
@@ -283,6 +282,14 @@ export default function Header() {
               fontWeight: 600,
             }}
           >
+            {/* The calculator stands apart from the plain links, as the client asked: nothing
+                like it exists elsewhere in Egypt, and it is what brings people back. */}
+            <a href="/tools/sonar" className={`sonar-nav-pill${pathname === '/tools/sonar' ? ' is-on' : ''}`}
+              onClick={(event) => { event.preventDefault(); go('/tools/sonar'); }}>
+              <Activity size={15} aria-hidden="true" />
+              {t('nav.sonar')}
+              <em>{t('sonar.promo.badge')}</em>
+            </a>
             {NAV.map(([to, key]) => navItem(to, t(key)))}
           </nav>
 
@@ -374,6 +381,12 @@ export default function Header() {
               color: '#fff',
             }}
           >
+            <a href="/tools/sonar" className="sonar-drawer-item"
+              onClick={(event) => { event.preventDefault(); go('/tools/sonar'); }}>
+              <Activity size={18} aria-hidden="true" />
+              <span>{t('nav.sonar')}</span>
+              <em>{t('sonar.promo.badge')}</em>
+            </a>
             {NAV.map(([to, label]) => (
               <span
                 key={to}

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import Header from './Header.jsx';
 import Footer from './Footer.jsx';
 import TabBar from '../components/TabBar.jsx';
+import { SonarStrip } from '../components/SonarPromo.jsx';
 import { SiteSettingsProvider } from '../lib/site-settings.jsx';
 
 // Shared shell: header + routed page + footer. Scrolls to top on route change.
@@ -16,6 +17,7 @@ export default function Layout() {
     <SiteSettingsProvider>
       <div style={{ background: '#fff', color: '#1E2A5E', minHeight: '100vh', overflowX: 'hidden' }}>
         <Header />
+        <SonarStrip />
         <main className="am-fade site-main" key={pathname}>
           <Outlet />
         </main>
