@@ -94,11 +94,16 @@ it('sends only the measurements entered, and shows the saved result', async () =
   fireEvent.change(screen.getByLabelText('Case number / name (optional)'), { target: { value: 'cow 45' } });
   fireEvent.click(button);
 
+  const scrolled = vi.fn();
+  Element.prototype.scrollIntoView = scrolled;
   await waitFor(() => expect(posted).toHaveLength(1));
   expect(posted[0]).toMatchObject({ species: 'bovine', label: 'cow 45', measures: { crl: 9, bpd: 90 } });
   expect(await screen.findByText('Result')).toBeVisible();
   expect(screen.getAllByText(/140 days/)[0]).toBeVisible();
   expect(screen.getByText('Estimates range from 30 to 250 days')).toBeVisible();
+  // the new result is brought into view rather than left above the fold on a phone
+  await waitFor(() => expect(scrolled).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' })));
+  delete Element.prototype.scrollIntoView;
 });
 
 it('lists the account history with copy and WhatsApp', async () => {
@@ -108,4 +113,20 @@ it('lists the account history with copy and WhatsApp', async () => {
   expect(await screen.findByText('cow 45')).toBeVisible();
   const share = screen.getByRole('link', { name: 'Send on WhatsApp' });
   expect(decodeURIComponent(share.getAttribute('href'))).toContain('• Case (cow 45) [Cattle] -> age: 140 days');
+});
+
+it('measures dogs and cats on their four fields only', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi(student);
+  renderAt('/tools/sonar');
+  await screen.findByRole('button', { name: 'Calculate and save the case' });
+  fireEvent.click(screen.getByRole('radio', { name: 'Cats' }));
+  expect(screen.getByLabelText('Inner chorionic cavity ICC (mm)')).toBeVisible();
+  expect(screen.getByLabelText('Body/abdominal diameter BD (mm)')).toBeVisible();
+  for (const gone of ['Eye orbit (mm)', 'Head length HL (mm)', 'Placentomes (mm)']) {
+    expect(screen.queryByLabelText(gone)).toBeNull();
+  }
+  expect(screen.getByText('Gestational sac')).toBeVisible();
+  fireEvent.click(screen.getByRole('radio', { name: 'Cattle' }));
+  expect(screen.getByLabelText('Eye orbit (mm)')).toBeVisible();
 });

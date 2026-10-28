@@ -104,6 +104,16 @@ const _atTermHistory = '''
     "per_measure": [{"measure": "bpd", "mm": 90.0, "age_days": 160, "beyond_term": true}]}}],
  "more": false}''';
 
+const _catHistory = '''
+{"exams": [{"id": 13, "label": "Mishmish", "species": "feline", "exam_date": "2026-10-01",
+  "measures": {"crl": 30.0},
+  "result": {"species": "feline", "age_days": 37, "age_unit": "weeks", "months": 1,
+    "extra_days": 7, "weeks": 5, "week_days": 2, "gestation_days": 65, "days_remaining": 28,
+    "at_term": false, "exam_date": "2026-10-01", "expected_birth": "2026-10-29",
+    "range_days": [37, 37],
+    "per_measure": [{"measure": "crl", "mm": 30.0, "age_days": 37, "beyond_term": false}]}}],
+ "more": false}''';
+
 void main() {
   late _StubAdapter adapter;
   late SonarRepository repo;
@@ -162,5 +172,18 @@ void main() {
     expect(exams.single.atTerm, isTrue);
     expect(exams.single.expectedBirth, isNull);
     expect(exams.single.rangeDays, (160, 160));
+  });
+
+  test('dogs and cats come back in weeks, and use four measurements', () async {
+    build((o, body) async => _json(_catHistory, 200));
+    final cat = (await repo.history()).single;
+    expect(cat.inWeeks, isTrue);
+    expect((cat.weeks, cat.weekDays), (5, 2));
+    expect(sonarUsesMeasure('feline', 'crl'), isTrue);
+    for (final gone in ['eye_orbit', 'hl', 'placentome']) {
+      expect(sonarUsesMeasure('canine_small', gone), isFalse);
+    }
+    expect(sonarUsesMeasure('bovine', 'placentome'), isTrue);
+    expect(sonarUsesMeasure('equine', 'placentome'), isFalse);
   });
 }

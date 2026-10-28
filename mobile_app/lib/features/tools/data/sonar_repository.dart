@@ -6,7 +6,24 @@ import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 
-const sonarSpecies = ['bovine', 'buffalo', 'equine', 'ovine', 'caprine'];
+const sonarSpecies = [
+  'bovine',
+  'buffalo',
+  'equine',
+  'ovine',
+  'caprine',
+  'canine_small',
+  'canine_large',
+  'feline',
+];
+
+/// Dogs and cats (V6.2): measured on ICC, CRL, BPD and BD only, and aged in weeks.
+const sonarSmallAnimals = ['canine_small', 'canine_large', 'feline'];
+
+bool sonarUsesMeasure(String species, String m) =>
+    !(species == 'equine' && m == 'placentome') &&
+    !(sonarSmallAnimals.contains(species) &&
+        const ['eye_orbit', 'hl', 'placentome'].contains(m));
 const sonarMeasures = [
   'vesicle',
   'eye_orbit',
@@ -50,6 +67,9 @@ class SonarExam {
     required this.ageDays,
     required this.months,
     required this.extraDays,
+    this.inWeeks = false,
+    this.weeks = 0,
+    this.weekDays = 0,
     required this.gestationDays,
     required this.daysRemaining,
     required this.atTerm,
@@ -69,6 +89,9 @@ class SonarExam {
       ageDays: (r['age_days'] as num).toInt(),
       months: (r['months'] as num).toInt(),
       extraDays: (r['extra_days'] as num).toInt(),
+      inWeeks: r['age_unit'] == 'weeks',
+      weeks: (r['weeks'] as num?)?.toInt() ?? 0,
+      weekDays: (r['week_days'] as num?)?.toInt() ?? 0,
       gestationDays: (r['gestation_days'] as num).toInt(),
       daysRemaining: (r['days_remaining'] as num).toInt(),
       atTerm: r['at_term'] as bool? ?? false,
@@ -92,6 +115,11 @@ class SonarExam {
   final int ageDays;
   final int months;
   final int extraDays;
+
+  /// Dogs and cats are shown in weeks, as the client's file does.
+  final bool inWeeks;
+  final int weeks;
+  final int weekDays;
   final int gestationDays;
   final int daysRemaining;
   final bool atTerm;

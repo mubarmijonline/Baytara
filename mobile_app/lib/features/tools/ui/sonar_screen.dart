@@ -23,12 +23,22 @@ String speciesName(L10n l, String s) => switch (s) {
   'buffalo' => l.sonarSpeciesBuffalo,
   'equine' => l.sonarSpeciesEquine,
   'ovine' => l.sonarSpeciesOvine,
+  'canine_small' => l.sonarSpeciesCanineSmall,
+  'canine_large' => l.sonarSpeciesCanineLarge,
+  'feline' => l.sonarSpeciesFeline,
   _ => l.sonarSpeciesCaprine,
 };
 
 String measureName(L10n l, String species, String m, {bool short = false}) {
   if (m == 'vesicle' && species == 'equine') {
     return short ? 'EV' : l.sonarMeasureEquineVesicle;
+  }
+  // Dogs and cats (V6.2): the sac is the inner chorionic cavity, the trunk the body.
+  if (sonarSmallAnimals.contains(species) && m == 'vesicle') {
+    return short ? 'ICC' : l.sonarMeasureSmallVesicle;
+  }
+  if (sonarSmallAnimals.contains(species) && m == 'trunk') {
+    return short ? 'BD' : l.sonarMeasureSmallTrunk;
   }
   return switch (m) {
     'vesicle' => short ? 'GSD' : l.sonarMeasureVesicle,
@@ -44,9 +54,17 @@ String measureName(L10n l, String species, String m, {bool short = false}) {
 String _date(BuildContext context, DateTime d) =>
     DateFormat.yMMMd(Localizations.localeOf(context).languageCode).format(d);
 
-String _ageLine(L10n l, SonarExam e) => e.months == 0
-    ? l.sonarUnderMonth
-    : l.sonarMonthsDays(e.months, e.extraDays);
+/// Months for the large animals, weeks for dogs and cats, as the client's file shows.
+String _ageLine(L10n l, SonarExam e) {
+  if (e.inWeeks) {
+    return e.weekDays > 0
+        ? l.sonarWeeksDays(e.weeks, e.weekDays)
+        : l.sonarWeeks(e.weeks);
+  }
+  return e.months == 0
+      ? l.sonarUnderMonth
+      : l.sonarMonthsDays(e.months, e.extraDays);
+}
 
 /// The same plain report the client's original file copied, one line per case.
 String sonarReport(BuildContext context, L10n l, List<SonarExam> exams) {
@@ -75,6 +93,9 @@ class SonarScreen extends ConsumerStatefulWidget {
 class _SonarScreenState extends ConsumerState<SonarScreen> {
   String _species = 'bovine';
   final _label = TextEditingController();
+  // The result is drawn at the top of the list; after a calculation the doctor is at the
+  // button at the bottom, so the list goes back up to show it (client, 2026-10-28).
+  final _scroll = ScrollController();
   final _fields = {for (final m in sonarMeasures) m: TextEditingController()};
   DateTime _examDate = DateTime.now();
   bool _busy = false;
@@ -84,6 +105,7 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
   @override
   void dispose() {
     _label.dispose();
+    _scroll.dispose();
     for (final c in _fields.values) {
       c.dispose();
     }
@@ -92,7 +114,7 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
 
   List<String> get _visibleMeasures => [
     for (final m in sonarMeasures)
-      if (!(_species == 'equine' && m == 'placentome')) m,
+      if (sonarUsesMeasure(_species, m)) m,
   ];
 
   Future<void> _calculate() async {
@@ -124,7 +146,18 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
       }
       _label.clear();
       ref.invalidate(sonarHistoryProvider);
-      if (mounted) setState(() => _latest = exam);
+      if (mounted) {
+        setState(() => _latest = exam);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scroll.hasClients) {
+            _scroll.animateTo(
+              0,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       final code = e.data?['error'];
@@ -189,6 +222,7 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l.sonarTitle)),
       body: ListView(
+        controller: _scroll,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           if (_latest != null) ...[

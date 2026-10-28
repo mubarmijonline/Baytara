@@ -1,8 +1,8 @@
 """The reproductive ultrasound calculator (milestone 29).
 
 The formulas must agree with the client's own file to the day. The reference results in
-fixtures/sonar_v5_vectors.json were produced by running that file's script
-(docs/reference/Baytara_sonar_v5.html) in Node; see fixtures/gen_sonar_vectors.js.
+fixtures/sonar_vectors.json were produced by running that file's script
+(docs/reference/Baytara_sonar_v6_2.html) in Node; see fixtures/gen_sonar_vectors.js.
 """
 import json
 from datetime import date, timedelta
@@ -17,7 +17,7 @@ from app.models import SonarExam, User
 from app.security import hash_password
 from app.services.sonar import SonarInputError, clean_measures, estimate, js_round
 
-VECTORS = json.loads((Path(__file__).parent / "fixtures" / "sonar_v5_vectors.json").read_text())
+VECTORS = json.loads((Path(__file__).parent / "fixtures" / "sonar_vectors.json").read_text())
 PASSWORD = "secret12"
 
 
@@ -167,3 +167,18 @@ def test_today_is_accepted_just_after_midnight(app, monkeypatch):
     assert a.post("/api/v1/tools/sonar", json=body).get_json()["exam"]["exam_date"] == "2026-10-28"
     r = a.post("/api/v1/tools/sonar", json={**body, "exam_date": "2026-10-30"})
     assert r.status_code == 422 and r.get_json()["error"] == "bad_date"
+
+
+def test_dogs_and_cats_are_aged_in_weeks_on_their_four_measurements():
+    """V6.2: dogs and cats use ICC, CRL, BPD and BD only, and the source shows weeks."""
+    r = estimate("feline", clean_measures("feline", {"crl": 30, "eye_orbit": 9, "hl": 9, "placentome": 9}),
+                 date(2026, 10, 1))
+    assert [m["measure"] for m in r["per_measure"]] == ["crl"]   # the rest are ignored
+    assert r["age_days"] == js_round(21.8 + 0.51 * 30) == 37
+    assert (r["age_unit"], r["weeks"], r["week_days"]) == ("weeks", 5, 2)
+    assert r["gestation_days"] == 65 and r["days_remaining"] == 28
+    assert estimate("canine_small", {"crl": 30})["gestation_days"] == 63
+    assert estimate("bovine", {"crl": 30})["age_unit"] == "months"
+    with pytest.raises(SonarInputError) as exc:
+        clean_measures("canine_large", {"eye_orbit": 5})
+    assert exc.value.code == "no_measurements"

@@ -1,7 +1,8 @@
 """Gestational age from reproductive ultrasound measurements (milestone 29).
 
-The formulas are the client's, from `Baytara_sonar_v5.html` ("إصدار أمواج الحياة - V5.0"),
-copied coefficient for coefficient. Do not "improve" them here: a change is the client's
+The formulas are the client's, from `docs/reference/Baytara_sonar_v6_2.html` ("إصدار أمواج
+الحياة - V6.2"; V5 plus dogs and cats, the five earlier species unchanged), copied
+coefficient for coefficient. Do not "improve" them here: a change is the client's
 call, and tests/test_sonar.py checks this file against the original JavaScript.
 
 Each measurement entered gives its own age in days; the estimate is the rounded mean of
@@ -11,10 +12,13 @@ exam date) is presentation added around the source and changes no number it prod
 import math
 from datetime import date, timedelta
 
-SPECIES = ("bovine", "buffalo", "equine", "ovine", "caprine")
+SPECIES = ("bovine", "buffalo", "equine", "ovine", "caprine", "canine_small", "canine_large", "feline")
+# Dogs and cats: measured on four things only (ICC, CRL, BPD, BD), and aged in weeks.
+SMALL_ANIMALS = ("canine_small", "canine_large", "feline")
 MEASURES = ("vesicle", "eye_orbit", "crl", "bpd", "hl", "trunk", "placentome")
 # Gestation length in days, as the source uses for the expected date.
-GESTATION_DAYS = {"bovine": 283, "buffalo": 310, "equine": 340, "ovine": 150, "caprine": 150}
+GESTATION_DAYS = {"bovine": 283, "buffalo": 310, "equine": 340, "ovine": 150, "caprine": 150,
+                  "canine_small": 63, "canine_large": 63, "feline": 65}
 MAX_MM = 1000
 
 
@@ -70,6 +74,20 @@ FORMULAS = {
         "crl": _sqrt_lin(19.5, 1.55, 0.32), "bpd": _lin(21.5, 2.18), "hl": _lin(22, 1.4),
         "trunk": _lin(23, 1.62), "placentome": lambda v: 19 + 2.0 * min(v, 32),
     },
+    # V6.2. For dogs and cats `vesicle` is the inner chorionic cavity (ICC) and `trunk` the
+    # body/abdominal diameter (BD); eye orbit, head length and placentomes do not apply.
+    "canine_small": {
+        "vesicle": _lin(18.5, 0.75), "crl": _lin(24.5, 0.48), "bpd": _lin(24.7, 1.63),
+        "trunk": _lin(23.5, 0.85),
+    },
+    "canine_large": {
+        "vesicle": _lin(19.66, 0.629), "crl": _lin(24.64, 0.454), "bpd": _lin(21.08, 1.488),
+        "trunk": _quad(22.89, 0.78, -0.0018),
+    },
+    "feline": {
+        "vesicle": _lin(14.23, 0.858), "crl": _lin(21.8, 0.51), "bpd": _lin(25.1, 1.56),
+        "trunk": _lin(22.65, 0.98),
+    },
 }
 
 
@@ -85,8 +103,9 @@ class SonarInputError(ValueError):
 def clean_measures(species, raw):
     """{measure: positive float} from untrusted input, or SonarInputError.
 
-    Zero, blank and missing all mean "not measured", as in the source. Horses have no
-    placentome measurement; one sent for a horse is ignored, as the source ignores it.
+    Zero, blank and missing all mean "not measured", as in the source. A measurement the
+    species does not use (placentomes in a horse; eye orbit, head length or placentomes in
+    a dog or cat) is ignored, as the source ignores it.
     """
     if species not in SPECIES:
         raise SonarInputError("bad_species", "species")
@@ -130,8 +149,12 @@ def estimate(species, measures, exam_date=None):
     return {
         "species": species,
         "age_days": age,
+        # Months for the large animals, weeks for dogs and cats, as the source shows them.
+        "age_unit": "weeks" if species in SMALL_ANIMALS else "months",
         "months": age // 30,
         "extra_days": age % 30,
+        "weeks": age // 7,
+        "week_days": age % 7,
         "per_measure": per_measure,
         "range_days": [min(ages), max(ages)],
         "gestation_days": gestation,

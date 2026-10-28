@@ -598,5 +598,12 @@
   "sonarDisclaimer": "Results are estimates to assist you and do not replace a veterinarian's judgement of the case.",
   "sonarErrNoMeasurements": "Enter at least one measurement.",
   "sonarErrRange": "That value is not plausible: it must be above zero and at most 1000 mm.",
-  "sonarErrDate": "The exam date cannot be in the future."
+  "sonarErrDate": "The exam date cannot be in the future.",
+  "sonarSpeciesCanineSmall": "Small dogs (under 10 kg)",
+  "sonarSpeciesCanineLarge": "Medium and large dogs (over 10 kg)",
+  "sonarSpeciesFeline": "Cats",
+  "sonarMeasureSmallVesicle": "Inner chorionic cavity ICC",
+  "sonarMeasureSmallTrunk": "Body/abdominal diameter BD",
+  "sonarWeeks": "{w} weeks",
+  "sonarWeeksDays": "{w} weeks {d} days"
 }
