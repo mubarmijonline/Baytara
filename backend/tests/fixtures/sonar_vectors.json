@@ -6550,5 +6550,2357 @@
    83
   ],
   "age": 120
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 0.5
+  },
+  "ages": [
+   19
+  ],
+  "age": 19
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 1
+  },
+  "ages": [
+   19
+  ],
+  "age": 19
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 2.5
+  },
+  "ages": [
+   20
+  ],
+  "age": 20
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 3
+  },
+  "ages": [
+   21
+  ],
+  "age": 21
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 7.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 10
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 12.3
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 18
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 24
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 25
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 27.5
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 28
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 33
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 40
+  },
+  "ages": [
+   49
+  ],
+  "age": 49
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 55
+  },
+  "ages": [
+   60
+  ],
+  "age": 60
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 80
+  },
+  "ages": [
+   79
+  ],
+  "age": 79
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 120
+  },
+  "ages": [
+   109
+  ],
+  "age": 109
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 250
+  },
+  "ages": [
+   206
+  ],
+  "age": 206
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 0.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 1
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 2.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 3
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 7.5
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 10
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 12.3
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 18
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 24
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 25
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 27.5
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 28
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 33
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 40
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 55
+  },
+  "ages": [
+   51
+  ],
+  "age": 51
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 80
+  },
+  "ages": [
+   63
+  ],
+  "age": 63
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 120
+  },
+  "ages": [
+   82
+  ],
+  "age": 82
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "crl": 250
+  },
+  "ages": [
+   145
+  ],
+  "age": 145
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 0.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 1
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 2.5
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 3
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 7.5
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 10
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 12.3
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 18
+  },
+  "ages": [
+   54
+  ],
+  "age": 54
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 24
+  },
+  "ages": [
+   64
+  ],
+  "age": 64
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 25
+  },
+  "ages": [
+   65
+  ],
+  "age": 65
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 27.5
+  },
+  "ages": [
+   70
+  ],
+  "age": 70
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 28
+  },
+  "ages": [
+   70
+  ],
+  "age": 70
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 33
+  },
+  "ages": [
+   78
+  ],
+  "age": 78
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 40
+  },
+  "ages": [
+   90
+  ],
+  "age": 90
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 55
+  },
+  "ages": [
+   114
+  ],
+  "age": 114
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 80
+  },
+  "ages": [
+   155
+  ],
+  "age": 155
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 120
+  },
+  "ages": [
+   220
+  ],
+  "age": 220
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "bpd": 250
+  },
+  "ages": [
+   432
+  ],
+  "age": 432
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 0.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 1
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 2.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 3
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 7.5
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 10
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 12.3
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 18
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 24
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 25
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 27.5
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 28
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 33
+  },
+  "ages": [
+   52
+  ],
+  "age": 52
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 40
+  },
+  "ages": [
+   58
+  ],
+  "age": 58
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 55
+  },
+  "ages": [
+   70
+  ],
+  "age": 70
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 80
+  },
+  "ages": [
+   92
+  ],
+  "age": 92
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 120
+  },
+  "ages": [
+   126
+  ],
+  "age": 126
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "trunk": 250
+  },
+  "ages": [
+   236
+  ],
+  "age": 236
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 3,
+   "crl": 3,
+   "bpd": 3,
+   "trunk": 3
+  },
+  "ages": [
+   21,
+   26,
+   30,
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 9.5,
+   "crl": 9.5,
+   "bpd": 9.5,
+   "trunk": 9.5
+  },
+  "ages": [
+   26,
+   29,
+   40,
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 21,
+   "crl": 21,
+   "bpd": 21,
+   "trunk": 21
+  },
+  "ages": [
+   34,
+   35,
+   59,
+   41
+  ],
+  "age": 42
+ },
+ {
+  "species": "canine_small",
+  "measures": {
+   "vesicle": 44,
+   "crl": 44,
+   "bpd": 44,
+   "trunk": 44
+  },
+  "ages": [
+   52,
+   46,
+   96,
+   61
+  ],
+  "age": 64
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 0.5
+  },
+  "ages": [
+   20
+  ],
+  "age": 20
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 1
+  },
+  "ages": [
+   20
+  ],
+  "age": 20
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 2.5
+  },
+  "ages": [
+   21
+  ],
+  "age": 21
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 3
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 7.5
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 10
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 12.3
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 18
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 24
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 25
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 27.5
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 28
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 33
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 40
+  },
+  "ages": [
+   45
+  ],
+  "age": 45
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 55
+  },
+  "ages": [
+   54
+  ],
+  "age": 54
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 80
+  },
+  "ages": [
+   70
+  ],
+  "age": 70
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 120
+  },
+  "ages": [
+   95
+  ],
+  "age": 95
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 250
+  },
+  "ages": [
+   177
+  ],
+  "age": 177
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 0.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 1
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 2.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 3
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 7.5
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 10
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 12.3
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 18
+  },
+  "ages": [
+   33
+  ],
+  "age": 33
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 24
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 25
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 27.5
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 28
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 33
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 40
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 55
+  },
+  "ages": [
+   50
+  ],
+  "age": 50
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 80
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 120
+  },
+  "ages": [
+   79
+  ],
+  "age": 79
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "crl": 250
+  },
+  "ages": [
+   138
+  ],
+  "age": 138
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 0.5
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 1
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 2.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 3
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 7.5
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 10
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 12.3
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 18
+  },
+  "ages": [
+   48
+  ],
+  "age": 48
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 24
+  },
+  "ages": [
+   57
+  ],
+  "age": 57
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 25
+  },
+  "ages": [
+   58
+  ],
+  "age": 58
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 27.5
+  },
+  "ages": [
+   62
+  ],
+  "age": 62
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 28
+  },
+  "ages": [
+   63
+  ],
+  "age": 63
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 33
+  },
+  "ages": [
+   70
+  ],
+  "age": 70
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 40
+  },
+  "ages": [
+   81
+  ],
+  "age": 81
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 55
+  },
+  "ages": [
+   103
+  ],
+  "age": 103
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 80
+  },
+  "ages": [
+   140
+  ],
+  "age": 140
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 120
+  },
+  "ages": [
+   200
+  ],
+  "age": 200
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "bpd": 250
+  },
+  "ages": [
+   393
+  ],
+  "age": 393
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 0.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 1
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 2.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 3
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 7.5
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 10
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 12.3
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 18
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 24
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 25
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 27.5
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 28
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 33
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 40
+  },
+  "ages": [
+   51
+  ],
+  "age": 51
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 55
+  },
+  "ages": [
+   60
+  ],
+  "age": 60
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 80
+  },
+  "ages": [
+   74
+  ],
+  "age": 74
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 120
+  },
+  "ages": [
+   91
+  ],
+  "age": 91
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "trunk": 250
+  },
+  "ages": [
+   105
+  ],
+  "age": 105
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 3,
+   "crl": 3,
+   "bpd": 3,
+   "trunk": 3
+  },
+  "ages": [
+   22,
+   26,
+   26,
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 9.5,
+   "crl": 9.5,
+   "bpd": 9.5,
+   "trunk": 9.5
+  },
+  "ages": [
+   26,
+   29,
+   35,
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 21,
+   "crl": 21,
+   "bpd": 21,
+   "trunk": 21
+  },
+  "ages": [
+   33,
+   34,
+   52,
+   38
+  ],
+  "age": 39
+ },
+ {
+  "species": "canine_large",
+  "measures": {
+   "vesicle": 44,
+   "crl": 44,
+   "bpd": 44,
+   "trunk": 44
+  },
+  "ages": [
+   47,
+   45,
+   87,
+   54
+  ],
+  "age": 58
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 0.5
+  },
+  "ages": [
+   15
+  ],
+  "age": 15
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 1
+  },
+  "ages": [
+   15
+  ],
+  "age": 15
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 2.5
+  },
+  "ages": [
+   16
+  ],
+  "age": 16
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 3
+  },
+  "ages": [
+   17
+  ],
+  "age": 17
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 7.5
+  },
+  "ages": [
+   21
+  ],
+  "age": 21
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 10
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 12.3
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 18
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 24
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 25
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 27.5
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 28
+  },
+  "ages": [
+   38
+  ],
+  "age": 38
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 33
+  },
+  "ages": [
+   43
+  ],
+  "age": 43
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 40
+  },
+  "ages": [
+   49
+  ],
+  "age": 49
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 55
+  },
+  "ages": [
+   61
+  ],
+  "age": 61
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 80
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 120
+  },
+  "ages": [
+   117
+  ],
+  "age": 117
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 250
+  },
+  "ages": [
+   229
+  ],
+  "age": 229
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 0.5
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 1
+  },
+  "ages": [
+   22
+  ],
+  "age": 22
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 2.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 3
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 7.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 10
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 12.3
+  },
+  "ages": [
+   28
+  ],
+  "age": 28
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 18
+  },
+  "ages": [
+   31
+  ],
+  "age": 31
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 24
+  },
+  "ages": [
+   34
+  ],
+  "age": 34
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 25
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 27.5
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 28
+  },
+  "ages": [
+   36
+  ],
+  "age": 36
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 33
+  },
+  "ages": [
+   39
+  ],
+  "age": 39
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 40
+  },
+  "ages": [
+   42
+  ],
+  "age": 42
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 55
+  },
+  "ages": [
+   50
+  ],
+  "age": 50
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 80
+  },
+  "ages": [
+   63
+  ],
+  "age": 63
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 120
+  },
+  "ages": [
+   83
+  ],
+  "age": 83
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "crl": 250
+  },
+  "ages": [
+   149
+  ],
+  "age": 149
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 0.5
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 1
+  },
+  "ages": [
+   27
+  ],
+  "age": 27
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 2.5
+  },
+  "ages": [
+   29
+  ],
+  "age": 29
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 3
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 7.5
+  },
+  "ages": [
+   37
+  ],
+  "age": 37
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 10
+  },
+  "ages": [
+   41
+  ],
+  "age": 41
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 12.3
+  },
+  "ages": [
+   44
+  ],
+  "age": 44
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 18
+  },
+  "ages": [
+   53
+  ],
+  "age": 53
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 24
+  },
+  "ages": [
+   63
+  ],
+  "age": 63
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 25
+  },
+  "ages": [
+   64
+  ],
+  "age": 64
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 27.5
+  },
+  "ages": [
+   68
+  ],
+  "age": 68
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 28
+  },
+  "ages": [
+   69
+  ],
+  "age": 69
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 33
+  },
+  "ages": [
+   77
+  ],
+  "age": 77
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 40
+  },
+  "ages": [
+   88
+  ],
+  "age": 88
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 55
+  },
+  "ages": [
+   111
+  ],
+  "age": 111
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 80
+  },
+  "ages": [
+   150
+  ],
+  "age": 150
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 120
+  },
+  "ages": [
+   212
+  ],
+  "age": 212
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "bpd": 250
+  },
+  "ages": [
+   415
+  ],
+  "age": 415
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 0.5
+  },
+  "ages": [
+   23
+  ],
+  "age": 23
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 1
+  },
+  "ages": [
+   24
+  ],
+  "age": 24
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 2.5
+  },
+  "ages": [
+   25
+  ],
+  "age": 25
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 3
+  },
+  "ages": [
+   26
+  ],
+  "age": 26
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 7.5
+  },
+  "ages": [
+   30
+  ],
+  "age": 30
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 10
+  },
+  "ages": [
+   32
+  ],
+  "age": 32
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 12.3
+  },
+  "ages": [
+   35
+  ],
+  "age": 35
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 18
+  },
+  "ages": [
+   40
+  ],
+  "age": 40
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 24
+  },
+  "ages": [
+   46
+  ],
+  "age": 46
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 25
+  },
+  "ages": [
+   47
+  ],
+  "age": 47
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 27.5
+  },
+  "ages": [
+   50
+  ],
+  "age": 50
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 28
+  },
+  "ages": [
+   50
+  ],
+  "age": 50
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 33
+  },
+  "ages": [
+   55
+  ],
+  "age": 55
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 40
+  },
+  "ages": [
+   62
+  ],
+  "age": 62
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 55
+  },
+  "ages": [
+   77
+  ],
+  "age": 77
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 80
+  },
+  "ages": [
+   101
+  ],
+  "age": 101
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 120
+  },
+  "ages": [
+   140
+  ],
+  "age": 140
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "trunk": 250
+  },
+  "ages": [
+   268
+  ],
+  "age": 268
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 3,
+   "crl": 3,
+   "bpd": 3,
+   "trunk": 3
+  },
+  "ages": [
+   17,
+   23,
+   30,
+   26
+  ],
+  "age": 24
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 9.5,
+   "crl": 9.5,
+   "bpd": 9.5,
+   "trunk": 9.5
+  },
+  "ages": [
+   22,
+   27,
+   40,
+   32
+  ],
+  "age": 30
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 21,
+   "crl": 21,
+   "bpd": 21,
+   "trunk": 21
+  },
+  "ages": [
+   32,
+   33,
+   58,
+   43
+  ],
+  "age": 42
+ },
+ {
+  "species": "feline",
+  "measures": {
+   "vesicle": 44,
+   "crl": 44,
+   "bpd": 44,
+   "trunk": 44
+  },
+  "ages": [
+   52,
+   44,
+   94,
+   66
+  ],
+  "age": 64
  }
 ]

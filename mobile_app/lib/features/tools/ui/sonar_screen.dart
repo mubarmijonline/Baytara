@@ -23,12 +23,22 @@ String speciesName(L10n l, String s) => switch (s) {
   'buffalo' => l.sonarSpeciesBuffalo,
   'equine' => l.sonarSpeciesEquine,
   'ovine' => l.sonarSpeciesOvine,
+  'canine_small' => l.sonarSpeciesCanineSmall,
+  'canine_large' => l.sonarSpeciesCanineLarge,
+  'feline' => l.sonarSpeciesFeline,
   _ => l.sonarSpeciesCaprine,
 };
 
 String measureName(L10n l, String species, String m, {bool short = false}) {
   if (m == 'vesicle' && species == 'equine') {
     return short ? 'EV' : l.sonarMeasureEquineVesicle;
+  }
+  // Dogs and cats (V6.2): the sac is the inner chorionic cavity, the trunk the body.
+  if (sonarSmallAnimals.contains(species) && m == 'vesicle') {
+    return short ? 'ICC' : l.sonarMeasureSmallVesicle;
+  }
+  if (sonarSmallAnimals.contains(species) && m == 'trunk') {
+    return short ? 'BD' : l.sonarMeasureSmallTrunk;
   }
   return switch (m) {
     'vesicle' => short ? 'GSD' : l.sonarMeasureVesicle,
@@ -44,9 +54,17 @@ String measureName(L10n l, String species, String m, {bool short = false}) {
 String _date(BuildContext context, DateTime d) =>
     DateFormat.yMMMd(Localizations.localeOf(context).languageCode).format(d);
 
-String _ageLine(L10n l, SonarExam e) => e.months == 0
-    ? l.sonarUnderMonth
-    : l.sonarMonthsDays(e.months, e.extraDays);
+/// Months for the large animals, weeks for dogs and cats, as the client's file shows.
+String _ageLine(L10n l, SonarExam e) {
+  if (e.inWeeks) {
+    return e.weekDays > 0
+        ? l.sonarWeeksDays(e.weeks, e.weekDays)
+        : l.sonarWeeks(e.weeks);
+  }
+  return e.months == 0
+      ? l.sonarUnderMonth
+      : l.sonarMonthsDays(e.months, e.extraDays);
+}
 
 /// The same plain report the client's original file copied, one line per case.
 String sonarReport(BuildContext context, L10n l, List<SonarExam> exams) {
@@ -96,7 +114,7 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
 
   List<String> get _visibleMeasures => [
     for (final m in sonarMeasures)
-      if (!(_species == 'equine' && m == 'placentome')) m,
+      if (sonarUsesMeasure(_species, m)) m,
   ];
 
   Future<void> _calculate() async {

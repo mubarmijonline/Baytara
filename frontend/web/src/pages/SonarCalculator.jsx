@@ -14,7 +14,11 @@ import { auth } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 
-const SPECIES = ['bovine', 'buffalo', 'equine', 'ovine', 'caprine'];
+const SPECIES = ['bovine', 'buffalo', 'equine', 'ovine', 'caprine', 'canine_small', 'canine_large', 'feline'];
+// V6.2: dogs and cats are measured on four things only, and aged in weeks.
+const SMALL = ['canine_small', 'canine_large', 'feline'];
+const usesMeasure = (species, m) => !(species === 'equine' && m === 'placentome')
+  && !(SMALL.includes(species) && ['eye_orbit', 'hl', 'placentome'].includes(m));
 const MEASURES = ['vesicle', 'eye_orbit', 'crl', 'bpd', 'hl', 'trunk', 'placentome'];
 
 const COPY = {
@@ -22,12 +26,15 @@ const COPY = {
     breadcrumb: 'الرئيسية › الأدوات › حاسبة السونار',
     title: 'حاسبة قياسات السونار التناسلي',
     subtitle: 'احسب عمر الحمل وميعاد الولادة المتوقع من قياسات السونار، واحتفظ بسجل حالاتك في حسابك.',
-    species: { bovine: 'الأبقار', buffalo: 'الجاموس', equine: 'الخيول', ovine: 'الأغنام', caprine: 'الماعز' },
+    species: { bovine: 'الأبقار', buffalo: 'الجاموس', equine: 'الخيول', ovine: 'الأغنام', caprine: 'الماعز',
+      canine_small: 'الكلاب الصغيرة', canine_large: 'الكلاب المتوسطة والكبيرة', feline: 'القطط' },
+    speciesNote: { canine_small: 'أقل من 10 كجم', canine_large: 'أكبر من 10 كجم' },
     measures: {
       vesicle: 'قطر الحويصلة / كيس الحمل GSD', eye_orbit: 'محجر العين Eye', crl: 'طول الجنين CRL',
       bpd: 'قطر الرأس BPD', hl: 'طول الرأس HL', trunk: 'قطر الجذع Trunk', placentome: 'الفلقيات Placentomes',
     },
     equineVesicle: 'الحويصلة EV',
+    smallVesicle: 'كيس الحمل الداخلي ICC', smallTrunk: 'قطر الجسم/البطن BD',
     short: { vesicle: 'GSD', eye_orbit: 'العين', crl: 'CRL', bpd: 'BPD', hl: 'HL', trunk: 'الجذع', placentome: 'الفلقيات' },
     equineShort: 'EV',
     label: 'رقم / اسم الحالة (اختياري)', labelPh: 'مثال: بقرة رقم 45',
@@ -36,6 +43,7 @@ const COPY = {
     calc: 'احسب العمر وسجّل الحالة', working: 'جارٍ الحساب…',
     result: 'النتيجة', age: 'متوسط العمر التقديري',
     days: (n) => `${n} يوم`, ageLine: (m, d) => (m === 0 ? 'أقل من شهر' : `${m} شهر و ${d} يوم`),
+    weeksLine: (w, d) => `${w} أسبوع${d > 0 ? ` و ${d} يوم` : ''}`,
     expected: 'ميعاد الولادة المتوقع', atTerm: 'مكتمل النمو / على وشك الولادة',
     remaining: (n, g) => `متبقٍ ${n} يوم من مدة حمل ${g} يوم`,
     range: (a, b) => `التقديرات بين ${a} و ${b} يوم`,
@@ -52,7 +60,7 @@ const COPY = {
     signIn: 'تسجيل الدخول', register: 'إنشاء حساب مجاني',
     disclaimer: 'النتائج تقديرية للمساعدة، ولا تغني عن تقدير الطبيب البيطري للحالة.',
     gestation: (n) => `حمل ${n} يوم`,
-    groupSac: 'الحويصلة والفلقيات', groupSacEquine: 'الحويصلة', groupFetus: 'قياسات الجنين',
+    groupSac: 'الحويصلة والفلقيات', groupSacEquine: 'الحويصلة', groupSacSmall: 'كيس الحمل', groupFetus: 'قياسات الجنين',
     progress: (p) => `${p}% من مدة الحمل`,
     conception: 'الإخصاب التقريبي', examDay: 'يوم الفحص', birthDay: 'الولادة المتوقعة',
     emptyTitle: 'ستظهر النتيجة هنا',
@@ -71,12 +79,15 @@ const COPY = {
     breadcrumb: 'Home › Tools › Ultrasound calculator',
     title: 'Reproductive ultrasound calculator',
     subtitle: 'Estimate gestational age and the expected birth date from ultrasound measurements, and keep your cases in your account.',
-    species: { bovine: 'Cattle', buffalo: 'Buffalo', equine: 'Horses', ovine: 'Sheep', caprine: 'Goats' },
+    species: { bovine: 'Cattle', buffalo: 'Buffalo', equine: 'Horses', ovine: 'Sheep', caprine: 'Goats',
+      canine_small: 'Small dogs', canine_large: 'Medium and large dogs', feline: 'Cats' },
+    speciesNote: { canine_small: 'under 10 kg', canine_large: 'over 10 kg' },
     measures: {
       vesicle: 'Vesicle / gestational sac GSD', eye_orbit: 'Eye orbit', crl: 'Crown-rump length CRL',
       bpd: 'Biparietal diameter BPD', hl: 'Head length HL', trunk: 'Trunk diameter', placentome: 'Placentomes',
     },
     equineVesicle: 'Embryonic vesicle EV',
+    smallVesicle: 'Inner chorionic cavity ICC', smallTrunk: 'Body/abdominal diameter BD',
     short: { vesicle: 'GSD', eye_orbit: 'Eye', crl: 'CRL', bpd: 'BPD', hl: 'HL', trunk: 'Trunk', placentome: 'Placentome' },
     equineShort: 'EV',
     label: 'Case number / name (optional)', labelPh: 'e.g. cow 45',
@@ -85,6 +96,7 @@ const COPY = {
     calc: 'Calculate and save the case', working: 'Calculating…',
     result: 'Result', age: 'Estimated average age',
     days: (n) => `${n} days`, ageLine: (m, d) => (m === 0 ? 'under a month' : `${m} months ${d} days`),
+    weeksLine: (w, d) => `${w} weeks${d > 0 ? ` ${d} days` : ''}`,
     expected: 'Expected birth', atTerm: 'At term / about to give birth',
     remaining: (n, g) => `${n} days left of a ${g}-day gestation`,
     range: (a, b) => `Estimates range from ${a} to ${b} days`,
@@ -101,7 +113,7 @@ const COPY = {
     signIn: 'Sign in', register: 'Create a free account',
     disclaimer: 'Results are estimates to assist you and do not replace a veterinarian’s judgement of the case.',
     gestation: (n) => `${n}-day gestation`,
-    groupSac: 'Vesicle and placentomes', groupSacEquine: 'Vesicle', groupFetus: 'Fetal measurements',
+    groupSac: 'Vesicle and placentomes', groupSacEquine: 'Vesicle', groupSacSmall: 'Gestational sac', groupFetus: 'Fetal measurements',
     progress: (p) => `${p}% of gestation`,
     conception: 'Approx. conception', examDay: 'Exam day', birthDay: 'Expected birth',
     emptyTitle: 'Your result appears here',
@@ -120,7 +132,8 @@ const COPY = {
 
 // Gestation lengths the server uses (services/sonar.py GESTATION_DAYS), shown as reference
 // and on the species picker. Display only: every number in a result comes from the server.
-const GESTATION = { bovine: 283, buffalo: 310, equine: 340, ovine: 150, caprine: 150 };
+const GESTATION = { bovine: 283, buffalo: 310, equine: 340, ovine: 150, caprine: 150,
+  canine_small: 63, canine_large: 63, feline: 65 };
 const SAC = ['vesicle', 'placentome'];
 const FETUS = ['eye_orbit', 'crl', 'bpd', 'hl', 'trunk'];
 
@@ -144,13 +157,20 @@ export function reportText(exams, c, lang) {
   const lines = exams.map((e) => {
     const r = e.result;
     const birth = r.at_term ? c.atTerm : formatDate(r.expected_birth, lang);
-    return c.reportLine(e.label || c.noLabel, c.species[e.species], r.age_days, c.ageLine(r.months, r.extra_days), birth);
+    return c.reportLine(e.label || c.noLabel, c.species[e.species], r.age_days, ageText(c, r), birth);
   });
   return `${c.reportTitle}:\n\n${lines.join('\n')}`;
 }
 
+// Months for the large animals, weeks for dogs and cats, as the client's file shows them.
+function ageText(c, r) {
+  return r.age_unit === 'weeks' ? c.weeksLine(r.weeks, r.week_days) : c.ageLine(r.months, r.extra_days);
+}
+
 function measureName(c, species, m, short) {
   if (m === 'vesicle' && species === 'equine') return short ? c.equineShort : c.equineVesicle;
+  if (SMALL.includes(species) && m === 'vesicle') return short ? 'ICC' : c.smallVesicle;
+  if (SMALL.includes(species) && m === 'trunk') return short ? 'BD' : c.smallTrunk;
   return short ? c.short[m] : c.measures[m];
 }
 
@@ -179,7 +199,7 @@ function ResultPanel({ exam, c, lang }) {
       </div>
       <div className="sonar-result-label">{c.age}</div>
       <div className="sonar-result-age">
-        {c.days(r.age_days)} <span>{c.ageLine(r.months, r.extra_days)}</span>
+        {c.days(r.age_days)} <span>{ageText(c, r)}</span>
       </div>
       <div className="sonar-progress" role="img" aria-label={c.progress(pct)}>
         <div className="sonar-progress-bar" style={{ width: `${pct}%` }} />
@@ -253,7 +273,7 @@ function HistoryTable({ history, c, lang, onDelete }) {
                 <td data-label={c.cols.case}><strong>{exam.label || c.noLabel}</strong></td>
                 <td data-label={c.cols.species}><span className="sonar-pill">{c.species[exam.species]}</span></td>
                 <td data-label={c.cols.exam}>{formatDate(exam.exam_date, lang)}</td>
-                <td data-label={c.cols.age}><b>{c.days(r.age_days)}</b><small>{c.ageLine(r.months, r.extra_days)}</small></td>
+                <td data-label={c.cols.age}><b>{c.days(r.age_days)}</b><small>{ageText(c, r)}</small></td>
                 <td data-label={c.cols.birth}>{r.at_term ? c.atTerm : formatDate(r.expected_birth, lang)}</td>
                 <td data-label={c.cols.measures}><MeasureChips exam={exam} c={c} /></td>
                 <td>
@@ -285,7 +305,7 @@ export default function SonarCalculator() {
   const [more, setMore] = useState(false);
   const [notice, setNotice] = useState('');
 
-  const fields = useMemo(() => MEASURES.filter((m) => !(species === 'equine' && m === 'placentome')), [species]);
+  const fields = useMemo(() => MEASURES.filter((m) => usesMeasure(species, m)), [species]);
   const resultRef = useRef(null);
 
   // On a phone the result sits above the form, so the doctor who just pressed the button
@@ -372,6 +392,7 @@ export default function SonarCalculator() {
                     <button key={s} type="button" role="radio" aria-checked={species === s} aria-label={c.species[s]}
                       className={`sonar-species-tile${species === s ? ' is-on' : ''}`} onClick={() => setSpecies(s)}>
                       <b>{c.species[s]}</b>
+                      {c.speciesNote[s] && <i>{c.speciesNote[s]}</i>}
                       <small>{c.gestation(GESTATION[s])}</small>
                     </button>
                   ))}
@@ -391,13 +412,14 @@ export default function SonarCalculator() {
                 <p className="sonar-hint">{c.hint}</p>
 
                 <fieldset className="sonar-group">
-                  {/* Horses have no placentomes, so their group is the vesicle alone. */}
-                  <legend>{species === 'equine' ? c.groupSacEquine : c.groupSac}</legend>
+                  {/* Horses have no placentomes, so their group is the vesicle alone; dogs and
+                      cats are measured on the inner chorionic cavity. */}
+                  <legend>{species === 'equine' ? c.groupSacEquine : SMALL.includes(species) ? c.groupSacSmall : c.groupSac}</legend>
                   <div className="sonar-row">{SAC.filter((m) => fields.includes(m)).map(field)}</div>
                 </fieldset>
                 <fieldset className="sonar-group">
                   <legend>{c.groupFetus}</legend>
-                  <div className="sonar-row is-three">{FETUS.map(field)}</div>
+                  <div className="sonar-row is-three">{FETUS.filter((m) => fields.includes(m)).map(field)}</div>
                 </fieldset>
 
                 {error && <p role="alert" className="sonar-error">{error}</p>}

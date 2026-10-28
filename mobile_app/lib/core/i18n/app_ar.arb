@@ -603,5 +603,14 @@
   "sonarDisclaimer": "النتائج تقديرية للمساعدة، ولا تغني عن تقدير الطبيب البيطري للحالة.",
   "sonarErrNoMeasurements": "أدخل قياساً واحداً على الأقل.",
   "sonarErrRange": "قيمة غير منطقية: يجب أن تكون أكبر من صفر وحتى 1000 مم.",
-  "sonarErrDate": "تاريخ الفحص لا يمكن أن يكون في المستقبل."
+  "sonarErrDate": "تاريخ الفحص لا يمكن أن يكون في المستقبل.",
+  "sonarSpeciesCanineSmall": "الكلاب الصغيرة (أقل من 10 كجم)",
+  "sonarSpeciesCanineLarge": "الكلاب المتوسطة والكبيرة (أكبر من 10 كجم)",
+  "sonarSpeciesFeline": "القطط",
+  "sonarMeasureSmallVesicle": "كيس الحمل الداخلي ICC",
+  "sonarMeasureSmallTrunk": "قطر الجسم/البطن BD",
+  "sonarWeeks": "{w} أسبوع",
+  "@sonarWeeks": {"placeholders": {"w": {"type": "int"}}},
+  "sonarWeeksDays": "{w} أسبوع و {d} يوم",
+  "@sonarWeeksDays": {"placeholders": {"w": {"type": "int"}, "d": {"type": "int"}}}
 }

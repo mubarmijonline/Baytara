@@ -114,3 +114,19 @@ it('lists the account history with copy and WhatsApp', async () => {
   const share = screen.getByRole('link', { name: 'Send on WhatsApp' });
   expect(decodeURIComponent(share.getAttribute('href'))).toContain('• Case (cow 45) [Cattle] -> age: 140 days');
 });
+
+it('measures dogs and cats on their four fields only', async () => {
+  localStorage.setItem('baytara_token', 'viewer-token');
+  mockApi(student);
+  renderAt('/tools/sonar');
+  await screen.findByRole('button', { name: 'Calculate and save the case' });
+  fireEvent.click(screen.getByRole('radio', { name: 'Cats' }));
+  expect(screen.getByLabelText('Inner chorionic cavity ICC (mm)')).toBeVisible();
+  expect(screen.getByLabelText('Body/abdominal diameter BD (mm)')).toBeVisible();
+  for (const gone of ['Eye orbit (mm)', 'Head length HL (mm)', 'Placentomes (mm)']) {
+    expect(screen.queryByLabelText(gone)).toBeNull();
+  }
+  expect(screen.getByText('Gestational sac')).toBeVisible();
+  fireEvent.click(screen.getByRole('radio', { name: 'Cattle' }));
+  expect(screen.getByLabelText('Eye orbit (mm)')).toBeVisible();
+});

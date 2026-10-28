@@ -75,3 +75,16 @@ Thursday 29 / Friday 30 October 2026) it was still on the previous day between m
 (zoneinfo), and the page and app clear the message when the date is changed. Regression test
 frozen at that instant.
 
+## V6.2, 2026-10-28: dogs and cats, and the result scrolls into view
+
+The client's final file (`docs/reference/Baytara_sonar_v6_2.html`) adds small dogs (under
+10 kg), medium and large dogs (over 10 kg) and cats, with gestations of 63, 63 and 65 days.
+They are measured on four things only: the inner chorionic cavity (ICC, in the vesicle
+field), CRL, BPD and body/abdominal diameter (BD, in the trunk field); eye orbit, head
+length and placentomes are hidden and ignored. Their age is shown in weeks and days. The
+five earlier species are unchanged: their 632 reference results are identical in V6.2. The
+reference set is now 860 results across all eight species, regenerated from V6.2.
+
+On a phone the result sits above the form; after pressing the button it is now scrolled
+into view on the website, and the app's list scrolls back to it.
+

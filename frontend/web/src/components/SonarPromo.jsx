@@ -8,10 +8,13 @@ import { Container } from './Primitives.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 
 // Gestation lengths the calculator uses (backend/app/services/sonar.py), as reference.
-const SPECIES = [['bovine', 283], ['buffalo', 310], ['equine', 340], ['ovine', 150], ['caprine', 150]];
+const SPECIES = [['bovine', 283], ['buffalo', 310], ['equine', 340], ['ovine', 150], ['caprine', 150],
+  ['canine_small', 63], ['canine_large', 63], ['feline', 65]];
 const NAMES = {
-  ar: { bovine: 'الأبقار', buffalo: 'الجاموس', equine: 'الخيول', ovine: 'الأغنام', caprine: 'الماعز' },
-  en: { bovine: 'Cattle', buffalo: 'Buffalo', equine: 'Horses', ovine: 'Sheep', caprine: 'Goats' },
+  ar: { bovine: 'الأبقار', buffalo: 'الجاموس', equine: 'الخيول', ovine: 'الأغنام', caprine: 'الماعز',
+    canine_small: 'كلاب صغيرة', canine_large: 'كلاب كبيرة', feline: 'القطط' },
+  en: { bovine: 'Cattle', buffalo: 'Buffalo', equine: 'Horses', ovine: 'Sheep', caprine: 'Goats',
+    canine_small: 'Small dogs', canine_large: 'Large dogs', feline: 'Cats' },
 };
 
 export function SonarStrip() {
