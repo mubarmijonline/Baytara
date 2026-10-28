@@ -45,8 +45,8 @@ String? locationForLink(Uri uri) {
   final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
   if (segments.isEmpty) return null;
 
-  // The payment return is parsed by checkout_controller.dart, which treats it as a signal
-  // to ask the server rather than as an outcome. It must not be routed as an ordinary page.
+  // The payment return belongs to the website, where checkout happens. It must not be
+  // routed as an ordinary page.
   if (segments.first == 'payment') return null;
 
   switch (segments) {

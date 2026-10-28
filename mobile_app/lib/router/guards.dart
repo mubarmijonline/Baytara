@@ -29,6 +29,9 @@ abstract final class Routes {
   static const _public = <String>{
     home, courses, content, signIn, '/videos', '/bundles', '/paths',
     '/instructors', '/blog', '/about', '/contact', '/pricing', '/certificates',
+    // The privacy policy must be readable without an account (both stores require it), and
+    // a completion certificate is shared to people who have none.
+    '/privacy', '/how-it-works', '/business', '/completion-certificates',
     // The library is public on purpose, book pages included: the summary itself asks for
     // an account, the page that describes it does not.
     '/library', '/articles',
