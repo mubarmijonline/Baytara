@@ -879,6 +879,7 @@ select:focus { outline: none; border-color: #3048A0; box-shadow: 0 0 0 3px #eef2
 .sonar-btn:disabled { opacity: .7; cursor: wait; }
 .sonar-disclaimer { font-size: 12.5px; color: #6B7291; margin: 12px 0 0; line-height: 1.8; }
 .sonar-side { position: sticky; top: calc(var(--site-header-h, 80px) + 20px); }
+.sonar-result-section { scroll-margin-top: calc(var(--site-header-h, 80px) + 12px); }
 .sonar-h2 { font-size: 20px; font-weight: 900; color: #1E2A5E; margin: 0 0 12px; display: flex; align-items: baseline; gap: 10px; }
 .sonar-h2 small { font-size: 13px; font-weight: 600; color: #6B7291; }
 .sonar-result { background: linear-gradient(150deg, #16255C 0%, #3048A0 70%, #3a55b4 100%); color: #fff; border-radius: 22px; padding: 26px; box-shadow: 0 14px 34px rgba(22,37,92,.28); }

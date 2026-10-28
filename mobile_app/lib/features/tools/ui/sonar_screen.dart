@@ -75,6 +75,9 @@ class SonarScreen extends ConsumerStatefulWidget {
 class _SonarScreenState extends ConsumerState<SonarScreen> {
   String _species = 'bovine';
   final _label = TextEditingController();
+  // The result is drawn at the top of the list; after a calculation the doctor is at the
+  // button at the bottom, so the list goes back up to show it (client, 2026-10-28).
+  final _scroll = ScrollController();
   final _fields = {for (final m in sonarMeasures) m: TextEditingController()};
   DateTime _examDate = DateTime.now();
   bool _busy = false;
@@ -84,6 +87,7 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
   @override
   void dispose() {
     _label.dispose();
+    _scroll.dispose();
     for (final c in _fields.values) {
       c.dispose();
     }
@@ -124,7 +128,18 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
       }
       _label.clear();
       ref.invalidate(sonarHistoryProvider);
-      if (mounted) setState(() => _latest = exam);
+      if (mounted) {
+        setState(() => _latest = exam);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scroll.hasClients) {
+            _scroll.animateTo(
+              0,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       final code = e.data?['error'];
@@ -189,6 +204,7 @@ class _SonarScreenState extends ConsumerState<SonarScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l.sonarTitle)),
       body: ListView(
+        controller: _scroll,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           if (_latest != null) ...[

@@ -4,7 +4,7 @@
 // behind sign-in. The formulas live on the server (backend/app/services/sonar.py): this
 // page only collects measurements and shows what came back, so a visitor who is not signed
 // in has neither the tool nor its formulas. Every case is saved to the account.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, ClipboardCopy, MessageCircle, Trash2, TriangleAlert } from 'lucide-react';
 import { Container } from '../components/Primitives.jsx';
@@ -286,6 +286,16 @@ export default function SonarCalculator() {
   const [notice, setNotice] = useState('');
 
   const fields = useMemo(() => MEASURES.filter((m) => !(species === 'equine' && m === 'placentome')), [species]);
+  const resultRef = useRef(null);
+
+  // On a phone the result sits above the form, so the doctor who just pressed the button
+  // at the bottom could not see it without scrolling back up (client, 2026-10-28). Bring
+  // each new result into view; scroll-margin-top keeps it clear of the sticky header.
+  useEffect(() => {
+    if (!latest || !resultRef.current?.scrollIntoView) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    resultRef.current.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  }, [latest]);
 
   useEffect(() => {
     if (!user) return;
@@ -397,7 +407,7 @@ export default function SonarCalculator() {
 
               <aside className="sonar-side">
                 {latest ? (
-                  <section>
+                  <section ref={resultRef} className="sonar-result-section">
                     <h2 className="sonar-h2">{c.result}</h2>
                     <ResultPanel exam={latest} c={c} lang={lang} />
                   </section>

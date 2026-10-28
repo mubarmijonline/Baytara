@@ -94,11 +94,16 @@ it('sends only the measurements entered, and shows the saved result', async () =
   fireEvent.change(screen.getByLabelText('Case number / name (optional)'), { target: { value: 'cow 45' } });
   fireEvent.click(button);
 
+  const scrolled = vi.fn();
+  Element.prototype.scrollIntoView = scrolled;
   await waitFor(() => expect(posted).toHaveLength(1));
   expect(posted[0]).toMatchObject({ species: 'bovine', label: 'cow 45', measures: { crl: 9, bpd: 90 } });
   expect(await screen.findByText('Result')).toBeVisible();
   expect(screen.getAllByText(/140 days/)[0]).toBeVisible();
   expect(screen.getByText('Estimates range from 30 to 250 days')).toBeVisible();
+  // the new result is brought into view rather than left above the fold on a phone
+  await waitFor(() => expect(scrolled).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' })));
+  delete Element.prototype.scrollIntoView;
 });
 
 it('lists the account history with copy and WhatsApp', async () => {
