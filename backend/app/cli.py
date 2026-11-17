@@ -245,14 +245,14 @@ def register_cli(app):
     @click.argument("phone")
     @click.option("--vet/--no-vet", default=True, show_default=True,
                   help="Verified veterinarian (vet courses) or not (general courses).")
-    @click.option("--max-devices", default=10, show_default=True, type=click.IntRange(min=1))
     @click.option("--apply", is_flag=True, help="Write the changes. Without it nothing is saved.")
-    def create_review_account(email, name, phone, vet, max_devices, apply):
+    def create_review_account(email, name, phone, vet, apply):
         """Create or refresh the App Store / Google Play review account.
 
         Dry run unless --apply. On --apply the password is asked for twice, never taken as
-        an argument. Every published course the audience rule allows is opened for life,
-        with no payment. Safe to re-run: it brings the account back to the same state.
+        an argument. The account has no device limit. Every published course the audience
+        rule allows is opened for life, with no payment. Safe to re-run: it brings the
+        account back to the same state.
         """
         email = email.strip().lower()
         try:
@@ -294,7 +294,6 @@ def register_cli(app):
             user.role = "student"
             user.is_active = True
             user.deleted_at = None
-            user.max_devices = max_devices
             user.is_review_account = True
             db.session.flush()
 
@@ -332,7 +331,7 @@ def register_cli(app):
         click.echo(f"User:        {email}{f' (id={uid})' if apply or not created else ''} "
                    f"{'created' if created else 'updated'}")
         click.echo(f"Verified:    {verified}")
-        click.echo(f"Max devices: {max_devices}")
+        click.echo("Devices:     unlimited")
         click.echo(f"Courses:     {len(rows)} published")
         for course_id, access_type, status, title in rows:
             click.echo(f"  #{course_id:<5} {access_type:<10} {status:<32} {title}")

@@ -63,9 +63,9 @@ class User(db.Model):
     # Per-account device allowance. NULL = the contract default (UserDevice.MAX_DEVICES).
     # Raised only for staff/testing accounts, never as a way around البند2 for buyers.
     max_devices = db.Column(db.Integer)
-    # The App Store / Google Play reviewers' account (`flask create-review-account`). Its
-    # suspicious-activity events are still recorded, but they do not block its playback:
-    # a reviewer pressing screenshot keys must not end up with a rejected build.
+    # The App Store / Google Play reviewers' account (`flask create-review-account`). No
+    # device limit, and its suspicious-activity events are recorded but do not block its
+    # playback: a reviewer pressing screenshot keys must not end up with a rejected build.
     is_review_account = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"))
     # Self-service device swaps. The client allows one per subscription window -- long
     # enough that buying a phone is covered, short enough that passing an account around is
@@ -172,6 +172,9 @@ class UserDevice(db.Model):
     )
 
     MAX_DEVICES = 2
+    # ponytail: "no limit" for the store reviewers' account is a cap nobody reaches. An int,
+    # not None, because shipped app builds read max_devices as a number (null shows as 2).
+    REVIEW_ACCOUNT_DEVICES = 1000
 
     @property
     def group(self):
@@ -185,7 +188,11 @@ class UserDevice(db.Model):
 
     @staticmethod
     def limit_for(user):
-        """Device allowance for this account: its override, else the contract default."""
+        """Device allowance for this account: its override, else the contract default.
+        The store reviewers' account is not limited: Apple and Google sign in from
+        whatever devices they test on."""
+        if getattr(user, "is_review_account", False):
+            return UserDevice.REVIEW_ACCOUNT_DEVICES
         return int(getattr(user, "max_devices", None) or UserDevice.MAX_DEVICES)
 
     id = db.Column(db.Integer, primary_key=True)

@@ -12,7 +12,7 @@ from app import create_app
 from app.config import BaseConfig
 from app.extensions import db
 from app.models import (
-    BaytarianRequest, Course, CourseVideo, Enrollment, Lesson, Payment, User,
+    BaytarianRequest, Course, CourseVideo, Enrollment, Lesson, Payment, User, UserDevice,
     VideoPlaybackEvent, VideoPlaybackSession,
 )
 from app.security import hash_password, verify_password
@@ -74,7 +74,8 @@ def test_creates_a_verified_student_with_lifetime_seats(app):
     with app.app_context():
         user = User.query.filter_by(email=EMAIL).one()
         assert user.role == "student" and user.is_active and user.deleted_at is None
-        assert user.is_review_account is True and user.max_devices == 10
+        assert user.is_review_account is True
+        assert UserDevice.limit_for(user) == UserDevice.REVIEW_ACCOUNT_DEVICES
         assert user.phone == "+201012345678"
         assert verify_password(user.password_hash, PASSWORD)
         assert user.is_baytarian is True
@@ -108,11 +109,11 @@ def test_second_run_is_idempotent(app):
 
 
 def test_no_vet_opens_general_and_skips_vet_courses(app):
-    result = _run(app, "--no-vet", "--max-devices", "4")
+    result = _run(app, "--no-vet")
     assert result.exit_code == 0, result.output
     with app.app_context():
         user = User.query.filter_by(email=EMAIL).one()
-        assert user.is_baytarian is False and user.max_devices == 4
+        assert user.is_baytarian is False
         seats = _seats(user.id)
         assert set(seats) == {"free", "general"}
         assert seats["general"].source == "admin_grant" and seats["general"].expires_at is None
@@ -194,3 +195,15 @@ def test_review_account_is_not_blocked_after_suspicious_events(app, playback):
     with app.app_context():
         # still on record
         assert VideoPlaybackEvent.query.filter_by(event_type="suspicious").count() == 6
+
+
+def test_review_account_signs_in_on_any_number_of_devices(app, playback):
+    client = app.test_client()
+
+    def login(email, n):
+        return client.post("/api/v1/auth/login", json={
+            "email": email, "password": "secret12", "device_id": f"{email}-{n}",
+        }).status_code
+
+    assert [login("normal@example.test", n) for n in range(3)] == [200, 200, 403]
+    assert [login("store@example.test", n) for n in range(5)] == [200] * 5
