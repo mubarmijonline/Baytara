@@ -1,6 +1,6 @@
 # 31 - App Store / Google Play review account
 
-**Status:** built and tested; not yet deployed.
+**Status:** done; deployed 2026-11-17.
 
 ## Goal
 
@@ -44,8 +44,12 @@ default limit of two, so the reviewer's iPad got `device_limit_reached`.
   in on five. The last two fail with their exemption removed.
 - [x] Backend suite 1271 passed (after rebasing on main); admin suite 115 passed. Migration `a4e7c2d9b1f3` upgrades,
   downgrades and upgrades again on SQLite.
-- [ ] Live: `flask db upgrade`, then the command below on production, then sign in on the
-  app with the account and play a paid lesson.
+- [x] Live (2026-11-17): deployed, migration `a4e7c2d9b1f3` applied. `appreview@baytara.app`
+  (id 307, the account in App Store Connect, password unchanged) and a second account,
+  `appreview2@baytara.app` (id 323), are verified review accounts with lifetime seats in all
+  5 published courses and no payment rows. `appreview2` signed in on three device ids
+  against https://baytara.app, all 200.
+- [ ] Apple re-review of build 1.0 (2).
 
 ## Production
 
