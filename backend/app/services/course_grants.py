@@ -19,9 +19,9 @@ ACCESS_CHOICES = ("course", "lifetime")
 SOURCE = "admin_grant"
 
 
-def grant_course(course, user_ids, access="course"):
+def grant_course(course, user_ids, access="course", source=SOURCE):
     """Grant `course` to each id in `user_ids`. Returns (granted, skipped) as lists of
-    dicts; the caller commits."""
+    dicts; the caller commits. `source` is "free" when the course costs nothing."""
     access_days = None if access == "lifetime" else course.access_days
     granted, skipped = [], []
     seen = set()
@@ -50,10 +50,10 @@ def grant_course(course, user_ids, access="course"):
                 course.enrolled_count = (course.enrolled_count or 0) + 1
                 enrollment.cancelled_at = enrollment.cancel_reason = enrollment.cancelled_by = None
             enrollment.status = "active"
-            enrollment.source = SOURCE
+            enrollment.source = source
             enrollment.expires_at = Enrollment.compute_expiry(access_days)
         else:
-            db.session.add(Enrollment(user_id=uid, course_id=course.id, source=SOURCE,
+            db.session.add(Enrollment(user_id=uid, course_id=course.id, source=source,
                                       status="active",
                                       expires_at=Enrollment.compute_expiry(access_days)))
             course.enrolled_count = (course.enrolled_count or 0) + 1

@@ -24,7 +24,7 @@ from ...services.catalog_access import (
 )
 from ...utils import slugify
 from flask_jwt_extended import get_jwt_identity
-from ...services import device_swaps, exam_authoring, promo as promo_service, vdocipher_admin
+from ...services import device_swaps, exam_authoring, promo as promo_service, vdocipher_admin, vet_verification
 from ...services.vdocipher_admin import VdoCipherAdminError
 
 bp = Blueprint("admin", __name__)
@@ -135,6 +135,7 @@ def _user_json(u):
             "deleted_at": u.deleted_at.isoformat() if u.deleted_at else None,
             "headline": u.headline, "bio": u.bio, "avatar_url": u.avatar_url, "expertise": u.expertise or [],
             "category_id": u.category_id, "max_devices": u.max_devices,
+            "is_review_account": u.is_review_account,
             "category": u.category.to_dict() if u.category else None,
             "courses_count": Course.query.filter_by(instructor_id=u.id).count() if u.role == "instructor" else 0,
             "can_add_video": u.can_add_video, "can_edit_video": u.can_edit_video, "can_delete_video": u.can_delete_video}
@@ -1198,9 +1199,8 @@ def baytarian_approve(rid):
 def verify_user_directly(uid):
     """Verify an account with no document at all — the admin vouches for it.
 
-    Recorded as an approved request on the `admin` route rather than a quiet flag on
-    the user, so the verification queue shows who was verified this way, by whom, and
-    revoke works on it exactly like any other approval.
+    The recording lives in services/vet_verification.py, shared with the review-account
+    command.
     """
     user = db.session.get(User, uid)
     if not user:
@@ -1208,21 +1208,11 @@ def verify_user_directly(uid):
     if user.is_baytarian:
         return jsonify(error="already_verified"), 409
     grant = (request.get_json(silent=True) or {}).get("grant") or "baytarian"
-    if grant not in ("baytarian", "vet_student"):
+    if grant not in vet_verification.GRANTS:
         return jsonify(error="invalid_grant"), 400
     note = ((request.get_json(silent=True) or {}).get("note") or "")[:500]
-    now = datetime.now(timezone.utc)
     try:
-        r = BaytarianRequest(user_id=uid, status="approved", route="admin", grant=grant,
-                             note=note or None, reviewed_by=_uid(), reviewed_at=now)
-        db.session.add(r)
-        user.is_baytarian = True
-        user.is_vet_student = grant == "vet_student"
-        push_notification(
-            uid, "baytarian_approved",
-            "تم توثيقك كطالب طب بيطري ✅" if grant == "vet_student"
-            else "تم توثيق حسابك كطبيب بيطري ✅",
-            "وثّقت الإدارة حسابك. أصبح بإمكانك الوصول إلى المحتوى المخصّص للأطباء.")
+        r = vet_verification.verify_directly(user, grant, reviewer_id=_uid(), note=note)
         db.session.commit()
     except Exception:  # noqa: BLE001
         db.session.rollback()

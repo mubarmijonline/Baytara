@@ -129,7 +129,10 @@ export default function Users({ searchParams }) {
               <tr key={u.id}>
                 <td>{u.name}</td>
                 <td>{u.email}</td>
-                <td><span className="chip chip-role">{copy.roles[u.role] || u.role}</span></td>
+                <td>
+                  <span className="chip chip-role">{copy.roles[u.role] || u.role}</span>
+                  {u.is_review_account && <> <span className="chip chip-draft">{copy.reviewAccount}</span></>}
+                </td>
                 <td><span className={`chip ${u.is_active ? 'chip-on' : 'chip-off'}`}>{u.is_active ? copy.active : copy.inactive}</span></td>
                 <td className="actions">
                   <button className="btn btn-tonal btn-sm" onClick={() => setEditing(u)}>{common.edit}</button>
