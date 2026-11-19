@@ -190,4 +190,26 @@ void main() {
       Routes.home,
     );
   });
+
+  test('store-required pages open without an account', () {
+    // Both stores require the privacy policy to be readable before signing up, and a
+    // completion certificate is shared to people who have no account.
+    for (final location in [
+      '/privacy',
+      '/how-it-works',
+      '/business',
+      '/business/request',
+      '/completion-certificates/ABC123',
+    ]) {
+      expect(
+        guardRedirect(
+          session: const SessionSignedOut(),
+          location: location,
+          onboardingSeen: true,
+        ),
+        isNull,
+        reason: location,
+      );
+    }
+  });
 }

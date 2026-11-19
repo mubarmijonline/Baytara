@@ -18,7 +18,7 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     captureGuard = CaptureGuard(
-      messenger: engineBridge.binaryMessenger,
+      messenger: engineBridge.applicationRegistrar.messenger(),
       window: window
     )
   }

@@ -1,0 +1,112 @@
+# Codemagic builds for the Flutter app in mobile_app/.
+#
+# Three workflows, all started by hand from the Codemagic dashboard (no automatic triggers):
+#
+#   android-first-build  Signed .aab to download. Google Play only accepts API uploads after
+#                        one build has been uploaded by hand, so this is run once, first.
+#   android-release      Signed .aab, uploaded to the Play "internal" testing track.
+#   ios-release          Signed .ipa, uploaded to TestFlight.
+#
+# Before the first run, in Codemagic (see mobile_app/UPLOAD_GUIDE.md, step 5):
+#   - Team settings > Code signing identities > Android keystores: upload
+#     mobile_app/android/upload-keystore.jks with reference name `baytara_upload`
+#     (password and alias are in mobile_app/android/key.properties, never committed).
+#   - Team settings > Integrations > Developer Portal: add the App Store Connect API key
+#     and name the integration `Baytara ASC`.
+#   - Environment variables: group `google_play` containing GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+#     (the Google Play service account JSON), marked Secure.
+#   - Replace APP_STORE_APPLE_ID below with the numeric Apple ID shown in App Store Connect
+#     > App Information.
+
+workflows:
+  android-first-build:
+    name: Android - first build (download and upload by hand)
+    working_directory: mobile_app
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: 3.47.6
+      android_signing:
+        - baytara_upload
+    scripts:
+      - name: Get packages
+        script: flutter pub get
+      - name: Tests
+        script: flutter test
+      - name: Build app bundle
+        script: flutter build appbundle --release
+    artifacts:
+      - "**/outputs/bundle/**/*.aab"
+      - "**/outputs/mapping/**/mapping.txt"
+
+  android-release:
+    name: Android - Play internal testing
+    working_directory: mobile_app
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: 3.47.6
+      android_signing:
+        - baytara_upload
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: "app.baytara.app"
+    scripts:
+      - name: Get packages
+        script: flutter pub get
+      - name: Tests
+        script: flutter test
+      - name: Build app bundle
+        script: |
+          # Every upload needs a higher version code than anything already on Play.
+          LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" 2>/dev/null || echo 0)
+          flutter build appbundle --release --build-number=$((LATEST + 1))
+    artifacts:
+      - "**/outputs/bundle/**/*.aab"
+      - "**/outputs/mapping/**/mapping.txt"
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        # Required while the app has never been published: Play only accepts draft
+        # releases until the store listing is approved. Set to false after launch.
+        submit_as_draft: true
+
+  ios-release:
+    name: iOS - TestFlight
+    working_directory: mobile_app
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    integrations:
+      app_store_connect: Baytara ASC
+    environment:
+      flutter: 3.47.6
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.baytara.app
+      vars:
+        APP_STORE_APPLE_ID: 0000000000 # replace with the app's numeric Apple ID
+    scripts:
+      - name: Get packages
+        script: flutter pub get
+      - name: Tests
+        script: flutter test
+      - name: Use the App Store signing profiles
+        script: xcode-project use-profiles
+      - name: Build ipa
+        script: |
+          # Every TestFlight upload needs a higher build number than the last one.
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          flutter build ipa --release \
+            --build-number=$((LATEST + 1)) \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - "**/build/ios/ipa/*.ipa"
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

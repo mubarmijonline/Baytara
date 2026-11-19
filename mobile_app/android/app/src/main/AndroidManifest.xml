@@ -29,23 +29,10 @@
             </intent-filter>
 
             <!--
-              App Links for the payment gateway's return URL.
-
-              android:autoVerify makes Android check
-              https://baytara.app/.well-known/assetlinks.json and, if the app's signing
-              fingerprint is listed there, open the app directly instead of the browser.
-              WITHOUT that file on the server this still works, but as a disambiguation
-              dialog rather than a silent hand-off. Publishing assetlinks.json is a
-              server-side task and is listed in the milestone doc.
+              No App Link for /payment/callback: checkout is website-only, so the gateway's
+              return must stay in the browser the user paid in. Claiming it would pull a
+              phone user out of the website mid-checkout and into the app.
             -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https"
-                      android:host="baytara.app"
-                      android:pathPrefix="/payment/callback"/>
-            </intent-filter>
 
             <!--
               Shared library pages: a book summary or an article.

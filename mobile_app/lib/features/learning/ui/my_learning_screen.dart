@@ -238,20 +238,19 @@ class _EnrollmentTile extends StatelessWidget {
                     onPressed: () => context.push('/courses/${course.slug}/exam'),
                     child: Text(l.examAction),
                   ),
-                // A lapsed enrolment is a past customer. Renewal, not a fresh purchase --
-                // and under the reader model it says the access ended without offering a
-                // way to pay, which would be the same steering as a buy button.
+                // A lapsed enrolment. Renewal is website-only like every other purchase, so
+                // this says the access ended without offering a way to pay, which would be
+                // the same steering as a buy button. See purchase_availability.dart.
                 if (enrollment.isExpired)
-                  if (PurchaseAvailability.purchasesEnabled)
-                    TextButton(
-                      onPressed: () =>
-                          context.push('/buy/${course.slug}?kind=renewal'),
-                      child: Text(l.renewAccess),
-                    )
-                  else
-                    Text(l.errAccessExpired,
+                  Flexible(
+                    child: Text(
+                        PurchaseAvailability.mayNameWebsite
+                            ? '${l.errAccessExpired} ${l.enrollOnWebsite}'
+                            : l.errAccessExpired,
+                        textAlign: TextAlign.end,
                         style: const TextStyle(
                             fontSize: 12, color: BrandColors.muted2)),
+                  ),
               ]),
             ],
           ),

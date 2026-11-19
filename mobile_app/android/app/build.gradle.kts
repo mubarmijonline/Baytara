@@ -1,8 +1,33 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Release signing with the Google Play *upload* key. Two sources, in this order:
+//   1. android/key.properties (local builds). Never committed; see .gitignore.
+//   2. Codemagic's keystore environment variables (CM_KEYSTORE_*), set when a workflow
+//      references the keystore under `android_signing` in codemagic.yaml.
+// With neither, release builds fall back to the debug key so `flutter run --release` still
+// works on a developer machine. Google Play rejects a debug-signed upload, so that fallback
+// can never reach the store by accident.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) FileInputStream(file).use { load(it) }
+}
+val uploadStoreFile: String? =
+    keystoreProperties.getProperty("storeFile") ?: System.getenv("CM_KEYSTORE_PATH")
+val uploadStorePassword: String? =
+    keystoreProperties.getProperty("storePassword") ?: System.getenv("CM_KEYSTORE_PASSWORD")
+val uploadKeyAlias: String? =
+    keystoreProperties.getProperty("keyAlias") ?: System.getenv("CM_KEY_ALIAS")
+val uploadKeyPassword: String? =
+    keystoreProperties.getProperty("keyPassword") ?: System.getenv("CM_KEY_PASSWORD")
+val hasUploadKey = listOf(uploadStoreFile, uploadStorePassword, uploadKeyAlias, uploadKeyPassword)
+    .all { !it.isNullOrBlank() }
 
 android {
     namespace = "app.baytara.app"
@@ -15,7 +40,6 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "app.baytara.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -29,11 +53,20 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasUploadKey) {
+            create("upload") {
+                storeFile = file(uploadStoreFile!!)
+                storePassword = uploadStorePassword
+                keyAlias = uploadKeyAlias
+                keyPassword = uploadKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (hasUploadKey) "upload" else "debug")
         }
     }
 }

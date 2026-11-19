@@ -4,6 +4,7 @@
 // session here moves the user automatically -- there is no navigation in this file.
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -21,9 +22,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository(
     ));
 
 /// Empty when Google sign-in is switched off server-side; the button is hidden.
-final googleClientIdProvider = FutureProvider<String>(
-  (ref) => ref.watch(authRepositoryProvider).googleClientId(),
-);
+///
+/// Always empty on iOS. Offering a third-party login there obliges the app to offer Sign in
+/// with Apple as well (App Store Guideline 4.8), which needs a backend endpoint that does
+/// not exist yet. Email and password is Baytara's own account system and needs neither.
+final googleClientIdProvider = FutureProvider<String>((ref) async {
+  if (defaultTargetPlatform == TargetPlatform.iOS) return '';
+  return ref.watch(authRepositoryProvider).googleClientId();
+});
 
 class AuthController {
   AuthController(this._ref);

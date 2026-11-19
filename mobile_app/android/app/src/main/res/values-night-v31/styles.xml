@@ -16,7 +16,8 @@
          running.
          
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
-    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+    <!-- AppCompat, as in values-night/styles.xml: vdocipher_flutter's player needs an AppCompat host. flutter_native_splash regenerates this file with a platform theme; restore this parent if it does. -->
+    <style name="NormalTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
 </resources>

@@ -24,6 +24,7 @@ import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/api_error.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/tokens.dart';
+import '../../payments/data/purchase_availability.dart';
 import '../application/playback_guard.dart';
 import '../application/playback_session_controller.dart';
 import '../application/telemetry_bridge.dart';
@@ -291,10 +292,12 @@ class _RefusalView extends StatelessWidget {
       PlaybackRecovery.reAuth => (l.authSignIn, '/auth'),
       // errNeedsBaytarian above already carries the sentence; the button is the step.
       PlaybackRecovery.verify => (l.verifyNow, '/verify'),
-      PlaybackRecovery.purchase => (l.lockNeedsPurchase, '/pricing'),
-      PlaybackRecovery.renew => (l.lockNeedsPurchase, '/pricing'),
+      // Buying and renewing are website-only, so there is no button: the notice below says
+      // so, without a link. See purchase_availability.dart.
       _ => (null, null),
     };
+    final mustBuyElsewhere = recovery == PlaybackRecovery.purchase ||
+        recovery == PlaybackRecovery.renew;
 
     return Center(
       child: Padding(
@@ -309,6 +312,14 @@ class _RefusalView extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.9),
             ),
+            if (mustBuyElsewhere) ...[
+              const SizedBox(height: 12),
+              Text(
+                PurchaseAvailability.unavailableNotice(l),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.8),
+              ),
+            ],
             const SizedBox(height: 24),
             if (actionLabel != null && route != null)
               FilledButton(

@@ -39,7 +39,7 @@ class PricingScreen extends ConsumerWidget {
             _TierCard(tier: tier, isVet: isVet, signedIn: session is SessionSignedIn),
           if (!PurchaseAvailability.purchasesEnabled) ...[
             const SizedBox(height: 8),
-            Text(l.checkoutUnavailableOnThisPlatform,
+            Text(PurchaseAvailability.unavailableNotice(l),
                 style: const TextStyle(
                     fontSize: 12.5, height: 1.8, color: BrandColors.muted2)),
           ],

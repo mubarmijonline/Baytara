@@ -14,6 +14,7 @@ import '../../../core/i18n/error_copy.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../../auth/domain/session.dart';
+import '../../learning/application/learning_providers.dart';
 import '../../payments/data/purchase_availability.dart';
 import '../application/catalogue_providers.dart';
 import '../data/catalogue_dto.dart';
@@ -64,10 +65,26 @@ class _Content extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L10n.of(context);
+    final session = ref.watch(sessionProvider);
+
+    // Enrolment is website-only, so what the app needs to know is whether it has already
+    // happened. Null while the list is still loading, so the CTA does not flash "not
+    // available" at someone who is enrolled. Only fetched when signed in: /enrollments is
+    // an authenticated call, and a 401 from it would go through the refresh path.
+    bool? entitled = false;
+    if (session is SessionSignedIn) {
+      final enrollments = ref.watch(enrollmentsProvider);
+      entitled = !enrollments.hasValue && enrollments.isLoading
+          ? null
+          : (enrollments.value ?? const []).any(
+              (e) => e.course?.id == course.id && !e.isExpired);
+    }
+
     final access = AccessState.resolve(
-      session: ref.watch(sessionProvider),
+      session: session,
       tier: course.tier,
       serverLockReason: course.lockReason,
+      entitled: entitled ?? false,
     );
     final duration = durationLabel(course.displayMinutes, l);
 
@@ -134,7 +151,7 @@ class _Content extends ConsumerWidget {
                 ),
               ]),
               const SizedBox(height: 20),
-              _Cta(course: course, access: access),
+              _Cta(course: course, access: access, entitled: entitled),
               if (course.objectives.isNotEmpty) ...[
                 const SizedBox(height: 26),
                 _Heading(l.courseObjectives),
@@ -190,11 +207,18 @@ class _Content extends ConsumerWidget {
 }
 
 /// The single call to action, chosen by what the server would allow.
+///
+/// Enrolment is website-only (see purchase_availability.dart), so this never enrols or
+/// sells. It either unblocks the user (sign in, verify, add a phone), says enrolment is not
+/// available here, or -- once enrolled -- starts the first lesson.
 class _Cta extends StatelessWidget {
-  const _Cta({required this.course, required this.access});
+  const _Cta({required this.course, required this.access, required this.entitled});
 
   final Course course;
   final AccessState access;
+
+  /// Enrolled with access that has not lapsed. Null while that is still being checked.
+  final bool? entitled;
 
   @override
   Widget build(BuildContext context) {
@@ -205,39 +229,46 @@ class _Cta extends StatelessWidget {
     if (access.reason == LockReason.nonVeterinariansOnly) {
       return _Notice(text: l.lockNonVets, icon: Icons.info_outline);
     }
-
-    // Reader model (iOS): the price is still on the page above, but there is no button and
-    // no link out, because a call to action pointing anywhere other than In-App Purchase is
-    // what Guideline 3.1.1 refuses. See purchase_availability.dart.
-    if (access.reason == LockReason.needsPurchase &&
-        !PurchaseAvailability.purchasesEnabled) {
-      return _Notice(
-          text: l.checkoutUnavailableOnThisPlatform, icon: Icons.info_outline);
-    }
     if (access.reason == LockReason.needsBaytarian) {
       return const VerifyToWatchPrompt();
     }
 
-    final (label, route) = switch (access.reason) {
-      LockReason.needsAccount => (l.authSignIn, '/auth'),
-      LockReason.needsPhone => (l.phoneSave, '/auth/phone'),
-      // Returned early above, with the sentence and the button the website shows.
-      LockReason.needsBaytarian => (l.verifyNow, '/verify'),
-      LockReason.needsPurchase => (
-          '${l.lockNeedsPurchase} · ${priceLabel(course.price, course.currency, l)}',
-          '/buy/${course.slug}'
-        ),
-      _ => (l.enroll, '/courses/${course.slug}/enroll'),
-    };
+    if (access.reason == LockReason.needsAccount) {
+      return _Button(label: l.authSignIn, route: '/auth');
+    }
+    // Still checking the enrolments: show nothing rather than the wrong thing.
+    if (entitled == null) return const SizedBox.shrink();
 
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: () => context.push(route),
-        child: Text(label),
-      ),
-    );
+    // Not enrolled, free or paid: the price is still on the page above, but enrolling is
+    // done on the website. No button and, on iOS, no link out -- Guideline 3.1.1.
+    if (entitled == false) {
+      return _Notice(
+          text: PurchaseAvailability.unavailableNotice(l), icon: Icons.info_outline);
+    }
+
+    // Enrolled. The phone gate still blocks playback: the number is in the watermark.
+    if (access.reason == LockReason.needsPhone) {
+      return _Button(label: l.phoneSave, route: '/auth/phone');
+    }
+    if (course.videos.isEmpty) return const SizedBox.shrink();
+    return _Button(
+        label: l.watchNow, route: '/learn/${course.id}/${course.videos.first.id}');
   }
+}
+
+class _Button extends StatelessWidget {
+  const _Button({required this.label, required this.route});
+  final String label;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: () => context.push(route),
+          child: Text(label),
+        ),
+      );
 }
 
 class _Notice extends StatelessWidget {

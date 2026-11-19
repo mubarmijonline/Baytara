@@ -20,15 +20,25 @@ import UIKit
 final class CaptureGuard: NSObject {
 
     private let channel: FlutterMethodChannel
-    private weak var window: UIWindow?
+    private weak var explicitWindow: UIWindow?
     private var cover: UIView?
+
+    /// The window to cover. Under the UIScene lifecycle the app delegate's `window` is nil,
+    /// so the key window of the connected scenes is used instead, looked up when needed.
+    private var window: UIWindow? {
+        if let explicitWindow { return explicitWindow }
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+        return windows.first { $0.isKeyWindow } ?? windows.first
+    }
 
     init(messenger: FlutterBinaryMessenger, window: UIWindow?) {
         self.channel = FlutterMethodChannel(
             name: "app.baytara/capture_guard",
             binaryMessenger: messenger
         )
-        self.window = window
+        self.explicitWindow = window
         super.init()
 
         channel.setMethodCallHandler { [weak self] call, result in
@@ -93,9 +103,11 @@ final class CaptureGuard: NSObject {
     }
 
     @objc private func willResign() {
+        // Only hides the content from the app-switcher snapshot. Not reported as a capture:
+        // Control Center, a call or Face ID all resign active, and treating them as
+        // recordings filed false `suspicious` evidence and left playback blocked for good,
+        // because nothing ever reported the matching "not captured".
         showCover()
-        channel.invokeMethod("captureStateChanged",
-                             arguments: ["captured": true, "reason": "background"])
     }
 
     @objc private func didBecomeActive() {
