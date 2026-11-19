@@ -6,7 +6,7 @@ from ...models import (
     Category, Course, CourseVideo, Bundle, CourseReview, Enrollment, LearningPath, Lesson, User,
     refresh_course_rating,
 )
-from ...services.catalog_access import ACCESS_TYPES, audience_error
+from ...services.catalog_access import ACCESS_TYPES, audience_error, parse_access_types
 from ...models.catalog import LEVELS
 from ...utils import public_cache, req_lang
 
@@ -82,7 +82,7 @@ def list_categories():
 @jwt_required(optional=True)
 def list_courses():
     """Public course listing: only published. Filter by ?category=<slug>, ?q=<search>,
-    ?access_type=<t>, ?level=<l>, ?duration=short|medium|long, ?min_rating=<n>,
+    ?access_type=<t>[,<t>...], ?level=<l>, ?duration=short|medium|long, ?min_rating=<n>,
     ordered by ?sort=, paginated. Audience-restricted courses are shown only when
     the shared policy permits public visibility.
 
@@ -117,10 +117,11 @@ def list_courses():
 
     # Every course is listed to everyone; lock_reason on each says who may join it.
     level = request.args.get("level")
-    atype = request.args.get("access_type")
+    # One type or a comma-separated list: the iOS app asks for `free,vet_free` only.
+    atypes = parse_access_types(request.args.get("access_type"))
     with_level = base.filter(Course.level == level) if level in LEVELS else base
-    with_access = base.filter(Course.access_type == atype) if atype in ACCESS_TYPES else base
-    q = with_level.filter(Course.access_type == atype) if atype in ACCESS_TYPES else with_level
+    with_access = base.filter(Course.access_type.in_(atypes)) if atypes else base
+    q = with_level.filter(Course.access_type.in_(atypes)) if atypes else with_level
 
     order = COURSE_SORTS.get(request.args.get("sort"), COURSE_SORTS["newest"])
     lang = req_lang()

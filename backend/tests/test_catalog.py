@@ -5,7 +5,10 @@ by category/search, detail returns modules/lessons, and instructor scoping works
 """
 import uuid
 
+import pytest
+
 from app import create_app
+from app.config import BaseConfig
 from app.extensions import db
 from app.models import Category, Course, CourseModule, Lesson, User
 from app.security import hash_password
@@ -92,3 +95,51 @@ def demo():
 
 if __name__ == "__main__":
     demo()
+
+
+def test_access_type_filter_accepts_a_list():
+    """The iOS app lists free content only (App Store Guideline 3.1.1) and asks for
+    `free,vet_free` in one request so paging stays server-side."""
+    from app.services.catalog_access import parse_access_types
+
+    assert parse_access_types(None) == []
+    assert parse_access_types("") == []
+    assert parse_access_types("free") == ["free"]
+    assert parse_access_types("free,vet_free") == ["free", "vet_free"]
+    assert parse_access_types(" free , vet_free ,free") == ["free", "vet_free"]
+    assert parse_access_types("free,bogus") == ["free"]
+    assert parse_access_types("bogus") == []
+
+
+@pytest.fixture
+def catalog_app(tmp_path):
+    config = type("CatalogTestConfig", (BaseConfig,), {
+        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'catalog.sqlite'}",
+        "TESTING": True,
+    })
+    app = create_app(config)
+    with app.app_context():
+        db.create_all()
+        instr = User(name="Instructor", email="i@baytara.test", password_hash=hash_password("secret12"),
+                     role="instructor")
+        db.session.add(instr)
+        db.session.flush()
+        for slug, access in (("free-c", "free"), ("vet-c", "vet_free"),
+                             ("paid-c", "baytarian"), ("general-c", "general")):
+            db.session.add(Course(title=slug, slug=slug, instructor_id=instr.id, status="published",
+                                  access_type=access, price=0 if access in ("free", "vet_free") else 100))
+        db.session.commit()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+def test_course_listing_filters_by_a_list_of_access_types(catalog_app):
+    """The iOS app lists free content only (App Store Guideline 3.1.1)."""
+    c = catalog_app.test_client()
+    body = c.get("/api/v1/courses?access_type=free,vet_free").get_json()
+    assert sorted(x["slug"] for x in body["courses"]) == ["free-c", "vet-c"], body
+    assert body["total"] == 2
+    # A single type still works, and an unknown one still means "no filter".
+    assert c.get("/api/v1/courses?access_type=general").get_json()["total"] == 1
+    assert c.get("/api/v1/courses?access_type=bogus").get_json()["total"] == 4

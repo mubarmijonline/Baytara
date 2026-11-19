@@ -69,11 +69,10 @@ def _register_device(user, device_id, label, group=None):
 
 
 def _mobile(value):
-    """A blank number and a made-up one are the same problem: the watermark needs
-    a real line behind it."""
-    if not value.strip():
-        raise ValidationError("phone_required")
-    if not normalize_mobile(value):
+    """Optional (App Store Guideline 5.1.1(v): a phone number is not needed to watch,
+    the watermark already carries name, email and account id). A number that is given
+    must still be a real mobile, so the watermark never shows a made-up one."""
+    if value.strip() and not normalize_mobile(value):
         raise ValidationError("phone_invalid")
 
 
@@ -83,7 +82,7 @@ class RegisterSchema(Schema):
 
     name = fields.Str(required=True, validate=validate.Length(min=1, max=120))
     email = fields.Email(required=True)
-    phone = fields.Str(required=True, validate=validate.And(validate.Length(max=40), _mobile))
+    phone = fields.Str(load_default="", validate=validate.And(validate.Length(max=40), _mobile))
     password = fields.Str(required=True, validate=validate.Length(min=8, max=128))
 
 
@@ -166,7 +165,7 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify(error="email_taken"), 409
 
-    user = User(name=data["name"], email=email, phone=normalize_mobile(data["phone"]),
+    user = User(name=data["name"], email=email, phone=normalize_mobile(data["phone"]) or None,
                 password_hash=hash_password(data["password"]), role="student")
     db.session.add(user)
     db.session.commit()
@@ -205,9 +204,8 @@ def google_config():
 @bp.post("/google")
 def google_login():
     """Sign in (or sign up) with a Google ID token from the Sign In With Google
-    client. Google never provides a phone number, which the contract requires for
-    the video watermark, so `needs_phone` tells the client to collect it before
-    anything else."""
+    client. Google never provides a phone number. It is optional, so `needs_phone`
+    only tells the client it may offer to collect one; it no longer blocks playback."""
     body = request.get_json(silent=True) or {}
     credential = body.get("credential")
     if not isinstance(credential, str) or not credential.strip():

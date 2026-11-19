@@ -292,7 +292,7 @@ def test_paid_video_playback_uses_same_identity_device_watermark_and_session(pub
         assert session.public_id[:8] in watermark_text
 
 
-def test_playback_rejects_missing_phone_and_mismatched_or_removed_device(public_video_app):
+def test_playback_allows_missing_phone_and_rejects_mismatched_or_removed_device(public_video_app):
     app, ids = public_video_app
     client = app.test_client()
     headers = _viewer_headers(client, "security-browser")
@@ -316,13 +316,19 @@ def test_playback_rejects_missing_phone_and_mismatched_or_removed_device(public_
     with app.app_context():
         student = User.query.filter_by(email="public-video-student@example.test").one()
         student.phone = None
+        student_id = student.id
         db.session.add(UserDevice(user_id=student.id, device_id="security-browser"))
         db.session.commit()
     no_phone = client.post(
         "/api/v1/video/playback", headers=headers, json={"lesson_id": ids["Introduction"]},
     )
-    assert no_phone.status_code == 403
-    assert no_phone.get_json() == {"error": "phone_required"}
+    # The phone is optional (App Store Guideline 5.1.1(v)). The watermark still names the
+    # viewer by email and account id, and shows no "None" where the number would be.
+    assert no_phone.status_code == 200, no_phone.get_json()
+    watermark_text = " ".join(row["text"] for row in app.config["PLAYBACK_CAPTURED"]["annotate"])
+    assert "public-video-student@example.test" in watermark_text
+    assert f"ID {student_id}" in watermark_text
+    assert "None" not in watermark_text
 
 
 def test_signed_in_student_cannot_play_an_unpublished_free_video(public_video_app):
@@ -488,3 +494,13 @@ def test_vet_only_content_is_listed_to_everyone_but_still_locked(public_video_ap
                         json={"lesson_id": ids["خاص بالأطباء"]})
     assert refused.status_code == 403
     assert refused.get_json()["error"] == "needs_baytarian"
+
+
+def test_video_listing_filters_by_a_list_of_access_types(public_video_app):
+    """The iOS app lists free content only (App Store Guideline 3.1.1): one request for
+    `free,vet_free` returns both free tiers and no paid video."""
+    app, _ = public_video_app
+    body = app.test_client().get("/api/v1/videos?access_type=free,vet_free").get_json()
+    titles = {video["title"] for video in body["videos"]}
+    assert titles == {"مقدمة", "خاص بالأطباء"}, titles
+    assert body["total"] == 2

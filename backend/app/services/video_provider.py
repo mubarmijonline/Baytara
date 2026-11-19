@@ -88,7 +88,9 @@ provider = VdoCipherProvider()
 
 def watermark_for(user, ip_address="", session_ref=""):
     """Dynamic watermark annotation carrying viewer identity (anti-piracy).
-    Contract البند2: email + phone floating over the video."""
+    Contract البند2: email + phone floating over the video. The phone is optional (App
+    Store Guideline 5.1.1(v)), so a viewer without one is identified by name, email,
+    account id and session, which already point at exactly one row."""
     if user is None:
         return [
             {"type": "rtext", "text": "Baytara", "alpha": "0.45",
@@ -100,6 +102,7 @@ def watermark_for(user, ip_address="", session_ref=""):
     return [
         {"type": "rtext", "text": f"{user.name} · {user.email}", "alpha": "0.58",
          "color": "0xFFFFFF", "size": "15", "interval": "5000"},
-        {"type": "rtext", "text": f"{user.phone} · ID {user.id} · {ip_address} · Session {session_label}",
+        {"type": "rtext",
+         "text": " · ".join(filter(None, [user.phone, f"ID {user.id}", ip_address, f"Session {session_label}"])),
          "alpha": "0.52", "color": "0xFFFFFF", "size": "13", "interval": "7000"},
     ]
