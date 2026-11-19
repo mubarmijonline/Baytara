@@ -2,6 +2,15 @@ from decimal import Decimal, InvalidOperation
 
 
 ACCESS_TYPES = ("free", "vet_free", "baytarian", "general")
+
+
+def parse_access_types(raw):
+    """`?access_type=free` or `?access_type=free,vet_free` -> the known types in it, in
+    order, or an empty list (no filter). Unknown values are dropped rather than
+    matching nothing, which is how a single unknown value behaved before."""
+    if not raw:
+        return []
+    return [t for t in dict.fromkeys(p.strip() for p in raw.split(",")) if t in ACCESS_TYPES]
 FREE_ACCESS = {"free", "vet_free"}
 PAID_ACCESS = {"baytarian", "general"}
 SUPPORTED_CURRENCIES = {"EGP"}

@@ -7,7 +7,8 @@ from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 from ...extensions import db
 from ...models import (Category, Lesson, User, UserDevice, VideoPlaybackEvent,
                        VideoPlaybackSession, push_notification)
-from ...services.catalog_access import audience_error, capture_protected, video_access
+from ...services.catalog_access import (audience_error, capture_protected, parse_access_types,
+                                        video_access)
 from ...services.video_provider import provider, watermark_for, VideoProviderError
 from .local_hls import issue_token
 from ...services.video_monitoring import (
@@ -59,10 +60,10 @@ def _current_user():
 def _public_video_dict(video, user, lang):
     data = video.to_dict(lang=lang, user=user)
     allowed = video_access(user, video)[0]
-    has_phone = bool(user and (user.phone or "").strip())
     data["requires_auth"] = user is None
-    data["requires_phone"] = user is not None and not has_phone
-    data["can_play"] = bool(user and has_phone and allowed)
+    # Kept in the payload for older clients; a phone number no longer gates playback.
+    data["requires_phone"] = False
+    data["can_play"] = bool(user and allowed)
     return data
 
 
@@ -106,9 +107,10 @@ def videos():
     category = request.args.get("category")
     if category:
         query = query.join(Category).filter(Category.slug == category)
-    access_type = request.args.get("access_type")
-    if access_type:
-        query = query.filter(Lesson.access_type == access_type)
+    # One type or a comma-separated list: the iOS app asks for `free,vet_free` only.
+    access_types = parse_access_types(request.args.get("access_type"))
+    if access_types:
+        query = query.filter(Lesson.access_type.in_(access_types))
     search = (request.args.get("q") or "").strip()
     if search:
         like = f"%{search}%"
@@ -279,8 +281,6 @@ def playback():
         return deny("authentication_required", 401)
     if not user.is_active:
         return deny("account_disabled", 403)
-    if not (user.phone or "").strip():
-        return deny("phone_required", 403)
 
     token_device = get_jwt().get("device_id")
     if not token_device or not device_id:

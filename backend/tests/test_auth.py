@@ -28,16 +28,22 @@ def auth_app(tmp_path):
         db.drop_all()
 
 
-def test_registration_requires_phone_and_tokens_are_bound_to_device(auth_app):
+def test_registration_phone_is_optional_but_validated_and_tokens_are_bound_to_device(auth_app):
     client = auth_app.test_client()
     base = {"name": "Viewer", "email": "viewer@example.test", "password": "secret12", "device_id": "browser-1"}
 
-    missing = client.post("/api/v1/auth/register", json=base)
-    assert missing.status_code == 422
-    blank = client.post("/api/v1/auth/register", json={**base, "phone": "   "})
-    assert blank.status_code == 422
+    # App Store Guideline 5.1.1(v): a phone number is optional. Missing or blank both
+    # create the account with no number rather than refusing it.
+    missing = client.post("/api/v1/auth/register", json={**base, "email": "nophone@example.test"})
+    assert missing.status_code == 201, missing.get_json()
+    assert missing.get_json()["user"]["phone"] is None
+    blank = client.post("/api/v1/auth/register",
+                        json={**base, "email": "blankphone@example.test", "phone": "   "})
+    assert blank.status_code == 201, blank.get_json()
+    assert blank.get_json()["user"]["phone"] is None
 
-    # A number that is not a mobile we can watermark is refused at the door.
+    # A number that is given must still be a real mobile, so the watermark never shows
+    # a made-up one.
     for bad in ("01312345678", "0221234567", "0512345678", "12345"):
         rejected = client.post("/api/v1/auth/register", json={**base, "phone": bad})
         assert rejected.status_code == 422, (bad, rejected.get_json())
